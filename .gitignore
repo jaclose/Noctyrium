@@ -1,0 +1,25 @@
+# Build artifacts
+.build/
+build/
+*.app
+DerivedData/
+.swiftpm/
+*.o
+
+# Xcode user state
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Personal study data must never enter the code repo.
+# Noctyrium reads/writes this at runtime from "~/Medical School/".
+# Keep it OUT of version control:
+Medical School/
+*.csv
+*.md.bak
+active_study_day.txt
+!CHANGELOG.md
+!README.md
