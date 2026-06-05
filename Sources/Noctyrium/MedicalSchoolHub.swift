@@ -133,6 +133,18 @@ func noctyriumNextDateKey(after key: String) -> String {
     return noctyriumDateKey()
 }
 
+/// Opens the productivity file for a given study-day key (yyyy-MM-dd).
+/// Minimal restoration to keep the Heatmap `openDay` callback compiling and useful
+/// until the full per-day-file architecture lands. Opens the specific day file when
+/// it exists, otherwise reveals the Productivity folder in Finder.
+func openProductivityDayFile(_ key: String) {
+    let home = FileManager.default.homeDirectoryForCurrentUser.path
+    let prodDir = "\(home)/Medical School/09 Admin/App Data/Noctyrium/Productivity"
+    let dayFile = "\(prodDir)/productivity_\(key).csv"
+    let target = FileManager.default.fileExists(atPath: dayFile) ? dayFile : prodDir
+    _ = shell("open \"\(target)\"")
+}
+
 struct HubView: View {
     @State private var selected = "Dashboard"
     @State private var selectedProductivityDayKey: String = noctyriumDateKey()
