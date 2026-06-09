@@ -18,11 +18,30 @@ rm -rf "$STAGE_APP"
 mkdir -p "$STAGE_APP/Contents/MacOS" "$STAGE_APP/Contents/Resources"
 
 echo "Compiling Swift source..."
-swiftc "$SRC" \
-  -parse-as-library \
-  -o "$STAGE_APP/Contents/MacOS/Noctyrium" \
-  -framework SwiftUI \
-  -framework AppKit
+BUILD_LOG="$(mktemp)"
+compile() {
+  swiftc "$SRC" \
+    -parse-as-library \
+    -o "$STAGE_APP/Contents/MacOS/Noctyrium" \
+    -framework SwiftUI \
+    -framework AppKit
+}
+# Try the active toolchain. If Xcode is selected but its license isn't accepted,
+# fall back to the Command Line Tools automatically so a build is never blocked.
+if compile >"$BUILD_LOG" 2>&1; then
+  echo "Compiled."
+elif grep -qi "license" "$BUILD_LOG" && [[ -d /Library/Developer/CommandLineTools ]]; then
+  echo "Xcode license not accepted yet — building with Command Line Tools instead."
+  echo "(To use Xcode's toolchain, open Xcode once and click Agree.)"
+  if DEVELOPER_DIR=/Library/Developer/CommandLineTools compile >"$BUILD_LOG" 2>&1; then
+    echo "Compiled (via Command Line Tools)."
+  else
+    echo "Build failed:"; cat "$BUILD_LOG"; rm -f "$BUILD_LOG"; exit 1
+  fi
+else
+  echo "Build failed:"; cat "$BUILD_LOG"; rm -f "$BUILD_LOG"; exit 1
+fi
+rm -f "$BUILD_LOG"
 
 echo "Writing Info.plist..."
 cat > "$STAGE_APP/Contents/Info.plist" <<PLIST

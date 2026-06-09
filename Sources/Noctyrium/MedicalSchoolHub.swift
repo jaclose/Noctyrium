@@ -134,14 +134,23 @@ func noctyriumNextDateKey(after key: String) -> String {
 }
 
 /// Opens the productivity file for a given study-day key (yyyy-MM-dd).
-/// Minimal restoration to keep the Heatmap `openDay` callback compiling and useful
-/// until the full per-day-file architecture lands. Opens the specific day file when
-/// it exists, otherwise reveals the Productivity folder in Finder.
+/// Per-day files live at Noctyrium/Productivity/Days/<key>.csv. Opens that exact
+/// day file when it exists; otherwise falls back to the Days folder, then the
+/// Productivity folder, so a heatmap click always reveals something useful.
 func openProductivityDayFile(_ key: String) {
     let home = FileManager.default.homeDirectoryForCurrentUser.path
     let prodDir = "\(home)/Medical School/09 Admin/App Data/Noctyrium/Productivity"
-    let dayFile = "\(prodDir)/productivity_\(key).csv"
-    let target = FileManager.default.fileExists(atPath: dayFile) ? dayFile : prodDir
+    let daysDir = "\(prodDir)/Days"
+    let dayFile = "\(daysDir)/\(key).csv"
+    let fm = FileManager.default
+    let target: String
+    if fm.fileExists(atPath: dayFile) {
+        target = dayFile          // the specific study-day file
+    } else if fm.fileExists(atPath: daysDir) {
+        target = daysDir          // the Days folder, if that day isn't recorded yet
+    } else {
+        target = prodDir          // last resort: the Productivity folder
+    }
     _ = shell("open \"\(target)\"")
 }
 
@@ -968,7 +977,7 @@ func updateTrackerItemInFile(_ item: CourseTrackerItem, action: String, filePath
 
     func updateTrackerItem(id: String, passDelta: Int? = nil, setStatus: String? = nil, setColor: String? = nil, note: String? = nil) {
         guard let raw = try? String(contentsOfFile: nb3TrackerFile) else { return }
-        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !lines.isEmpty else { return }
 
         let now = studyDayString(from: Date())
@@ -2450,7 +2459,6 @@ func generateSmartSuggestions(
 
     let nb3Zero = nb3Core.filter { $0.quality <= 0 }
     let nb3SinglePass = nb3Core.filter { $0.quality == 1 }
-    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
 
     if let firstZero = nb3Zero.first {
         output.append(
@@ -3081,11 +3089,11 @@ struct PromptCard: View {
                     MiniButton("Copy All", copy)
 
                     MiniButton("Open") {
-                        shell("open \"\(prompt.fullPath)\"")
+                        _ = shell("open \"\(prompt.fullPath)\"")
                     }
 
                     MiniButton("Reveal") {
-                        shell("open -R \"\(prompt.fullPath)\"")
+                        _ = shell("open -R \"\(prompt.fullPath)\"")
                     }
                 }
             }
@@ -3473,7 +3481,17 @@ struct Heatmap: View {
                     .fill(color(minutes: m, cards: c))
                     .frame(height: 18)
                     .overlay(Text(m >= 480 || c >= 350 ? "👑" : "").font(.system(size: 8)))
-                    .help("\(label(day)): \(m) min, \(c) cards")
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white.opacity(openDay != nil ? 0.10 : 0), lineWidth: 1)
+                    )
+                    .help("\(label(day)): \(m) min, \(c) cards" + (openDay != nil ? " — click to open this day" : ""))
+                    .contentShape(Rectangle())
+                    .onTapGesture { openDay?(key(day)) }
+                    .onHover { inside in
+                        guard openDay != nil else { return }
+                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
             }
         }
     }
@@ -3502,6 +3520,15 @@ struct Heatmap: View {
     func label(_ date: Date) -> String {
         let f = DateFormatter()
         f.dateStyle = .medium
+        return f.string(from: date)
+    }
+
+    /// Calendar-day key (yyyy-MM-dd) matching the productivity day-file naming.
+    /// Intentionally not noctyriumDateKey() — these cells are plain calendar days,
+    /// so the 4am study-day shift would label past cells one day early.
+    func key(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
         return f.string(from: date)
     }
 }
