@@ -1,0 +1,83 @@
+Last login: Fri May  1 14:54:57 on ttys001
+jd@JD-MacBook-Pro ~ % >....                                                     
+  echo "Build script not executable or missing: $BUILD"
+fi
+
+echo ""
+echo "===== FINAL STATE ====="
+echo "active:"
+cat "$PROD/active_study_day.txt"
+echo ""
+echo "daily files:"
+ls -1 "$DAYS" | tail -n 10
+echo ""
+echo "stats:"
+"$STATS" | grep -E 'today_minutes|today_cards|manual_minutes_today'
+echo ""
+echo "Done."
+echo "Report: $REPORT"
+
+} > "$REPORT" 2>&1
+
+cat "$REPORT"
+SH
+
+zsh /tmp/noctyrium_daily_file_architecture_fix.sh
+jd@JD-MacBook-Pro ~ % >....                                                     
+
+echo ""
+echo "===== FINAL STATE ====="
+echo "active:"
+cat "$ACTIVE"
+echo ""
+echo "manual:"
+cat "$LEGACY"
+echo ""
+echo "daily files:"
+ls -1 "$DAYS" | tail -n 10
+echo ""
+echo "stats:"
+"$STATS" | grep -E 'today_minutes|today_cards|manual_minutes_today'
+echo ""
+echo "Done."
+echo "Report: $REPORT"
+} > "$REPORT" 2>&1
+
+cat "$REPORT"
+SH
+
+zsh /tmp/noctyrium_daily_file_architecture_fix_v2.sh
+jd@JD-MacBook-Pro ~ % echo "ACTIVE:"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt"
+
+echo "DAY FILES:"
+ls -1 "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/Days" | tail -n 20
+
+echo "STATS:"
+"$HOME/Medical School/09 Admin/Scripts/dashboard_stats.sh" | grep -E 'today_minutes|today_cards|manual_minutes_today'
+ACTIVE:
+2026-05-05
+DAY FILES:
+2026-05-01.csv
+2026-05-02.csv
+2026-05-03.csv
+2026-05-04.csv
+2026-05-05.csv
+2026-05-06.csv
+2026-05-07.csv
+2026-05-11.csv
+2026-05-15.csv
+2026-05-17.csv
+2026-05-19.csv
+STATS:
+today_minutes=0
+today_cards=0
+manual_minutes_today=0
+jd@JD-MacBook-Pro ~ % noctbuid
+zsh: command not found: noctbuid
+jd@JD-MacBook-Pro ~ % nocbuild
+zsh: command not found: nocbuild
+jd@JD-MacBook-Pro ~ % noctyriumbuild
+zsh: command not found: noctyriumbuild
+jd@JD-MacBook-Pro ~ % noctapp
+jd@JD-MacBook-Pro ~ % 

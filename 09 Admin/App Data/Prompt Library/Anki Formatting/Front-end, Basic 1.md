@@ -1,0 +1,81 @@
+<div class="anki-stage">
+  <div class="ambient-orb orb-a"></div>
+  <div class="ambient-orb orb-b"></div>
+  <div class="ambient-orb orb-c"></div>
+
+  <main class="glass-card reactive-card front-card">
+    <div class="edge-luster"></div>
+    <div class="bottom-spawn"></div>
+
+    <header class="topline">
+       <div class="logo-wrap">
+        <img class="jd-logo" src="JD%20icon%20Background%20Removed-73f0ca74bc8f6b2d78a90adb67ed47657bd28f95.png">
+      </div>
+    </header>
+
+    <section class="front-content spawn-main">
+      {{Front}}
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  function bootReactiveCard() {
+    const card = document.querySelector(".reactive-card");
+    if (!card) return;
+
+    let raf = null;
+
+    function setCard(px, py, active) {
+      const rotateY = (0.5 - px) * 3.8;
+      const rotateX = (py - 0.5) * 2.8;
+
+      const moveX = (px - 0.5) * 3.2;
+      const moveY = (py - 0.5) * 2.4;
+
+      card.style.setProperty("--rx", rotateX + "deg");
+      card.style.setProperty("--ry", rotateY + "deg");
+      card.style.setProperty("--mx", moveX + "px");
+      card.style.setProperty("--my", moveY + "px");
+      card.style.setProperty("--active", active);
+    }
+
+    function update(e) {
+      if (window.innerWidth < 700) return;
+      if (raf) cancelAnimationFrame(raf);
+
+      raf = requestAnimationFrame(function () {
+        const rect = card.getBoundingClientRect();
+
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const px = Math.max(0, Math.min(1, x / rect.width));
+        const py = Math.max(0, Math.min(1, y / rect.height));
+
+        setCard(px, py, "1");
+      });
+    }
+
+    function reset() {
+      card.style.setProperty("--rx", "0deg");
+      card.style.setProperty("--ry", "0deg");
+      card.style.setProperty("--mx", "0px");
+      card.style.setProperty("--my", "0px");
+      card.style.setProperty("--active", "0");
+    }
+
+    document.removeEventListener("mousemove", update);
+    document.addEventListener("mousemove", update, { passive: true });
+
+    document.removeEventListener("mouseleave", reset);
+    document.addEventListener("mouseleave", reset);
+
+    reset();
+  }
+
+  bootReactiveCard();
+  setTimeout(bootReactiveCard, 80);
+})();
+</script>

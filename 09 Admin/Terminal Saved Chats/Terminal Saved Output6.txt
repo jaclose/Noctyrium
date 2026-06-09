@@ -1,0 +1,416 @@
+Last login: Fri May  1 11:03:49 on ttys000
+BASE="$HOME/Medical School"
+SRC="$BASE/09 Admin/App Framework/MedicalSchoolHub.swift"
+BUILD="$BASE/09 Admin/App Framework/build_noctyrium_app.sh"
+BACKUP="$BASE/09 Admin/App Framework/MedicalSchoolHub.smart-suggestion-compile-fix.$(date '+%Y-%m-%d_%H-%M-%S').swift"
+
+cp "$SRC" "$BACKUP"
+
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+src = Path.home() / "Medical School/09 Admin/App Framework/MedicalSchoolHub.swift"
+text = src.read_text()
+
+# ============================================================
+# 1. Ensure SmartSuggestion struct exists
+# ============================================================
+if "struct SmartSuggestion: Identifiable" not in text:
+    marker = "struct CourseTrackerItem: Identifiable {"
+    if marker not in text:
+        raise SystemExit("Could not find CourseTrackerItem marker.")
+    text = text.replace(marker, """struct SmartSuggestion: Identifiable {
+    let id = UUID()
+    let title: String
+    let reason: String
+    let source: String
+    let priori%                                                                 jd@JD-MacBook-Pro ~ % BASE="$HOME/Medical School"
+jd@JD-MacBook-Pro ~ % SRC="$BASE/09 Admin/App Framework/MedicalSchoolHub.swift"
+jd@JD-MacBook-Pro ~ % BUILD="$BASE/09 Admin/App Framework/build_noctyrium_app.sh"
+jd@JD-MacBook-Pro ~ % BACKUP="$BASE/09 Admin/App Framework/MedicalSchoolHub.smart-suggestion-compile-fix.$(date '+%Y-%m-%d_%H-%M-%S').swift"
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % cp "$SRC" "$BACKUP"
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % python3 - <<'PY'
+heredoc> from pathlib import Path
+heredoc> import re
+heredoc> 
+heredoc> src = Path.home() / "Medical School/09 Admin/App Framework/MedicalSchoolHub.swift"
+heredoc> text = src.read_text()
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 1. Ensure SmartSuggestion struct exists
+heredoc> # ============================================================
+heredoc> if "struct SmartSuggestion: Identifiable" not in text:
+heredoc>     marker = "struct CourseTrackerItem: Identifiable {"
+heredoc>     if marker not in text:
+heredoc>         raise SystemExit("Could not find CourseTrackerItem marker.")
+heredoc>     text = text.replace(marker, """struct SmartSuggestion: Identifiable {
+heredoc>     let id = UUID()
+heredoc>     let title: String
+heredoc>     let reason: String
+heredoc>     let source: String
+heredoc>     let priority: Int
+heredoc>     let color: String
+heredoc> }
+heredoc> 
+heredoc> """ + marker, 1)
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 2. Ensure HubView has @State private var smartSuggestions
+heredoc> # ============================================================
+heredoc> hub_start = text.find("struct HubView: View")
+heredoc> if hub_start == -1:
+heredoc>     raise SystemExit("Could not find HubView.")
+heredoc> 
+heredoc> hub_next = text.find("\nstruct ", hub_start + 1)
+heredoc> hub_block = text[hub_start:hub_next]
+heredoc> 
+heredoc> if "@State private var smartSuggestions" not in hub_block:
+heredoc>     # Insert after selected/dashboard state if possible
+heredoc>     if '@State private var dashboardTrackerModule' in hub_block:
+heredoc>         hub_block = hub_block.replace(
+heredoc>             re.search(r'@State private var dashboardTrackerModule[^\n]*', hub_block).group(0),
+heredoc>             re.search(r'@State private var dashboardTrackerModule[^\n]*', hub_block).group(0) + '\n    @State private var smartSuggestions: [SmartSuggestion] = []',
+heredoc>             1
+heredoc>         )
+heredoc>     elif '@State private var selected' in hub_block:
+heredoc>         hub_block = hub_block.replace(
+heredoc>             re.search(r'@State private var selected[^\n]*', hub_block).group(0),
+heredoc>             re.search(r'@State private var selected[^\n]*', hub_block).group(0) + '\n    @State private var smartSuggestions: [SmartSuggestion] = []',
+heredoc>             1
+heredoc>         )
+heredoc>     else:
+heredoc>         hub_block = hub_block.replace(
+heredoc>             "struct HubView: View {",
+heredoc>             "struct HubView: View {\n    @State private var smartSuggestions: [SmartSuggestion] = []",
+heredoc>             1
+heredoc>         )
+heredoc> 
+heredoc> text = text[:hub_start] + hub_block + text[hub_next:]
+heredoc> 
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 3. Fix buildSmartSuggestions return type.
+heredoc> #    If it currently returns [String], make it return [SmartSuggestion].
+heredoc> # ============================================================
+heredoc> m = re.search(r'func buildSmartSuggestions\s*\((.*?)\)\s*->\s*\[String\]\s*\{', text, re.S)
+heredoc> if m:
+heredoc>     text = text[:m.start()] + "func buildSmartSuggestions(" + m.group(1) + ") -> [SmartSuggestion] {" + text[m.end():]
+heredoc> 
+heredoc> # If buildSmartSuggestions has no explicit return type but returns strings, this is safer:
+heredoc> text = re.sub(
+heredoc>     r'func buildSmartSuggestions\s*\((.*?)\)\s*\{',
+heredoc>     lambda x: x.group(0) if "->" in x.group(0) else "func buildSmartSuggestions(" + x.group(1) + ") -> [SmartSuggestion] {",
+heredoc>     text,
+heredoc>     count=1,
+heredoc>     flags=re.S
+heredoc> )
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 4. Convert obvious string append patterns inside buildSmartSuggestions
+heredoc> #    into SmartSuggestion append patterns.
+heredoc> # ============================================================
+heredoc> func_start = text.find("func buildSmartSuggestions")
+heredoc> if func_start != -1:
+heredoc>     # Find matching function block
+heredoc>     i = text.find("{", func_start)
+heredoc>     depth = 0
+heredoc>     func_end = None
+heredoc>     while i < len(text):
+heredoc>         if text[i] == "{":
+heredoc>             depth += 1
+heredoc>         elif text[i] == "}":
+heredoc>             depth -= 1
+heredoc>             if depth == 0:
+heredoc>                 func_end = i + 1
+heredoc>                 break
+heredoc>         i += 1
+heredoc> 
+heredoc>     block = text[func_start:func_end]
+heredoc> 
+heredoc>     # Ensure the collection is typed correctly if declared as [String]
+heredoc>     block = block.replace("var output: [String] = []", "var output: [SmartSuggestion] = []")
+heredoc>     block = block.replace("var suggestions: [String] = []", "var suggestions: [SmartSuggestion] = []")
+heredoc>     block = block.replace("var results: [String] = []", "var results: [SmartSuggestion] = []")
+heredoc> 
+heredoc>     # If it declares untyped empty array, force a useful name
+heredoc>     block = block.replace("var output = [String]()", "var output = [SmartSuggestion]()")
+heredoc>     block = block.replace("var suggestions = [String]()", "var suggestions = [SmartSuggestion]()")
+heredoc>     block = block.replace("var results = [String]()", "var results = [SmartSuggestion]()")
+heredoc> 
+heredoc>     # Replace simple append("text") calls inside the function only.
+heredoc>     # Keeps interpolation intact.
+heredoc>     def convert_append(match):
+heredoc>         varname = match.group(1)
+heredoc>         content = match.group(2)
+heredoc>         escaped = content.replace('"', '\\"')
+heredoc>         return f'{varname}.append(SmartSuggestion(title: "{escaped}", reason: "Generated from tasks, journal, NB3, and BSCE tracker sweep.", source: "Sweep", priority: 50, color: "cyan"))'
+heredoc> 
+heredoc>     block = re.sub(
+heredoc>         r'\b(output|suggestions|results)\.append\("([^"\n]*)"\)',
+heredoc>         convert_append,
+heredoc>         block
+heredoc>     )
+heredoc> 
+heredoc>     # Replace return [] if present with typed empty return.
+heredoc>     block = block.replace("return []", "return [SmartSuggestion]()")
+heredoc> 
+heredoc>     text = text[:func_start] + block + text[func_end:]
+heredoc> 
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 5. If buildSmartSuggestions is too malformed, replace it fully
+heredoc> #    with a clean reactive engine.
+heredoc> # ============================================================
+heredoc> func_start = text.find("func buildSmartSuggestions")
+heredoc> if func_start != -1:
+heredoc>     i = text.find("{", func_start)
+heredoc>     depth = 0
+heredoc>     func_end = None
+heredoc>     while i < len(text):
+heredoc>         if text[i] == "{":
+heredoc>             depth += 1
+heredoc>         elif text[i] == "}":
+heredoc>             depth -= 1
+heredoc>             if depth == 0:
+heredoc>                 func_end = i + 1
+heredoc>                 break
+heredoc>         i += 1
+heredoc> 
+heredoc>     signature = text[func_start:text.find("{", func_start)].strip()
+heredoc> 
+heredoc>     # If signature is still suspicious or body still has String-only append, replace whole function.
+heredoc>     old_block = text[func_start:func_end]
+heredoc>     if "-> [SmartSuggestion]" not in signature or ".append(\"" in old_block:
+heredoc>         new_func = r'''
+heredoc> func buildSmartSuggestions(tasks: [TaskItem], journal: [JournalEntry], nb3Items: [CourseTrackerItem], bsceItems: [CourseTrackerItem]) -> [SmartSuggestion] {
+heredoc>     var result: [SmartSuggestion] = []
+heredoc> 
+heredoc>     let openTasks = tasks.filter { $0.status.lowercased() != "done" && $0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+heredoc>     let taskText = openTasks.map { $0.title.lowercased() }.joined(separator: " | ")
+heredoc> 
+heredoc>     func add(_ title: String, _ reason: String, _ source: String, _ priority: Int, _ color: String) {
+heredoc>         if !result.contains(where: { $0.title == title }) {
+heredoc>             result.append(SmartSuggestion(title: title, reason: reason, source: source, priority: priority, color: color))
+heredoc>         }
+heredoc>     }
+heredoc> 
+heredoc>     // 1. Tasks first. Explicit user intent beats algorithmic cleverness.
+heredoc>     for task in openTasks.prefix(8) {
+heredoc>         let lower = task.title.lowercased()
+heredoc> 
+heredoc>         if lower.contains("bsce") || lower.contains("ftm") || lower.contains("msk") || lower.contains("cpr") || lower.contains("er") || lower.contains("dm") || lower.contains("nb1") || lower.contains("nb2") {
+heredoc>             add("Task-linked BSCE move: \(task.title)", "Task mentions BSCE or a non-current module. Pull this forward before generic review.", "Tasks", 100, "purple")
+heredoc>         } else if lower.contains("lecture") || lower.contains("lectures") || lower.contains("l60") || lower.contains("l61") || lower.contains("l62") || lower.contains("l63") || lower.contains("l64") || lower.contains("nb3") {
+heredoc>             add("Task-linked NB3 move: \(task.title)", "Task looks like current NB3 lecture work. Treat it as current-course priority.", "Tasks", 98, "cyan")
+heredoc>         } else {
+heredoc>             add("Task queue: \(task.title)", "Open task still exists. Clear or reclassify it before inventing new work.", "Tasks", 72, "blue")
+heredoc>         }
+heredoc>     }
+heredoc> 
+heredoc>     // 2. Journal scan, date-aware by taking newest entries first.
+heredoc>     for entry in journal.prefix(4) {
+heredoc>         let combined = "\(entry.today) \(entry.tomorrow) \(entry.blockers)".lowercased()
+heredoc>         if combined.contains("bsce") {
+heredoc>             add("Journal carryover: BSCE prep", "Recent journal mentions BSCE. Treat this as active mental context.", "Journal", 88, "purple")
+heredoc>         }
+heredoc>         if combined.contains("lecture") || combined.contains("nb3") {
+heredoc>             add("Journal carryover: NB3 lecture recovery", "Recent journal mentions NB3 or lectures. Convert reflection into execution.", "Journal", 86, "cyan")
+heredoc>         }
+heredoc>         if combined.contains("behind") || combined.contains("block") || combined.contains("fatigue") {
+heredoc>             add("Stabilize the day: one core pass + one question block", "Journal shows friction. Use a narrow move instead of a heroic plan.", "Journal", 84, "orange")
+heredoc>         }
+heredoc>     }
+heredoc> 
+heredoc>     // 3. NB3 logic.
+heredoc>     let nb3Core = nb3Items.filter { ["lecture", "dla"].contains($0.type.lowercased()) }
+heredoc>     let nb3SinglePasses = nb3Core.filter { $0.quality >= 1 }.count
+heredoc>     let nb3Zero = nb3Core.filter { $0.quality < 1 }
+heredoc> 
+heredoc>     if let firstZero = nb3Zero.first {
+heredoc>         add("NB3 first pass: \(firstZero.label)", "Lecture/DLA has zero passes. First passes outrank second passes until enough of the module is touched.", "NB3 Tracker", 95, "red")
+heredoc>     }
+heredoc> 
+heredoc>     if nb3SinglePasses >= 10 {
+heredoc>         if let youngTarget = nb3Core.first(where: { $0.quality == 1 }) {
+heredoc>             add("NB3 second pass: \(youngTarget.label)", "You have enough first-pass coverage to start upgrading weak material to young.", "NB3 Tracker", 82, "green")
+heredoc>         }
+heredoc>     }
+heredoc> 
+heredoc>     if let dlaZero = nb3Items.first(where: { $0.type.lowercased() == "dla" && $0.quality < 1 }) {
+heredoc>         add("DLA catch-up: \(dlaZero.label)", "DLAs carry high module weight and should not lag behind lectures.", "NB3 Tracker", 90, "orange")
+heredoc>     }
+heredoc> 
+heredoc>     if let pqZero = nb3Items.first(where: { ["pq", "esoft", "imcq"].contains($0.type.lowercased()) && $0.quality < 1 }) {
+heredoc>         add("Question pressure: \(pqZero.label)", "Questions become the accelerator once first-pass coverage is moving.", "NB3 Tracker", 70, "blue")
+heredoc>     }
+heredoc> 
+heredoc>     // 4. BSCE logic.
+heredoc>     let bscePLG = bsceItems.filter { $0.type.lowercased() == "plg" }
+heredoc>     let bsceCorr = bsceItems.filter { ["correlates", "pathways", "weak areas"].contains($0.type.lowercased()) }
+heredoc>     let bsceQs = bsceItems.filter { ["esoft", "imcq"].contains($0.type.lowercased()) }
+heredoc> 
+heredoc>     if let plg = bscePLG.first(where: { $0.quality < 1 }) {
+heredoc>         add("BSCE PLG: \(plg.label)", "PLG review is the front door for BSCE prep. Do this before scattered question review.", "BSCE Tracker", 94, "purple")
+heredoc>     }
+heredoc> 
+heredoc>     if let corr = bsceCorr.first(where: { $0.quality < 1 }) {
+heredoc>         add("BSCE correlates/pathways: \(corr.label)", "Clinical correlates and pathways convert module memory into exam-useful structure.", "BSCE Tracker", 80, "indigo")
+heredoc>     }
+heredoc> 
+heredoc>     if let q = bsceQs.first(where: { $0.quality < 1 }) {
+heredoc>         add("BSCE question set: \(q.label)", "Use questions after PLG/correlates to expose weak explanations.", "BSCE Tracker", 68, "blue")
+heredoc>     }
+heredoc> 
+heredoc>     // 5. Avoid dumb duplication when task already mentions the module.
+heredoc>     if taskText.contains("bsce") {
+heredoc>         result = result.map {
+heredoc>             if $0.source == "BSCE Tracker" {
+heredoc>                 return SmartSuggestion(title: $0.title, reason: $0.reason + " Task list already mentions BSCE, so this is paired with your task queue.", source: $0.source, priority: $0.priority + 5, color: $0.color)
+heredoc>             }
+heredoc>             return $0
+heredoc>         }
+heredoc>     }
+heredoc> 
+heredoc>     return result.sorted { $0.priority > $1.priority }.prefix(8).map { $0 }
+heredoc> }
+heredoc> '''
+heredoc>         text = text[:func_start] + new_func + text[func_end:]
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 6. Fix any old call labels to the clean function labels.
+heredoc> # ============================================================
+heredoc> text = re.sub(
+heredoc>     r'buildSmartSuggestions\(\s*tasks:\s*([^,\n]+),\s*journal:\s*([^,\n]+),\s*trackerItems:\s*([^,\n]+),\s*bsceItems:\s*([^)]+)\)',
+heredoc>     r'buildSmartSuggestions(tasks: \1, journal: \2, nb3Items: \3, bsceItems: \4)',
+heredoc>     text
+heredoc> )
+heredoc> 
+heredoc> text = re.sub(
+heredoc>     r'buildSmartSuggestions\(\s*tasks:\s*([^,\n]+),\s*journal:\s*([^,\n]+),\s*nb3:\s*([^,\n]+),\s*bsce:\s*([^)]+)\)',
+heredoc>     r'buildSmartSuggestions(tasks: \1, journal: \2, nb3Items: \3, bsceItems: \4)',
+heredoc>     text
+heredoc> )
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 7. Fix references inside nested views.
+heredoc> #    DashboardPage and CourseTrackerPage should use their local let suggestions,
+heredoc> #    not smartSuggestions.
+heredoc> # ============================================================
+heredoc> for struct_name in ["DashboardPage", "CourseTrackerPage"]:
+heredoc>     s = text.find(f"struct {struct_name}: View")
+heredoc>     if s != -1:
+heredoc>         e = text.find("\nstruct ", s + 1)
+heredoc>         if e == -1:
+heredoc>             e = len(text)
+heredoc>         block = text[s:e]
+heredoc>         block = block.replace("suggestions: smartSuggestions", "suggestions: suggestions")
+heredoc>         text = text[:s] + block + text[e:]
+heredoc> 
+heredoc> # ============================================================
+heredoc> # 8. Ensure runSuggestionSweep assigns smartSuggestions.
+heredoc> # ============================================================
+heredoc> sweep = text.find("func runSuggestionSweep")
+heredoc> if sweep != -1:
+heredoc>     e = text.find("\n    func ", sweep + 1)
+heredoc>     if e == -1:
+heredoc>         e = text.find("\n}", sweep + 1)
+heredoc>     block = text[sweep:e]
+heredoc> 
+heredoc>     # Replace any accidental assignment to naked suggestions.
+heredoc>     block = block.replace("suggestions = buildSmartSuggestions", "smartSuggestions = buildSmartSuggestions")
+heredoc> 
+heredoc>     # Fix function call labels in sweep.
+heredoc>     block = block.replace("trackerItems:", "nb3Items:")
+heredoc> 
+heredoc>     text = text[:sweep] + block + text[e:]
+heredoc> 
+heredoc> src.write_text(text)
+heredoc> PY
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % echo ""
+
+jd@JD-MacBook-Pro ~ % echo "===== VERIFY SMART SUGGESTION REFERENCES ====="
+===== VERIFY SMART SUGGESTION REFERENCES =====
+jd@JD-MacBook-Pro ~ % grep -n "smartSuggestions" "$SRC" | head -30
+124:    @State private var smartSuggestions: [SmartSuggestion] = []
+192:                        suggestions: smartSuggestions,
+228:                        suggestions: smartSuggestions,
+313:                smartSuggestions = buildSmartSuggestions(tasks: t, journal: j, nb3Items: tracker, bsceItems: bsce
+329:        smartSuggestions = generateSmartSuggestions(
+338:        let body = smartSuggestions
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % echo ""
+
+jd@JD-MacBook-Pro ~ % echo "===== VERIFY BUILD FUNCTION ====="
+===== VERIFY BUILD FUNCTION =====
+jd@JD-MacBook-Pro ~ % grep -nA8 "func buildSmartSuggestions" "$SRC" | head -20
+3844:func buildSmartSuggestions(tasks: [TaskItem], journal: [JournalEntry], nb3Items: [CourseTrackerItem], bsceItems: [CourseTrackerItem]) -> [SmartSuggestion] {
+3845-    var output: [SmartSuggestion] = []
+3846-    var used = Set<String>()
+3847-
+3848-    func add(_ text: String) {
+3849-        let key = text.lowercased()
+3850-        if !used.contains(key) {
+3851-            used.insert(key)
+3852-            output.append(text)
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % echo ""
+
+jd@JD-MacBook-Pro ~ % echo "===== COMPILE TEST ====="
+===== COMPILE TEST =====
+jd@JD-MacBook-Pro ~ % swiftc "$SRC" \
+>   -parse-as-library \
+>   -o /tmp/NoctyriumSmartSuggestionCompileFix \
+>   -framework SwiftUI \
+>   -framework AppKit
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:814:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2270:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2850:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2854:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3852:27: error: cannot convert value of type 'String' to expected argument type 'SmartSuggestion'
+            output.append(text)
+                          ^
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3880:19: error: cannot find 'nb3' in scope
+    let nb3Core = nb3.filter { ["lecture", "dla"].contains($0.type.lowercased()) }
+                  ^~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3899:17: error: cannot find 'nb3' in scope
+    let nb3PQ = nb3.filter { $0.type.lowercased() == "pq" && $0.quality <= 0 }
+                ^~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3905:19: error: cannot find 'bsce' in scope
+    let bscePLG = bsce.filter { $0.type.lowercased() == "plg" && $0.quality <= 0 }
+                  ^~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3906:26: error: cannot find 'bsce' in scope
+    let bsceCorrelates = bsce.filter {
+                         ^~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3909:25: error: cannot find 'bsce' in scope
+    let bsceQuestions = bsce.filter {
+                        ^~~~
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % if [ $? -ne 0 ]; then
+then>   echo ""
+then>   echo "Compile failed. Paste the errors."
+then>   exit 1
+then> fi
+
+Compile failed. Paste the errors.
+
+Saving session...
+...copying shared history...
+...saving history...truncating history files...
+...completed.
+
+[Process completed]
+

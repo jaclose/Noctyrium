@@ -1,0 +1,168 @@
+Last login: Fri May  1 11:24:26 on ttys000
+jd@JD-MacBook-Pro ~ % >....                                                     
+swiftc "$SRC" \
+  -parse-as-library \
+  -o /tmp/NoctyriumBuildSmartSuggestionsFix \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Compile failed. Paste the errors."
+  exit 1
+fi
+
+echo ""
+echo "Compile passed."
+
+echo ""
+echo "===== REBUILDING NOCTYRIUM ====="
+"$BUILD"
+
+echo ""
+echo "Fixed missing buildSmartSuggestions."
+echo "Backup saved:"
+echo "$BACKUP"
+
+===== COMPILE TEST =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:832:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2314:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2895:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2899:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Compile passed.
+
+===== REBUILDING NOCTYRIUM =====
+===== NOCTYRIUM FULL REBUILD =====
+
+Closing Noctyrium only...
+Removing only Noctyrium Dock pin...
+
+Preparing staging copy:
+/Users/jd/Medical School/09 Admin/App Framework/Build/Noctyrium.app
+
+Compiling Swift source...
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:832:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2314:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2895:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2899:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Writing Info.plist...
+Icon installed from:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/Noctyrium.icns
+
+Installing fresh app to /Applications...
+
+Opening Noctyrium...
+
+Pinning only Noctyrium to Dock...
+
+Noctyrium rebuild complete.
+Staging copy:
+/Users/jd/Medical School/09 Admin/App Framework/Build/Noctyrium.app
+
+Installed app:
+/Applications/Noctyrium.app
+
+Fixed missing buildSmartSuggestions.
+Backup saved:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.add-buildSmartSuggestions.2026-05-01_11-39-22.swift
+jd@JD-MacBook-Pro ~ % >....                                                     
+
+echo ""
+echo "Compile passed."
+
+echo ""
+echo "===== REBUILDING NOCTYRIUM ====="
+"$BUILD"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Build failed. Paste the output."
+  exit 1
+fi
+
+echo ""
+echo "Installed:"
+echo "/Applications/Noctyrium.app"
+echo ""
+echo "Swift backup:"
+echo "$BACKUP"
+echo ""
+echo "Build backup:"
+echo "$BUILD_BACKUP"
+zsh: =========================================================== not found
+jd@JD-MacBook-Pro ~ % >....                                                     
+PY
+
+chmod +x "$BUILD"
+
+echo "Compile test..."
+swiftc "$SRC" \
+  -parse-as-library \
+  -o /tmp/NoctyriumProductivityControlsFix \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo "Compile failed. Paste the errors."
+  exit 1
+fi
+
+echo "Compile passed."
+echo "Rebuilding Noctyrium..."
+"$BUILD"
+
+echo "Done."
+echo "Swift backup: $BACKUP"
+echo "Build backup: $BUILD_BACKUP"
+Compile test...
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:251:41: error: cannot find 'subtractAnki20' in scope
+                        subtractAnki20: subtractAnki20,
+                                        ^~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:252:42: error: cannot find 'subtractStudy30' in scope
+                        subtractStudy30: subtractStudy30,
+                                         ^~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:836:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2318:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2949:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2953:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Compile failed. Paste the errors.
+
+Saving session...
+...copying shared history...
+...saving history...truncating history files...
+...completed.
+
+[Process completed]
+

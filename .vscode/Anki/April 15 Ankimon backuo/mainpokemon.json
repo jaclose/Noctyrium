@@ -1,0 +1,67 @@
+[
+  {
+    "name": "axew",
+    "nickname": "",
+    "level": 15,
+    "gender": "F",
+    "id": 610,
+    "ability": "Rivalry",
+    "type": [
+      "Dragon"
+    ],
+    "base_stats": {
+      "hp": 46,
+      "atk": 87,
+      "def": 60,
+      "spa": 30,
+      "spd": 40,
+      "spe": 57
+    },
+    "stats": {
+      "hp": 41,
+      "atk": 36,
+      "def": 24,
+      "spa": 18,
+      "spd": 21,
+      "spe": 25
+    },
+    "ev": {
+      "hp": 10,
+      "atk": 21,
+      "def": 11,
+      "spa": 4,
+      "spd": 6,
+      "spe": 19
+    },
+    "iv": {
+      "hp": 19,
+      "atk": 31,
+      "def": 8,
+      "spa": 26,
+      "spd": 30,
+      "spe": 20
+    },
+    "attacks": [
+      "scratch",
+      "leer",
+      "dragonrage",
+      "bite"
+    ],
+    "base_experience": 64,
+    "growth_rate": "slow",
+    "everstone": false,
+    "shiny": false,
+    "captured_date": "2026-03-27 09:18:56",
+    "individual_id": "4f783d55-80bc-4fbf-9fbd-55d29516f9ff",
+    "mega": false,
+    "special_form": null,
+    "xp": 895,
+    "hp": 33,
+    "friendship": 255,
+    "pokemon_defeated": 59,
+    "tier": "Normal",
+    "is_favorite": true,
+    "current_hp": 40,
+    "held_item": "zoom-lens"
+  }
+]

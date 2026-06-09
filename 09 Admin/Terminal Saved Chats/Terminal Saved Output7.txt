@@ -1,0 +1,91 @@
+Last login: Fri May  1 11:17:47 on ttys000
+jd@JD-MacBook-Pro ~ % >....                                                     
+swiftc "$SRC" \
+  -parse-as-library \
+  -o /tmp/NoctyriumSmartSuggestionEngineRepair \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Compile failed. Paste the errors."
+  exit 1
+fi
+
+echo ""
+echo "Compile passed."
+
+echo ""
+echo "===== REBUILDING NOCTYRIUM ====="
+"$BUILD"
+
+echo ""
+echo "Fixed."
+echo "Backup saved:"
+echo "$BACKUP"
+
+===== VERIFY SUGGESTION ENGINE =====
+3845:func buildSmartSuggestions(tasks: [TaskItem], journal: [JournalEntry], nb3Items: [CourseTrackerItem], bsceItems: [CourseTrackerItem]) -> [SmartSuggestion] {
+3846-    var result: [SmartSuggestion] = []
+3847-
+3848-    let openTasks = tasks.filter {
+3849-        $0.status.lowercased() != "done" &&
+3850-        $0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+3851-    }
+3852-
+3853-    let taskText = openTasks.map { $0.title.lowercased() }.joined(separator: " | ")
+3854-
+3855-    func add(_ title: String, _ reason: String, _ source: String, _ priority: Int, _ color: String) {
+3856-        let key = title.lowercased()
+3857-        if !result.contains(where: { $0.title.lowercased() == key }) {
+3858-            result.append(
+3859-                SmartSuggestion(
+3860-                    title: title,
+3861-                    reason: reason,
+3862-                    source: source,
+3863-                    priority: priority,
+3864-                    color: color
+3865-                )
+
+===== COMPILE TEST =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:314:17: error: expected expression
+                )
+                ^
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:194:39: error: cannot find 'trackerItems' in scope
+                        trackerItems: trackerItems,
+                                      ^~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:219:32: error: cannot find 'trackerItems' in scope
+                        items: trackerItems,
+                               ^~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:311:17: error: cannot find 'trackerItems' in scope
+                trackerItems = tracker
+                ^~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:814:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:922:31: error: cannot find 'trackerItems' in scope
+                trackerItems: trackerItems,
+                              ^~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1748:55: error: cannot find 'trackerItems' in scope
+        selectedModule == "T2 • BSCE" ? bsceItems : trackerItems
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2270:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2850:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2854:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Compile failed. Paste the errors.
+
+Saving session...
+...copying shared history...
+...saving history...truncating history files...
+...completed.
+
+[Process completed]
+

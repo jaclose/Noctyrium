@@ -1,0 +1,1409 @@
+SOURCE: /Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift
+TOTAL LINES: 4299
+
+
+====================
+struct HubView: lines 136-1032
+====================
+0136: struct HubView: View {
+0137:     @State private var selected = "Dashboard"
+0138:     @State private var selectedProductivityDayKey: String = noctyriumDateKey()
+0139:     @State private var productivityDayKey: String = noctyriumDateKey()
+0140:     @State private var dashboardTrackerModule = "T2 • NB3"
+0141:     @State private var selectedTrackerFile = "T2/nb3_tracker.csv"
+0142:     @State private var stats = Stats()
+0143:     @State private var logs: [StudyLog] = []
+0144:     @State private var journal: [JournalEntry] = []
+0145:     @State private var tasks: [TaskItem] = []
+0146:     @State private var trackerItems: [CourseTrackerItem] = []
+0147:     @State private var smartSuggestions: [SmartSuggestion] = []
+0148:     @State private var manualStudyDayOffset: Int = 0
+0149:     @State private var bsceItems: [CourseTrackerItem] = []
+0150:     @State private var status = "Noctyrium online."
+0151:     @State private var refreshing = false
+0152: 
+0153:     @State private var standupToday = ""
+0154:     @State private var standupTomorrow = ""
+0155:     @State private var standupBlockers = ""
+0156:     @State private var standupEnergy = "Medium"
+0157:     @State private var standupRating = "Useful"
+0158: 
+0159:     @State private var newTask = ""
+0160: 
+0161:     let home = FileManager.default.homeDirectoryForCurrentUser.path
+0162: 
+0163:     var base: String { "\(home)/Medical School" }
+0164:     var scripts: String { "\(base)/09 Admin/Scripts" }
+0165:     var appData: String { "\(base)/09 Admin/App Data" }
+0166:     var logFile: String { "\(appData)/productivity_log.csv" }
+0167:     var taskFile: String { "\(appData)/tasks.csv" }
+0168:     var journalFile: String { "\(appData)/journal.csv" }
+0169:     var manualStudyDayFile: String { "\(appData)/manual_study_day.txt" }
+0170:     var nb3TrackerFile: String { selectedCourseTrackerPath }
+0171:     var bsceTrackerFile: String { "\(appData)/Course Trackers/T2/bsce_tracker.csv" }
+0172:     var selectedCourseTrackerPath: String { "\(appData)/Course Trackers/\(selectedTrackerFile)" }
+0173:     var ankiMedia: String { "\(home)/Library/Application Support/Anki2/User 1/collection.media" }
+0174: 
+0175:         var jdPlayerIconPath: String { "/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Player Icons/JD Player Icon.jpg" }
+0176: 
+0177: var body: some View {
+0178:         ZStack {
+0179:             OuterBackground()
+0180: 
+0181:             GlassShell {
+0182:                 HStack(spacing: 0) {
+0183:                     Sidebar(selected: $selected)
+0184: 
+0185:                     Rectangle()
+0186:                         .fill(Color.white.opacity(0.07))
+0187:                         .frame(width: 1)
+0188: 
+0189:                     VStack(spacing: 18) {
+0190:                         TopBar(
+0191:                             title: selected,
+0192:                             subtitle: subtitleForPage(),
+0193:                             refreshing: refreshing,
+0194:                             refreshAction: refresh
+0195:                         )
+0196: 
+0197:                         pageBody()
+0198:                     }
+0199:                     .padding(24)
+0200:                 }
+0201:             }
+0202:             .padding(28)
+0203:         }
+0204:         .onAppear {
+0205:             ensureFiles()
+0206:             refresh()
+0207:         }
+0208:     }
+0209: 
+0210: 
+0211:     func subtractAnki20() {
+0212:         log(type: "Anki Correction", minutes: 0, cards: -20, note: "Manual correction: subtract 20 Anki cards")
+0213:         refresh()
+0214:         runSuggestionSweep()
+0215:     }
+0216: 
+0217:     func subtractStudy30() {
+0218:         log(type: "Study Correction", minutes: -30, cards: 0, note: "Manual correction: subtract 30 study minutes")
+0219:         refresh()
+0220:         runSuggestionSweep()
+0221:     }
+0222: 
+0223:     @ViewBuilder
+0224:     func pageBody() -> some View {
+0225:         ScrollView(showsIndicators: false) {
+0226:             VStack(spacing: 20) {
+0227:                 switch selected {
+0228:                 case "Dashboard":
+0229:                     DashboardPage(
+0230:                         stats: stats,
+0231:                         logs: logs,
+0232:                         suggestions: smartSuggestions,
+0233:                         refreshSuggestions: runSuggestionSweep,
+0234:                         trackerItems: trackerItems,
+0235:                         bsceItems: bsceItems,
+0236:                         selectedTrackerModule: $dashboardTrackerModule,
+0237:                         runHub: { run("\"\(scripts)/run_medical_hub.sh\"", "Run Hub") },
+0238:                         sort: { run("\"\(scripts)/auto_sort_medical.sh\"", "Auto Sort") },
+0239:                         review: { run("\"\(scripts)/weekly_med_review.sh\"", "Weekly Review") },
+0240:                         openInbox: { open("\(base)/00 📥 Inbox - Need Work Look Over") },
+0241:                         openAnkiMedia: { open(ankiMedia) },
+0242:                         logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+0243:                         logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+0244:                         logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+0245:                         logStudy60: { log(type: "Study", minutes: 60, cards: 0, note: "1 hour focused study") },
+0246:                         standupToday: $standupToday,
+0247:                         standupTomorrow: $standupTomorrow,
+0248:                         standupBlockers: $standupBlockers,
+0249:                         standupEnergy: $standupEnergy,
+0250:                         standupRating: $standupRating,
+0251:                         saveStandup: saveStandup
+0252:                     )
+0253: 
+0254:                 case "Courses":
+0255:                     CoursesPage(stats: stats, open: openPath)
+0256: 
+0257:                 case "Course Tracker":
+0258:                     CourseTrackerPage(
+0259:                         items: trackerItems,
+0260:                         bsceItems: bsceItems,
+0261:                         selectedTrackerFile: $selectedTrackerFile,
+0262:                         base: base,
+0263:                         open: openPath,
+0264:                         refreshData: refresh,
+0265:                         updateItem: updateTrackerItem,
+0266:                         updateBSCEItem: updateBSCETrackerItem,
+0267:                         addPractice: addPracticeItem,
+0268:                         suggestions: smartSuggestions,
+0269:                         refreshSuggestions: runSuggestionSweep
+0270:                     )
+0271: 
+0272:                 case "STEP 1":
+0273:                     StepPage(stats: stats, open: openPath, ankiMedia: ankiMedia)
+0274: 
+0275:                 case "Reports":
+0276:                     ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+0277: 
+0278:                 case "Productivity":
+0279:                     ProductivityPage(
+0280:                         stats: stats,
+0281:                         logs: logs,
+0282:                         logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+0283:                         logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+0284:                         logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+0285:                         logAnki150: { log(type: "Anki", minutes: 45, cards: 150, note: "150 cards") },
+0286:                         logAnki200: { log(type: "Anki", minutes: 60, cards: 200, note: "200 cards") },
+0287:                         logStudy180: { log(type: "Study", minutes: 180, cards: 0, note: "3 hour study block") },
+0288:                         startNewStudyDay: startNewStudyDay,
+0289:                         subtractAnki20: subtractAnki20,
+0290:                         subtractStudy30: subtractStudy30,
+0291:                         startNewDay: startNewStudyDay
+0292:                     )
+0293: 
+0294:                 case "Tasks":
+0295:                     TasksPage(tasks: tasks, newTask: $newTask, addTask: addTask, completeTask: completeTask)
+0296: 
+0297:                 case "Journal":
+0298:                     JournalPage(entries: journal, openJournalFolder: { open("\(base)/09 Admin/Journal") })
+0299: 
+0300:                 case "Integrations":
+0301:                     IntegrationsPage(base: base, open: openPath)
+0302: 
+0303:                 case "Prompt Library":
+0304:                     PromptPage(base: base, open: openPath)
+0305: 
+0306:                 default:
+0307:                     HubFoldersPage(base: base, open: openPath)
+0308:                 }
+0309:             }
+0310:             .padding(.bottom, 24)
+0311:         }
+0312:     }
+0313: 
+0314:     func subtitleForPage() -> String {
+0315:         switch selected {
+0316:         case "Courses": return "Term-based course map with module-level folders"
+0317:         case "Course Tracker": return "Lecture, DLA, and PQ completion map"
+0318:         case "Journal": return "Daily standups, review, blockers, and tomorrow’s plan"
+0319:         case "Integrations": return "Framework for Anki, ScreenTime, Calendar, and manual time correction"
+0320:         case "Productivity": return "Study time, Anki cards, lecture blocks, day usefulness"
+0321:         case "Reports": return "Visual summaries of your medical school operating system"
+0322:         default: return "Noctyrium command center for medical school execution"
+0323:         }
+0324:     }
+0325: 
+0326:     func ensureFiles() {
+0327:         try? FileManager.default.createDirectory(atPath: appData, withIntermediateDirectories: true)
+0328:         if !FileManager.default.fileExists(atPath: logFile) {
+0329:             try? "date,type,minutes,cards,note\n".write(toFile: logFile, atomically: true, encoding: .utf8)
+0330:         }
+0331:         if !FileManager.default.fileExists(atPath: taskFile) {
+0332:             try? "id,created,due,title,status,completed\n".write(toFile: taskFile, atomically: true, encoding: .utf8)
+0333:         }
+0334:         if !FileManager.default.fileExists(atPath: journalFile) {
+0335:             try? "date,today,tomorrow,blockers,energy,rating\n".write(toFile: journalFile, atomically: true, encoding: .utf8)
+0336:         }
+0337:     }
+0338: func startNewStudyDay() {
+0339:         let currentKey = productivityDayKey
+0340:         let nextKey = noctyriumNextDateKey(after: currentKey)
+0341: 
+0342:         let archivePath = "\(base)/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv"
+0343:         let archiveDir = (archivePath as NSString).deletingLastPathComponent
+0344:         try? FileManager.default.createDirectory(atPath: archiveDir, withIntermediateDirectories: true)
+0345: 
+0346:         func csv(_ value: String) -> String {
+0347:             let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+0348:             return "\"\(escaped)\""
+0349:         }
+0350: 
+0351:         func appendArchiveLine(_ line: String) {
+0352:             if !FileManager.default.fileExists(atPath: archivePath) {
+0353:                 let header = "date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated\n"
+0354:                 try? header.write(toFile: archivePath, atomically: true, encoding: .utf8)
+0355:             }
+0356: 
+0357:             if let handle = FileHandle(forWritingAtPath: archivePath) {
+0358:                 handle.seekToEndOfFile()
+0359:                 if let data = line.data(using: .utf8) {
+0360:                     handle.write(data)
+0361:                 }
+0362:                 try? handle.close()
+0363:             }
+0364:         }
+0365: 
+0366:         let completedTasks = tasks
+0367:             .filter { $0.status.lowercased() == "done" || !$0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+0368:             .map { $0.title }
+0369:             .joined(separator: " • ")
+0370: 
+0371:         let openTasks = tasks
+0372:             .filter { $0.status.lowercased() != "done" && $0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+0373:             .map { $0.title }
+0374:             .joined(separator: " • ")
+0375: 
+0376:         let now = DateFormatter()
+0377:         now.dateFormat = "yyyy-MM-dd HH:mm:ss"
+0378: 
+0379:         let studyMinutes = max(0, stats.todayMinutes + stats.manualMinutesToday)
+0380:         let ankiCards = max(0, stats.todayCards)
+0381: 
+0382:         let archiveLine = [
+0383:             csv(currentKey),
+0384:             "\(studyMinutes)",
+0385:             "\(ankiCards)",
+0386:             csv(completedTasks),
+0387:             csv(openTasks),
+0388:             csv(standupToday),
+0389:             csv(standupTomorrow),
+0390:             csv(standupBlockers),
+0391:             csv(standupEnergy),
+0392:             csv(standupRating),
+0393:             csv(now.string(from: Date()))
+0394:         ].joined(separator: ",") + "\n"
+0395: 
+0396:         appendArchiveLine(archiveLine)
+0397: 
+0398:         let logPath = logFile
+0399:         func appendLog(_ line: String) {
+0400:             if let handle = FileHandle(forWritingAtPath: logPath) {
+0401:                 handle.seekToEndOfFile()
+0402:                 if let data = line.data(using: .utf8) {
+0403:                     handle.write(data)
+0404:                 }
+0405:                 try? handle.close()
+0406:             }
+0407:         }
+0408: 
+0409:         let stamp = now.string(from: Date())
+0410: 
+0411:         if studyMinutes > 0 {
+0412:             appendLog("\(stamp),Study,\(-studyMinutes),0,Start New Study Day reset study counter for \(nextKey)\n")
+0413:         }
+0414: 
+0415:         if ankiCards > 0 {
+0416:             appendLog("\(stamp),Anki,0,\(-ankiCards),Start New Study Day reset Anki counter for \(nextKey)\n")
+0417:         }
+0418: 
+0419:         appendLog("\(stamp),System,0,0,Start New Day archived \(currentKey) and opened \(nextKey)\n")
+0420: 
+0421:         productivityDayKey = nextKey
+0422:         selectedProductivityDayKey = nextKey
+0423: 
+0424:         stats.todayMinutes = 0
+0425:         stats.manualMinutesToday = 0
+0426:         stats.todayCards = 0
+0427: 
+0428:         standupToday = ""
+0429:         standupTomorrow = ""
+0430:         standupBlockers = ""
+0431:     }
+0432: 
+0433: 
+0434:     
+0435: 
+0436:     func currentManualStudyDay() -> String {
+0437:         if let raw = try? String(contentsOfFile: manualStudyDayFile) {
+0438:             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+0439:             if !trimmed.isEmpty { return trimmed }
+0440:         }
+0441: 
+0442:         let shifted = Calendar.current.date(byAdding: .hour, value: -4, to: Date()) ?? Date()
+0443:         let formatter = DateFormatter()
+0444:         formatter.dateFormat = "yyyy-MM-dd"
+0445:         return formatter.string(from: shifted)
+0446:     }
+0447: 
+0448:     func refresh() {
+0449:         refreshing = true
+0450:         DispatchQueue.global(qos: .userInitiated).async {
+0451:             let output = shell("\"\(scripts)/dashboard_stats.sh\"")
+0452:             let s = parseStats(output)
+0453:             let l = loadLogs(logFile)
+0454:             let j = loadJournal(journalFile)
+0455:             let t = loadTasks(taskFile)
+0456:             let tracker = loadCourseTracker(selectedCourseTrackerPath)
+0457:             let bsce = loadCourseTracker("\(appData)/Course Trackers/bsce_t2_tracker.csv")
+0458: 
+0459:             DispatchQueue.main.async {
+0460:                 stats = s
+0461:                 logs = l
+0462:                 journal = j
+0463:                 tasks = t
+0464:                 trackerItems = tracker
+0465:                 bsceItems = bsce
+0466:                 status = output
+0467:                 refreshing = false
+0468:             }
+0469:         }
+0470:     }
+0471: 
+0472:     
+0473:     func runSuggestionSweep() {
+0474:         ensureFiles()
+0475: 
+0476:         let freshTasks = loadTasks(taskFile)
+0477:         let freshJournal = loadJournal(journalFile)
+0478:         let freshNB3 = loadCourseTracker(nb3TrackerFile)
+0479:         let freshBSCE = loadCourseTracker(bsceTrackerFile)
+0480: 
+0481:         tasks = freshTasks
+0482:         journal = freshJournal
+0483:         trackerItems = freshNB3
+0484:         bsceItems = freshBSCE
+0485: 
+0486:         smartSuggestions = buildSmartSuggestions(
+0487:             tasks: freshTasks,
+0488:             journal: freshJournal,
+0489:             nb3Items: freshNB3,
+0490:             bsceItems: freshBSCE
+0491:         )
+0492: 
+0493:         let snapshot = smartSuggestions.map {
+0494:             "- [\($0.source)] \($0.title) — \($0.reason)"
+0495:         }.joined(separator: "\n")
+0496: 
+0497:         let path = "\(appData)/suggestions_snapshot.md"
+0498:         try? snapshot.write(toFile: path, atomically: true, encoding: .utf8)
+0499:     }
+0500: 
+0501: func run(_ command: String, _ label: String) {
+0502:         refreshing = true
+0503:         DispatchQueue.global(qos: .userInitiated).async {
+0504:             let out = shell(command)
+0505:             DispatchQueue.main.async {
+0506:                 status = out.isEmpty ? "\(label) complete." : out
+0507:                 refreshing = false
+0508:                 refresh()
+0509:             }
+0510:         }
+0511:     }
+0512: 
+0513:     func open(_ path: String) {
+0514:         NSWorkspace.shared.open(URL(fileURLWithPath: path))
+0515:         status = "Opened: \(path)"
+0516:     }
+0517: 
+0518:     func openPath(_ path: String) {
+0519:         open(path)
+0520:     }
+0521: 
+0522:     func log(type: String, minutes: Int, cards: Int, note: String) {
+0523:         ensureFiles()
+0524:         let f = ISO8601DateFormatter()
+0525:         let safeNote = clean(note)
+0526:         let now = Date()
+0527:         let studyDay = currentManualStudyDay()
+0528:         append("\(f.string(from: now)),\(type),\(minutes),\(cards),\(safeNote) | study_day=\(studyDay)\n", to: logFile)
+0529:         refresh()
+0530:     }
+0531: 
+0532: 
+0533:     
+0534: func trackerMaxQuality(for item: CourseTrackerItem) -> Int {
+0535:     let type = item.type.lowercased()
+0536:     let isBSCE = item.id.uppercased().hasPrefix("BSCE_") || item.week.uppercased().contains("BSCE")
+0537:     if isBSCE && ["esoft", "imcq", "pq"].contains(type) { return 1 }
+0538:     if isBSCE && type == "plg" { return 2 }
+0539:     return 3
+0540: }
+0541: 
+0542: 
+0543: func updateBSCEQuestionWorkflowItem(_ item: CourseTrackerItem, action: String, appData: String) {
+0544:     let files = [
+0545:         "\(appData)/Course Trackers/bsce_t2_tracker.csv",
+0546:         "\(appData)/Course Trackers/T2/bsce_tracker.csv"
+0547:     ]
+0548: 
+0549:     for file in files {
+0550:         updateBSCEQuestionWorkflowItemInFile(item, action: action, filePath: file)
+0551:     }
+0552: }
+0553: 
+0554: func updateBSCEQuestionWorkflowItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+0555:     guard let raw = try? String(contentsOfFile: filePath) else { return }
+0556: 
+0557:     var output: [String] = []
+0558:     let now = ISO8601DateFormatter().string(from: Date())
+0559: 
+0560:     for line in raw.components(separatedBy: .newlines) {
+0561:         if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+0562:             continue
+0563:         }
+0564: 
+0565:         if line.hasPrefix("id,") {
+0566:             output.append(line)
+0567:             continue
+0568:         }
+0569: 
+0570:         var p = parseCSVLine(line)
+0571:         while p.count < 9 { p.append("") }
+0572: 
+0573:         if p[0] == item.id {
+0574:             let type = p[2].lowercased()
+0575: 
+0576:             switch action {
+0577:             case "working":
+0578:                 p[4] = "working"
+0579:                 p[5] = max(Int(p[5]) ?? 0, 1).description
+0580:                 p[6] = "orange"
+0581:                 p[7] = "Working through it"
+0582: 
+0583:             case "done":
+0584:                 p[4] = "done"
+0585:                 p[5] = type == "plg" ? "1" : "2"
+0586:                 p[6] = "lightgreen"
+0587:                 p[7] = "Completed"
+0588: 
+0589:             case "reviewed":
+0590:                 p[4] = "reviewed_explanations"
+0591:                 p[5] = "2"
+0592:                 p[6] = "purple"
+0593:                 p[7] = "Reviewed explanations / correlates"
+0594: 
+0595:             case "strong":
+0596:                 p[4] = "strong"
+0597:                 p[5] = "3"
+0598:                 p[6] = "darkgreen"
+0599:                 p[7] = "Strong understanding"
+0600: 
+0601:             case "missed":
+0602:                 p[4] = "needs_review"
+0603:                 p[5] = "1"
+0604:                 p[6] = "red"
+0605:                 p[7] = "Missed / weak — needs targeted review"
+0606: 
+0607:             case "reset":
+0608:                 p[4] = "not_started"
+0609:                 p[5] = "0"
+0610:                 p[6] = "blue"
+0611:                 p[7] = ""
+0612: 
+0613:             default:
+0614:                 break
+0615:             }
+0616: 
+0617:             p[8] = now
+0618:             output.append(p.map(csvEscape).joined(separator: ","))
+0619:         } else {
+0620:             output.append(line)
+0621:         }
+0622:     }
+0623: 
+0624:     try? output.joined(separator: "\n").appending("\n").write(toFile: filePath, atomically: true, encoding: .utf8)
+0625: }
+0626: 
+0627: func updateTrackerItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+0628:         ensureFiles()
+0629: 
+0630:         var newQuality = item.quality
+0631:         var newStatus = item.status
+0632:         var newColor = item.color
+0633:         var note = item.notes
+0634: 
+0635:         if action == "addPass" {
+0636:             newQuality = min(trackerMaxQuality(for: item), newQuality + 1)
+0637:         } else if action == "removePass" {
+0638:             newQuality = max(0, newQuality - 1)
+0639:         } else if action == "ankiPass" {
+0640:             let currentAnki = extractAnkiPasses(note)
+0641:             let nextAnki = currentAnki + 1
+0642:             note = writeAnkiPasses(note, nextAnki)
+0643:         } else if action == "ankiReset" {
+0644:             note = writeAnkiPasses(note, 0)
+0645:         } else if action == "needsWork" {
+0646:             newStatus = "needs_mastery"
+0647:             newColor = "red"
+0648:             note = preservingAnki(note, replacingMainNoteWith: "Needs mastery")
+0649:         } else if action == "working" {
+0650:             newQuality = max(1, newQuality)
+0651:             newStatus = "working"
+0652:             newColor = "orange"
+0653:             note = preservingAnki(note, replacingMainNoteWith: "Working on it")
+0654:         } else if action == "complete" {
+0655:             newQuality = min(trackerMaxQuality(for: item), max(1, newQuality))
+0656:             newStatus = "young"
+0657:             newColor = "lightgreen"
+0658:             note = preservingAnki(note, replacingMainNoteWith: "Completed")
+0659:         } else if action == "mastered" {
+0660:             newQuality = trackerMaxQuality(for: item)
+0661:             newStatus = "mature"
+0662:             newColor = "darkgreen"
+0663:             note = preservingAnki(note, replacingMainNoteWith: "Mature / mastered")
+0664:         } else if action == "reset" {
+0665:             newQuality = 0
+0666:             newStatus = "not_started"
+0667:             newColor = "blue"
+0668:             note = writeAnkiPasses("", extractAnkiPasses(note))
+0669:         }
+0670: 
+0671:         if action == "addPass" || action == "removePass" {
+0672:             if newQuality <= 0 {
+0673:                 newStatus = "not_started"
+0674:                 newColor = "blue"
+0675:                 note = preservingAnki(note, replacingMainNoteWith: "Not started")
+0676:             } else if newQuality == 1 {
+0677:                 newStatus = "needs_mastery"
+0678:                 newColor = "red"
+0679:                 note = preservingAnki(note, replacingMainNoteWith: "Needs mastery")
+0680:             } else if newQuality == 2 {
+0681:                 newStatus = "young"
+0682:                 newColor = "lightgreen"
+0683:                 note = preservingAnki(note, replacingMainNoteWith: "Young")
+0684:             } else {
+0685:                 newStatus = "mature"
+0686:                 newColor = "darkgreen"
+0687:                 note = preservingAnki(note, replacingMainNoteWith: "Mature")
+0688:             }
+0689:         }
+0690: 
+0691:         rewriteTrackerItemInFile(
+0692:             id: item.id,
+0693:             status: newStatus,
+0694:             quality: newQuality,
+0695:             color: newColor,
+0696:             notes: note,
+0697:             filePath: filePath
+0698:         )
+0699: 
+0700:         let lowerType = item.type.lowercased()
+0701:         let minutes = action == "ankiPass" ? 12 : lowerType == "lecture" ? 35 : lowerType == "dla" ? 25 : 15
+0702:         let eventType = action == "ankiPass" ? "Anki" : lowerType == "lecture" ? "Lecture" : lowerType == "dla" ? "DLA" : "Practice"
+0703:         let ankiText = action == "ankiPass" ? " / Anki \(extractAnkiPasses(note))" : ""
+0704: 
+0705:         log(
+0706:             type: eventType,
+0707:             minutes: minutes,
+0708:             cards: action == "ankiPass" ? 25 : 0,
+0709:             note: "\(item.label) → \(newStatus) / \(newQuality) passes\(ankiText)"
+0710:         )
+0711: 
+0712:         refresh()
+0713:     }
+0714: 
+0715:     func rewriteTrackerItemInFile(id: String, status: String, quality: Int, color: String, notes: String, filePath: String) {
+0716:         guard let raw = try? String(contentsOfFile: filePath) else { return }
+0717: 
+0718:         let now = studyDayString(from: Date())
+0719:         var output: [String] = []
+0720: 
+0721:         for line in raw.components(separatedBy: .newlines) {
+0722:             if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+0723:                 continue
+0724:             }
+0725: 
+0726:             if line.hasPrefix("id,") {
+0727:                 output.append(line)
+0728:                 continue
+0729:             }
+0730: 
+0731:             var parts = parseCSVLine(line)
+0732:             while parts.count < 9 { parts.append("") }
+0733: 
+0734:             if parts[0] == id {
+0735:                 parts[4] = status
+0736:                 parts[5] = "\(quality)"
+0737:                 parts[6] = color
+0738:                 parts[7] = notes
+0739:                 parts[8] = now
+0740:                 output.append(parts.map(csvEscape).joined(separator: ","))
+0741:             } else {
+0742:                 output.append(line)
+0743:             }
+0744:         }
+0745: 
+0746:         try? output.joined(separator: "\n").appending("\n").write(
+0747:             toFile: filePath,
+0748:             atomically: true,
+0749:             encoding: .utf8
+0750:         )
+0751:     }
+0752: 
+0753:     func updateBSCETrackerItem(_ item: CourseTrackerItem, action: String) {
+0754:         updateBSCEQuestionWorkflowItem(item, action: action, appData: appData)
+0755: 
+0756:         let eventType = item.type.lowercased().contains("esoft") || item.type.lowercased().contains("imcq") || item.type.lowercased().contains("plg") ? "Practice" : "Review"
+0757:         let minutes = action == "working" ? 10 : action == "done" ? 25 : action == "reviewed" ? 20 : action == "strong" ? 15 : 0
+0758: 
+0759:         if minutes > 0 {
+0760:             log(type: eventType, minutes: minutes, cards: 0, note: "\(item.label) → \(action)")
+0761:         } else {
+0762:             refresh()
+0763:         }
+0764:     }
+0765: 
+0766:     func updateTrackerItem(_ item: CourseTrackerItem, _ action: String) {
+0767:         ensureFiles()
+0768: 
+0769:         var newQuality = item.quality
+0770:         var newStatus = item.status
+0771:         var newColor = item.color
+0772:         var note = item.notes
+0773: 
+0774:         if action == "addPass" {
+0775:             newQuality = min(trackerMaxQuality(for: item), newQuality + 1)
+0776:         } else if action == "removePass" {
+0777:             newQuality = max(0, newQuality - 1)
+0778:         } else if action == "ankiPass" {
+0779:             let currentAnki = extractAnkiPasses(note)
+0780:             let nextAnki = currentAnki + 1
+0781:             note = writeAnkiPasses(note, nextAnki)
+0782:         } else if action == "ankiReset" {
+0783:             note = writeAnkiPasses(note, 0)
+0784:         } else if action == "needsWork" {
+0785:             newStatus = "needs_mastery"
+0786:             newColor = "red"
+0787:             note = preservingAnki(note, replacingMainNoteWith: "Needs mastery")
+0788:         } else if action == "mastered" {
+0789:             newQuality = trackerMaxQuality(for: item)
+0790:             newStatus = "mature"
+0791:             newColor = "darkgreen"
+0792:             note = preservingAnki(note, replacingMainNoteWith: "Mature / mastered")
+0793:         } else if action == "reset" {
+0794:             newQuality = 0
+0795:             newStatus = "not_started"
+0796:             newColor = "blue"
+0797:             note = writeAnkiPasses("", extractAnkiPasses(note))
+0798:         }
+0799: 
+0800:         if action == "addPass" || action == "removePass" {
+0801:             if newQuality <= 0 {
+0802:                 newStatus = "not_started"
+0803:                 newColor = "blue"
+0804:                 note = preservingAnki(note, replacingMainNoteWith: "Not started")
+0805:             } else if newQuality == 1 {
+0806:                 newStatus = "needs_mastery"
+0807:                 newColor = "red"
+0808:                 note = preservingAnki(note, replacingMainNoteWith: "Needs mastery")
+0809:             } else if newQuality == 2 {
+0810:                 newStatus = "young"
+0811:                 newColor = "lightgreen"
+0812:                 note = preservingAnki(note, replacingMainNoteWith: "Young")
+0813:             } else {
+0814:                 newStatus = "mature"
+0815:                 newColor = "darkgreen"
+0816:                 note = preservingAnki(note, replacingMainNoteWith: "Mature")
+0817:             }
+0818:         }
+0819: 
+0820:         rewriteTrackerItem(
+0821:             id: item.id,
+0822:             status: newStatus,
+0823:             quality: newQuality,
+0824:             color: newColor,
+0825:             notes: note
+0826:         )
+0827: 
+0828:         if action == "addPass" || action == "ankiPass" {
+0829:             let minutes = action == "ankiPass" ? 12 : item.type.lowercased() == "lecture" ? 50 : item.type.lowercased() == "dla" ? 25 : 15
+0830:             let eventType = action == "ankiPass" ? "Anki" : item.type.lowercased() == "lecture" ? "Lecture" : item.type.lowercased() == "dla" ? "DLA" : "Practice"
+0831:             let ankiText = action == "ankiPass" ? " / Anki \(extractAnkiPasses(note))" : ""
+0832:             log(type: eventType, minutes: minutes, cards: action == "ankiPass" ? 25 : 0, note: "\(item.label) → \(newStatus) / \(newQuality) passes\(ankiText)")
+0833:         } else {
+0834:             refresh()
+0835:         }
+0836:     }
+0837: 
+0838:     func addPracticeItem(_ practiceType: String, _ title: String, _ questionCount: String, _ score: String) {
+0839:         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+0840:         if trimmed.isEmpty { return }
+0841: 
+0842:         let count = Int(questionCount.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+0843:         let grade = score.uppercased()
+0844: 
+0845:         let color: String
+0846:         let status: String
+0847: 
+0848:         switch grade {
+0849:         case "A":
+0850:             color = "darkgreen"
+0851:             status = "mature"
+0852:         case "B":
+0853:             color = "lightgreen"
+0854:             status = "young"
+0855:         case "C":
+0856:             color = "orange"
+0857:             status = "shaky"
+0858:         case "D", "F":
+0859:             color = "red"
+0860:             status = "needs_mastery"
+0861:         default:
+0862:             color = "blue"
+0863:             status = "not_started"
+0864:         }
+0865: 
+0866:         let id = "\(practiceType.uppercased())-\(Int(Date().timeIntervalSince1970))"
+0867:         let now = ISO8601DateFormatter().string(from: Date())
+0868:         let safeTitle = clean(trimmed)
+0869:         let line = "\(id),Week Custom,\(practiceType),\(safeTitle),\(status),\(count),\(color),Score \(grade),\(now)\n"
+0870: 
+0871:         append(line, to: nb3TrackerFile)
+0872:         log(type: "Practice", minutes: max(10, count), cards: 0, note: "\(practiceType): \(trimmed) • \(count) questions • \(grade)")
+0873:         refresh()
+0874:     }
+0875: 
+0876:     func rewriteTrackerItem(id: String, status: String, quality: Int, color: String, notes: String) {
+0877:         guard let raw = try? String(contentsOfFile: nb3TrackerFile) else { return }
+0878: 
+0879:         let lines = raw.components(separatedBy: .newlines)
+0880:         var output: [String] = []
+0881: 
+0882:         for line in lines {
+0883:             if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
+0884: 
+0885:             if line.hasPrefix("id,") {
+0886:                 output.append(line)
+0887:                 continue
+0888:             }
+0889: 
+0890:             let parts = parseCSVLine(line)
+0891:             if parts.count >= 9 && parts[0] == id {
+0892:                 let updated = ISO8601DateFormatter().string(from: Date())
+0893:                 output.append("\(parts[0]),\(parts[1]),\(parts[2]),\(clean(parts[3])),\(status),\(quality),\(color),\(clean(notes)),\(updated)")
+0894:             } else {
+0895:                 output.append(line)
+0896:             }
+0897:         }
+0898: 
+0899:         try? output.joined(separator: "\n").appending("\n").write(toFile: nb3TrackerFile, atomically: true, encoding: .utf8)
+0900:         refresh()
+0901:     }
+0902: 
+0903: 
+0904:     func saveStandup() {
+0905:         ensureFiles()
+0906:         let f = ISO8601DateFormatter()
+0907:         let line = "\(f.string(from: Date())),\(clean(standupToday)),\(clean(standupTomorrow)),\(clean(standupBlockers)),\(standupEnergy),\(standupRating)\n"
+0908:         append(line, to: journalFile)
+0909: 
+0910:         try? FileManager.default.createDirectory(atPath: "\(base)/09 Admin/Journal", withIntermediateDirectories: true)
+0911:         let readable = """
+0912:         # Daily Standup
+0913: 
+0914:         Date: \(Date())
+0915: 
+0916:         ## What I did today
+0917:         \(standupToday)
+0918: 
+0919:         ## What I will do tomorrow
+0920:         \(standupTomorrow)
+0921: 
+0922:         ## Blockers
+0923:         \(standupBlockers)
+0924: 
+0925:         ## Energy
+0926:         \(standupEnergy)
+0927: 
+0928:         ## Rating
+0929:         \(standupRating)
+0930:         """
+0931:         let fileName = "\(base)/09 Admin/Journal/Standup - \(DateFormatter.fileSafe.string(from: Date())).md"
+0932:         try? readable.write(toFile: fileName, atomically: true, encoding: .utf8)
+0933: 
+0934:         standupToday = ""
+0935:         standupTomorrow = ""
+0936:         standupBlockers = ""
+0937:         standupEnergy = "Medium"
+0938:         standupRating = "Useful"
+0939: 
+0940:         log(type: "Journal", minutes: 5, cards: 0, note: "Daily standup")
+0941:         refresh()
+0942:     }
+0943: 
+0944:     func addTask() {
+0945:         let trimmed = newTask.trimmingCharacters(in: .whitespacesAndNewlines)
+0946:         guard !trimmed.isEmpty else { return }
+0947: 
+0948:         let f = ISO8601DateFormatter()
+0949:         let id = UUID().uuidString
+0950:         let now = f.string(from: Date())
+0951:         append("\(id),\(now),\(now),\(clean(trimmed)),open,\n", to: taskFile)
+0952:         newTask = ""
+0953:         refresh()
+0954:     }
+0955: 
+0956:     func updateTrackerItem(id: String, passDelta: Int? = nil, setStatus: String? = nil, setColor: String? = nil, note: String? = nil) {
+0957:         guard let raw = try? String(contentsOfFile: nb3TrackerFile) else { return }
+0958:         var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+0959:         guard !lines.isEmpty else { return }
+0960: 
+0961:         let now = studyDayString(from: Date())
+0962:         var updated: [String] = [lines[0]]
+0963: 
+0964:         for line in lines.dropFirst() {
+0965:             var p = parseCSVLine(line)
+0966:             while p.count < 9 { p.append("") }
+0967: 
+0968:             if p[0] == id {
+0969:                 var q = Int(p[5]) ?? 0
+0970:                 if let passDelta = passDelta {
+0971:                     q = max(0, min(4, q + passDelta))
+0972:                     p[5] = "\(q)"
+0973:                     if q == 0 {
+0974:                         p[4] = "not_started"
+0975:                         p[6] = "gray"
+0976:                     } else if q == 1 {
+0977:                         p[4] = "pass_1"
+0978:                         p[6] = "red"
+0979:                     } else if q == 2 {
+0980:                         p[4] = "pass_2"
+0981:                         p[6] = "orange"
+0982:                     } else if q == 3 {
+0983:                         p[4] = "completed"
+0984:                         p[6] = "green"
+0985:                     } else {
+0986:                         p[4] = "mastered"
+0987:                         p[6] = "blue"
+0988:                     }
+0989:                 }
+0990: 
+0991:                 if let setStatus = setStatus { p[4] = setStatus }
+0992:                 if let setColor = setColor { p[6] = setColor }
+0993:                 if let note = note { p[7] = clean(note) }
+0994:                 p[8] = now
+0995:             }
+0996: 
+0997:             updated.append(p.map { clean($0) }.joined(separator: ","))
+0998:         }
+0999: 
+1000:         try? updated.joined(separator: "\n").appending("\n").write(toFile: nb3TrackerFile, atomically: true, encoding: .utf8)
+1001:         refresh()
+1002:     }
+1003: 
+1004:     func addTrackerItem(type: String, label: String, week: String = "Custom", notes: String = "") {
+1005:         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+1006:         guard !trimmed.isEmpty else { return }
+1007: 
+1008:         let now = studyDayString(from: Date())
+1009:         let id = "\(type.uppercased().replacingOccurrences(of: " ", with: ""))-\(Int(Date().timeIntervalSince1970))"
+1010:         let line = "\(id),\(week),\(type),\(clean(trimmed)),not_started,0,gray,\(clean(notes)),\(now)"
+1011:         append(line, to: nb3TrackerFile)
+1012:         refresh()
+1013:     }
+1014: 
+1015: 
+1016: 
+1017:     func completeTask(_ task: TaskItem) {
+1018:         guard let text = try? String(contentsOfFile: taskFile) else { return }
+1019:         let now = ISO8601DateFormatter().string(from: Date())
+1020:         let lines = text.split(separator: "\n").map(String.init)
+1021:         let updated = lines.map { line -> String in
+1022:             if line.hasPrefix(task.id + ",") {
+1023:                 let p = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+1024:                 if p.count >= 6 { return "\(p[0]),\(p[1]),\(p[2]),\(p[3]),done,\(now)" }
+1025:             }
+1026:             return line
+1027:         }
+1028:         try? updated.joined(separator: "\n").appending("\n").write(toFile: taskFile, atomically: true, encoding: .utf8)
+1029:         log(type: "Task", minutes: 10, cards: 0, note: "Completed task")
+1030:         refresh()
+1031:     }
+1032: }
+
+
+====================
+struct ProductivityPage: lines 2633-2729
+====================
+2633: struct ProductivityPage: View {
+2634:     let stats: Stats
+2635:     let logs: [StudyLog]
+2636:     let logLecture: () -> Void
+2637:     let logAnki50: () -> Void
+2638:     let logAnki100: () -> Void
+2639:     let logAnki150: () -> Void
+2640:     let logAnki200: () -> Void
+2641:     let logStudy180: () -> Void
+2642:     let startNewStudyDay: () -> Void
+2643:     let subtractAnki20: () -> Void
+2644:     let subtractStudy30: () -> Void
+2645:     let startNewDay: () -> Void
+2646: 
+2647:     var body: some View {
+2648:         VStack(spacing: 20) {
+2649: 
+2650:                 GlassCard {
+2651:                     VStack(alignment: .leading, spacing: 12) {
+2652:                         PanelHeader("Study Day Controls", "Manual correction layer for clean productivity tracking")
+2653: 
+2654:                         HStack(spacing: 10) {
+2655:                             Button("Start New Study Day") {
+2656:                                 startNewStudyDay()
+2657:                             }
+2658:                             .buttonStyle(.plain)
+2659:                             .font(.system(size: 12, weight: .black, design: .rounded))
+2660:                             .foregroundColor(.white)
+2661:                             .padding(.horizontal, 14)
+2662:                             .frame(height: 36)
+2663:                             .glassButton()
+2664: 
+2665:                             Button("−20 Anki Cards") {
+2666:                                 subtractAnki20()
+2667:                             }
+2668:                             .buttonStyle(.plain)
+2669:                             .font(.system(size: 12, weight: .black, design: .rounded))
+2670:                             .foregroundColor(.white)
+2671:                             .padding(.horizontal, 14)
+2672:                             .frame(height: 36)
+2673:                             .glassButton()
+2674: 
+2675:                             Button("−30 Minutes") {
+2676:                                 subtractStudy30()
+2677:                             }
+2678:                             .buttonStyle(.plain)
+2679:                             .font(.system(size: 12, weight: .black, design: .rounded))
+2680:                             .foregroundColor(.white)
+2681:                             .padding(.horizontal, 14)
+2682:                             .frame(height: 36)
+2683:                             .glassButton()
+2684: 
+2685:                             Spacer()
+2686:                         }
+2687: 
+2688:                         Text("Use this only when the calendar/day boundary or manual logs drift. Corrections are written as negative log entries, so the history stays honest.")
+2689:                             .font(.system(size: 11, weight: .medium, design: .rounded))
+2690:                             .foregroundColor(.white.opacity(0.52))
+2691:                     }
+2692:                     .padding(16)
+2693:                 }
+2694: 
+2695: 
+2696:             GlassCard {
+2697:                 VStack(alignment: .leading, spacing: 16) {
+2698:                     PanelHeader("Productivity Console", "Manual entries now. API integrations later.")
+2699:                     RingScore(minutes: stats.todayMinutes + stats.manualMinutesToday, cards: stats.todayCards)
+2700: 
+2701:                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
+2702:                         MiniLog("Lecture", "+50m", logLecture)
+2703:                         MiniLog("+50 🃜", "+15m", logAnki50)
+2704:                         MiniLog("+100 🃚", "+30m", logAnki100)
+2705:                         MiniLog("+150 🃖", "+45m", logAnki150)
+2706:                         MiniLog("+200 🃁", "+60m", logAnki200)
+2707:                         MiniLog("Deep Study", "+180m", logStudy180)
+2708:                     }
+2709:                 }.padding(18)
+2710:             }
+2711: 
+2712:             GlassCard {
+2713:                 VStack(alignment: .leading, spacing: 16) {
+2714:                     PanelHeader("Calendar Heatmap", "Red <3h or <100 cards • Orange <5h or 150-200 • Green >6h or 250-300 • Blue 👑 >8h or 350-400")
+2715:                     Heatmap(logs: logs)
+2716:                 }.padding(18)
+2717:             }
+2718: 
+2719:             GlassCard {
+2720:                 VStack(alignment: .leading, spacing: 12) {
+2721:                     PanelHeader("Future Integration Slots", "Framework only for now")
+2722:                     Text("Anki API / local collection parsing, ScreenTime export parsing, iCal calendar import, manual correction reports, and day usefulness scoring will plug into this page.")
+2723:                         .font(.system(size: 13, weight: .medium, design: .rounded))
+2724:                         .foregroundColor(.white.opacity(0.62))
+2725:                 }.padding(18)
+2726:             }
+2727:         }
+2728:     }
+2729: }
+
+
+====================
+struct Heatmap: lines 3450-3493
+====================
+3450: struct Heatmap: View {
+3451:     let logs: [StudyLog]
+3452: 
+3453:     var body: some View {
+3454:         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 14), spacing: 5) {
+3455:             ForEach(days(), id: \.self) { day in
+3456:                 let m = minutes(day)
+3457:                 let c = cards(day)
+3458:                 RoundedRectangle(cornerRadius: 4)
+3459:                     .fill(color(minutes: m, cards: c))
+3460:                     .frame(height: 18)
+3461:                     .overlay(Text(m >= 480 || c >= 350 ? "👑" : "").font(.system(size: 8)))
+3462:                     .help("\(label(day)): \(m) min, \(c) cards")
+3463:             }
+3464:         }
+3465:     }
+3466: 
+3467:     func days() -> [Date] {
+3468:         let today = Calendar.current.startOfDay(for: Date())
+3469:         return (0..<56).compactMap { Calendar.current.date(byAdding: .day, value: -55 + $0, to: today) }
+3470:     }
+3471: 
+3472:     func minutes(_ date: Date) -> Int {
+3473:         logs.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }.reduce(0) { $0 + $1.minutes }
+3474:     }
+3475: 
+3476:     func cards(_ date: Date) -> Int {
+3477:         logs.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }.reduce(0) { $0 + $1.cards }
+3478:     }
+3479: 
+3480:     func color(minutes: Int, cards: Int) -> Color {
+3481:         if minutes >= 480 || cards >= 350 { return .blue.opacity(0.88) }
+3482:         if minutes >= 360 || cards >= 250 { return .green.opacity(0.78) }
+3483:         if minutes >= 300 || (cards >= 150 && cards <= 200) { return .orange.opacity(0.82) }
+3484:         if minutes > 0 || cards > 0 { return .red.opacity(0.80) }
+3485:         return Color.white.opacity(0.055)
+3486:     }
+3487: 
+3488:     func label(_ date: Date) -> String {
+3489:         let f = DateFormatter()
+3490:         f.dateStyle = .medium
+3491:         return f.string(from: date)
+3492:     }
+3493: }
+
+
+====================
+struct RingScore: lines 3403-3448
+====================
+3403: struct RingScore: View {
+3404:     let minutes: Int
+3405:     let cards: Int
+3406: 
+3407:     var grade: String { todayGrade(minutes, cards) }
+3408: 
+3409:     var color: Color {
+3410:         if minutes >= 480 || cards >= 350 { return .blue }
+3411:         if minutes >= 360 || cards >= 250 { return .green }
+3412:         if minutes >= 300 || cards >= 150 { return .orange }
+3413:         return .red
+3414:     }
+3415: 
+3416:     var body: some View {
+3417:         HStack(spacing: 18) {
+3418:             ZStack {
+3419:                 Circle().stroke(Color.white.opacity(0.08), lineWidth: 14)
+3420:                 Circle()
+3421:                     .trim(from: 0, to: min(CGFloat(minutes) / 480, 1))
+3422:                     .stroke(color.opacity(0.85), style: StrokeStyle(lineWidth: 14, lineCap: .round))
+3423:                     .rotationEffect(.degrees(-90))
+3424: 
+3425:                 Text(grade)
+3426:                     .font(.system(size: 14, weight: .bold, design: .rounded))
+3427:                     .foregroundColor(.white)
+3428:             }
+3429:             .frame(width: 116, height: 116)
+3430: 
+3431:             VStack(alignment: .leading, spacing: 8) {
+3432:                 Text("\(minutes) minutes")
+3433:                     .font(.system(size: 18, weight: .bold, design: .rounded))
+3434:                     .foregroundColor(.white)
+3435: 
+3436:                 Text("\(cards) 🃜🃚🃖🃁🂭🂺")
+3437:                     .font(.system(size: 13, weight: .semibold, design: .rounded))
+3438:                     .foregroundColor(.white.opacity(0.70))
+3439: 
+3440:                 Text("Useful day score: \(grade)")
+3441:                     .font(.system(size: 12, weight: .medium, design: .rounded))
+3442:                     .foregroundColor(.white.opacity(0.48))
+3443:             }
+3444: 
+3445:             Spacer()
+3446:         }
+3447:     }
+3448: }
+
+
+====================
+struct DashboardCards: lines 3288-3301
+====================
+3288: struct DashboardCards: View {
+3289:     let stats: Stats
+3290: 
+3291:     var body: some View {
+3292:         LazyVGrid(columns: [GridItem(.adaptive(minimum: 205), spacing: 16)], spacing: 16) {
+3293:             StatCard("Inbox", "\(stats.inbox)", "files waiting", "tray.full", trend: stats.inbox > 30 ? "Heavy" : "Clean")
+3294:             StatCard("Downloads", "\(stats.downloads)", "loose files", "arrow.down.doc", trend: stats.downloads > 0 ? "Sort" : "Clear")
+3295:             StatCard("Anki", "\(stats.todayCards)", "cards today", "rectangle.stack", trend: "🃜🃚🃖")
+3296:             StatCard("Study", "\(stats.todayMinutes + stats.manualMinutesToday)m", "logged today", "clock", trend: todayGrade(stats.todayMinutes, stats.todayCards))
+3297:             StatCard("Tasks", "\(stats.tasksOpen)", "\(stats.tasksDoneToday) done today", "checklist", trend: "Execute")
+3298:             StatCard("Journal", "\(stats.journalEntries)", "standups", "book.pages", trend: "Reflect")
+3299:         }
+3300:     }
+3301: }
+
+
+====================
+func startNewStudyDay hit 1: lines 338-431
+====================
+0338: func startNewStudyDay() {
+0339:         let currentKey = productivityDayKey
+0340:         let nextKey = noctyriumNextDateKey(after: currentKey)
+0341: 
+0342:         let archivePath = "\(base)/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv"
+0343:         let archiveDir = (archivePath as NSString).deletingLastPathComponent
+0344:         try? FileManager.default.createDirectory(atPath: archiveDir, withIntermediateDirectories: true)
+0345: 
+0346:         func csv(_ value: String) -> String {
+0347:             let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+0348:             return "\"\(escaped)\""
+0349:         }
+0350: 
+0351:         func appendArchiveLine(_ line: String) {
+0352:             if !FileManager.default.fileExists(atPath: archivePath) {
+0353:                 let header = "date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated\n"
+0354:                 try? header.write(toFile: archivePath, atomically: true, encoding: .utf8)
+0355:             }
+0356: 
+0357:             if let handle = FileHandle(forWritingAtPath: archivePath) {
+0358:                 handle.seekToEndOfFile()
+0359:                 if let data = line.data(using: .utf8) {
+0360:                     handle.write(data)
+0361:                 }
+0362:                 try? handle.close()
+0363:             }
+0364:         }
+0365: 
+0366:         let completedTasks = tasks
+0367:             .filter { $0.status.lowercased() == "done" || !$0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+0368:             .map { $0.title }
+0369:             .joined(separator: " • ")
+0370: 
+0371:         let openTasks = tasks
+0372:             .filter { $0.status.lowercased() != "done" && $0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+0373:             .map { $0.title }
+0374:             .joined(separator: " • ")
+0375: 
+0376:         let now = DateFormatter()
+0377:         now.dateFormat = "yyyy-MM-dd HH:mm:ss"
+0378: 
+0379:         let studyMinutes = max(0, stats.todayMinutes + stats.manualMinutesToday)
+0380:         let ankiCards = max(0, stats.todayCards)
+0381: 
+0382:         let archiveLine = [
+0383:             csv(currentKey),
+0384:             "\(studyMinutes)",
+0385:             "\(ankiCards)",
+0386:             csv(completedTasks),
+0387:             csv(openTasks),
+0388:             csv(standupToday),
+0389:             csv(standupTomorrow),
+0390:             csv(standupBlockers),
+0391:             csv(standupEnergy),
+0392:             csv(standupRating),
+0393:             csv(now.string(from: Date()))
+0394:         ].joined(separator: ",") + "\n"
+0395: 
+0396:         appendArchiveLine(archiveLine)
+0397: 
+0398:         let logPath = logFile
+0399:         func appendLog(_ line: String) {
+0400:             if let handle = FileHandle(forWritingAtPath: logPath) {
+0401:                 handle.seekToEndOfFile()
+0402:                 if let data = line.data(using: .utf8) {
+0403:                     handle.write(data)
+0404:                 }
+0405:                 try? handle.close()
+0406:             }
+0407:         }
+0408: 
+0409:         let stamp = now.string(from: Date())
+0410: 
+0411:         if studyMinutes > 0 {
+0412:             appendLog("\(stamp),Study,\(-studyMinutes),0,Start New Study Day reset study counter for \(nextKey)\n")
+0413:         }
+0414: 
+0415:         if ankiCards > 0 {
+0416:             appendLog("\(stamp),Anki,0,\(-ankiCards),Start New Study Day reset Anki counter for \(nextKey)\n")
+0417:         }
+0418: 
+0419:         appendLog("\(stamp),System,0,0,Start New Day archived \(currentKey) and opened \(nextKey)\n")
+0420: 
+0421:         productivityDayKey = nextKey
+0422:         selectedProductivityDayKey = nextKey
+0423: 
+0424:         stats.todayMinutes = 0
+0425:         stats.manualMinutesToday = 0
+0426:         stats.todayCards = 0
+0427: 
+0428:         standupToday = ""
+0429:         standupTomorrow = ""
+0430:         standupBlockers = ""
+0431:     }
+
+NOT FOUND: func startNewDay
+
+
+====================
+func subtractAnki20 hit 1: lines 211-215
+====================
+0211:     func subtractAnki20() {
+0212:         log(type: "Anki Correction", minutes: 0, cards: -20, note: "Manual correction: subtract 20 Anki cards")
+0213:         refresh()
+0214:         runSuggestionSweep()
+0215:     }
+
+
+====================
+func subtractStudy30 hit 1: lines 217-221
+====================
+0217:     func subtractStudy30() {
+0218:         log(type: "Study Correction", minutes: -30, cards: 0, note: "Manual correction: subtract 30 study minutes")
+0219:         refresh()
+0220:         runSuggestionSweep()
+0221:     }
+
+NOT FOUND: func logAnki50
+
+NOT FOUND: func logAnki100
+
+NOT FOUND: func logLecture
+
+
+====================
+func loadLogs hit 1: lines 3910-3919
+====================
+3910: func loadLogs(_ path: String) -> [StudyLog] {
+3911:     guard let text = try? String(contentsOfFile: path) else { return [] }
+3912:     let f = ISO8601DateFormatter()
+3913: 
+3914:     return text.split(separator: "\n").dropFirst().compactMap {
+3915:         let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+3916:         guard p.count >= 5, let date = f.date(from: p[0]) else { return nil }
+3917:         return StudyLog(date: date, type: p[1], minutes: Int(p[2]) ?? 0, cards: Int(p[3]) ?? 0, note: p[4])
+3918:     }
+3919: }
+
+
+====================
+func parseStats hit 1: lines 3882-3908
+====================
+3882: func parseStats(_ text: String) -> Stats {
+3883:     var d: [String: Int] = [:]
+3884:     for line in text.split(separator: "\n") {
+3885:         let p = line.split(separator: "=", maxSplits: 1)
+3886:         if p.count == 2 { d[String(p[0])] = Int(p[1]) ?? 0 }
+3887:     }
+3888: 
+3889:     return Stats(
+3890:         inbox: d["inbox"] ?? 0,
+3891:         downloads: d["downloads"] ?? 0,
+3892:         needsReview: d["needs_review"] ?? 0,
+3893:         ankiNeeded: d["anki_needed"] ?? 0,
+3894:         summaryNeeded: d["summary_needed"] ?? 0,
+3895:         weakArea: d["weak_area"] ?? 0,
+3896:         todayMinutes: d["today_minutes"] ?? 0,
+3897:         todayCards: d["today_cards"] ?? 0,
+3898:         manualMinutesToday: d["manual_minutes_today"] ?? 0,
+3899:         journalEntries: d["journal_entries"] ?? 0,
+3900:         tasksOpen: d["tasks_open"] ?? 0,
+3901:         tasksDoneToday: d["tasks_done_today"] ?? 0,
+3902:         bpm500: d["bpm500"] ?? 0,
+3903:         bpm501: d["bpm501"] ?? 0,
+3904:         ppm500: d["ppm500"] ?? 0,
+3905:         ppm501: d["ppm501"] ?? 0,
+3906:         ppm502: d["ppm502"] ?? 0
+3907:     )
+3908: }
+
+
+====================
+func studyDayString hit 1: lines 3837-3842
+====================
+3837: func studyDayString(from date: Date = Date()) -> String {
+3838:     let shifted = Calendar.current.date(byAdding: .hour, value: -4, to: date) ?? date
+3839:     let formatter = DateFormatter()
+3840:     formatter.dateFormat = "yyyy-MM-dd"
+3841:     return formatter.string(from: shifted)
+3842: }
+
+
+====================
+func append hit 1: lines 3849-3855
+====================
+3849: func append(_ line: String, to path: String) {
+3850:     if let data = line.data(using: .utf8), let h = FileHandle(forWritingAtPath: path) {
+3851:         h.seekToEndOfFile()
+3852:         h.write(data)
+3853:         try? h.close()
+3854:     }
+3855: }
+
+
+====================
+ProductivityPage calls
+====================
+
+
+====================
+ProductivityPage call around line 279
+====================
+0269:                         refreshSuggestions: runSuggestionSweep
+0270:                     )
+0271: 
+0272:                 case "STEP 1":
+0273:                     StepPage(stats: stats, open: openPath, ankiMedia: ankiMedia)
+0274: 
+0275:                 case "Reports":
+0276:                     ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+0277: 
+0278:                 case "Productivity":
+0279:                     ProductivityPage(
+0280:                         stats: stats,
+0281:                         logs: logs,
+0282:                         logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+0283:                         logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+0284:                         logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+0285:                         logAnki150: { log(type: "Anki", minutes: 45, cards: 150, note: "150 cards") },
+0286:                         logAnki200: { log(type: "Anki", minutes: 60, cards: 200, note: "200 cards") },
+0287:                         logStudy180: { log(type: "Study", minutes: 180, cards: 0, note: "3 hour study block") },
+0288:                         startNewStudyDay: startNewStudyDay,
+0289:                         subtractAnki20: subtractAnki20,
+0290:                         subtractStudy30: subtractStudy30,
+0291:                         startNewDay: startNewStudyDay
+0292:                     )
+0293: 
+0294:                 case "Tasks":
+0295:                     TasksPage(tasks: tasks, newTask: $newTask, addTask: addTask, completeTask: completeTask)
+0296: 
+0297:                 case "Journal":
+0298:                     JournalPage(entries: journal, openJournalFolder: { open("\(base)/09 Admin/Journal") })
+0299: 
+0300:                 case "Integrations":
+0301:                     IntegrationsPage(base: base, open: openPath)
+0302: 
+0303:                 case "Prompt Library":
+0304:                     PromptPage(base: base, open: openPath)
+0305: 
+0306:                 default:
+0307:                     HubFoldersPage(base: base, open: openPath)
+0308:                 }
+0309:             }
+0310:             .padding(.bottom, 24)
+0311:         }
+0312:     }
+0313: 
+0314:     func subtitleForPage() -> String {
+0315:         switch selected {
+0316:         case "Courses": return "Term-based course map with module-level folders"
+0317:         case "Course Tracker": return "Lecture, DLA, and PQ completion map"
+0318:         case "Journal": return "Daily standups, review, blockers, and tomorrow’s plan"
+0319:         case "Integrations": return "Framework for Anki, ScreenTime, Calendar, and manual time correction"
+0320:         case "Productivity": return "Study time, Anki cards, lecture blocks, day usefulness"
+0321:         case "Reports": return "Visual summaries of your medical school operating system"
+0322:         default: return "Noctyrium command center for medical school execution"
+0323:         }
+0324:     }
+
+
+====================
+Files
+====================
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv
+date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated
+2026-05-01,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 13:52:35
+2026-05-02,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 13:52:42
+2026-05-03,30,100,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 13:52:53
+"2026-05-01",15,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 13:57:57"
+
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt
+2026-05-04
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv
+base_minutes,base_anki,updated
+0,0,
+

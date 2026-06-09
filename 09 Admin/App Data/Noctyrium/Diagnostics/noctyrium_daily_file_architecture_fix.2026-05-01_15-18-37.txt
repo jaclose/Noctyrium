@@ -1,0 +1,27 @@
+===== NOCTYRIUM DAILY FILE ARCHITECTURE FIX =====
+Generated: Fri May  1 15:18:37 AST 2026
+
+===== BACKUPS =====
+Backups complete.
+
+===== CREATE DAILY FILES FROM EXISTING LOG =====
+Created/rewrote 11 daily files in /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/Days
+Active day reset to 2026-05-01
+
+===== PATCH DASHBOARD STATS TO READ ACTIVE DAILY FILE =====
+dashboard_stats.sh patched.
+
+===== PATCH SWIFT DAILY FILE HELPERS =====
+<stdin>:8: SyntaxWarning: invalid escape sequence '\('
+Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pathlib/_local.py", line 546, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pathlib/_local.py", line 537, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '$APP'

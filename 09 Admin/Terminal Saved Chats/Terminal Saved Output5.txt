@@ -1,0 +1,71 @@
+Last login: Fri May  1 10:58:50 on ttys000
+jd@JD-MacBook-Pro ~ % >....                                                     
+swiftc "$SRC" \
+  -parse-as-library \
+  -o /tmp/NoctyriumSuggestionNameFixTest \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Compile failed. Paste the errors."
+  exit 1
+fi
+
+echo ""
+echo "Compile passed."
+
+echo ""
+echo "===== REBUILDING NOCTYRIUM ====="
+"$BASE/09 Admin/App Framework/build_noctyrium_app.sh"
+
+echo ""
+echo "Fixed."
+echo "Backup saved:"
+echo "$BACKUP"
+===== FIXING SUGGESTION NAME MISMATCH =====
+
+===== VERIFY BAD NAMES ARE GONE =====
+Remaining naked suggestions assignments:
+None
+
+Remaining direct refreshSuggestions calls:
+None
+
+===== COMPILE TEST =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:313:34: error: cannot assign value of type '[String]' to type '[SmartSuggestion]'
+                smartSuggestions = buildSmartSuggestions(
+                                 ^
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:313:34: note: arguments to generic parameter 'Element' ('String' and 'SmartSuggestion') are expected to be equal
+                smartSuggestions = buildSmartSuggestions(
+                                 ^
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:818:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:932:30: error: cannot find 'smartSuggestions' in scope
+                suggestions: smartSuggestions,
+                             ^~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1321:34: error: cannot find 'smartSuggestions' in scope
+                    suggestions: smartSuggestions,
+                                 ^~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2274:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2854:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2858:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Compile failed. Paste the errors.
+
+Saving session...
+...copying shared history...
+...saving history...truncating history files...
+...completed.
+
+[Process completed]
+

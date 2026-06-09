@@ -1,0 +1,1039 @@
+Last login: Fri May  1 15:16:33 on ttys000
+cat > /tmp/noctyrium_make_update_log_v003015.sh <<'SH'
+#!/bin/zsh
+set -u
+
+VERSION="0.03.01.5"
+STAMP="$(date +"%Y-%m-%d_%H-%M-%S")"
+HUMAN_DATE="$(date +"%Y-%m-%d %H:%M:%S %Z")"
+
+BASE="$HOME/Medical School"
+ADMIN="$BASE/09 Admin"
+APP_FRAMEWORK="$ADMIN/App Framework"
+APP_DATA="$ADMIN/App Data"
+NOCT="$APP_DATA/Noctyrium"
+PROD="$NOCT/Productivity"
+DIAG="$NOCT/Diagnostics"
+
+SWIFT="$APP_FRAMEWORK/MedicalSchoolHub.swift"
+STATS="$ADMIN/Scripts/dashboard_stats.sh"
+CHANGELOG="$NOCT/NOCTYRIUM_CHANGELOG.md"
+VERSION_FILE="$NOCT/current_version.txt"
+REPORT="$DIAG/noctyrium_update_log.v${VERSION}.${STAMP}.md"
+
+mkdir -p "$DIAG" "$PROD" "$NOCT"
+
+ACTIVE_DAY="$(cat "$PROD/active_study_day.txt" 2>/dev/null | tr -d '\r\n ' || true)"
+MANUAL_DAY="$(cat "$APP_DATA/manual_study_day.txt" 2>/dev/null | tr -d '\r\n ' || true)"
+
+if [[ -x "$STATS" ]]; then
+  STATS_OUT="$("$STATS" 2>/dev/null || true)"
+else
+  STATS_OUT="dashboard_stats.sh missing or not executable: $STATS"
+fi
+
+SWIFTCHECK="not checked"
+if [[%                                                                          jd@JD-MacBook-Pro ~ % cat > /tmp/noctyrium_make_update_log_v003015.sh <<'SH'
+heredoc> #!/bin/zsh
+heredoc> set -u
+heredoc> 
+heredoc> VERSION="0.03.01.5"
+heredoc> STAMP="$(date +"%Y-%m-%d_%H-%M-%S")"
+heredoc> HUMAN_DATE="$(date +"%Y-%m-%d %H:%M:%S %Z")"
+heredoc> 
+heredoc> BASE="$HOME/Medical School"
+heredoc> ADMIN="$BASE/09 Admin"
+heredoc> APP_FRAMEWORK="$ADMIN/App Framework"
+heredoc> APP_DATA="$ADMIN/App Data"
+heredoc> NOCT="$APP_DATA/Noctyrium"
+heredoc> PROD="$NOCT/Productivity"
+heredoc> DIAG="$NOCT/Diagnostics"
+heredoc> 
+heredoc> SWIFT="$APP_FRAMEWORK/MedicalSchoolHub.swift"
+heredoc> STATS="$ADMIN/Scripts/dashboard_stats.sh"
+heredoc> CHANGELOG="$NOCT/NOCTYRIUM_CHANGELOG.md"
+heredoc> VERSION_FILE="$NOCT/current_version.txt"
+heredoc> REPORT="$DIAG/noctyrium_update_log.v${VERSION}.${STAMP}.md"
+heredoc> 
+heredoc> mkdir -p "$DIAG" "$PROD" "$NOCT"
+heredoc> 
+heredoc> ACTIVE_DAY="$(cat "$PROD/active_study_day.txt" 2>/dev/null | tr -d '\r\n ' || true)"
+heredoc> MANUAL_DAY="$(cat "$APP_DATA/manual_study_day.txt" 2>/dev/null | tr -d '\r\n ' || true)"
+heredoc> 
+heredoc> if [[ -x "$STATS" ]]; then
+heredoc>   STATS_OUT="$("$STATS" 2>/dev/null || true)"
+heredoc> else
+heredoc>   STATS_OUT="dashboard_stats.sh missing or not executable: $STATS"
+heredoc> fi
+heredoc> 
+heredoc> SWIFTCHECK="not checked"
+heredoc> if [[ -f "$SWIFT" ]]; then
+heredoc>   SWIFTCHECK="$(swiftc -parse "$SWIFT" 2>&1 || true)"
+heredoc> fi
+heredoc> 
+heredoc> LOG_COUNT="$(wc -l "$APP_DATA/productivity_log.csv" 2>/dev/null | awk '{print $1}' || echo "missing")"
+heredoc> ARCHIVE_COUNT="$(wc -l "$PROD/productivity_day_archive.csv" 2>/dev/null | awk '{print $1}' || echo "missing")"
+heredoc> 
+heredoc> cat > "$REPORT" <<EOF
+heredoc> # Noctyrium Update Log — v${VERSION}
+heredoc> 
+heredoc> Generated: ${HUMAN_DATE}
+heredoc> 
+heredoc> ## Version
+heredoc> 
+heredoc> Current version is now:
+heredoc> 
+heredoc> \`\`\`
+heredoc> v${VERSION}
+heredoc> \`\`\`
+heredoc> 
+heredoc> This update log documents the current broken productivity/day-tracking state, the attempted fixes, the desired architecture, and the outstanding bugs that need to be fixed later.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Executive Summary
+heredoc> 
+heredoc> The productivity/day tracker is not yet functional enough to ship as stable. The main failure is that the current implementation still behaves like a mutable active-day counter instead of a durable daily-file ledger.
+heredoc> 
+heredoc> The required architecture is:
+heredoc> 
+heredoc> - \`x = 0\` means the current active study day.
+heredoc> - \`x = -1\` means the immediately previous study day.
+heredoc> - \`x = -2\` means two study days ago.
+heredoc> - Each day must have its own persistent file.
+heredoc> - Each heatmap tick/hash must resolve back to the exact file assigned to that day.
+heredoc> - Clicking “Start New Study Day” must create/open the next day file and cascade the existing day indices backward.
+heredoc> - Example:
+heredoc>   - Start at April 30: April 30 is \`x = 0\`.
+heredoc>   - Click Start New Study Day.
+heredoc>   - May 1 becomes \`x = 0\`.
+heredoc>   - April 30 becomes \`x = -1\`.
+heredoc>   - On the next click, May 2 becomes \`x = 0\`, May 1 becomes \`x = -1\`, April 30 becomes \`x = -2\`.
+heredoc> 
+heredoc> The current logic does not reliably do this.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Added
+heredoc> 
+heredoc> ### Versioned update logging
+heredoc> 
+heredoc> Added this formal update log for:
+heredoc> 
+heredoc> \`\`\`
+heredoc> v${VERSION}
+heredoc> \`\`\`
+heredoc> 
+heredoc> Stored at:
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${REPORT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Persistent changelog target
+heredoc> 
+heredoc> Added/updated persistent changelog path:
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${CHANGELOG}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Version marker file
+heredoc> 
+heredoc> Added/updated version file:
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${VERSION_FILE}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Desired daily-file architecture specification
+heredoc> 
+heredoc> Documented the intended productivity storage model:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Noctyrium/Productivity/
+heredoc>   active_study_day.txt
+heredoc>   productivity_day_archive.csv
+heredoc>   productivity_day_offset.csv
+heredoc>   Days/
+heredoc>     2026-04-30.csv
+heredoc>     2026-05-01.csv
+heredoc>     2026-05-02.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> Preferred final model:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Noctyrium/Productivity/Days/YYYY-MM-DD.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> Each day file should contain all log entries assigned to that study day.
+heredoc> 
+heredoc> Suggested CSV header:
+heredoc> 
+heredoc> \`\`\`
+heredoc> timestamp,study_day,type,minutes,cards,note,source,created_at
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Desired heatmap callback model
+heredoc> 
+heredoc> Each heatmap square should carry a real date key and file path:
+heredoc> 
+heredoc> \`\`\`
+heredoc> date_key = "2026-05-01"
+heredoc> offset = 0
+heredoc> file = Noctyrium/Productivity/Days/2026-05-01.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> Clicking that square should open:
+heredoc> 
+heredoc> \`\`\`
+heredoc> open Noctyrium/Productivity/Days/2026-05-01.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> or route to a day-detail view backed by the same file.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Changed
+heredoc> 
+heredoc> ### Productive-day source of truth
+heredoc> 
+heredoc> The app previously tried to compute “today” through a mix of:
+heredoc> 
+heredoc> - real calendar date
+heredoc> - 4 AM cutoff date
+heredoc> - \`manual_study_day.txt\`
+heredoc> - \`active_study_day.txt\`
+heredoc> - embedded \`study_day=YYYY-MM-DD\` notes inside \`productivity_log.csv\`
+heredoc> - archive rows in \`productivity_day_archive.csv\`
+heredoc> 
+heredoc> This is now identified as the wrong architecture.
+heredoc> 
+heredoc> The future architecture should use:
+heredoc> 
+heredoc> \`\`\`
+heredoc> active_study_day.txt
+heredoc> \`\`\`
+heredoc> 
+heredoc> only as a pointer to the current \`x = 0\` day, while the durable truth lives in:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Noctyrium/Productivity/Days/YYYY-MM-DD.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Start New Study Day behavior
+heredoc> 
+heredoc> The expected behavior is changed from “increment active date and reset counters” to:
+heredoc> 
+heredoc> 1. Read current active study day.
+heredoc> 2. Ensure the current day file exists.
+heredoc> 3. Finalize/write current stats into the current day file.
+heredoc> 4. Compute next date.
+heredoc> 5. Create next day file if missing.
+heredoc> 6. Set next date as active day.
+heredoc> 7. Refresh dashboard stats from the active day file only.
+heredoc> 8. Let heatmap offsets naturally cascade:
+heredoc>    - old current becomes \`x = -1\`
+heredoc>    - older \`x = -1\` becomes \`x = -2\`
+heredoc>    - etc.
+heredoc> 
+heredoc> ### Counter logic
+heredoc> 
+heredoc> Counters should no longer be reconstructed from a single global log without strong day separation.
+heredoc> 
+heredoc> Instead:
+heredoc> 
+heredoc> - current stats should read from \`Days/<active_day>.csv\`
+heredoc> - past stats should read from \`Days/<selected_day>.csv\`
+heredoc> - heatmap cells should read per-day summaries from the day files
+heredoc> 
+heredoc> ### Archive logic
+heredoc> 
+heredoc> \`productivity_day_archive.csv\` should become an index/summary, not the main source of truth.
+heredoc> 
+heredoc> Preferred archive header:
+heredoc> 
+heredoc> \`\`\`
+heredoc> date_key,offset,study_minutes,anki_cards,day_file,updated
+heredoc> \`\`\`
+heredoc> 
+heredoc> The actual detailed log belongs in:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Days/YYYY-MM-DD.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Removed / Deprecated
+heredoc> 
+heredoc> ### Deprecated: treating Start New Study Day as a hard stat reset
+heredoc> 
+heredoc> The previous model effectively tried to zero the UI by writing corrections or offsets. That caused drift, duplicate corrections, and incorrect historical records.
+heredoc> 
+heredoc> Deprecated behavior:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Start New Study Day -> append negative corrections to force today to zero
+heredoc> \`\`\`
+heredoc> 
+heredoc> Preferred behavior:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Start New Study Day -> switch active_day pointer to next clean day file
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Deprecated: global productivity_log.csv as the only ledger
+heredoc> 
+heredoc> \`productivity_log.csv\` can remain as a legacy/global event log, but it should not be the only data source for the Productivity page.
+heredoc> 
+heredoc> ### Deprecated: storing study_day only inside note text
+heredoc> 
+heredoc> Current rows often look like:
+heredoc> 
+heredoc> \`\`\`
+heredoc> 2026-05-01T18:58:50Z,Anki,15,50,50 cards | study_day=2026-05-01
+heredoc> \`\`\`
+heredoc> 
+heredoc> This is fragile because \`study_day\` is buried inside the note field.
+heredoc> 
+heredoc> Preferred future row:
+heredoc> 
+heredoc> \`\`\`
+heredoc> timestamp,study_day,type,minutes,cards,note,source,created_at
+heredoc> 2026-05-01T18:58:50Z,2026-05-01,Anki,15,50,50 cards,manual_button,2026-05-01T18:58:50Z
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Fixed / Attempted
+heredoc> 
+heredoc> ### Attempted productivity source-of-truth patch
+heredoc> 
+heredoc> A previous patch reset:
+heredoc> 
+heredoc> \`\`\`
+heredoc> active_study_day.txt
+heredoc> manual_study_day.txt
+heredoc> \`\`\`
+heredoc> 
+heredoc> back to:
+heredoc> 
+heredoc> \`\`\`
+heredoc> 2026-05-01
+heredoc> \`\`\`
+heredoc> 
+heredoc> and made \`dashboard_stats.sh\` use the active day as the main stat key.
+heredoc> 
+heredoc> Result:
+heredoc> 
+heredoc> - compile passed
+heredoc> - app rebuilt
+heredoc> - stats returned nonzero values
+heredoc> - but functional daily file routing still did not work
+heredoc> 
+heredoc> ### Attempted current-day clamp corrections
+heredoc> 
+heredoc> A previous patch tried to prevent subtract buttons from driving values below zero.
+heredoc> 
+heredoc> Result:
+heredoc> 
+heredoc> - partial improvement
+heredoc> - did not solve the underlying daily architecture bug
+heredoc> 
+heredoc> ### Attempted archive append on Start New Study Day
+heredoc> 
+heredoc> A previous patch appended current-day summaries into:
+heredoc> 
+heredoc> \`\`\`
+heredoc> productivity_day_archive.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> Result:
+heredoc> 
+heredoc> - archive rows were created
+heredoc> - duplicate and incorrect date rows accumulated
+heredoc> - archive was not enough to support per-day file recall
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Known Bugs
+heredoc> 
+heredoc> ### BUG-001 — Start New Study Day does not create a reliable new daily file
+heredoc> 
+heredoc> Severity: Critical
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Click Start New Study Day on 2026-04-30
+heredoc> -> create/open 2026-05-01.csv
+heredoc> -> set active day to 2026-05-01
+heredoc> -> April 30 becomes x=-1
+heredoc> \`\`\`
+heredoc> 
+heredoc> Actual:
+heredoc> 
+heredoc> The system mutates active day and archive state inconsistently. It does not reliably create a durable day file that can be recalled later.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-002 — Heatmap ticks do not map to durable day files
+heredoc> 
+heredoc> Severity: Critical
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> Each heatmap cell should know:
+heredoc> 
+heredoc> \`\`\`
+heredoc> date_key
+heredoc> offset
+heredoc> file_path
+heredoc> minutes
+heredoc> cards
+heredoc> grade/color
+heredoc> \`\`\`
+heredoc> 
+heredoc> Actual:
+heredoc> 
+heredoc> Heatmap currently uses loaded logs and date calculations, but does not guarantee that clicking a tick/hash opens the exact file for that day.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-003 — Active day drift
+heredoc> 
+heredoc> Severity: Critical
+heredoc> 
+heredoc> Evidence from prior diagnostics showed active/manual day drifted far ahead:
+heredoc> 
+heredoc> \`\`\`
+heredoc> 2026-05-15
+heredoc> 2026-05-17
+heredoc> 2026-05-19
+heredoc> 2026-05-21
+heredoc> \`\`\`
+heredoc> 
+heredoc> while the real current working day should have stayed around:
+heredoc> 
+heredoc> \`\`\`
+heredoc> 2026-05-01
+heredoc> \`\`\`
+heredoc> 
+heredoc> Likely cause:
+heredoc> 
+heredoc> Start New Study Day was clicked repeatedly and each click incremented the active day without a stable daily-file ledger or confirmation guard.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-004 — Duplicate correction writes
+heredoc> 
+heredoc> Severity: High
+heredoc> 
+heredoc> Observed repeated rows like:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Anki Correction,0,-20
+heredoc> Anki Correction,0,-20
+heredoc> Anki Correction,0,-20
+heredoc> \`\`\`
+heredoc> 
+heredoc> Likely causes:
+heredoc> 
+heredoc> - button repeat behavior
+heredoc> - async refresh race
+heredoc> - duplicate click dispatch
+heredoc> - correction function writes to global log rather than active day file with transaction guard
+heredoc> 
+heredoc> Required future fix:
+heredoc> 
+heredoc> Add a transaction lock or debounce around correction buttons.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-005 — Stats are reconstructed from too many sources
+heredoc> 
+heredoc> Severity: High
+heredoc> 
+heredoc> Current stats can be affected by:
+heredoc> 
+heredoc> - \`productivity_log.csv\`
+heredoc> - \`manual_time_entries.csv\`
+heredoc> - \`manual_study_day.txt\`
+heredoc> - \`active_study_day.txt\`
+heredoc> - \`productivity_day_offset.csv\`
+heredoc> - \`productivity_day_archive.csv\`
+heredoc> 
+heredoc> This creates source-of-truth ambiguity.
+heredoc> 
+heredoc> Required future fix:
+heredoc> 
+heredoc> Use this hierarchy:
+heredoc> 
+heredoc> 1. Active day pointer:
+heredoc>    \`\`\`
+heredoc>    active_study_day.txt
+heredoc>    \`\`\`
+heredoc> 
+heredoc> 2. Current day data:
+heredoc>    \`\`\`
+heredoc>    Days/<active_day>.csv
+heredoc>    \`\`\`
+heredoc> 
+heredoc> 3. Historical day data:
+heredoc>    \`\`\`
+heredoc>    Days/<date_key>.csv
+heredoc>    \`\`\`
+heredoc> 
+heredoc> 4. Optional summary index:
+heredoc>    \`\`\`
+heredoc>    productivity_day_archive.csv
+heredoc>    \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-006 — \`manual_study_day.txt\` duplicates active day state
+heredoc> 
+heredoc> Severity: Medium
+heredoc> 
+heredoc> Current state uses both:
+heredoc> 
+heredoc> \`\`\`
+heredoc> manual_study_day.txt
+heredoc> Noctyrium/Productivity/active_study_day.txt
+heredoc> \`\`\`
+heredoc> 
+heredoc> This creates duplicate mutable state.
+heredoc> 
+heredoc> Required future fix:
+heredoc> 
+heredoc> Either remove \`manual_study_day.txt\` or treat it as a legacy mirror only.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-007 — Archive contains duplicate date keys
+heredoc> 
+heredoc> Severity: High
+heredoc> 
+heredoc> \`productivity_day_archive.csv\` contains multiple rows for some dates.
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> One summary row per date key, or append-only history with clear revision IDs.
+heredoc> 
+heredoc> Preferred future fix:
+heredoc> 
+heredoc> Use an upsert summary index:
+heredoc> 
+heredoc> \`\`\`
+heredoc> date_key,offset,study_minutes,anki_cards,day_file,updated
+heredoc> \`\`\`
+heredoc> 
+heredoc> and rewrite the summary row for a day instead of blindly appending duplicates.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-008 — Date parsing and CSV quoting are inconsistent
+heredoc> 
+heredoc> Severity: Medium
+heredoc> 
+heredoc> Some archive rows are quoted:
+heredoc> 
+heredoc> \`\`\`
+heredoc> "2026-05-07",45,150,...
+heredoc> \`\`\`
+heredoc> 
+heredoc> Others are not:
+heredoc> 
+heredoc> \`\`\`
+heredoc> 2026-05-03,15,50,...
+heredoc> \`\`\`
+heredoc> 
+heredoc> Required future fix:
+heredoc> 
+heredoc> Use one CSV writer/escaping function everywhere.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-009 — Dashboard stats script does not yet read daily files
+heredoc> 
+heredoc> Severity: Critical
+heredoc> 
+heredoc> Current \`dashboard_stats.sh\` still reads mostly from global files.
+heredoc> 
+heredoc> Required future behavior:
+heredoc> 
+heredoc> \`\`\`
+heredoc> DAY="$(cat active_study_day.txt)"
+heredoc> DAY_FILE="Noctyrium/Productivity/Days/$DAY.csv"
+heredoc> sum minutes/cards from DAY_FILE
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ### BUG-010 — No day-detail open callback from Heatmap
+heredoc> 
+heredoc> Severity: Medium
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> Click a heatmap cell:
+heredoc> 
+heredoc> \`\`\`
+heredoc> openDayFile(dateKey)
+heredoc> \`\`\`
+heredoc> 
+heredoc> Actual:
+heredoc> 
+heredoc> Heatmap renders visual cells but does not expose a file-opening action.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Current Observed State at Log Generation
+heredoc> 
+heredoc> ### Active day file
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${ACTIVE_DAY:-missing}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Manual day file
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${MANUAL_DAY:-missing}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### productivity_log.csv line count
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${LOG_COUNT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### productivity_day_archive.csv line count
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${ARCHIVE_COUNT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### dashboard_stats.sh output
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${STATS_OUT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Swift parse check
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${SWIFTCHECK}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Required Next Architecture Patch
+heredoc> 
+heredoc> ### New file paths
+heredoc> 
+heredoc> Add these helpers to \`MedicalSchoolHub.swift\`:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> var productivityDir: String {
+heredoc>     "\(appData)/Noctyrium/Productivity"
+heredoc> }
+heredoc> 
+heredoc> var productivityDaysDir: String {
+heredoc>     "\(productivityDir)/Days"
+heredoc> }
+heredoc> 
+heredoc> func productivityDayFile(_ dateKey: String) -> String {
+heredoc>     "\(productivityDaysDir)/\(dateKey).csv"
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Ensure daily file exists
+heredoc> 
+heredoc> Add:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> func ensureProductivityDayFile(_ dateKey: String) {
+heredoc>     let fm = FileManager.default
+heredoc>     try? fm.createDirectory(atPath: productivityDaysDir, withIntermediateDirectories: true)
+heredoc> 
+heredoc>     let path = productivityDayFile(dateKey)
+heredoc>     if !fm.fileExists(atPath: path) {
+heredoc>         try? "timestamp,study_day,type,minutes,cards,note,source,created_at\\n"
+heredoc>             .write(toFile: path, atomically: true, encoding: .utf8)
+heredoc>     }
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Logging should write into active day file
+heredoc> 
+heredoc> Replace current global-only logging with:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> func log(type: String, minutes: Int, cards: Int, note: String) {
+heredoc>     ensureFiles()
+heredoc> 
+heredoc>     let f = ISO8601DateFormatter()
+heredoc>     let now = Date()
+heredoc>     let nowText = f.string(from: now)
+heredoc>     let studyDay = currentManualStudyDay()
+heredoc>     let safeNote = clean(note)
+heredoc> 
+heredoc>     ensureProductivityDayFile(studyDay)
+heredoc> 
+heredoc>     let dayPath = productivityDayFile(studyDay)
+heredoc>     let row = [
+heredoc>         csvEscape(nowText),
+heredoc>         csvEscape(studyDay),
+heredoc>         csvEscape(type),
+heredoc>         "\(minutes)",
+heredoc>         "\(cards)",
+heredoc>         csvEscape(safeNote),
+heredoc>         csvEscape("manual_button"),
+heredoc>         csvEscape(nowText)
+heredoc>     ].joined(separator: ",") + "\\n"
+heredoc> 
+heredoc>     append(row, to: dayPath)
+heredoc> 
+heredoc>     // Optional legacy global mirror
+heredoc>     append("\(nowText),\(type),\(minutes),\(cards),\(safeNote) | study_day=\(studyDay)\\n", to: logFile)
+heredoc> 
+heredoc>     refresh()
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Start New Study Day should switch active file
+heredoc> 
+heredoc> Preferred behavior:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> func startNewStudyDay() {
+heredoc>     ensureFiles()
+heredoc> 
+heredoc>     let currentKey = currentManualStudyDay()
+heredoc>     ensureProductivityDayFile(currentKey)
+heredoc> 
+heredoc>     let nextKey = noctyriumNextDateKey(after: currentKey)
+heredoc>     ensureProductivityDayFile(nextKey)
+heredoc> 
+heredoc>     try? (nextKey + "\\n").write(toFile: activeStudyDayFile, atomically: true, encoding: .utf8)
+heredoc>     try? (nextKey + "\\n").write(toFile: manualStudyDayFile, atomically: true, encoding: .utf8)
+heredoc> 
+heredoc>     productivityDayKey = nextKey
+heredoc>     selectedProductivityDayKey = nextKey
+heredoc> 
+heredoc>     standupToday = ""
+heredoc>     standupTomorrow = ""
+heredoc>     standupBlockers = ""
+heredoc> 
+heredoc>     refresh()
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Dashboard stats should use day file
+heredoc> 
+heredoc> Future \`dashboard_stats.sh\` core logic:
+heredoc> 
+heredoc> \`\`\`zsh
+heredoc> DAY="$(cat "$ACTIVE_DAY_FILE" 2>/dev/null | tr -d '\\r\\n ')"
+heredoc> DAY_FILE="$PROD/Days/$DAY.csv"
+heredoc> 
+heredoc> today_minutes() {
+heredoc>   awk -F',' 'NR>1 {sum += $4} END {print sum+0}' "$DAY_FILE" 2>/dev/null
+heredoc> }
+heredoc> 
+heredoc> today_cards() {
+heredoc>   awk -F',' 'NR>1 {sum += $5} END {print sum+0}' "$DAY_FILE" 2>/dev/null
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Heatmap should use date-key callbacks
+heredoc> 
+heredoc> Future Swift shape:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> struct HeatmapDay: Identifiable {
+heredoc>     let id = UUID()
+heredoc>     let dateKey: String
+heredoc>     let offset: Int
+heredoc>     let filePath: String
+heredoc>     let minutes: Int
+heredoc>     let cards: Int
+heredoc> }
+heredoc> \`\`\`
+heredoc> 
+heredoc> And cell action:
+heredoc> 
+heredoc> \`\`\`swift
+heredoc> Button {
+heredoc>     NSWorkspace.shared.open(URL(fileURLWithPath: day.filePath))
+heredoc> } label: {
+heredoc>     heatmapCell
+heredoc> }
+heredoc> .buttonStyle(.plain)
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Test Plan for Next Session
+heredoc> 
+heredoc> ### Test 1 — Clean initial state
+heredoc> 
+heredoc> Set active day:
+heredoc> 
+heredoc> \`\`\`zsh
+heredoc> echo "2026-04-30" > "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt"
+heredoc> echo "2026-04-30" > "$HOME/Medical School/09 Admin/App Data/manual_study_day.txt"
+heredoc> \`\`\`
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> x=0 -> 2026-04-30
+heredoc> Days/2026-04-30.csv exists
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Test 2 — Click Start New Study Day once
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> active_study_day.txt = 2026-05-01
+heredoc> x=0 -> 2026-05-01
+heredoc> x=-1 -> 2026-04-30
+heredoc> Days/2026-05-01.csv exists
+heredoc> Days/2026-04-30.csv still exists
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Test 3 — Click Start New Study Day twice
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> active_study_day.txt = 2026-05-02
+heredoc> x=0 -> 2026-05-02
+heredoc> x=-1 -> 2026-05-01
+heredoc> x=-2 -> 2026-04-30
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Test 4 — Log Anki on current day
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> Days/2026-05-02.csv contains Anki row
+heredoc> dashboard today_cards increases
+heredoc> Days/2026-05-01.csv unchanged
+heredoc> Days/2026-04-30.csv unchanged
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Test 5 — Click heatmap x=-1
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> opens Days/2026-05-01.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Test 6 — Click heatmap x=-2
+heredoc> 
+heredoc> Expected:
+heredoc> 
+heredoc> \`\`\`
+heredoc> opens Days/2026-04-30.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Files Involved
+heredoc> 
+heredoc> ### Swift
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${SWIFT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Dashboard stats script
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${STATS}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Active day
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${PROD}/active_study_day.txt
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Legacy manual day
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${APP_DATA}/manual_study_day.txt
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Global legacy productivity log
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${APP_DATA}/productivity_log.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Archive summary
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${PROD}/productivity_day_archive.csv
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Desired future day folder
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${PROD}/Days
+heredoc> \`\`\`
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> ## Status
+heredoc> 
+heredoc> v${VERSION} is a documentation/version checkpoint, not a complete functional fix.
+heredoc> 
+heredoc> The productivity tracker remains open for a future architecture patch.
+heredoc> 
+heredoc> EOF
+heredoc> 
+heredoc> # Write/update version marker.
+heredoc> echo "v${VERSION}" > "$VERSION_FILE"
+heredoc> 
+heredoc> # Create changelog if missing.
+heredoc> if [[ ! -f "$CHANGELOG" ]]; then
+heredoc>   cat > "$CHANGELOG" <<EOF
+heredoc> # Noctyrium Changelog
+heredoc> 
+heredoc> All notable Noctyrium app changes, bugs, removals, regressions, and architecture notes are tracked here.
+heredoc> 
+heredoc> EOF
+heredoc> fi
+heredoc> 
+heredoc> # Prepend the new update log into the persistent changelog.
+heredoc> TMP_CHANGELOG="/tmp/noctyrium_changelog_${STAMP}.md"
+heredoc> 
+heredoc> cat > "$TMP_CHANGELOG" <<EOF
+heredoc> # Noctyrium Changelog
+heredoc> 
+heredoc> ## v${VERSION} — ${HUMAN_DATE}
+heredoc> 
+heredoc> Detailed report:
+heredoc> 
+heredoc> \`\`\`
+heredoc> ${REPORT}
+heredoc> \`\`\`
+heredoc> 
+heredoc> ### Summary
+heredoc> 
+heredoc> - Documented failed productivity/day-tracking architecture.
+heredoc> - Marked v${VERSION} as the current checkpoint.
+heredoc> - Captured known bugs in daily-file routing, active-day drift, duplicate corrections, archive duplication, and heatmap callback failure.
+heredoc> - Defined desired next architecture using one file per study day.
+heredoc> - Defined expected \`x = 0\`, \`x = -1\`, \`x = -2\` cascade logic.
+heredoc> - Preserved current observed state for later debugging.
+heredoc> 
+heredoc> ### Status
+heredoc> 
+heredoc> Not functional yet. Continue from the daily-file architecture patch in the next work session.
+heredoc> 
+heredoc> ---
+heredoc> 
+heredoc> EOF
+heredoc> 
+heredoc> # Append old changelog below, skipping duplicate title if present.
+heredoc> awk 'NR==1 && $0=="# Noctyrium Changelog" {next} {print}' "$CHANGELOG" >> "$TMP_CHANGELOG"
+heredoc> mv "$TMP_CHANGELOG" "$CHANGELOG"
+heredoc> 
+heredoc> echo ""
+heredoc> echo "===== NOCTYRIUM UPDATE LOG CREATED ====="
+heredoc> echo "Version: v${VERSION}"
+heredoc> echo ""
+heredoc> echo "Report:"
+heredoc> echo "$REPORT"
+heredoc> echo ""
+heredoc> echo "Persistent changelog:"
+heredoc> echo "$CHANGELOG"
+heredoc> echo ""
+heredoc> echo "Version file:"
+heredoc> echo "$VERSION_FILE"
+heredoc> echo ""
+heredoc> echo "Preview:"
+heredoc> echo "----------------------------------------"
+heredoc> sed -n '1,80p' "$REPORT"
+heredoc> echo "----------------------------------------"
+heredoc> echo ""
+heredoc> echo "Done."
+heredoc> SH
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % zsh /tmp/noctyrium_make_update_log_v003015.sh
+cat: active_study_day.txt: No such file or directory
+/tmp/noctyrium_make_update_log_v003015.sh:41: DAY: parameter not set
+
+===== NOCTYRIUM UPDATE LOG CREATED =====
+Version: v0.03.01.5
+
+Report:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_update_log.v0.03.01.5.2026-05-01_15-32-34.md
+
+Persistent changelog:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/NOCTYRIUM_CHANGELOG.md
+
+Version file:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/current_version.txt
+
+Preview:
+----------------------------------------
+----------------------------------------
+
+Done.
+jd@JD-MacBook-Pro ~ % echo "VERSION:"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/current_version.txt"
+
+echo ""
+echo "LATEST UPDATE LOG:"
+ls -t "$HOME/Medical School/09 Admin/App Data/Noctyrium/Diagnostics"/noctyrium_update_log.v0.03.01.5.*.md | head -n 1
+
+echo ""
+echo "CHANGELOG HEAD:"
+sed -n '1,60p' "$HOME/Medical School/09 Admin/App Data/Noctyrium/NOCTYRIUM_CHANGELOG.md"
+VERSION:
+v0.03.01.5
+
+LATEST UPDATE LOG:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_update_log.v0.03.01.5.2026-05-01_15-32-34.md
+
+CHANGELOG HEAD:
+# Noctyrium Changelog
+
+## v0.03.01.5 — 2026-05-01 15:32:34 AST
+
+Detailed report:
+
+```
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_update_log.v0.03.01.5.2026-05-01_15-32-34.md
+```
+
+### Summary
+
+- Documented failed productivity/day-tracking architecture.
+- Marked v0.03.01.5 as the current checkpoint.
+- Captured known bugs in daily-file routing, active-day drift, duplicate corrections, archive duplication, and heatmap callback failure.
+- Defined desired next architecture using one file per study day.
+- Defined expected `x = 0`, `x = -1`, `x = -2` cascade logic.
+- Preserved current observed state for later debugging.
+
+### Status
+
+Not functional yet. Continue from the daily-file architecture patch in the next work session.
+
+---
+
+
+All notable Noctyrium app changes, bugs, removals, regressions, and architecture notes are tracked here.
+
+jd@JD-MacBook-Pro ~ % 

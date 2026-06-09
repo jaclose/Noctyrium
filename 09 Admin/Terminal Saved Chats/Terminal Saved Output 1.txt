@@ -1,0 +1,430 @@
+Last login: Wed Apr 29 17:59:33 on ttys001
+jd@JD-MacBook-Pro ~ % >....                                                     
+                    Text(lastAction)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(Color(red: 0.58, green: 0.64, blue: 0.72))
+                }
+
+                ScrollView {
+                    Text(statusText)
+                        .font(.system(size: 12, weight: .regular, design: .monospaced))
+                        .foregroundColor(Color(red: 0.80, green: 0.84, blue: 0.90))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .frame(height: 92)
+            }
+            .padding(16)
+        }
+    }
+}
+EOF
+jd@JD-MacBook-Pro ~ % "$HOME/Medical School/09 Admin/App Framework/build_medical_hub_app.sh"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro ~ % med
+jd@JD-MacBook-Pro Medical School % mkdir -p "$HOME/Medical School/10 Prompt Library"
+mkdir -p "$HOME/Medical School/10 Prompt Library/Anki Card Generation"
+mkdir -p "$HOME/Medical School/10 Prompt Library/Anki CSS and HTML"
+mkdir -p "$HOME/Medical School/10 Prompt Library/File Upload Workflows"
+mkdir -p "$HOME/Medical School/10 Prompt Library/Medical Summaries"
+jd@JD-MacBook-Pro Medical School % >....                                        
+EOF
+
+cat > "$HOME/Medical School/10 Prompt Library/Anki CSS and HTML/Anki Future Glass Notes.md" <<'EOF'
+# Anki Future Glass Template Notes
+
+Design direction:
+- Dark navy/black base
+- Blue/cyan/violet ambient glass
+- Single symbol: 🃁
+- Luster sweep
+- Minimal logo
+- Large readable medical text
+- Clean Front / Back structure
+
+Card types to build later:
+1. Basic Medical Card
+2. Cloze Medical Card
+3. Image Occlusion Helper Card
+4. Clinical Vignette Card
+5. Pathway / Mechanism Card
+6. Missed Question Card
+EOF
+jd@JD-MacBook-Pro Medical School % >....                                        
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(hover ? 0.145 : 0.075),
+                                Color.white.opacity(hover ? 0.060 : 0.030)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(hover ? 0.20 : 0.09), lineWidth: 1)
+            )
+            .shadow(color: Color(red: 0.58, green: 0.77, blue: 0.99).opacity(hover ? 0.13 : 0.025), radius: hover ? 16 : 5)
+            .scaleEffect(hover ? 1.012 : 1.0)
+            .animation(.easeOut(duration: 0.16), value: hover)
+    }
+}
+EOF
+jd@JD-MacBook-Pro Medical School % medbuild
+open "$HOME/Applications/Medical School Hub.app"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro Medical School % medbuild
+open "$HOME/Applications/Medical School Hub.app"
+open "$HOME/Applications/Medical School Hub.app"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro Medical School % open "$HOME/Applications/Medical School Hub.app"
+jd@JD-MacBook-Pro Medical School % python3 - <<'PY'
+from pathlib import Path
+
+p = Path.home() / "Medical School/09 Admin/App Framework/build_medical_hub_app.sh"
+text = p.read_text()
+
+text = text.replace(
+'''swiftc "$SRC" \\
+  -o "$APP_DIR/Contents/MacOS/MedicalSchoolHub" \\
+  -framework SwiftUI \\
+  -framework AppKit''',
+'''swiftc -parse-as-library "$SRC" \\
+  -o "$APP_DIR/Contents/MacOS/MedicalSchoolHub" \\
+  -framework SwiftUI \\
+  -framework AppKit'''
+)
+
+p.write_text(text)
+print("Build script patched.")
+PY
+Build script patched.
+jd@JD-MacBook-Pro Medical School % >....                                        
+
+week_minutes() {
+  if command -v gdate >/dev/null 2>&1; then
+    START=$(gdate -d "6 days ago" +"%Y-%m-%d")
+  else
+    START=$(date -v-6d +"%Y-%m-%d")
+  fi
+
+  awk -F',' -v start="$START" 'NR>1 && substr($1,1,10) >= start {sum += $3} END {print sum+0}' "$LOG"
+}
+
+echo "inbox=$(count_files_recursive "$INBOX")"
+echo "downloads=$(count_loose_files "$DOWNLOADS")"
+echo "needs_review=$(tag_count "Needs Review")"
+echo "anki_needed=$(tag_count "Anki Needed")"
+echo "summary_needed=$(tag_count "Summary Needed")"
+echo "weak_area=$(tag_count "Weak Area")"
+echo "today_minutes=$(today_minutes)"
+echo "week_minutes=$(week_minutes)"
+EOF
+
+chmod +x "$HOME/Medical School/09 Admin/Scripts/dashboard_stats.sh"
+jd@JD-MacBook-Pro Medical School % >....                                        
+extension View {
+    func glassButton(_ hover: Bool = false, radius: CGFloat = 14) -> some View { 
+        self
+            .background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(LinearGradient(colors: [
+                        Color.white.opacity(hover ? 0.135 : 0.060),
+                        Color.white.opacity(hover ? 0.055 : 0.026)
+                    ], startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(Color.white.opacity(hover ? 0.18 : 0.075), lineWidth: 1)
+            )
+            .shadow(color: Color(red: 0.21, green: 0.64, blue: 0.95).opacity(hover ? 0.13 : 0.02), radius: hover ? 14 : 4)
+            .scaleEffect(hover ? 1.012 : 1.0)
+            .animation(.easeOut(duration: 0.13), value: hover)
+    }
+}
+EOF
+jd@JD-MacBook-Pro Medical School % "$HOME/Medical School/09 Admin/App Framework/build_medical_hub_app.sh"
+open "$HOME/Applications/Medical School Hub.app"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro Medical School % mkdir -p "$HOME/Medical School/10 Courses/PPM 500"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/10 Courses/PPM 501"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/10 Courses/PPM 502"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/09 Admin/Reports"
+mkdir -p "$HOME/Medical School/09 Admin/App Data"
+zsh: parse error near `}'
+jd@JD-MacBook-Pro Medical School % mkdir -p "$HOME/Medical School/10 Courses/PPM 500"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/10 Courses/PPM 501"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/10 Courses/PPM 502"/{Lectures,Slides,Notes,Study Guides,Quizzes and Exams,Weak Areas,Completed}
+mkdir -p "$HOME/Medical School/09 Admin/Reports"
+mkdir -p "$HOME/Medical School/09 Admin/App Data"
+zsh: parse error near `}'
+jd@JD-MacBook-Pro Medical School % >....                                        
+echo "inbox=$(count_files_recursive "$INBOX")"
+echo "downloads=$(count_loose_files "$DOWNLOADS")"
+echo "needs_review=$(tag_count "Needs Review")"
+echo "anki_needed=$(tag_count "Anki Needed")"
+echo "summary_needed=$(tag_count "Summary Needed")"
+echo "weak_area=$(tag_count "Weak Area")"
+
+echo "today_minutes=$(today_minutes)"
+echo "today_cards=$(today_cards)"
+echo "week_minutes=$(week_minutes)"
+echo "week_cards=$(week_cards)"
+
+echo "tasks_open=$(task_open)"
+echo "tasks_done_today=$(task_done_today)"
+
+echo "bpm500=$(count_files_recursive "$BASE/01 BPM 500")"
+echo "bpm501=$(count_files_recursive "$BASE/02 BPM 501")"
+echo "ppm500=$(count_files_recursive "$BASE/10 Courses/PPM 500")"
+echo "ppm501=$(count_files_recursive "$BASE/10 Courses/PPM 501")"
+echo "ppm502=$(count_files_recursive "$BASE/10 Courses/PPM 502")"
+EOF
+
+chmod +x "$HOME/Medical School/09 Admin/Scripts/dashboard_stats.sh"
+jd@JD-MacBook-Pro Medical School % >....                                        
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+}
+
+extension View {
+    func glassButton(_ hover: Bool = false, radius: CGFloat = 14) -> some View { 
+        self
+            .background(
+                RoundedRectangle(cornerRadius: radius)
+                    .fill(LinearGradient(colors: [Color.white.opacity(hover ? 0.135 : 0.060), Color.white.opacity(hover ? 0.055 : 0.026)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
+            .overlay(RoundedRectangle(cornerRadius: radius).stroke(Color.white.opacity(hover ? 0.18 : 0.075), lineWidth: 1))
+            .shadow(color: Color.cyan.opacity(hover ? 0.13 : 0.02), radius: hover ? 14 : 4)
+            .scaleEffect(hover ? 1.012 : 1.0)
+            .animation(.easeOut(duration: 0.13), value: hover)
+    }
+}
+EOF
+jd@JD-MacBook-Pro Medical School % "$HOME/Medical School/09 Admin/App Framework/build_medical_hub_app.sh"
+open "$HOME/Applications/Medical School Hub.app"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro Medical School % >....                                        
+
+mkdir -p "$BASE/10 Courses/Term 2/02 PPM 500"/{Lectures,Slides,Notes,Study\ Guides,Weak\ Areas,Completed}
+mkdir -p "$BASE/10 Courses/Term 2/02 PPM 501"/{Lectures,Slides,Notes,Study\ Guides,Weak\ Areas,Completed}
+mkdir -p "$BASE/10 Courses/Term 2/02 PPM 502"/{Lectures,Slides,Notes,Study\ Guides,Weak\ Areas,Completed}
+
+for module in \
+"$BASE/10 Courses/Term 1/01 BPM 500/FTM 1" \
+"$BASE/10 Courses/Term 1/01 BPM 500/FTM 2" \
+"$BASE/10 Courses/Term 1/01 BPM 500/MSK" \
+"$BASE/10 Courses/Term 1/01 BPM 500/CPR 1" \
+"$BASE/10 Courses/Term 1/01 BPM 500/CPR 2" \
+"$BASE/10 Courses/Term 1/01 BPM 501/ER" \
+"$BASE/10 Courses/Term 1/01 BPM 501/DM" \
+"$BASE/10 Courses/Term 1/01 BPM 501/NB 1" \
+"$BASE/10 Courses/Term 1/01 BPM 501/NB 2" \
+"$BASE/10 Courses/Term 1/01 BPM 501/NB 3"
+do
+  mkdir -p "$module"/{Lectures,Slides,Notes,Anki,Study\ Guides,Weak\ Areas,Completed}
+done
+jd@JD-MacBook-Pro Medical School % >....                                        
+mkdir -p "$BASE/09 Admin/Journal"
+mkdir -p "$BASE/09 Admin/Integrations/Anki"
+mkdir -p "$BASE/09 Admin/Integrations/ScreenTime"
+mkdir -p "$BASE/09 Admin/Integrations/Calendar"
+mkdir -p "$BASE/09 Admin/Integrations/Manual Time Entries"
+mkdir -p "$BASE/09 Admin/Update Log/<0001f7e6> Loved Previous Build/v0.01/v0.01.01 - Dashboard Course Journal Expansion"
+
+touch "$BASE/09 Admin/App Data/journal.csv"
+touch "$BASE/09 Admin/App Data/manual_time_entries.csv"
+touch "$BASE/09 Admin/App Data/day_ratings.csv"
+
+cat > "$BASE/09 Admin/App Data/journal.csv" <<'EOF'
+date,today,tomorrow,blockers,energy,rating
+EOF
+
+cat > "$BASE/09 Admin/App Data/manual_time_entries.csv" <<'EOF'
+date,source,minutes,category,note,status
+EOF
+
+cat > "$BASE/09 Admin/App Data/day_ratings.csv" <<'EOF'
+date,rating,usefulness,notes
+EOF
+jd@JD-MacBook-Pro Medical School % >....                                        
+  - Calendar integration
+  - Anki integration
+  - Day usefulness reports
+
+### Anki
+- Prepared new increments:
+  - Lecture completed
+  - +50 cards
+  - +100 cards
+  - +150 cards
+  - +200 cards
+
+## Revert Notes
+
+To revert this stage manually:
+1. Remove the new folders inside:
+   - 10 Courses
+   - 09 Admin/Journal
+   - 09 Admin/Integrations
+2. Restore the previous Swift app from any saved backup if available.
+3. Keep App Data CSV files if you want to preserve logs.
+
+EOF
+jd@JD-MacBook-Pro Medical School % >....                                        
+echo "inbox=$(count_files_recursive "$INBOX")"
+echo "downloads=$(count_loose_files "$DOWNLOADS")"
+echo "needs_review=$(tag_count "Needs Review")"
+echo "anki_needed=$(tag_count "Anki Needed")"
+echo "summary_needed=$(tag_count "Summary Needed")"
+echo "weak_area=$(tag_count "Weak Area")"
+
+echo "today_minutes=$(today_minutes)"
+echo "today_cards=$(today_cards)"
+echo "manual_minutes_today=$(manual_minutes_today)"
+echo "journal_entries=$(journal_entries)"
+
+echo "tasks_open=$(task_open)"
+echo "tasks_done_today=$(task_done_today)"
+
+echo "bpm500=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 500")"
+echo "bpm501=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 501")"
+echo "ppm500=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 500")"
+echo "ppm501=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 501")"
+echo "ppm502=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 502")"
+EOF
+
+chmod +x "$HOME/Medical School/09 Admin/Scripts/dashboard_stats.sh"
+jd@JD-MacBook-Pro Medical School % >....                                        
+    guard let text = try? String(contentsOfFile: path) else { return [] }
+
+    return text.split(separator: "\n").dropFirst().compactMap {
+        let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        guard p.count >= 6 else { return nil }
+        return JournalEntry(date: p[0], today: p[1], tomorrow: p[2], blockers: p[3], energy: p[4], rating: p[5])
+    }
+}
+
+func loadTasks(_ path: String) -> [TaskItem] {
+    guard let text = try? String(contentsOfFile: path) else { return [] }
+
+    return text.split(separator: "\n").dropFirst().compactMap {
+        let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+        guard p.count >= 6 else { return nil }
+        return TaskItem(id: p[0], created: p[1], due: p[2], title: p[3], status: p[4], completed: p[5])
+    }
+}
+EOF
+jd@JD-MacBook-Pro Medical School % find "$HOME/Medical School/10 Courses" -maxdepth 4 -type d | sort
+/Users/jd/Medical School/10 Courses
+/Users/jd/Medical School/10 Courses/Term 1
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 1/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/CPR 2/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 1/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/FTM 2/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 500/MSK/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/DM/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/ER/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 1/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 2/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Anki
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Completed
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Lectures
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Notes
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Slides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Study Guides
+/Users/jd/Medical School/10 Courses/Term 1/01 BPM 501/NB 3/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 2
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Completed
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Lectures
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Notes
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Slides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Study Guides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 500/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Completed
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Lectures
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Notes
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Slides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Study Guides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 501/Weak Areas
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Completed
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Lectures
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Notes
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Slides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Study Guides
+/Users/jd/Medical School/10 Courses/Term 2/02 PPM 502/Weak Areas
+jd@JD-MacBook-Pro Medical School % "$HOME/Medical School/09 Admin/App Framework/build_medical_hub_app.sh"
+open "$HOME/Applications/Medical School Hub.app"
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro Medical School % 

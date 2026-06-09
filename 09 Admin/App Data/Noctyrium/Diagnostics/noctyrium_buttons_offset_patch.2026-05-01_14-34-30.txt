@@ -1,0 +1,57 @@
+===== NOCTYRIUM PRODUCTIVITY BUTTONS + OFFSET PATCH =====
+Version remains locked: v0.03.01
+
+Swift backup:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-buttons-offset-patch.2026-05-01_14-34-30.swift
+
+===== PRECHECK COMPILE =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:961:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2443:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3074:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3078:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Current source compiles.
+
+===== PATCHING SWIFT =====
+
+===== NORMALIZING OFFSET FILE =====
+
+===== COMPILE TEST =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:403:17: error: cannot find 'nowStamp' in scope
+            csv(nowStamp())
+                ^~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:408:44: error: cannot infer contextual base in reference to member 'utf8'
+            if let data = row.data(using: .utf8) {
+                                          ~^~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:974:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1064:91: error: cannot find 'nowStamp' in scope
+        let body = "base_minutes,base_anki,updated\n\(max(0, minutes)),\(max(0, cards)),\(nowStamp())\n"
+                                                                                          ^~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1065:89: error: cannot infer contextual base in reference to member 'utf8'
+        try? body.write(toFile: productivityDayOffsetFile, atomically: true, encoding: .utf8)
+                                                                                       ~^~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2487:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3140:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3144:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Compile failed. Restoring backup.
+Restored: /Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-buttons-offset-patch.2026-05-01_14-34-30.swift
+Report: /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_buttons_offset_patch.2026-05-01_14-34-30.txt

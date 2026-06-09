@@ -1,0 +1,782 @@
+===== NOCTYRIUM PRODUCTIVITY DEEP INSPECT =====
+Generated: 2026-05-01 15:00:47
+
+===== FAILED PATCH DIAGNOSTICS: COMPILE ERRORS ONLY =====
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_productivity_source_of_truth_patch.2026-05-01_14-58-12.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_productivity_source_of_truth_patch.2026-05-01_14-58-12.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_productivity_buttons_real_fix.2026-05-01_14-51-54.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_productivity_buttons_real_fix.2026-05-01_14-51-54.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_true_productivity_day_patch.2026-05-01_14-45-42.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_true_productivity_day_patch.2026-05-01_14-45-42.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_real_counter_baseline_patch.2026-05-01_14-40-53.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_real_counter_baseline_patch.2026-05-01_14-40-53.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_buttons_offset_patch.2026-05-01_14-34-30.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_buttons_offset_patch.2026-05-01_14-34-30.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_productivity_offset_counter_fix.2026-05-01_14-31-32.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_productivity_offset_counter_fix.2026-05-01_14-31-32.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_hard_start_day_fix.2026-05-01_14-18-15.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_hard_start_day_fix.2026-05-01_14-18-15.txt: No such file or directory
+
+--- /Users/jd/Medical ---
+grep: /Users/jd/Medical: No such file or directory
+
+--- School/09 ---
+grep: School/09: No such file or directory
+
+--- Admin/App ---
+grep: Admin/App: No such file or directory
+
+--- Data/Noctyrium/Diagnostics/noctyrium_real_start_new_day_fix.2026-05-01_14-16-19.txt ---
+grep: Data/Noctyrium/Diagnostics/noctyrium_real_start_new_day_fix.2026-05-01_14-16-19.txt: No such file or directory
+
+===== CURRENT SOURCE COMPILE CHECK =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:961:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2443:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3074:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3078:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+===== DASHBOARD STATS SCRIPT =====
+--- /Users/jd/Medical School/09 Admin/Scripts/dashboard_stats.sh ---
+     1	#!/bin/zsh
+     2	
+     3	BASE="$HOME/Medical School"
+     4	DOWNLOADS="$HOME/Downloads"
+     5	INBOX="$BASE/00 📥 Inbox - Need Work Look Over"
+     6	APPDATA="$BASE/09 Admin/App Data"
+     7	LOG="$APPDATA/productivity_log.csv"
+     8	TASKS="$APPDATA/tasks.csv"
+     9	JOURNAL="$APPDATA/journal.csv"
+    10	MANUAL="$APPDATA/manual_time_entries.csv"
+    11	RATINGS="$APPDATA/day_ratings.csv"
+    12	
+    13	mkdir -p "$APPDATA"
+    14	
+    15	[ -f "$LOG" ] || echo "date,type,minutes,cards,note" > "$LOG"
+    16	[ -f "$TASKS" ] || echo "id,created,due,title,status,completed" > "$TASKS"
+    17	[ -f "$JOURNAL" ] || echo "date,today,tomorrow,blockers,energy,rating" > "$JOURNAL"
+    18	[ -f "$MANUAL" ] || echo "date,source,minutes,category,note,status" > "$MANUAL"
+    19	[ -f "$RATINGS" ] || echo "date,rating,usefulness,notes" > "$RATINGS"
+    20	
+    21	count_files_recursive() {
+    22	  find "$1" -type f 2>/dev/null | wc -l | tr -d ' '
+    23	}
+    24	
+    25	count_loose_files() {
+    26	  find "$1" -maxdepth 1 -type f ! -name ".*" 2>/dev/null | wc -l | tr -d ' '
+    27	}
+    28	
+    29	tag_count() {
+    30	  tag --find "$1" "$BASE" 2>/dev/null | wc -l | tr -d ' '
+    31	}
+    32	
+    33	today_minutes() {
+    34	  TODAY=$(date +"%Y-%m-%d")
+    35	  awk -F',' -v today="$TODAY" 'NR>1 && substr($1,1,10)==today {sum += $3} END {print sum+0}' "$LOG"
+    36	}
+    37	
+    38	today_cards() {
+    39	  TODAY=$(date +"%Y-%m-%d")
+    40	  awk -F',' -v today="$TODAY" 'NR>1 && substr($1,1,10)==today {sum += $4} END {print sum+0}' "$LOG"
+    41	}
+    42	
+    43	manual_minutes_today() {
+    44	  TODAY=$(date +"%Y-%m-%d")
+    45	  awk -F',' -v today="$TODAY" 'NR>1 && substr($1,1,10)==today && $6!="rejected" {sum += $3} END {print sum+0}' "$MANUAL"
+    46	}
+    47	
+    48	journal_entries() {
+    49	  awk -F',' 'NR>1 {c++} END {print c+0}' "$JOURNAL"
+    50	}
+    51	
+    52	task_open() {
+    53	  awk -F',' 'NR>1 && $5!="done" {c++} END {print c+0}' "$TASKS"
+    54	}
+    55	
+    56	task_done_today() {
+    57	  TODAY=$(date +"%Y-%m-%d")
+    58	  awk -F',' -v today="$TODAY" 'NR>1 && $5=="done" && substr($6,1,10)==today {c++} END {print c+0}' "$TASKS"
+    59	}
+    60	
+    61	echo "inbox=$(count_files_recursive "$INBOX")"
+    62	echo "downloads=$(count_loose_files "$DOWNLOADS")"
+    63	echo "needs_review=$(tag_count "Needs Review")"
+    64	echo "anki_needed=$(tag_count "Anki Needed")"
+    65	echo "summary_needed=$(tag_count "Summary Needed")"
+    66	echo "weak_area=$(tag_count "Weak Area")"
+    67	
+    68	echo "today_minutes=$(today_minutes)"
+    69	echo "today_cards=$(today_cards)"
+    70	echo "manual_minutes_today=$(manual_minutes_today)"
+    71	echo "journal_entries=$(journal_entries)"
+    72	
+    73	echo "tasks_open=$(task_open)"
+    74	echo "tasks_done_today=$(task_done_today)"
+    75	
+    76	echo "bpm500=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 500")"
+    77	echo "bpm501=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 501")"
+    78	echo "ppm500=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 500")"
+    79	echo "ppm501=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 501")"
+    80	echo "ppm502=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 502")"
+
+===== LOG FUNCTION CONTEXT =====
+525:    func log(type: String, minutes: Int, cards: Int, note: String) {
+  525:     func log(type: String, minutes: Int, cards: Int, note: String) {
+  526:         ensureFiles()
+  527:         let f = ISO8601DateFormatter()
+  528:         let safeNote = clean(note)
+  529:         let now = Date()
+  530:         let studyDay = currentManualStudyDay()
+  531:         append("\(f.string(from: now)),\(type),\(minutes),\(cards),\(safeNote) | study_day=\(studyDay)\n", to: logFile)
+  532:         refresh()
+  533:     }
+  534: 
+  535: 
+  536:     
+  537: func trackerMaxQuality(for item: CourseTrackerItem) -> Int {
+  538:     let type = item.type.lowercased()
+  539:     let isBSCE = item.id.uppercased().hasPrefix("BSCE_") || item.week.uppercased().contains("BSCE")
+  540:     if isBSCE && ["esoft", "imcq", "pq"].contains(type) { return 1 }
+  541:     if isBSCE && type == "plg" { return 2 }
+  542:     return 3
+  543: }
+  544: 
+  545: 
+  546: func updateBSCEQuestionWorkflowItem(_ item: CourseTrackerItem, action: String, appData: String) {
+  547:     let files = [
+  548:         "\(appData)/Course Trackers/bsce_t2_tracker.csv",
+  549:         "\(appData)/Course Trackers/T2/bsce_tracker.csv"
+  550:     ]
+  551: 
+  552:     for file in files {
+  553:         updateBSCEQuestionWorkflowItemInFile(item, action: action, filePath: file)
+  554:     }
+  555: }
+  556: 
+  557: func updateBSCEQuestionWorkflowItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+  558:     guard let raw = try? String(contentsOfFile: filePath) else { return }
+  559: 
+  560:     var output: [String] = []
+  561:     let now = ISO8601DateFormatter().string(from: Date())
+  562: 
+  563:     for line in raw.components(separatedBy: .newlines) {
+  564:         if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+  565:             continue
+  566:         }
+  567: 
+  568:         if line.hasPrefix("id,") {
+  569:             output.append(line)
+  570:             continue
+  571:         }
+  572: 
+  573:         var p = parseCSVLine(line)
+  574:         while p.count < 9 { p.append("") }
+  575: 
+  576:         if p[0] == item.id {
+  577:             let type = p[2].lowercased()
+  578: 
+  579:             switch action {
+  580:             case "working":
+  581:                 p[4] = "working"
+  582:                 p[5] = max(Int(p[5]) ?? 0, 1).description
+  583:                 p[6] = "orange"
+  584:                 p[7] = "Working through it"
+  585: 
+  586:             case "done":
+  587:                 p[4] = "done"
+  588:                 p[5] = type == "plg" ? "1" : "2"
+  589:                 p[6] = "lightgreen"
+  590:                 p[7] = "Completed"
+  591: 
+  592:             case "reviewed":
+  593:                 p[4] = "reviewed_explanations"
+  594:                 p[5] = "2"
+  595:                 p[6] = "purple"
+  596:                 p[7] = "Reviewed explanations / correlates"
+  597: 
+  598:             case "strong":
+  599:                 p[4] = "strong"
+  600:                 p[5] = "3"
+  601:                 p[6] = "darkgreen"
+  602:                 p[7] = "Strong understanding"
+  603: 
+  604:             case "missed":
+  605:                 p[4] = "needs_review"
+
+===== STATS STRUCT CONTEXT =====
+16:struct Stats {
+   16: struct Stats {
+   17:     var inbox = 0
+   18:     var downloads = 0
+   19:     var needsReview = 0
+   20:     var ankiNeeded = 0
+   21:     var summaryNeeded = 0
+   22:     var weakArea = 0
+   23:     var todayMinutes = 0
+   24:     var todayCards = 0
+   25:     var manualMinutesToday = 0
+   26:     var journalEntries = 0
+   27:     var tasksOpen = 0
+   28:     var tasksDoneToday = 0
+   29:     var bpm500 = 0
+   30:     var bpm501 = 0
+   31:     var ppm500 = 0
+   32:     var ppm501 = 0
+   33:     var ppm502 = 0
+   34: }
+   35: 
+   36: struct StudyLog: Identifiable {
+   37:     let id = UUID()
+   38:     let date: Date
+   39:     let type: String
+   40:     let minutes: Int
+   41:     let cards: Int
+   42:     let note: String
+   43: }
+   44: 
+   45: struct JournalEntry: Identifiable {
+   46:     let id = UUID()
+   47:     let date: String
+   48:     let today: String
+   49:     let tomorrow: String
+   50:     let blockers: String
+   51:     let energy: String
+   52:     let rating: String
+   53: }
+   54: 
+   55: 
+   56: struct PromptItem: Identifiable {
+   57:     let id: String
+   58:     let title: String
+   59:     let category: String
+   60:     let tags: String
+   61:     let created: String
+   62:     let updated: String
+   63:     let path: String
+   64: 
+   65:     var fullPath: String {
+   66:         "\(NSHomeDirectory())/Medical School/\(path)"
+   67:     }
+   68: 
+   69:     var preview: String {
+   70:         let raw = (try? String(contentsOfFile: fullPath)) ?? "No preview available."
+   71:         let clean = raw.replacingOccurrences(of: "\n", with: " ")
+   72:         if clean.count > 180 {
+   73:             return String(clean.prefix(180)) + "…"
+   74:         }
+   75:         return clean
+   76:     }
+   77: 
+   78:     var bodyText: String {
+   79:         (try? String(contentsOfFile: fullPath)) ?? ""
+   80:     }
+   81: }
+   82: 
+   83: 
+   84: 
+   85: struct SmartSuggestion: Identifiable {
+   86:     let id = UUID()
+   87:     let title: String
+   88:     let reason: String
+   89:     let source: String
+   90:     let priority: Int
+   91:     let color: String
+   92: }
+   93: 
+   94: struct CourseTrackerItem: Identifiable {
+   95:     let id: String
+   96:     let week: String
+   97:     let type: String
+   98:     let label: String
+   99:     let status: String
+  100:     let quality: Int
+  101:     let color: String
+  102:     let notes: String
+  103:     let updated: String
+  104: }
+  105: 
+  106: struct TaskItem: Identifiable {
+  107:     let id: String
+  108:     let created: String
+  109:     let due: String
+  110:     let title: String
+  111:     let status: String
+  112:     let completed: String
+  113: }
+  114: 
+  115: func noctyriumDateKey(_ date: Date = Date()) -> String {
+  116:     var cal = Calendar.current
+  117:     cal.timeZone = TimeZone.current
+  118:     let shifted = cal.date(byAdding: .hour, value: -4, to: date) ?? date
+  119:     let f = DateFormatter()
+  120:     f.calendar = cal
+  121:     f.timeZone = TimeZone.current
+  122:     f.dateFormat = "yyyy-MM-dd"
+  123:     return f.string(from: shifted)
+  124: }
+  125: 
+  126: func noctyriumNextDateKey(after key: String) -> String {
+  127:     let f = DateFormatter()
+  128:     f.dateFormat = "yyyy-MM-dd"
+  129:     if let date = f.date(from: key),
+  130:        let next = Calendar.current.date(byAdding: .day, value: 1, to: date) {
+  131:         return f.string(from: next)
+  132:     }
+  133:     return noctyriumDateKey()
+  134: }
+  135: 
+  136: struct HubView: View {
+
+===== PARSESTATS CONTEXT =====
+3885:func parseStats(_ text: String) -> Stats {
+ 3885: func parseStats(_ text: String) -> Stats {
+ 3886:     var d: [String: Int] = [:]
+ 3887:     for line in text.split(separator: "\n") {
+ 3888:         let p = line.split(separator: "=", maxSplits: 1)
+ 3889:         if p.count == 2 { d[String(p[0])] = Int(p[1]) ?? 0 }
+ 3890:     }
+ 3891: 
+ 3892:     return Stats(
+ 3893:         inbox: d["inbox"] ?? 0,
+ 3894:         downloads: d["downloads"] ?? 0,
+ 3895:         needsReview: d["needs_review"] ?? 0,
+ 3896:         ankiNeeded: d["anki_needed"] ?? 0,
+ 3897:         summaryNeeded: d["summary_needed"] ?? 0,
+ 3898:         weakArea: d["weak_area"] ?? 0,
+ 3899:         todayMinutes: d["today_minutes"] ?? 0,
+ 3900:         todayCards: d["today_cards"] ?? 0,
+ 3901:         manualMinutesToday: d["manual_minutes_today"] ?? 0,
+ 3902:         journalEntries: d["journal_entries"] ?? 0,
+ 3903:         tasksOpen: d["tasks_open"] ?? 0,
+ 3904:         tasksDoneToday: d["tasks_done_today"] ?? 0,
+ 3905:         bpm500: d["bpm500"] ?? 0,
+ 3906:         bpm501: d["bpm501"] ?? 0,
+ 3907:         ppm500: d["ppm500"] ?? 0,
+ 3908:         ppm501: d["ppm501"] ?? 0,
+ 3909:         ppm502: d["ppm502"] ?? 0
+ 3910:     )
+ 3911: }
+ 3912: 
+ 3913: func loadLogs(_ path: String) -> [StudyLog] {
+ 3914:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3915:     let f = ISO8601DateFormatter()
+ 3916: 
+ 3917:     return text.split(separator: "\n").dropFirst().compactMap {
+ 3918:         let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+ 3919:         guard p.count >= 5, let date = f.date(from: p[0]) else { return nil }
+ 3920:         return StudyLog(date: date, type: p[1], minutes: Int(p[2]) ?? 0, cards: Int(p[3]) ?? 0, note: p[4])
+ 3921:     }
+ 3922: }
+ 3923: 
+ 3924: func loadJournal(_ path: String) -> [JournalEntry] {
+ 3925:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3926: 
+ 3927:     return text.split(separator: "\n").dropFirst().compactMap {
+ 3928:         let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+ 3929:         guard p.count >= 6 else { return nil }
+ 3930:         return JournalEntry(date: p[0], today: p[1], tomorrow: p[2], blockers: p[3], energy: p[4], rating: p[5])
+ 3931:     }
+ 3932: }
+ 3933: 
+ 3934: 
+ 3935: func loadPrompts(base: String) -> [PromptItem] {
+ 3936:     let path = "\(base)/09 Admin/App Data/prompt_library.csv"
+ 3937:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3938: 
+ 3939:     return text.split(separator: "\n").dropFirst().compactMap { row in
+ 3940:         let parts = parseCSVLine(String(row))
+ 3941:         guard parts.count >= 7 else { return nil }
+ 3942: 
+ 3943:         return PromptItem(
+ 3944:             id: parts[0],
+ 3945:             title: parts[1],
+ 3946:             category: parts[2],
+ 3947:             tags: parts[3],
+ 3948:             created: parts[4],
+ 3949:             updated: parts[5],
+ 3950:             path: parts[6]
+ 3951:         )
+ 3952:     }
+ 3953: }
+ 3954: 
+ 3955: func parseCSVLine(_ line: String) -> [String] {
+ 3956:     var result: [String] = []
+ 3957:     var current = ""
+ 3958:     var insideQuotes = false
+ 3959: 
+ 3960:     for char in line {
+ 3961:         if char == "\"" {
+ 3962:             insideQuotes.toggle()
+ 3963:         } else if char == "," && !insideQuotes {
+ 3964:             result.append(current)
+ 3965:             current = ""
+ 3966:         } else {
+ 3967:             current.append(char)
+ 3968:         }
+ 3969:     }
+ 3970: 
+ 3971:     result.append(current)
+ 3972:     return result
+ 3973: }
+ 3974: 
+ 3975: 
+ 3976: func loadCourseTracker(_ path: String) -> [CourseTrackerItem] {
+ 3977:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3978: 
+ 3979:     return text
+ 3980:         .split(separator: "\n")
+ 3981:         .dropFirst()
+ 3982:         .compactMap { row in
+ 3983:             let p = parseCSVLine(String(row))
+ 3984:             guard p.count >= 9 else { return nil }
+ 3985: 
+ 3986:             return CourseTrackerItem(
+ 3987:                 id: p[0],
+ 3988:                 week: p[1],
+ 3989:                 type: p[2],
+ 3990:                 label: p[3],
+ 3991:                 status: p[4],
+ 3992:                 quality: Int(p[5]) ?? 0,
+ 3993:                 color: p[6],
+ 3994:                 notes: p[7],
+ 3995:                 updated: p[8]
+ 3996:             )
+ 3997:         }
+ 3998: }
+ 3999: 
+ 4000: 
+ 4001: 
+ 4002: func updateTrackerItem(base: String, id: String, qualityDelta: Int, newColor: String?) {
+ 4003:     let path = "\(base)/09 Admin/App Data/Course Trackers/nb3_tracker.csv"
+ 4004:     guard let raw = try? String(contentsOfFile: path) else { return }
+ 4005: 
+
+===== LOADLOGS CONTEXT =====
+3913:func loadLogs(_ path: String) -> [StudyLog] {
+ 3913: func loadLogs(_ path: String) -> [StudyLog] {
+ 3914:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3915:     let f = ISO8601DateFormatter()
+ 3916: 
+ 3917:     return text.split(separator: "\n").dropFirst().compactMap {
+ 3918:         let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+ 3919:         guard p.count >= 5, let date = f.date(from: p[0]) else { return nil }
+ 3920:         return StudyLog(date: date, type: p[1], minutes: Int(p[2]) ?? 0, cards: Int(p[3]) ?? 0, note: p[4])
+ 3921:     }
+ 3922: }
+ 3923: 
+ 3924: func loadJournal(_ path: String) -> [JournalEntry] {
+ 3925:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3926: 
+ 3927:     return text.split(separator: "\n").dropFirst().compactMap {
+ 3928:         let p = $0.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
+ 3929:         guard p.count >= 6 else { return nil }
+ 3930:         return JournalEntry(date: p[0], today: p[1], tomorrow: p[2], blockers: p[3], energy: p[4], rating: p[5])
+ 3931:     }
+ 3932: }
+ 3933: 
+ 3934: 
+ 3935: func loadPrompts(base: String) -> [PromptItem] {
+ 3936:     let path = "\(base)/09 Admin/App Data/prompt_library.csv"
+ 3937:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3938: 
+ 3939:     return text.split(separator: "\n").dropFirst().compactMap { row in
+ 3940:         let parts = parseCSVLine(String(row))
+ 3941:         guard parts.count >= 7 else { return nil }
+ 3942: 
+ 3943:         return PromptItem(
+ 3944:             id: parts[0],
+ 3945:             title: parts[1],
+ 3946:             category: parts[2],
+ 3947:             tags: parts[3],
+ 3948:             created: parts[4],
+ 3949:             updated: parts[5],
+ 3950:             path: parts[6]
+ 3951:         )
+ 3952:     }
+ 3953: }
+ 3954: 
+ 3955: func parseCSVLine(_ line: String) -> [String] {
+ 3956:     var result: [String] = []
+ 3957:     var current = ""
+ 3958:     var insideQuotes = false
+ 3959: 
+ 3960:     for char in line {
+ 3961:         if char == "\"" {
+ 3962:             insideQuotes.toggle()
+ 3963:         } else if char == "," && !insideQuotes {
+ 3964:             result.append(current)
+ 3965:             current = ""
+ 3966:         } else {
+ 3967:             current.append(char)
+ 3968:         }
+ 3969:     }
+ 3970: 
+ 3971:     result.append(current)
+ 3972:     return result
+ 3973: }
+ 3974: 
+ 3975: 
+ 3976: func loadCourseTracker(_ path: String) -> [CourseTrackerItem] {
+ 3977:     guard let text = try? String(contentsOfFile: path) else { return [] }
+ 3978: 
+ 3979:     return text
+ 3980:         .split(separator: "\n")
+ 3981:         .dropFirst()
+ 3982:         .compactMap { row in
+ 3983:             let p = parseCSVLine(String(row))
+ 3984:             guard p.count >= 9 else { return nil }
+ 3985: 
+ 3986:             return CourseTrackerItem(
+ 3987:                 id: p[0],
+ 3988:                 week: p[1],
+ 3989:                 type: p[2],
+ 3990:                 label: p[3],
+ 3991:                 status: p[4],
+ 3992:                 quality: Int(p[5]) ?? 0,
+ 3993:                 color: p[6],
+ 3994:                 notes: p[7],
+ 3995:                 updated: p[8]
+ 3996:             )
+ 3997:         }
+ 3998: }
+ 3999: 
+ 4000: 
+ 4001: 
+ 4002: func updateTrackerItem(base: String, id: String, qualityDelta: Int, newColor: String?) {
+ 4003:     let path = "\(base)/09 Admin/App Data/Course Trackers/nb3_tracker.csv"
+
+===== STUDYLOG STRUCT CONTEXT =====
+36:struct StudyLog: Identifiable {
+   36: struct StudyLog: Identifiable {
+   37:     let id = UUID()
+   38:     let date: Date
+   39:     let type: String
+   40:     let minutes: Int
+   41:     let cards: Int
+   42:     let note: String
+   43: }
+   44: 
+   45: struct JournalEntry: Identifiable {
+   46:     let id = UUID()
+   47:     let date: String
+   48:     let today: String
+   49:     let tomorrow: String
+   50:     let blockers: String
+   51:     let energy: String
+   52:     let rating: String
+   53: }
+   54: 
+   55: 
+   56: struct PromptItem: Identifiable {
+   57:     let id: String
+   58:     let title: String
+   59:     let category: String
+   60:     let tags: String
+   61:     let created: String
+   62:     let updated: String
+   63:     let path: String
+   64: 
+   65:     var fullPath: String {
+   66:         "\(NSHomeDirectory())/Medical School/\(path)"
+   67:     }
+   68: 
+   69:     var preview: String {
+   70:         let raw = (try? String(contentsOfFile: fullPath)) ?? "No preview available."
+   71:         let clean = raw.replacingOccurrences(of: "\n", with: " ")
+   72:         if clean.count > 180 {
+   73:             return String(clean.prefix(180)) + "…"
+   74:         }
+   75:         return clean
+   76:     }
+   77: 
+   78:     var bodyText: String {
+   79:         (try? String(contentsOfFile: fullPath)) ?? ""
+   80:     }
+   81: }
+   82: 
+   83: 
+   84: 
+   85: struct SmartSuggestion: Identifiable {
+   86:     let id = UUID()
+   87:     let title: String
+   88:     let reason: String
+   89:     let source: String
+   90:     let priority: Int
+   91:     let color: String
+   92: }
+   93: 
+   94: struct CourseTrackerItem: Identifiable {
+   95:     let id: String
+   96:     let week: String
+   97:     let type: String
+   98:     let label: String
+   99:     let status: String
+  100:     let quality: Int
+  101:     let color: String
+  102:     let notes: String
+  103:     let updated: String
+  104: }
+  105: 
+  106: struct TaskItem: Identifiable {
+
+===== PRODUCTIVITY LOG HEADER + TAIL =====
+date,type,minutes,cards,note
+2026-05-01T16:06:46Z,System,0,0,Start New Study Day hard reset → 2026-05-01
+2026-05-01T17:36:06Z,System,0,0,Start New Study Day → 2026-05-01
+2026-05-01T17:36:15Z,Anki,15,50,50 cards | study_day=2026-05-01
+2026-05-01T17:36:19Z,Study,-15,0,Start New Study Day reset: zeroed study minutes from 15
+--- tail ---
+2026-05-01 14:11:56,System,0,0,Start New Study Day archived 2026-05-04 and opened 2026-05-05 | study_day=2026-05-05
+2026-05-01T18:18:41Z,Anki,15,50,50 cards | study_day=2026-05-07
+2026-05-01T18:35:10Z,Anki,15,50,50 cards | study_day=2026-05-11
+2026-05-01T18:42:23Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:23Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:26Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:26Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:33Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:37Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:47Z,Anki,15,50,50 cards | study_day=2026-05-17
+2026-05-01T18:49:22Z,Anki,15,50,50 cards | study_day=2026-05-19
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:50Z,Anki,15,50,50 cards | study_day=2026-05-01
+2026-05-01T18:58:53Z,Lecture,50,0,Lecture completed | study_day=2026-05-01
+
+===== ACTIVE DAY FILES =====
+2026-05-03
+
+2026-05-03
+
+===== BUTTON / PRODUCTIVITYPAGE CURRENT STATE =====
+293:                    ProductivityPage(
+1053:    let logAnki50: () -> Void
+1054:    let logAnki100: () -> Void
+1055:    let logStudy60: () -> Void
+1097:                            MiniLog("Lecture", "+50m", logLecture)
+1098:                            MiniLog("+50 🃜", "+15m", logAnki50)
+1099:                            MiniLog("+100 🃚", "+30m", logAnki100)
+1100:                            MiniLog("Study", "+60m", logStudy60)
+1434:                    MiniButton("Open Tracker Data") {
+1815:                    Button("Add", action: add)
+1870:                    Button("Add") {
+2209:                    Button("Refresh Suggestions", action: refresh)
+2264:                    Button("Full Sweep", action: refresh)
+2627:                    MiniButton("Open Reports Folder") {
+2640:    let logAnki50: () -> Void
+2641:    let logAnki100: () -> Void
+2642:    let logAnki150: () -> Void
+2643:    let logAnki200: () -> Void
+2644:    let logStudy180: () -> Void
+2646:    let subtractAnki20: () -> Void
+2647:    let subtractStudy30: () -> Void
+2658:                            Button("Start New Study Day") {
+2668:                            Button("−20 Anki Cards") {
+2678:                            Button("−30 Minutes") {
+2705:                        MiniLog("Lecture", "+50m", logLecture)
+2706:                        MiniLog("+50 🃜", "+15m", logAnki50)
+2707:                        MiniLog("+100 🃚", "+30m", logAnki100)
+2708:                        MiniLog("+150 🃖", "+45m", logAnki150)
+2709:                        MiniLog("+200 🃁", "+60m", logAnki200)
+2710:                        MiniLog("Deep Study", "+180m", logStudy180)
+2754:                        Button("Add", action: addTask)
+2798:                    MiniButton("Open Journal Folder", openJournalFolder)
+2899:                            MiniButton("Refresh") {
+2904:                            MiniButton("Open Folder") {
+2967:                            MiniButton("Save Prompt") {
+2971:                            MiniButton("Clear") {
+3071:                    MiniButton("Copy All", copy)
+3073:                    MiniButton("Open") {
+3077:                    MiniButton("Reveal") {
+3158:                Button("Save Standup", action: save)
+3391:                Button("Open", action: action)
+
+===== END DEEP INSPECT =====

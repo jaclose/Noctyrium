@@ -1,0 +1,106 @@
+Last login: Thu Apr 30 16:43:29 on ttys000
+jd@JD-MacBook-Pro ~ % >....                                                     
+  -o /tmp/MedicalSchoolHubTest \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Compile still failed. Paste the new errors."
+  exit 1
+fi
+
+echo "Swift compile test passed."
+
+"$BASE/09 Admin/App Framework/build_medical_hub_app.sh"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Build script failed. Paste the output."
+  exit 1
+fi
+
+echo ""
+echo "Opening rebuilt app..."
+open "$HOME/Applications/Medical School Hub.app"
+Added missing TrackerHero struct.
+
+Backup saved:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-trackerhero.2026-04-30_16-44-43.swift
+
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:364:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1424:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1428:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Swift compile test passed.
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:364:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1424:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1428:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+
+Opening rebuilt app...
+jd@JD-MacBook-Pro ~ % >....                                                     
+swiftc "$SRC" \
+  -parse-as-library \
+  -o /tmp/MedicalSchoolHubTest \
+  -framework SwiftUI \
+  -framework AppKit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Compile failed. Paste the errors."
+  exit 1
+fi
+
+echo "Swift compile test passed."
+
+"$BASE/09 Admin/App Framework/build_medical_hub_app.sh"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Build failed. Paste the output."
+  exit 1
+fi
+
+open "$HOME/Applications/Medical School Hub.app"
+Redesigned Course Tracker into term/module compact ledger.
+
+Backup saved:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.course-tracker-redesign.2026-04-30_16-49-27.swift
+
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:364:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1444:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1448:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Swift compile test passed.
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:364:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1444:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:1448:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Built successfully: /Users/jd/Applications/Medical School Hub.app
+jd@JD-MacBook-Pro ~ % 

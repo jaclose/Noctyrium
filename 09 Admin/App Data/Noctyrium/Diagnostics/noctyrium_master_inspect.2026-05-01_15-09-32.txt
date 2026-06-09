@@ -1,0 +1,1518 @@
+===== NOCTYRIUM MASTER INSPECT =====
+Generated: Fri May  1 15:09:32 AST 2026
+BASE=/Users/jd/Medical School
+SRC=/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift
+
+===== SYSTEM =====
+ProductName:		macOS
+ProductVersion:		26.3.1
+ProductVersionExtra:	(a)
+BuildVersion:		25D771280a
+Apple Swift version 5.10 (swiftlang-5.10.0.13 clang-1500.3.9.4)
+Target: arm64-apple-darwin25.3.0
+
+===== APP FRAMEWORK FILES =====
+/Users/jd/Medical School/09 Admin/App Framework/.DS_Store
+/Users/jd/Medical School/09 Admin/App Framework/build_medical_hub_app.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-03-26.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-52-16.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.before-productivity-ledger-fix.2026-05-01_13-57-22.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.before-real-start-new-day-fix.2026-05-01_14-16-19.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.before-start-new-day-surgical-fix.2026-05-01_13-51-56.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.before-study-day-ticks-time-fix.2026-05-01_14-05-52.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.before-time-studyday-only.2026-05-01_14-09-44.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.clean-open-fix.2026-05-01_11-45-10.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.fix-start-new-day-archive.2026-05-01_13-42-55.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.fix-start-new-day.2026-05-01_11-59-46.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_12-05-45.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_13-28-27.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.pre-start-day-archive-repair.2026-05-01_13-48-06.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.repair-localized-quit.2026-05-01_11-23-43.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.v00301-pre-patch.2026-05-01_13-35-12.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.v00301-pre-productivity-day-repair.2026-05-01_13-44-45.sh
+/Users/jd/Medical School/09 Admin/App Framework/build_noctyrium_app.window-restore-fix.2026-05-01_11-44-01.sh
+/Users/jd/Medical School/09 Admin/App Framework/Build/.DS_Store
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.add-buildSmartSuggestions.2026-05-01_11-39-22.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.anki-pass-visual-backup.2026-05-01_00-34-28.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.backup.2026-04-30_14-49-23.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.backup.2026-04-30_16-22-07.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.backup.2026-04-30_16-43-11.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.backup.2026-04-30_16-43-53.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-buttons-offset-patch.2026-05-01_14-34-30.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-hard-start-day-fix.2026-05-01_14-18-15.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-productivity-buttons-real-fix.2026-05-01_14-51-54.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-productivity-ledger-fix.2026-05-01_13-57-22.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-productivity-offset-counter-fix.2026-05-01_14-31-32.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-productivity-source-of-truth.2026-05-01_14-58-12.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-real-counter-baseline-patch.2026-05-01_14-40-53.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-real-start-new-day-fix.2026-05-01_14-16-19.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-start-new-day-surgical-fix.2026-05-01_13-51-56.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-study-day-ticks-time-fix.2026-05-01_14-05-52.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-time-studyday-only.2026-05-01_14-09-44.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-true-productivity-day-patch.2026-05-01_14-45-42.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.BROKEN-before-auto-restore.2026-05-01_11-25-00.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.BROKEN-before-productivity-day-repair.2026-05-01_13-44-45.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.BROKEN-before-start-day-archive-repair.2026-05-01_13-48-06.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.BROKEN-before-v00301-repair.2026-05-01_13-35-12.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-button-logic-fix.2026-05-01_01-32-27.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-functional-sorted.2026-05-01_01-28-39.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-module-tracker-backup.2026-05-01_00-39-47.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-module-tracker-backup.2026-05-01_00-40-51.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-real-functionality.2026-05-01_01-38-19.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.bsce-repair.2026-05-01_00-42-42.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.course-tracker-redesign.2026-04-30_16-49-27.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.dedupe-repair.2026-05-01_01-01-24.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.finder-dropdown-dashboard-backup.2026-05-01_00-50-55.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.finder-dropdown-dashboard-backup.2026-05-01_01-00-19.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-course-suggestion-signature.2026-05-01_10-58-54.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-course-tracker-route.2026-05-01_00-17-19.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-course-tracker-route.2026-05-01_00-17-39.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-course-tracker-routing.2026-05-01_00-03-34.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-empty-tracker.2026-05-01_01-14-58.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-nb3-bsce-separation.2026-05-01_01-21-34.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-nb3-bsce-separation.2026-05-01_01-22-43.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-new-day-hard-reset-no-restore.2026-05-01_12-05-45.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-new-day-hard-reset-no-restore.2026-05-01_13-28-27.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-productivity-helper-functions.2026-05-01_11-45-53.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-start-new-day-archive.2026-05-01_13-42-55.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-start-new-day-v00301.2026-05-01_11-59-46.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-suggestion-name-mismatch.2026-05-01_11-15-49.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-trackerhero.2026-04-30_16-44-43.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.fix-updateTrackerItemInFile.2026-05-01_00-47-11.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.mastery-tracker-backup.2026-05-01_00-26-31.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.multi-module-tracker-backup.2026-05-01_01-10-47.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.noctyrium-name-logo-backup.2026-05-01_10-48-09.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.pre-parsecsv-repair.2026-04-30_16-25-31.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.pre-start-day-archive-repair.2026-05-01_13-48-06.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.productivity-controls-fix.2026-05-01_11-45-10.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.productivity-day-corrections.2026-05-01_11-44-01.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.reactive-suggestions-new-day.2026-05-01_11-34-39.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.repair-backup.2026-04-30_16-24-41.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.repair-trackeritems-suggestions.2026-05-01_11-23-43.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.restore-tracker-architecture.2026-05-01_01-24-28.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.restore-visible-tracker.2026-05-01_01-19-35.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.route-course-tracker.2026-05-01_00-12-58.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.smart-suggestion-compile-fix.2026-05-01_11-17-51.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.smart-suggestion-engine-repair.2026-05-01_11-21-04.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.study-day-4am-cutoff.2026-05-01_11-27-57.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.suggestion-engine-backup.2026-05-01_10-54-17.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.suggestion-task-refresh-fix.2026-05-01_11-03-26.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift.before-productivity-stats-fix.2026-05-01_15-06-43.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.tracker-color-log-fix.2026-05-01_01-07-15.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.v00301-player-productivity-fix.2026-05-01_11-52-16.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.v00301-pre-patch.2026-05-01_13-35-12.swift
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.v00301-pre-productivity-day-repair.2026-05-01_13-44-45.swift
+
+===== APP DATA FILES =====
+/Users/jd/Medical School/09 Admin/App Data/.DS_Store
+/Users/jd/Medical School/09 Admin/App Data/Archived Study Logs/study_log_before_new_day_2026-05-01_12-06-46.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/.DS_Store
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/bsce_t2_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/nb3_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T1/cpr1_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T1/cpr2_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T1/ftm1_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T1/ftm2_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T1/msk_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/bsce_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/dm_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/er_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/nb1_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/nb2_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T2/nb3_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T3/term3_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T4/term4_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/Course Trackers/T5/term5_tracker.csv
+/Users/jd/Medical School/09 Admin/App Data/day_ratings.csv
+/Users/jd/Medical School/09 Admin/App Data/journal.csv
+/Users/jd/Medical School/09 Admin/App Data/manual_study_day.txt
+/Users/jd/Medical School/09 Admin/App Data/manual_time_entries.csv
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/.DS_Store
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_128x128.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_128x128@2x.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_16x16.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_16x16@2x.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_256x256.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_256x256@2x.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_32x32.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_32x32@2x.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_512x512.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_512x512@2x.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/Noctyrium Logo.png
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Brand/Noctyrium.icns
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/active_study_day.txt.backup.2026-05-01_14-11-37
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_buttons_offset_patch.2026-05-01_14-34-30.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_fix_productivity_source_of_truth.2026-05-01_15-06-43.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_full_app_map.2026-05-01_15-06-22.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_hard_start_day_fix.2026-05-01_14-18-15.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_master_inspect.2026-05-01_15-09-32.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_productivity_buttons_real_fix.2026-05-01_14-51-54.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_productivity_deep_inspect.2026-05-01_15-00-47.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_productivity_inspection.2026-05-01_14-05-52.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_productivity_offset_counter_fix.2026-05-01_14-31-32.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_productivity_source_of_truth_patch.2026-05-01_14-58-12.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_real_counter_baseline_patch.2026-05-01_14-40-53.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_real_start_new_day_fix.2026-05-01_14-16-19.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_systematic_overview.2026-05-01_14-54-23.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_true_productivity_day_patch.2026-05-01_14-45-42.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/productivity_day_archive.csv.backup.2026-05-01_14-11-37
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/productivity_day_offset.csv.backup.2026-05-01_14-11-37
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Player Icons/JD Player Icon.jpg
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv
+/Users/jd/Medical School/09 Admin/App Data/productivity_log.csv
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/.DS_Store
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Anki Formatting/Back-end, Basic 1.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Anki Formatting/Basic Medical Card Prompt.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Anki Formatting/Cloze Medical Card Prompt.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Anki Formatting/CSS, Basic 1.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Anki Formatting/Front-end, Basic 1.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/Code/Glassmorphic Anki CSS Template.md
+/Users/jd/Medical School/09 Admin/App Data/Prompt Library/File Upload Workflows/File Upload to Anki Workflow.md
+/Users/jd/Medical School/09 Admin/App Data/prompt_library.csv
+/Users/jd/Medical School/09 Admin/App Data/Schedule Atlas/schedule_atlas_preview.tsv
+/Users/jd/Medical School/09 Admin/App Data/Schedule Atlas/schedule_atlas.json
+/Users/jd/Medical School/09 Admin/App Data/Schedule Atlas/schedule_atlas.tsv
+/Users/jd/Medical School/09 Admin/App Data/Schedule Atlas/schedule_index.csv
+/Users/jd/Medical School/09 Admin/App Data/suggestions_snapshot.md
+/Users/jd/Medical School/09 Admin/App Data/tasks.csv
+
+===== SCRIPT FILES =====
+/Users/jd/Medical School/09 Admin/Scripts/.DS_Store
+/Users/jd/Medical School/09 Admin/Scripts/auto_sort_medical.sh
+/Users/jd/Medical School/09 Admin/Scripts/build_schedule_atlas_visual_v2.sh
+/Users/jd/Medical School/09 Admin/Scripts/build_schedule_atlas_visual.sh
+/Users/jd/Medical School/09 Admin/Scripts/clean_medical_temp_files.sh
+/Users/jd/Medical School/09 Admin/Scripts/dashboard_stats.sh
+/Users/jd/Medical School/09 Admin/Scripts/dashboard_stats.sh.before-productivity-stats-fix.2026-05-01_15-06-43.sh
+/Users/jd/Medical School/09 Admin/Scripts/import_first_13_schedule_docs_and_build_atlas.sh
+/Users/jd/Medical School/09 Admin/Scripts/import_schedule_atlas.sh
+/Users/jd/Medical School/09 Admin/Scripts/import_schedule_atlas.sh.backup.2026-04-30_14-54-13
+/Users/jd/Medical School/09 Admin/Scripts/MedicalSchoolHub.applescript
+/Users/jd/Medical School/09 Admin/Scripts/run_medical_hub.sh
+/Users/jd/Medical School/09 Admin/Scripts/safe_sort_downloads_to_medical.sh
+/Users/jd/Medical School/09 Admin/Scripts/weekly_med_review.sh
+
+===== CURRENT SWIFT COMPILE =====
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:961:13: warning: variable 'lines' was never mutated; consider changing to 'let' constant
+        var lines = raw.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        ~~~ ^
+        let
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:2443:9: warning: initialization of immutable value 'nb3YoungOrBetter' was never used; consider replacing with assignment to '_' or removing it
+    let nb3YoungOrBetter = nb3Core.filter { $0.quality >= 2 }
+    ~~~~^~~~~~~~~~~~~~~~
+    _
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3074:25: warning: result of call to 'shell' is unused
+                        shell("open \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift:3078:25: warning: result of call to 'shell' is unused
+                        shell("open -R \"\(prompt.fullPath)\"")
+                        ^    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+swiftc_exit=0
+
+===== STRUCTS / FUNCS =====
+5:struct MedicalSchoolHubApp: App {
+16:struct Stats {
+36:struct StudyLog: Identifiable {
+45:struct JournalEntry: Identifiable {
+56:struct PromptItem: Identifiable {
+85:struct SmartSuggestion: Identifiable {
+94:struct CourseTrackerItem: Identifiable {
+106:struct TaskItem: Identifiable {
+115:func noctyriumDateKey(_ date: Date = Date()) -> String {
+126:func noctyriumNextDateKey(after key: String) -> String {
+136:struct HubView: View {
+211:func subtractAnki20() {
+223:func subtractStudy30() {
+238:    func pageBody() -> some View {
+328:    func subtitleForPage() -> String {
+340:    func ensureFiles() {
+352:func startNewStudyDay() {
+366:    func csv(_ value: String) -> String {
+371:    func nowStamp() -> String {
+433:func currentManualStudyDay() -> String {
+451:    func refresh() {
+476:    func runSuggestionSweep() {
+504:func run(_ command: String, _ label: String) {
+516:    func open(_ path: String) {
+521:    func openPath(_ path: String) {
+525:    func log(type: String, minutes: Int, cards: Int, note: String) {
+537:func trackerMaxQuality(for item: CourseTrackerItem) -> Int {
+546:func updateBSCEQuestionWorkflowItem(_ item: CourseTrackerItem, action: String, appData: String) {
+557:func updateBSCEQuestionWorkflowItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+630:func updateTrackerItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+718:    func rewriteTrackerItemInFile(id: String, status: String, quality: Int, color: String, notes: String, filePath: String) {
+756:    func updateBSCETrackerItem(_ item: CourseTrackerItem, action: String) {
+769:    func updateTrackerItem(_ item: CourseTrackerItem, _ action: String) {
+841:    func addPracticeItem(_ practiceType: String, _ title: String, _ questionCount: String, _ score: String) {
+879:    func rewriteTrackerItem(id: String, status: String, quality: Int, color: String, notes: String) {
+907:    func saveStandup() {
+947:    func addTask() {
+959:    func updateTrackerItem(id: String, passDelta: Int? = nil, setStatus: String? = nil, setColor: String? = nil, note: String? = nil) {
+1007:    func addTrackerItem(type: String, label: String, week: String = "Custom", notes: String = "") {
+1020:    func completeTask(_ task: TaskItem) {
+1039:struct DashboardPage: View {
+1130:struct CoursesPage: View {
+1156:struct CourseModules: View {
+1217:struct CourseTrackerPage: View {
+1300:    func trackerFileForSelectedLeaf() -> String {
+1496:    func trackerFile(for key: String) -> String {
+1516:func modulePercent(_ key: String) -> String {
+1532:    func generatedModuleItems(for key: String) -> [CourseTrackerItem] {
+1537:struct TrackerFolderSection: View {
+1592:struct TrackerMiniAction: View {
+1619:struct TrackerDenseRow: View {
+1776:struct PracticeEntryCard: View {
+1830:struct AddCourseItemCard: View {
+1887:struct DashboardTrackerModuleCard: View {
+1976:struct ModuleMasteryRing: View {
+2021:struct BSCEFolderDashboard: View {
+2057:struct BSCEStageFolder: View {
+2111:    func moduleItems(_ module: String) -> [CourseTrackerItem] {
+2117:    func priority(_ item: CourseTrackerItem) -> Int {
+2139:struct BSCEModuleFolder: View {
+2193:struct DashboardSuggestionCard: View {
+2235:struct CourseTrackerSuggestionPanel: View {
+2284:struct SmartSuggestionRow: View {
+2332:func generateSmartSuggestions(
+2346:    func hasTaskMention(_ terms: [String]) -> Bool {
+2350:    func hasJournalMention(_ terms: [String]) -> Bool {
+2576:struct StepPage: View {
+2602:struct ReportsPage: View {
+2636:struct ProductivityPage: View {
+2734:struct TasksPage: View {
+2789:struct JournalPage: View {
+2834:struct IntegrationsPage: View {
+2849:struct PromptPage: View {
+3000:    func savePrompt() {
+3033:struct PromptCard: View {
+3087:struct HubFoldersPage: View {
+3121:struct StandupCard: View {
+3172:struct PlayerAvatarImage: View {
+3194:struct Sidebar: View {
+3256:struct TopBar: View {
+3291:struct DashboardCards: View {
+3306:func todayGrade(_ minutes: Int, _ cards: Int) -> String {
+3313:struct StatCard: View {
+3360:struct CourseCard: View {
+3406:struct RingScore: View {
+3453:struct Heatmap: View {
+3470:    func days() -> [Date] {
+3475:    func minutes(_ date: Date) -> Int {
+3479:    func cards(_ date: Date) -> Int {
+3483:    func color(minutes: Int, cards: Int) -> Color {
+3491:    func label(_ date: Date) -> String {
+3498:struct ReportHero: View {
+3525:struct PanelHeader: View {
+3548:struct ActionTile: View {
+3587:struct MiniLog: View {
+3616:struct MiniButton: View {
+3636:struct SideButton: View {
+3671:struct OuterBackground: View {
+3692:struct Orb: View {
+3708:struct GlassShell<Content: View>: View {
+3747:struct GlassCard<Content: View>: View {
+3767:    func glassButton(_ hover: Bool = false, radius: CGFloat = 14) -> some View {
+3779:    func standupField() -> some View {
+3806:func extractAnkiPasses(_ notes: String) -> Int {
+3818:func strippingAnkiToken(_ notes: String) -> String {
+3826:func writeAnkiPasses(_ notes: String, _ count: Int) -> String {
+3833:func preservingAnki(_ notes: String, replacingMainNoteWith main: String) -> String {
+3840:func studyDayString(from date: Date = Date()) -> String {
+3847:func studyDayDate(from date: Date = Date()) -> Date {
+3852:func append(_ line: String, to path: String) {
+3860:func clean(_ text: String) -> String {
+3867:func shell(_ command: String) -> String {
+3885:func parseStats(_ text: String) -> Stats {
+3913:func loadLogs(_ path: String) -> [StudyLog] {
+3924:func loadJournal(_ path: String) -> [JournalEntry] {
+3935:func loadPrompts(base: String) -> [PromptItem] {
+3955:func parseCSVLine(_ line: String) -> [String] {
+3976:func loadCourseTracker(_ path: String) -> [CourseTrackerItem] {
+4002:func updateTrackerItem(base: String, id: String, qualityDelta: Int, newColor: String?) {
+4068:func addTrackerPracticeItem(base: String, type: String, title: String) {
+4078:func csvEscape(_ value: String) -> String {
+4086:func loadTasks(_ path: String) -> [TaskItem] {
+4101:func buildSmartSuggestions(
+4109:    func add(_ title: String, _ reason: String, _ source: String, _ priority: Int, _ color: String) {
+
+===== STATE VARS =====
+70:        let raw = (try? String(contentsOfFile: fullPath)) ?? "No preview available."
+137:    @State private var selected = "Dashboard"
+138:    @State private var selectedProductivityDayKey: String = noctyriumDateKey()
+139:    @State private var productivityDayKey: String = noctyriumDateKey()
+140:    @State private var dashboardTrackerModule = "T2 • NB3"
+141:    @State private var selectedTrackerFile = "T2/nb3_tracker.csv"
+142:    @State private var stats = Stats()
+143:    @State private var logs: [StudyLog] = []
+144:    @State private var journal: [JournalEntry] = []
+145:    @State private var tasks: [TaskItem] = []
+146:    @State private var trackerItems: [CourseTrackerItem] = []
+147:    @State private var smartSuggestions: [SmartSuggestion] = []
+148:    @State private var manualStudyDayOffset: Int = 0
+149:    @State private var bsceItems: [CourseTrackerItem] = []
+150:    @State private var status = "Noctyrium online."
+151:    @State private var refreshing = false
+153:    @State private var standupToday = ""
+154:    @State private var standupTomorrow = ""
+155:    @State private var standupBlockers = ""
+156:    @State private var standupEnergy = "Medium"
+157:    @State private var standupRating = "Useful"
+159:    @State private var newTask = ""
+161:    let home = FileManager.default.homeDirectoryForCurrentUser.path
+166:    var logFile: String { "\(appData)/productivity_log.csv" }
+167:    var taskFile: String { "\(appData)/tasks.csv" }
+168:    var journalFile: String { "\(appData)/journal.csv" }
+169:    var manualStudyDayFile: String { "\(appData)/manual_study_day.txt" }
+170:    var activeStudyDayFile: String { "\(appData)/Noctyrium/Productivity/active_study_day.txt" }
+171:    var productivityArchiveFile: String { "\(appData)/Noctyrium/Productivity/productivity_day_archive.csv" }
+172:    var nb3TrackerFile: String { selectedCourseTrackerPath }
+173:    var bsceTrackerFile: String { "\(appData)/Course Trackers/T2/bsce_tracker.csv" }
+174:    var selectedCourseTrackerPath: String { "\(appData)/Course Trackers/\(selectedTrackerFile)" }
+302:                        startNewStudyDay: startNewStudyDay,
+305:                        startNewDay: startNewStudyDay
+352:func startNewStudyDay() {
+355:    let fm = FileManager.default
+359:    let archivePath = productivityArchiveFile
+360:    let activePath = activeStudyDayFile
+361:    let offsetPath = "\(prodDir)/productivity_day_offset.csv"
+363:    let currentKey = currentManualStudyDay()
+406:    if let handle = FileHandle(forWritingAtPath: archivePath) {
+415:    try? (nextKey + "\n").write(toFile: manualStudyDayFile, atomically: true, encoding: .utf8)
+422:    productivityDayKey = nextKey
+423:    selectedProductivityDayKey = nextKey
+433:func currentManualStudyDay() -> String {
+434:        if let raw = try? String(contentsOfFile: activeStudyDayFile) {
+439:        if let raw = try? String(contentsOfFile: manualStudyDayFile) {
+456:            let l = loadLogs(logFile)
+457:            let j = loadJournal(journalFile)
+458:            let t = loadTasks(taskFile)
+479:        let freshTasks = loadTasks(taskFile)
+480:        let freshJournal = loadJournal(journalFile)
+481:        let freshNB3 = loadCourseTracker(nb3TrackerFile)
+482:        let freshBSCE = loadCourseTracker(bsceTrackerFile)
+530:        let studyDay = currentManualStudyDay()
+558:    guard let raw = try? String(contentsOfFile: filePath) else { return }
+719:        guard let raw = try? String(contentsOfFile: filePath) else { return }
+880:        guard let raw = try? String(contentsOfFile: nb3TrackerFile) else { return }
+960:        guard let raw = try? String(contentsOfFile: nb3TrackerFile) else { return }
+1021:        guard let text = try? String(contentsOfFile: taskFile) else { return }
+1133:    @State private var expanded: String? = "01 BPM 500"
+1135:    var base: String { FileManager.default.homeDirectoryForCurrentUser.path + "/Medical School" }
+1220:    @Binding var selectedTrackerFile: String
+1230:    @State private var expandedTerms: Set<String> = ["T2"]
+1231:    @State private var expandedModules: Set<String> = ["T2 • NB3", "T2 • BSCE"]
+1232:    @State private var selectedLeaf = "T2 • NB3"
+1233:    @State private var newPracticeTitle = ""
+1234:    @State private var newPracticeCount = ""
+1235:    @State private var newPracticeScore = "A"
+1236:    @State private var newPracticeType = "PLG"
+1543:    @State private var expanded = true
+2064:    @State private var expanded = true
+2144:    @State private var expanded = true
+2580:    var base: String { FileManager.default.homeDirectoryForCurrentUser.path + "/Medical School" }
+2645:    let startNewStudyDay: () -> Void
+2655:                        PanelHeader("Study Day Controls", "Manual correction layer for clean productivity tracking")
+2659:                                startNewStudyDay()
+2746:                    PanelHeader("Task Capture", "Tasks become productivity events when completed")
+2853:    @State private var prompts: [PromptItem] = []
+2854:    @State private var search = ""
+2855:    @State private var selectedCategory = "All"
+2856:    @State private var newTitle = ""
+2857:    @State private var newCategory = "Prompts"
+2858:    @State private var newTags = ""
+2859:    @State private var newBody = ""
+2860:    @State private var status = "Prompt library ready."
+3177:            if let image = NSImage(contentsOfFile: path) {
+3553:    @State private var hover = false
+3710:    @State private var sweep = false
+3853:    if let data = line.data(using: .utf8), let h = FileHandle(forWritingAtPath: path) {
+3878:        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+3914:    guard let text = try? String(contentsOfFile: path) else { return [] }
+3925:    guard let text = try? String(contentsOfFile: path) else { return [] }
+3937:    guard let text = try? String(contentsOfFile: path) else { return [] }
+3977:    guard let text = try? String(contentsOfFile: path) else { return [] }
+4004:    guard let raw = try? String(contentsOfFile: path) else { return }
+4087:    guard let text = try? String(contentsOfFile: path) else { return [] }
+
+===== PRODUCTIVITY CALLSITE =====
+293:                    ProductivityPage(
+                        standupToday: $standupToday,
+                        standupTomorrow: $standupTomorrow,
+                        standupBlockers: $standupBlockers,
+                        standupEnergy: $standupEnergy,
+                        standupRating: $standupRating,
+                        saveStandup: saveStandup
+                    )
+
+                case "Courses":
+                    CoursesPage(stats: stats, open: openPath)
+
+                case "Course Tracker":
+                    CourseTrackerPage(
+                        items: trackerItems,
+                        bsceItems: bsceItems,
+                        selectedTrackerFile: $selectedTrackerFile,
+                        base: base,
+                        open: openPath,
+                        refreshData: refresh,
+                        updateItem: updateTrackerItem,
+                        updateBSCEItem: updateBSCETrackerItem,
+                        addPractice: addPracticeItem,
+                        suggestions: smartSuggestions,
+                        refreshSuggestions: runSuggestionSweep
+                    )
+
+                case "STEP 1":
+                    StepPage(stats: stats, open: openPath, ankiMedia: ankiMedia)
+
+                case "Reports":
+                    ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+
+                case "Productivity":
+                    ProductivityPage(
+                        stats: stats,
+                        logs: logs,
+                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+                        logAnki150: { log(type: "Anki", minutes: 45, cards: 150, note: "150 cards") },
+                        logAnki200: { log(type: "Anki", minutes: 60, cards: 200, note: "200 cards") },
+                        logStudy180: { log(type: "Study", minutes: 180, cards: 0, note: "3 hour study block") },
+                        startNewStudyDay: startNewStudyDay,
+                        subtractAnki20: subtractAnki20,
+                        subtractStudy30: subtractStudy30,
+                        startNewDay: startNewStudyDay
+                    )
+
+                case "Tasks":
+                    TasksPage(tasks: tasks, newTask: $newTask, addTask: addTask, completeTask: completeTask)
+
+                case "Journal":
+                    JournalPage(entries: journal, openJournalFolder: { open("\(base)/09 Admin/Journal") })
+
+                case "Integrations":
+                    IntegrationsPage(base: base, open: openPath)
+
+===== PRODUCTIVITY PAGE =====
+
+                    MiniButton("Open Reports Folder") {
+                        open("\(base)/09 Admin/Reports")
+                    }
+                }.padding(18)
+            }
+        }
+    }
+}
+
+struct ProductivityPage: View {
+    let stats: Stats
+    let logs: [StudyLog]
+    let logLecture: () -> Void
+    let logAnki50: () -> Void
+    let logAnki100: () -> Void
+    let logAnki150: () -> Void
+    let logAnki200: () -> Void
+    let logStudy180: () -> Void
+    let startNewStudyDay: () -> Void
+    let subtractAnki20: () -> Void
+    let subtractStudy30: () -> Void
+    let startNewDay: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        PanelHeader("Study Day Controls", "Manual correction layer for clean productivity tracking")
+
+                        HStack(spacing: 10) {
+                            Button("Start New Study Day") {
+                                startNewStudyDay()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .glassButton()
+
+                            Button("−20 Anki Cards") {
+                                subtractAnki20()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .glassButton()
+
+                            Button("−30 Minutes") {
+                                subtractStudy30()
+                            }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .frame(height: 36)
+                            .glassButton()
+
+                            Spacer()
+                        }
+
+                        Text("Use this only when the calendar/day boundary or manual logs drift. Corrections are written as negative log entries, so the history stays honest.")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.52))
+                    }
+                    .padding(16)
+                }
+
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    PanelHeader("Productivity Console", "Manual entries now. API integrations later.")
+                    RingScore(minutes: max(0, stats.todayMinutes + stats.manualMinutesToday), cards: max(0, stats.todayCards))
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
+                        MiniLog("Lecture", "+50m", logLecture)
+                        MiniLog("+50 🃜", "+15m", logAnki50)
+                        MiniLog("+100 🃚", "+30m", logAnki100)
+                        MiniLog("+150 🃖", "+45m", logAnki150)
+                        MiniLog("+200 🃁", "+60m", logAnki200)
+                        MiniLog("Deep Study", "+180m", logStudy180)
+                    }
+                }.padding(18)
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    PanelHeader("Calendar Heatmap", "Red <3h or <100 cards • Orange <5h or 150-200 • Green >6h or 250-300 • Blue 👑 >8h or 350-400")
+                    Heatmap(logs: logs)
+                }.padding(18)
+            }
+
+            GlassCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader("Future Integration Slots", "Framework only for now")
+                    Text("Anki API / local collection parsing, ScreenTime export parsing, iCal calendar import, manual correction reports, and day usefulness scoring will plug into this page.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.62))
+                }.padding(18)
+            }
+        }
+    }
+}
+
+struct TasksPage: View {
+    let tasks: [TaskItem]
+    @Binding var newTask: String
+    let addTask: () -> Void
+    let completeTask: (TaskItem) -> Void
+
+
+===== DAY FUNCTIONS =====
+
+--- func startNewStudyDay around line 352 ---
+        case "Journal": return "Daily standups, review, blockers, and tomorrow’s plan"
+        case "Integrations": return "Framework for Anki, ScreenTime, Calendar, and manual time correction"
+        case "Productivity": return "Study time, Anki cards, lecture blocks, day usefulness"
+        case "Reports": return "Visual summaries of your medical school operating system"
+        default: return "Noctyrium command center for medical school execution"
+        }
+    }
+
+    func ensureFiles() {
+        try? FileManager.default.createDirectory(atPath: appData, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: logFile) {
+            try? "date,type,minutes,cards,note\n".write(toFile: logFile, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: taskFile) {
+            try? "id,created,due,title,status,completed\n".write(toFile: taskFile, atomically: true, encoding: .utf8)
+        }
+        if !FileManager.default.fileExists(atPath: journalFile) {
+            try? "date,today,tomorrow,blockers,energy,rating\n".write(toFile: journalFile, atomically: true, encoding: .utf8)
+        }
+    }
+func startNewStudyDay() {
+    ensureFiles()
+
+    let fm = FileManager.default
+    let prodDir = "\(appData)/Noctyrium/Productivity"
+    try? fm.createDirectory(atPath: prodDir, withIntermediateDirectories: true)
+
+    let archivePath = productivityArchiveFile
+    let activePath = activeStudyDayFile
+    let offsetPath = "\(prodDir)/productivity_day_offset.csv"
+
+    let currentKey = currentManualStudyDay()
+    let nextKey = noctyriumNextDateKey(after: currentKey)
+
+    func csv(_ value: String) -> String {
+        let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(escaped)\""
+    }
+
+    func nowStamp() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f.string(from: Date())
+    }
+
+    let completed = tasks
+        .filter { $0.status.lowercased() == "done" || !$0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        .map { $0.title }
+        .joined(separator: " • ")
+
+    let openTasks = tasks
+        .filter { $0.status.lowercased() != "done" && $0.completed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        .map { $0.title }
+        .joined(separator: " • ")
+
+    if !fm.fileExists(atPath: archivePath) {
+        try? "date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated\n"
+            .write(toFile: archivePath, atomically: true, encoding: .utf8)
+    }
+
+    let archiveLine = [
+        csv(currentKey),
+        "\(max(0, stats.todayMinutes + stats.manualMinutesToday))",
+        "\(max(0, stats.todayCards))",
+        csv(completed),
+        csv(openTasks),
+        csv(standupToday),
+        csv(standupTomorrow),
+        csv(standupBlockers),
+        csv(standupEnergy),
+        csv(standupRating),
+        csv(nowStamp())
+    ].joined(separator: ",") + "\n"
+
+    if let handle = FileHandle(forWritingAtPath: archivePath) {
+        handle.seekToEndOfFile()
+        if let data = archiveLine.data(using: .utf8) {
+            handle.write(data)
+        }
+        try? handle.close()
+    }
+
+    try? (nextKey + "\n").write(toFile: activePath, atomically: true, encoding: .utf8)
+    try? (nextKey + "\n").write(toFile: manualStudyDayFile, atomically: true, encoding: .utf8)
+    try? "base_minutes,base_anki,updated\n0,0,\n".write(toFile: offsetPath, atomically: true, encoding: .utf8)
+
+    stats.todayMinutes = 0
+    stats.manualMinutesToday = 0
+    stats.todayCards = 0
+
+    productivityDayKey = nextKey
+    selectedProductivityDayKey = nextKey
+
+    standupToday = ""
+    standupTomorrow = ""
+    standupBlockers = ""
+
+    refresh()
+}
+
+
+
+--- func currentManualStudyDay around line 433 ---
+
+    try? (nextKey + "\n").write(toFile: activePath, atomically: true, encoding: .utf8)
+    try? (nextKey + "\n").write(toFile: manualStudyDayFile, atomically: true, encoding: .utf8)
+    try? "base_minutes,base_anki,updated\n0,0,\n".write(toFile: offsetPath, atomically: true, encoding: .utf8)
+
+    stats.todayMinutes = 0
+    stats.manualMinutesToday = 0
+    stats.todayCards = 0
+
+    productivityDayKey = nextKey
+    selectedProductivityDayKey = nextKey
+
+    standupToday = ""
+    standupTomorrow = ""
+    standupBlockers = ""
+
+    refresh()
+}
+
+
+func currentManualStudyDay() -> String {
+        if let raw = try? String(contentsOfFile: activeStudyDayFile) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+
+        if let raw = try? String(contentsOfFile: manualStudyDayFile) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+
+        let shifted = Calendar.current.date(byAdding: .hour, value: -4, to: Date()) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: shifted)
+    }
+
+
+    func refresh() {
+        refreshing = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let output = shell("\"\(scripts)/dashboard_stats.sh\"")
+            let s = parseStats(output)
+            let l = loadLogs(logFile)
+            let j = loadJournal(journalFile)
+            let t = loadTasks(taskFile)
+            let tracker = loadCourseTracker(selectedCourseTrackerPath)
+            let bsce = loadCourseTracker("\(appData)/Course Trackers/bsce_t2_tracker.csv")
+
+            DispatchQueue.main.async {
+                stats = s
+                logs = l
+                journal = j
+                tasks = t
+                trackerItems = tracker
+                bsceItems = bsce
+                status = output
+                refreshing = false
+            }
+        }
+    }
+
+    
+    func runSuggestionSweep() {
+        ensureFiles()
+
+        let freshTasks = loadTasks(taskFile)
+        let freshJournal = loadJournal(journalFile)
+        let freshNB3 = loadCourseTracker(nb3TrackerFile)
+        let freshBSCE = loadCourseTracker(bsceTrackerFile)
+
+        tasks = freshTasks
+        journal = freshJournal
+        trackerItems = freshNB3
+        bsceItems = freshBSCE
+
+        smartSuggestions = buildSmartSuggestions(
+            tasks: freshTasks,
+            journal: freshJournal,
+            nb3Items: freshNB3,
+            bsceItems: freshBSCE
+        )
+
+        let snapshot = smartSuggestions.map {
+            "- [\($0.source)] \($0.title) — \($0.reason)"
+        }.joined(separator: "\n")
+
+        let path = "\(appData)/suggestions_snapshot.md"
+        try? snapshot.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+func run(_ command: String, _ label: String) {
+        refreshing = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let out = shell(command)
+            DispatchQueue.main.async {
+                status = out.isEmpty ? "\(label) complete." : out
+                refreshing = false
+                refresh()
+            }
+        }
+
+--- func log(type around line 525 ---
+        refreshing = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let out = shell(command)
+            DispatchQueue.main.async {
+                status = out.isEmpty ? "\(label) complete." : out
+                refreshing = false
+                refresh()
+            }
+        }
+    }
+
+    func open(_ path: String) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        status = "Opened: \(path)"
+    }
+
+    func openPath(_ path: String) {
+        open(path)
+    }
+
+    func log(type: String, minutes: Int, cards: Int, note: String) {
+        ensureFiles()
+        let f = ISO8601DateFormatter()
+        let safeNote = clean(note)
+        let now = Date()
+        let studyDay = currentManualStudyDay()
+        append("\(f.string(from: now)),\(type),\(minutes),\(cards),\(safeNote) | study_day=\(studyDay)\n", to: logFile)
+        refresh()
+    }
+
+
+    
+func trackerMaxQuality(for item: CourseTrackerItem) -> Int {
+    let type = item.type.lowercased()
+    let isBSCE = item.id.uppercased().hasPrefix("BSCE_") || item.week.uppercased().contains("BSCE")
+    if isBSCE && ["esoft", "imcq", "pq"].contains(type) { return 1 }
+    if isBSCE && type == "plg" { return 2 }
+    return 3
+}
+
+
+func updateBSCEQuestionWorkflowItem(_ item: CourseTrackerItem, action: String, appData: String) {
+    let files = [
+        "\(appData)/Course Trackers/bsce_t2_tracker.csv",
+        "\(appData)/Course Trackers/T2/bsce_tracker.csv"
+    ]
+
+    for file in files {
+        updateBSCEQuestionWorkflowItemInFile(item, action: action, filePath: file)
+    }
+}
+
+func updateBSCEQuestionWorkflowItemInFile(_ item: CourseTrackerItem, action: String, filePath: String) {
+    guard let raw = try? String(contentsOfFile: filePath) else { return }
+
+    var output: [String] = []
+    let now = ISO8601DateFormatter().string(from: Date())
+
+    for line in raw.components(separatedBy: .newlines) {
+        if line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            continue
+        }
+
+        if line.hasPrefix("id,") {
+            output.append(line)
+            continue
+        }
+
+        var p = parseCSVLine(line)
+        while p.count < 9 { p.append("") }
+
+        if p[0] == item.id {
+            let type = p[2].lowercased()
+
+            switch action {
+            case "working":
+                p[4] = "working"
+                p[5] = max(Int(p[5]) ?? 0, 1).description
+                p[6] = "orange"
+                p[7] = "Working through it"
+
+            case "done":
+                p[4] = "done"
+                p[5] = type == "plg" ? "1" : "2"
+                p[6] = "lightgreen"
+                p[7] = "Completed"
+
+            case "reviewed":
+                p[4] = "reviewed_explanations"
+                p[5] = "2"
+                p[6] = "purple"
+                p[7] = "Reviewed explanations / correlates"
+
+            case "strong":
+                p[4] = "strong"
+                p[5] = "3"
+                p[6] = "darkgreen"
+                p[7] = "Strong understanding"
+
+            case "missed":
+                p[4] = "needs_review"
+
+--- func subtractAnki20 around line 211 ---
+                    VStack(spacing: 18) {
+                        TopBar(
+                            title: selected,
+                            subtitle: subtitleForPage(),
+                            refreshing: refreshing,
+                            refreshAction: refresh
+                        )
+
+                        pageBody()
+                    }
+                    .padding(24)
+                }
+            }
+            .padding(28)
+        }
+        .onAppear {
+            ensureFiles()
+            refresh()
+        }
+    }
+func subtractAnki20() {
+        let current = max(0, stats.todayCards)
+        let delta = min(20, current)
+        guard delta > 0 else {
+            status = "Anki cards are already at 0."
+            return
+        }
+        log(type: "Anki Correction", minutes: 0, cards: -delta, note: "Manual correction: subtract \(delta) Anki cards")
+        stats.todayCards = max(0, stats.todayCards - delta)
+        refresh()
+        runSuggestionSweep()
+    }
+func subtractStudy30() {
+        let current = max(0, stats.todayMinutes + stats.manualMinutesToday)
+        let delta = min(30, current)
+        guard delta > 0 else {
+            status = "Study time is already at 0."
+            return
+        }
+        log(type: "Study Correction", minutes: -delta, cards: 0, note: "Manual correction: subtract \(delta) study minutes")
+        stats.manualMinutesToday = max(0, stats.manualMinutesToday - delta)
+        refresh()
+        runSuggestionSweep()
+    }
+
+
+    @ViewBuilder
+    func pageBody() -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 20) {
+                switch selected {
+                case "Dashboard":
+                    DashboardPage(
+                        stats: stats,
+                        logs: logs,
+                        suggestions: smartSuggestions,
+                        refreshSuggestions: runSuggestionSweep,
+                        trackerItems: trackerItems,
+                        bsceItems: bsceItems,
+                        selectedTrackerModule: $dashboardTrackerModule,
+                        runHub: { run("\"\(scripts)/run_medical_hub.sh\"", "Run Hub") },
+                        sort: { run("\"\(scripts)/auto_sort_medical.sh\"", "Auto Sort") },
+                        review: { run("\"\(scripts)/weekly_med_review.sh\"", "Weekly Review") },
+                        openInbox: { open("\(base)/00 📥 Inbox - Need Work Look Over") },
+                        openAnkiMedia: { open(ankiMedia) },
+                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+                        logStudy60: { log(type: "Study", minutes: 60, cards: 0, note: "1 hour focused study") },
+                        standupToday: $standupToday,
+                        standupTomorrow: $standupTomorrow,
+                        standupBlockers: $standupBlockers,
+                        standupEnergy: $standupEnergy,
+                        standupRating: $standupRating,
+                        saveStandup: saveStandup
+                    )
+
+                case "Courses":
+                    CoursesPage(stats: stats, open: openPath)
+
+                case "Course Tracker":
+                    CourseTrackerPage(
+                        items: trackerItems,
+                        bsceItems: bsceItems,
+                        selectedTrackerFile: $selectedTrackerFile,
+                        base: base,
+                        open: openPath,
+                        refreshData: refresh,
+                        updateItem: updateTrackerItem,
+                        updateBSCEItem: updateBSCETrackerItem,
+                        addPractice: addPracticeItem,
+                        suggestions: smartSuggestions,
+                        refreshSuggestions: runSuggestionSweep
+                    )
+
+                case "STEP 1":
+                    StepPage(stats: stats, open: openPath, ankiMedia: ankiMedia)
+
+                case "Reports":
+                    ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+
+
+--- func subtractStudy30 around line 223 ---
+            }
+            .padding(28)
+        }
+        .onAppear {
+            ensureFiles()
+            refresh()
+        }
+    }
+func subtractAnki20() {
+        let current = max(0, stats.todayCards)
+        let delta = min(20, current)
+        guard delta > 0 else {
+            status = "Anki cards are already at 0."
+            return
+        }
+        log(type: "Anki Correction", minutes: 0, cards: -delta, note: "Manual correction: subtract \(delta) Anki cards")
+        stats.todayCards = max(0, stats.todayCards - delta)
+        refresh()
+        runSuggestionSweep()
+    }
+func subtractStudy30() {
+        let current = max(0, stats.todayMinutes + stats.manualMinutesToday)
+        let delta = min(30, current)
+        guard delta > 0 else {
+            status = "Study time is already at 0."
+            return
+        }
+        log(type: "Study Correction", minutes: -delta, cards: 0, note: "Manual correction: subtract \(delta) study minutes")
+        stats.manualMinutesToday = max(0, stats.manualMinutesToday - delta)
+        refresh()
+        runSuggestionSweep()
+    }
+
+
+    @ViewBuilder
+    func pageBody() -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 20) {
+                switch selected {
+                case "Dashboard":
+                    DashboardPage(
+                        stats: stats,
+                        logs: logs,
+                        suggestions: smartSuggestions,
+                        refreshSuggestions: runSuggestionSweep,
+                        trackerItems: trackerItems,
+                        bsceItems: bsceItems,
+                        selectedTrackerModule: $dashboardTrackerModule,
+                        runHub: { run("\"\(scripts)/run_medical_hub.sh\"", "Run Hub") },
+                        sort: { run("\"\(scripts)/auto_sort_medical.sh\"", "Auto Sort") },
+                        review: { run("\"\(scripts)/weekly_med_review.sh\"", "Weekly Review") },
+                        openInbox: { open("\(base)/00 📥 Inbox - Need Work Look Over") },
+                        openAnkiMedia: { open(ankiMedia) },
+                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+                        logStudy60: { log(type: "Study", minutes: 60, cards: 0, note: "1 hour focused study") },
+                        standupToday: $standupToday,
+                        standupTomorrow: $standupTomorrow,
+                        standupBlockers: $standupBlockers,
+                        standupEnergy: $standupEnergy,
+                        standupRating: $standupRating,
+                        saveStandup: saveStandup
+                    )
+
+                case "Courses":
+                    CoursesPage(stats: stats, open: openPath)
+
+                case "Course Tracker":
+                    CourseTrackerPage(
+                        items: trackerItems,
+                        bsceItems: bsceItems,
+                        selectedTrackerFile: $selectedTrackerFile,
+                        base: base,
+                        open: openPath,
+                        refreshData: refresh,
+                        updateItem: updateTrackerItem,
+                        updateBSCEItem: updateBSCETrackerItem,
+                        addPractice: addPracticeItem,
+                        suggestions: smartSuggestions,
+                        refreshSuggestions: runSuggestionSweep
+                    )
+
+                case "STEP 1":
+                    StepPage(stats: stats, open: openPath, ankiMedia: ankiMedia)
+
+                case "Reports":
+                    ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+
+                case "Productivity":
+                    ProductivityPage(
+                        stats: stats,
+                        logs: logs,
+                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+                        logAnki150: { log(type: "Anki", minutes: 45, cards: 150, note: "150 cards") },
+                        logAnki200: { log(type: "Anki", minutes: 60, cards: 200, note: "200 cards") },
+                        logStudy180: { log(type: "Study", minutes: 180, cards: 0, note: "3 hour study block") },
+                        startNewStudyDay: startNewStudyDay,
+                        subtractAnki20: subtractAnki20,
+
+--- func refresh around line 451 ---
+
+
+func currentManualStudyDay() -> String {
+        if let raw = try? String(contentsOfFile: activeStudyDayFile) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+
+        if let raw = try? String(contentsOfFile: manualStudyDayFile) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+
+        let shifted = Calendar.current.date(byAdding: .hour, value: -4, to: Date()) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: shifted)
+    }
+
+
+    func refresh() {
+        refreshing = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let output = shell("\"\(scripts)/dashboard_stats.sh\"")
+            let s = parseStats(output)
+            let l = loadLogs(logFile)
+            let j = loadJournal(journalFile)
+            let t = loadTasks(taskFile)
+            let tracker = loadCourseTracker(selectedCourseTrackerPath)
+            let bsce = loadCourseTracker("\(appData)/Course Trackers/bsce_t2_tracker.csv")
+
+            DispatchQueue.main.async {
+                stats = s
+                logs = l
+                journal = j
+                tasks = t
+                trackerItems = tracker
+                bsceItems = bsce
+                status = output
+                refreshing = false
+            }
+        }
+    }
+
+    
+    func runSuggestionSweep() {
+        ensureFiles()
+
+        let freshTasks = loadTasks(taskFile)
+        let freshJournal = loadJournal(journalFile)
+        let freshNB3 = loadCourseTracker(nb3TrackerFile)
+        let freshBSCE = loadCourseTracker(bsceTrackerFile)
+
+        tasks = freshTasks
+        journal = freshJournal
+        trackerItems = freshNB3
+        bsceItems = freshBSCE
+
+        smartSuggestions = buildSmartSuggestions(
+            tasks: freshTasks,
+            journal: freshJournal,
+            nb3Items: freshNB3,
+            bsceItems: freshBSCE
+        )
+
+        let snapshot = smartSuggestions.map {
+            "- [\($0.source)] \($0.title) — \($0.reason)"
+        }.joined(separator: "\n")
+
+        let path = "\(appData)/suggestions_snapshot.md"
+        try? snapshot.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+func run(_ command: String, _ label: String) {
+        refreshing = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let out = shell(command)
+            DispatchQueue.main.async {
+                status = out.isEmpty ? "\(label) complete." : out
+                refreshing = false
+                refresh()
+            }
+        }
+    }
+
+    func open(_ path: String) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        status = "Opened: \(path)"
+    }
+
+    func openPath(_ path: String) {
+        open(path)
+    }
+
+    func log(type: String, minutes: Int, cards: Int, note: String) {
+        ensureFiles()
+        let f = ISO8601DateFormatter()
+        let safeNote = clean(note)
+        let now = Date()
+        let studyDay = currentManualStudyDay()
+        append("\(f.string(from: now)),\(type),\(minutes),\(cards),\(safeNote) | study_day=\(studyDay)\n", to: logFile)
+
+===== DASHBOARD STATS SCRIPT =====
+     1	#!/bin/zsh
+     2	
+     3	BASE="$HOME/Medical School"
+     4	DOWNLOADS="$HOME/Downloads"
+     5	INBOX="$BASE/00 📥 Inbox - Need Work Look Over"
+     6	APPDATA="$BASE/09 Admin/App Data"
+     7	NOCTDATA="$APPDATA/Noctyrium"
+     8	PROD="$NOCTDATA/Productivity"
+     9	
+    10	LOG="$APPDATA/productivity_log.csv"
+    11	TASKS="$APPDATA/tasks.csv"
+    12	JOURNAL="$APPDATA/journal.csv"
+    13	MANUAL="$APPDATA/manual_time_entries.csv"
+    14	RATINGS="$APPDATA/day_ratings.csv"
+    15	ACTIVE_DAY_FILE="$PROD/active_study_day.txt"
+    16	LEGACY_DAY_FILE="$APPDATA/manual_study_day.txt"
+    17	
+    18	mkdir -p "$APPDATA" "$PROD"
+    19	
+    20	[ -f "$LOG" ] || echo "date,type,minutes,cards,note" > "$LOG"
+    21	[ -f "$TASKS" ] || echo "id,created,due,title,status,completed" > "$TASKS"
+    22	[ -f "$JOURNAL" ] || echo "date,today,tomorrow,blockers,energy,rating" > "$JOURNAL"
+    23	[ -f "$MANUAL" ] || echo "date,source,minutes,category,note,status" > "$MANUAL"
+    24	[ -f "$RATINGS" ] || echo "date,rating,usefulness,notes" > "$RATINGS"
+    25	
+    26	noct_day() {
+    27	  local d
+    28	  d="$(cat "$ACTIVE_DAY_FILE" 2>/dev/null | tr -d '\r\n ')"
+    29	  if [ -z "$d" ]; then
+    30	    d="$(cat "$LEGACY_DAY_FILE" 2>/dev/null | tr -d '\r\n ')"
+    31	  fi
+    32	  if [ -z "$d" ]; then
+    33	    d="$(date +"%Y-%m-%d")"
+    34	  fi
+    35	  echo "$d"
+    36	}
+    37	
+    38	count_files_recursive() {
+    39	  find "$1" -type f 2>/dev/null | wc -l | tr -d ' '
+    40	}
+    41	
+    42	count_loose_files() {
+    43	  find "$1" -maxdepth 1 -type f ! -name ".*" 2>/dev/null | wc -l | tr -d ' '
+    44	}
+    45	
+    46	tag_count() {
+    47	  tag --find "$1" "$BASE" 2>/dev/null | wc -l | tr -d ' '
+    48	}
+    49	
+    50	today_minutes() {
+    51	  DAY="$(noct_day)"
+    52	  awk -F',' -v day="$DAY" '
+    53	    NR>1 {
+    54	      sd = ""
+    55	      if (match($0, /study_day=[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) {
+    56	        sd = substr($0, RSTART+10, 10)
+    57	      } else {
+    58	        sd = substr($1,1,10)
+    59	      }
+    60	      if (sd == day) sum += $3
+    61	    }
+    62	    END {print sum+0}
+    63	  ' "$LOG"
+    64	}
+    65	
+    66	today_cards() {
+    67	  DAY="$(noct_day)"
+    68	  awk -F',' -v day="$DAY" '
+    69	    NR>1 {
+    70	      sd = ""
+    71	      if (match($0, /study_day=[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/)) {
+    72	        sd = substr($0, RSTART+10, 10)
+    73	      } else {
+    74	        sd = substr($1,1,10)
+    75	      }
+    76	      if (sd == day) sum += $4
+    77	    }
+    78	    END {print sum+0}
+    79	  ' "$LOG"
+    80	}
+    81	
+    82	manual_minutes_today() {
+    83	  DAY="$(noct_day)"
+    84	  awk -F',' -v day="$DAY" 'NR>1 && substr($1,1,10)==day && $6!="rejected" {sum += $3} END {print sum+0}' "$MANUAL"
+    85	}
+    86	
+    87	journal_entries() {
+    88	  awk -F',' 'NR>1 {c++} END {print c+0}' "$JOURNAL"
+    89	}
+    90	
+    91	task_open() {
+    92	  awk -F',' 'NR>1 && $5!="done" {c++} END {print c+0}' "$TASKS"
+    93	}
+    94	
+    95	task_done_today() {
+    96	  TODAY=$(date +"%Y-%m-%d")
+    97	  awk -F',' -v today="$TODAY" 'NR>1 && $5=="done" && substr($6,1,10)==today {c++} END {print c+0}' "$TASKS"
+    98	}
+    99	
+   100	echo "inbox=$(count_files_recursive "$INBOX")"
+   101	echo "downloads=$(count_loose_files "$DOWNLOADS")"
+   102	echo "needs_review=$(tag_count "Needs Review")"
+   103	echo "anki_needed=$(tag_count "Anki Needed")"
+   104	echo "summary_needed=$(tag_count "Summary Needed")"
+   105	echo "weak_area=$(tag_count "Weak Area")"
+   106	
+   107	echo "today_minutes=$(today_minutes)"
+   108	echo "today_cards=$(today_cards)"
+   109	echo "manual_minutes_today=$(manual_minutes_today)"
+   110	echo "journal_entries=$(journal_entries)"
+   111	
+   112	echo "tasks_open=$(task_open)"
+   113	echo "tasks_done_today=$(task_done_today)"
+   114	
+   115	echo "bpm500=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 500")"
+   116	echo "bpm501=$(count_files_recursive "$BASE/10 Courses/Term 1/01 BPM 501")"
+   117	echo "ppm500=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 500")"
+   118	echo "ppm501=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 501")"
+   119	echo "ppm502=$(count_files_recursive "$BASE/10 Courses/Term 2/02 PPM 502")"
+
+===== PRODUCTIVITY FILES =====
+
+--- /Users/jd/Medical School/09 Admin/App Data/productivity_log.csv ---
+     107 /Users/jd/Medical School/09 Admin/App Data/productivity_log.csv
+head:
+date,type,minutes,cards,note
+2026-05-01T16:06:46Z,System,0,0,Start New Study Day hard reset → 2026-05-01
+2026-05-01T17:36:06Z,System,0,0,Start New Study Day → 2026-05-01
+2026-05-01T17:36:15Z,Anki,15,50,50 cards | study_day=2026-05-01
+2026-05-01T17:36:19Z,Study,-15,0,Start New Study Day reset: zeroed study minutes from 15
+2026-05-01T17:36:19Z,Anki,0,-50,Start New Study Day reset: zeroed Anki cards from 50
+2026-05-01T17:36:19Z,System,0,0,Start New Study Day → 2026-05-01
+2026-05-01T17:45:31Z,Anki,15,50,50 cards | study_day=2026-05-01
+2026-05-01T17:45:35Z,Study,-15,0,Start New Study Day reset: zeroed study minutes from 15
+2026-05-01T17:45:35Z,Anki,0,-50,Start New Study Day reset: zeroed Anki cards from 50
+2026-05-01T17:45:35Z,System,0,0,Start New Study Day → 2026-05-01
+2026-05-01T17:52:31Z,Anki,15,50,50 cards | study_day=2026-05-01
+tail:
+2026-05-01T18:35:10Z,Anki,15,50,50 cards | study_day=2026-05-11
+2026-05-01T18:42:23Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:23Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:24Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:26Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:26Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:33Z,Study Correction,-30,0,Manual correction: subtract 30 study minutes | study_day=2026-05-15
+2026-05-01T18:42:37Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-15
+2026-05-01T18:42:47Z,Anki,15,50,50 cards | study_day=2026-05-17
+2026-05-01T18:49:22Z,Anki,15,50,50 cards | study_day=2026-05-19
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:47Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-01
+2026-05-01T18:58:50Z,Anki,15,50,50 cards | study_day=2026-05-01
+2026-05-01T18:58:53Z,Lecture,50,0,Lecture completed | study_day=2026-05-01
+2026-05-01T19:03:23Z,Anki Correction,0,-20,Manual correction: subtract 20 Anki cards | study_day=2026-05-03
+2026-05-01T19:07:29Z,Anki,15,50,50 cards | study_day=2026-05-03
+
+--- /Users/jd/Medical School/09 Admin/App Data/manual_study_day.txt ---
+       1 /Users/jd/Medical School/09 Admin/App Data/manual_study_day.txt
+head:
+2026-05-04
+tail:
+2026-05-04
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt ---
+       1 /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt
+head:
+2026-05-04
+tail:
+2026-05-04
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv ---
+       2 /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv
+head:
+base_minutes,base_anki,updated
+0,0,
+tail:
+base_minutes,base_anki,updated
+0,0,
+
+--- /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv ---
+      28 /Users/jd/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv
+head:
+date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated
+2026-05-01,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:07:52
+2026-05-02,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:01:39
+2026-05-03,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:03
+2026-05-04,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:09
+2026-05-05,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:14
+2026-05-06,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:10:22
+"2026-05-07",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:18:44"
+"2026-05-08",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:28:41"
+"2026-05-09",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:31:48"
+"2026-05-10",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:35:06"
+"2026-05-11",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:35:11"
+tail:
+2026-05-03,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:03
+2026-05-04,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:09
+2026-05-05,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:14
+2026-05-06,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:10:22
+"2026-05-07",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:18:44"
+"2026-05-08",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:28:41"
+"2026-05-09",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:31:48"
+"2026-05-10",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:35:06"
+"2026-05-11",45,150,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:35:11"
+"2026-05-12",60,200,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:35:13"
+"2026-05-13",60,200,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:05"
+"2026-05-14",60,200,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:17"
+"2026-05-15",0,0,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:38"
+"2026-05-16",0,0,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:45"
+"2026-05-17",0,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:49"
+"2026-05-18",0,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:42:51"
+"2026-05-19",0,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:49:25"
+"2026-05-20",0,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:49:40"
+"2026-05-21",0,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:52:29"
+"2026-05-01",65,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:58:56"
+"2026-05-02",65,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:58:58"
+"2026-05-03",65,30,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 15:03:26"
+"2026-05-01",65,0,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 15:07:19"
+"2026-05-02",15,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 15:07:22"
+"2026-05-03",15,30,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 15:07:33"
+
+===== STUDY_DAY DISTRIBUTION =====
+   1 2026-05-04
+   1 2026-05-05
+   1 2026-05-06
+   1 2026-05-11
+   1 2026-05-17
+   1 2026-05-19
+   2 2026-05-02
+   2 2026-05-07
+   3 2026-05-03
+  13 2026-05-15
+  48 2026-05-01
+
+===== STATS OUTPUT =====
+inbox=63
+downloads=67
+needs_review=74
+anki_needed=6
+summary_needed=12
+weak_area=6
+today_minutes=0
+today_cards=0
+manual_minutes_today=0
+journal_entries=2
+tasks_open=4
+tasks_done_today=1
+bpm500=6
+bpm501=2
+ppm500=0
+ppm501=0
+ppm502=0
+
+===== LATEST DIAGNOSTICS =====
+total 1096
+-rw-r--r--  1 jd  staff  81462 May  1 15:09 noctyrium_master_inspect.2026-05-01_15-09-32.txt
+-rw-r--r--  1 jd  staff   3653 May  1 15:06 noctyrium_fix_productivity_source_of_truth.2026-05-01_15-06-43.txt
+-rw-r--r--  1 jd  staff  82539 May  1 15:06 noctyrium_full_app_map.2026-05-01_15-06-22.txt
+-rw-r--r--  1 jd  staff  30516 May  1 15:00 noctyrium_productivity_deep_inspect.2026-05-01_15-00-47.txt
+-rw-r--r--  1 jd  staff   3146 May  1 14:58 noctyrium_productivity_source_of_truth_patch.2026-05-01_14-58-12.txt
+-rw-r--r--  1 jd  staff  90733 May  1 14:54 noctyrium_systematic_overview.2026-05-01_14-54-23.txt
+-rw-r--r--  1 jd  staff   3325 May  1 14:52 noctyrium_productivity_buttons_real_fix.2026-05-01_14-51-54.txt
+-rw-r--r--  1 jd  staff   4736 May  1 14:45 noctyrium_true_productivity_day_patch.2026-05-01_14-45-42.txt
+-rw-r--r--  1 jd  staff   3723 May  1 14:41 noctyrium_real_counter_baseline_patch.2026-05-01_14-40-53.txt
+-rw-r--r--  1 jd  staff   3957 May  1 14:34 noctyrium_buttons_offset_patch.2026-05-01_14-34-30.txt
+-rw-r--r--  1 jd  staff   3368 May  1 14:31 noctyrium_productivity_offset_counter_fix.2026-05-01_14-31-32.txt
+-rw-r--r--  1 jd  staff   3320 May  1 14:18 noctyrium_hard_start_day_fix.2026-05-01_14-18-15.txt
+-rw-r--r--  1 jd  staff   4778 May  1 14:16 noctyrium_real_start_new_day_fix.2026-05-01_14-16-19.txt
+-rw-r--r--  1 jd  staff     36 May  1 14:11 productivity_day_offset.csv.backup.2026-05-01_14-11-37
+-rw-r--r--@ 1 jd  staff   1639 May  1 14:11 productivity_day_archive.csv.backup.2026-05-01_14-11-37
+-rw-r--r--@ 1 jd  staff     10 May  1 14:11 active_study_day.txt.backup.2026-05-01_14-11-37
+-rw-r--r--@ 1 jd  staff  62241 May  1 14:01 noctyrium_productivity_inspection.2026-05-01_14-05-52.txt
+
+===== END =====

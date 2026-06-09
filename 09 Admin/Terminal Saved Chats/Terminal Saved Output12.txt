@@ -1,0 +1,212 @@
+Last login: Fri May  1 13:44:38 on ttys000
+jd@JD-MacBook-Pro ~ % >....                                                     
+PY
+fi
+
+# Reset offsets to zero with newline.
+printf "base_minutes,base_anki,updated\n0,0,\n" > "$OFFSET"
+
+echo "Active study day:"
+cat "$ACTIVE"
+
+echo ""
+echo "Archive tail:"
+tail -n 8 "$ARCHIVE"
+
+echo ""
+echo "Offset:"
+cat "$OFFSET"
+
+echo ""
+echo "Backups saved in:"
+echo "$DIAG"
+SH
+
+zsh /tmp/noctyrium_repair_productivity_files_only.sh
+===== NOCTYRIUM PRODUCTIVITY FILE REPAIR ONLY =====
+
+Active study day:
+2026-05-01
+
+Archive tail:
+date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated
+2026-05-01,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:07:52
+2026-05-02,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:01:39
+2026-05-03,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:03
+2026-05-04,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:09
+2026-05-05,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:14
+"2026-05-06",15,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:10:22"
+
+Offset:
+base_minutes,base_anki,updated
+0,0,
+
+Backups saved in:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics
+jd@JD-MacBook-Pro ~ % killall Noctyrium 2>/dev/null || true
+open -F -n /Applications/Noctyrium.app
+jd@JD-MacBook-Pro ~ % printf "\nACTIVE:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt"
+
+printf "\nARCHIVE:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv"
+
+printf "\nOFFSET:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv"
+
+ACTIVE:
+2026-05-05
+ARCHIVE:
+date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_today,standup_tomorrow,standup_blockers,energy,rating,updated
+2026-05-01,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:07:52
+2026-05-02,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:01:39
+2026-05-03,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:03
+2026-05-04,0,0,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:09
+2026-05-05,15,50,Test 1 • Small Group • Carpets for musallag,Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah,,,,Medium,Useful,2026-05-01 14:02:14
+"2026-05-06",15,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:10:22"
+"2026-05-01",15,50,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:50"
+"2026-05-02",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:53"
+"2026-05-03",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:56"
+"2026-05-04",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:56"
+
+OFFSET:
+base_minutes,base_anki,updated
+0,0,
+jd@JD-MacBook-Pro ~ % 
+jd@JD-MacBook-Pro ~ % /tmp/noctyrium_productivity_day_repair.sh
+/tmp/noctyrium_start_new_day_archive_repair.sh
+/tmp/noctyrium_productivity_ledger_fix.sh
+/tmp/noctyrium_fix_study_day_ticks_time.sh
+/tmp/noctyrium_fix_time_and_study_day_only.sh
+zsh: permission denied: /tmp/noctyrium_productivity_day_repair.sh
+zsh: permission denied: /tmp/noctyrium_start_new_day_archive_repair.sh
+zsh: permission denied: /tmp/noctyrium_productivity_ledger_fix.sh
+zsh: permission denied: /tmp/noctyrium_fix_study_day_ticks_time.sh
+zsh: permission denied: /tmp/noctyrium_fix_time_and_study_day_only.sh
+jd@JD-MacBook-Pro ~ % >....                                                     
+echo "===== PRODUCTIVITY FILES =====" >> "$OUT"
+
+for f in \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt" \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv" \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv"
+do
+  echo "" >> "$OUT"
+  echo "--- $f ---" >> "$OUT"
+  if [[ -f "$f" ]]; then
+    cat "$f" >> "$OUT"
+  else
+    echo "MISSING" >> "$OUT"
+  fi
+done
+
+echo "Report written to:"
+echo "$OUT"
+open "$OUT"
+SH
+
+zsh /tmp/noctyrium_find_start_day_bug.sh
+Report written to:
+/Users/jd/Desktop/noctyrium_start_day_bug_report.txt
+jd@JD-MacBook-Pro ~ % >....                                                     
+echo "===== PRODUCTIVITY FILES =====" >> "$OUT"
+
+for f in \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt" \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv" \
+  "$BASE/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv"
+do
+  echo "" >> "$OUT"
+  echo "--- $f ---" >> "$OUT"
+  if [[ -f "$f" ]]; then
+    cat "$f" >> "$OUT"
+  else
+    echo "MISSING" >> "$OUT"
+  fi
+done
+
+echo "Report written to:"
+echo "$OUT"
+open "$OUT"
+SH
+
+zsh /tmp/noctyrium_find_start_day_bug.sh
+Report written to:
+/Users/jd/Desktop/noctyrium_start_day_bug_report.txt
+jd@JD-MacBook-Pro ~ % >....                                                     
+  echo "Restored:" | tee -a "$REPORT"
+  echo "$BACKUP" | tee -a "$REPORT"
+  echo "Report:" | tee -a "$REPORT"
+  echo "$REPORT" | tee -a "$REPORT"
+  exit 1
+fi
+
+echo "Compile passed." | tee -a "$REPORT"
+
+echo "" | tee -a "$REPORT"
+echo "===== REBUILDING NOCTYRIUM =====" | tee -a "$REPORT"
+"$BUILD" >> "$REPORT" 2>&1
+
+echo "" | tee -a "$REPORT"
+echo "Done." | tee -a "$REPORT"
+echo "Version remains locked: $VERSION" | tee -a "$REPORT"
+echo "Diagnostics report:" | tee -a "$REPORT"
+echo "$REPORT" | tee -a "$REPORT"
+echo "Swift backup:" | tee -a "$REPORT"
+echo "$BACKUP" | tee -a "$REPORT"
+SH
+
+zsh /tmp/noctyrium_fix_start_new_day_real.sh
+===== NOCTYRIUM REAL START NEW DAY FIX =====
+Version remains locked: v0.03.01
+
+Swift backup:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-real-start-new-day-fix.2026-05-01_14-16-19.swift
+
+===== VERIFY CURRENT SOURCE COMPILES =====
+Current source compiles.
+
+===== PATCHING START NEW STUDY DAY =====
+
+===== COMPILE TEST =====
+Compile passed.
+
+===== REBUILDING NOCTYRIUM =====
+
+Done.
+Version remains locked: v0.03.01
+Diagnostics report:
+/Users/jd/Medical School/09 Admin/App Data/Noctyrium/Diagnostics/noctyrium_real_start_new_day_fix.2026-05-01_14-16-19.txt
+Swift backup:
+/Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.before-real-start-new-day-fix.2026-05-01_14-16-19.swift
+jd@JD-MacBook-Pro ~ % killall Noctyrium 2>/dev/null || true
+open -F -n /Applications/Noctyrium.app
+
+printf "\nBEFORE:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt"
+
+BEFORE:
+2026-05-06
+jd@JD-MacBook-Pro ~ % printf "\nAFTER ACTIVE:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/active_study_day.txt"
+
+printf "\nARCHIVE TAIL:\n"
+tail -n 5 "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_archive.csv"
+
+printf "\nOFFSET:\n"
+cat "$HOME/Medical School/09 Admin/App Data/Noctyrium/Productivity/productivity_day_offset.csv"
+
+AFTER ACTIVE:
+2026-05-07
+
+ARCHIVE TAIL:
+"2026-05-02",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:53"
+"2026-05-03",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:56"
+"2026-05-04",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:11:56"
+"2026-05-05",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:16:51"
+"2026-05-06",30,100,"Test 1 • Small Group • Carpets for musallag","Friday: Lecture 60-64 (5 lectures + anki) Minimum • Friday: BSCE - ER 3 Practice (Morning) • Friday: BSCE - DM 1 Practice (Night) • Jumuuah","","","","Medium","Useful","2026-05-01 14:17:05"
+
+OFFSET:
+base_minutes,base_anki,updated
+0,0,
+jd@JD-MacBook-Pro ~ % 

@@ -1,0 +1,56 @@
+===== SCHEDULE ATLAS IMPORT =====
+Generated: Thu Apr 30 14:54:21 AST 2026
+Downloads: /Users/jd/Downloads
+Import Dir: /Users/jd/Medical School/09 Admin/Schedules/Imported
+
+Imported [001]:  term 1_ FTM General principles Review (BSCE1 prep).docx
+  Term: Term 1 | Exam: Unknown | Module: BSCE Prep | Status: Imported
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/ term 1_ FTM General principles Review (BSCE1 prep).txt
+
+Imported [002]: Exam 1 ER Term 2 Fall 2020  Firehouse MedPrep Schedule.docx
+  Term: Term 2 | Exam: Exam 1 | Module: ER | Status: Imported - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Exam 1 ER Term 2 Fall 2020  Firehouse MedPrep Schedule.txt
+
+Imported [003]: Exam 2 DM Term 2 Fall 2020  Firehouse MedPrep Schedule.docx
+  Term: Term 2 | Exam: Exam 2 | Module: DM | Status: Imported - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Exam 2 DM Term 2 Fall 2020  Firehouse MedPrep Schedule.txt
+
+Imported [004]: Exam 3 NB 1  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx
+  Term: Term 2 | Exam: Exam 3 | Module: NB 1 | Status: Imported - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Exam 3 NB 1  Term 2 Fall 2020  Firehouse MedPrep Schedule.txt
+
+Imported [005]: Exam 4 NB 2  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx
+  Term: Term 2 | Exam: Exam 4 | Module: NB 2 | Status: Imported - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Exam 4 NB 2  Term 2 Fall 2020  Firehouse MedPrep Schedule.txt
+
+Imported [006]: Exam 5 NB 3_Psych Term 2 Fall 2020 IN PROGRESS  Firehouse MedPrep Schedule.docx
+  Term: Term 2 | Exam: Exam 5 | Module: NB 3 / Psych | Status: In Progress / Older - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Exam 5 NB 3_Psych Term 2 Fall 2020 IN PROGRESS  Firehouse MedPrep Schedule.txt
+
+Imported [007]: NEW-Exam-1-Term-4-Schedule 2021.docx
+  Term: Unknown | Exam: Unknown | Module: ER | Status: Imported
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/NEW-Exam-1-Term-4-Schedule 2021.txt
+
+Imported [008]: Summer_ POST term 1 (Term 2 prep_BSCE1 prep).docx
+  Term: Term 2 | Exam: Unknown | Module: BSCE Prep | Status: Imported
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Summer_ POST term 1 (Term 2 prep_BSCE1 prep).txt
+
+Imported [009]: Term 3 schedule 2020.docx
+  Term: Term 3 | Exam: Unknown | Module: ER | Status: Imported
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Term 3 schedule 2020.txt
+
+Imported [010]: Term 4, Exam 3 (Fries & Redbull) Spring 2021update.docx
+  Term: Term 4 | Exam: Exam 3 | Module: ER | Status: Updated Version - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Term 4, Exam 3 (Fries & Redbull) Spring 2021update.txt
+
+Imported [011]: Updated Term 4, Exam 2 (Fries & Redbull) Spring 2021.docx
+  Term: Term 4 | Exam: Exam 2 | Module: ER | Status: Updated Version - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Updated Term 4, Exam 2 (Fries & Redbull) Spring 2021.txt
+
+Imported [012]: Updated Term 4, Exam 4 Schedule (fries & redbull) Spring 2021.docx
+  Term: Term 4 | Exam: Exam 4 | Module: ER | Status: Updated Version - Historical
+  Text: /Users/jd/Medical School/09 Admin/Schedules/Text Extracts/Updated Term 4, Exam 4 Schedule (fries & redbull) Spring 2021.txt
+
+
+Schedule index created:
+/Users/jd/Medical School/09 Admin/App Data/Schedule Atlas/schedule_index.csv

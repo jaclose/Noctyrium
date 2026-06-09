@@ -1,0 +1,62 @@
+/* ===========================================================================
+   Noctyrium design tokens — ported from the SwiftUI build (v0.03.01.5).
+   Source: OuterBackground / Orb / GlassShell / GlassCard / glassButton.
+   =========================================================================== */
+:root {
+  /* Backdrop gradient (Swift OuterBackground LinearGradient, 0–1 → hex) */
+  --bg-1: #020308;
+  --bg-2: #07101f;
+  --bg-3: #041a24;
+
+  /* Accents */
+  --cyan: #5ad7ef;          /* SwiftUI .cyan, warmed slightly for the web */
+  --cyan-strong: #38c6e6;
+  --purple: #9b7bff;
+  --blue: #4d8dff;
+  --green: #4ade80;
+  --orange: #ffa64d;
+  --red: #ff5d6c;
+  --gold: #f7d99a;
+  --teal: #2dd4bf;
+
+  /* Day-grade scale (todayGrade) */
+  --grade-blue: #4d8dff;
+  --grade-green: #46d27e;
+  --grade-orange: #ff9f43;
+  --grade-red: #ff5563;
+
+  /* Text */
+  --text: #ffffff;
+  --text-80: rgba(255, 255, 255, 0.82);
+  --text-60: rgba(255, 255, 255, 0.6);
+  --text-45: rgba(255, 255, 255, 0.46);
+  --text-30: rgba(255, 255, 255, 0.34);
+
+  /* Glass surfaces */
+  --shell-radius: 30px;
+  --card-radius: 20px;
+  --btn-radius: 14px;
+
+  --glass-card-fill: rgba(9, 18, 33, 0.52);
+  --glass-card-border: rgba(180, 226, 255, 0.12);
+  --glass-card-border-hover: rgba(180, 226, 255, 0.24);
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-soft: rgba(255, 255, 255, 0.055);
+
+  /* Typography — SF Rounded on Apple, graceful rounded fallback elsewhere */
+  --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito", "Quicksand",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+
+  --shadow-shell: 0 34px 70px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-card: 0 18px 42px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255,255,255,0.055);
+
+  --sidebar-w: 246px;
+}
+
+/* Grade helpers reused by Ring / Heatmap / pills */
+.grade-blue { color: var(--grade-blue); }
+.grade-green { color: var(--grade-green); }
+.grade-orange { color: var(--grade-orange); }
+.grade-red { color: var(--grade-red); }

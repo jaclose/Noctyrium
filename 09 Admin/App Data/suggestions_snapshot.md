@@ -1,0 +1,5 @@
+- [Tasks] Task-linked BSCE/module move: Complete ER Natalie PLG - Start some eSofts — Task mentions BSCE or a non-current module. Pull it into the queue before generic work.
+- [BSCE Tracker] BSCE PLG: FTM 2 PLG Review — PLG review is the front door for BSCE prep.
+- [BSCE Tracker] BSCE correlates/pathways: FTM 1 Correlates Review — Correlates and pathways convert module memory into exam-useful structure.
+- [Journal] Journal carryover: NB3 lecture recovery — Recent journal entries mention NB3 or lectures.
+- [BSCE Tracker] BSCE question set: FTM 1 eSoft 1 — Use questions after PLG/correlates to expose weak explanations.

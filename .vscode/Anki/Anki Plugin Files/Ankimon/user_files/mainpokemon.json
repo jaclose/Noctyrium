@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Frogadier",
+    "nickname": null,
+    "gender": "M",
+    "level": 16,
+    "id": 657,
+    "ability": "Torrent",
+    "type": [
+      "Water"
+    ],
+    "stats": {
+      "hp": 54,
+      "atk": 63,
+      "def": 52,
+      "spa": 83,
+      "spd": 56,
+      "spe": 97,
+      "xp": 0
+    },
+    "ev": {
+      "hp": 0,
+      "atk": 2,
+      "def": 6,
+      "spa": 0,
+      "spd": 10,
+      "spe": 15
+    },
+    "iv": {
+      "hp": 32,
+      "atk": 1,
+      "def": 19,
+      "spa": 16,
+      "spd": 27,
+      "spe": 23
+    },
+    "attacks": [
+      "pound",
+      "watergun",
+      "lick",
+      "waterpulse"
+    ],
+    "base_experience": 142,
+    "current_hp": 53,
+    "growth_rate": "medium-slow"
+  }
+]

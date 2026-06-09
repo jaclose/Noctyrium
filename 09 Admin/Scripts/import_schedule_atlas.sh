@@ -1,0 +1,146 @@
+#!/bin/zsh
+
+BASE="$HOME/Medical School"
+DOWNLOADS="$HOME/Downloads"
+
+IMPORT_DIR="$BASE/09 Admin/Schedules/Imported"
+TEXT_DIR="$BASE/09 Admin/Schedules/Text Extracts"
+APP_DIR="$BASE/09 Admin/App Data/Schedule Atlas"
+INDEX="$APP_DIR/schedule_index.csv"
+REPORT="$BASE/09 Admin/Reports/schedule_atlas_import_$(date '+%Y-%m-%d_%H-%M-%S').txt"
+CHANGELOG="$BASE/09 Admin/Update Log/🟦 Loved Previous Build/v0.02/v0.02.01 - Schedule Atlas Backend/CHANGELOG - $(date '+%Y-%m-%d_%H-%M-%S').md"
+
+mkdir -p "$IMPORT_DIR" "$TEXT_DIR" "$APP_DIR" "$BASE/09 Admin/Reports" "$(dirname "$CHANGELOG")"
+
+echo "id,title,term,exam,module,status,source_file,imported_file,text_file,modified_at,imported_at" > "$INDEX"
+
+echo "===== SCHEDULE ATLAS IMPORT =====" > "$REPORT"
+echo "Generated: $(date)" >> "$REPORT"
+echo "Downloads: $DOWNLOADS" >> "$REPORT"
+echo "Import Dir: $IMPORT_DIR" >> "$REPORT"
+echo "" >> "$REPORT"
+
+counter=1
+
+find "$DOWNLOADS" -maxdepth 1 -type f \( \
+  -iname "*schedule*.docx" -o \
+  -iname "*schedule*.doc" -o \
+  -iname "*firehouse*.docx" -o \
+  -iname "*firehouse*.doc" -o \
+  -iname "*fries*.docx" -o \
+  -iname "*fries*.doc" -o \
+  -iname "*redbull*.docx" -o \
+  -iname "*redbull*.doc" -o \
+  -iname "*term*.docx" -o \
+  -iname "*term*.doc" \
+\) | sort | while read -r file; do
+
+  filename="$(basename "$file")"
+  safe_id="$(printf "%03d" "$counter")"
+  imported="$IMPORT_DIR/$filename"
+  textfile="$TEXT_DIR/${filename%.*}.txt"
+  modified="$(stat -f "%Sm" -t "%Y-%m-%d %H:%M:%S" "$file")"
+  imported_at="$(date '+%Y-%m-%d %H:%M:%S')"
+
+  cp -p "$file" "$imported"
+
+  # Convert Word schedule to readable text.
+  textutil -convert txt "$imported" -output "$textfile" 2>/dev/null
+
+  lower="$(echo "$filename" | tr '[:upper:]' '[:lower:]')"
+
+  term="Unknown"
+  exam="Unknown"
+  module="General"
+
+  if [[ "$lower" == *"term 1"* || "$lower" == *"term1"* ]]; then term="Term 1"; fi
+  if [[ "$lower" == *"term 2"* || "$lower" == *"term2"* ]]; then term="Term 2"; fi
+  if [[ "$lower" == *"term 3"* || "$lower" == *"term3"* ]]; then term="Term 3"; fi
+  if [[ "$lower" == *"term 4"* || "$lower" == *"term4"* ]]; then term="Term 4"; fi
+  if [[ "$lower" == *"term 5"* || "$lower" == *"term5"* ]]; then term="Term 5"; fi
+
+  if [[ "$lower" == *"exam 1"* ]]; then exam="Exam 1"; fi
+  if [[ "$lower" == *"exam 2"* ]]; then exam="Exam 2"; fi
+  if [[ "$lower" == *"exam 3"* ]]; then exam="Exam 3"; fi
+  if [[ "$lower" == *"exam 4"* ]]; then exam="Exam 4"; fi
+  if [[ "$lower" == *"exam 5"* ]]; then exam="Exam 5"; fi
+
+  if [[ "$lower" == *"er"* ]]; then module="ER"; fi
+  if [[ "$lower" == *"dm"* ]]; then module="DM"; fi
+  if [[ "$lower" == *"nb 1"* || "$lower" == *"nb1"* ]]; then module="NB 1"; fi
+  if [[ "$lower" == *"nb 2"* || "$lower" == *"nb2"* ]]; then module="NB 2"; fi
+  if [[ "$lower" == *"nb 3"* || "$lower" == *"nb3"* || "$lower" == *"psych"* ]]; then module="NB 3 / Psych"; fi
+  if [[ "$lower" == *"gi"* ]]; then module="GI"; fi
+  if [[ "$lower" == *"cardio"* || "$lower" == *"cpr"* ]]; then module="CPR"; fi
+  if [[ "$lower" == *"bsce"* ]]; then module="BSCE Prep"; fi
+
+  sched_status="Imported"
+  if [[ "$lower" == *"updated"* || "$lower" == *"update"* ]]; then sched_status="Updated Version"; fi
+  if [[ "$lower" == *"in progress"* ]]; then sched_status="In Progress / Older"; fi
+  if [[ "$lower" == *"fall 2020"* || "$lower" == *"spring 2021"* ]]; then sched_status="$sched_status - Historical"; fi
+
+  escaped_title="$(echo "$filename" | sed 's/,/ /g')"
+
+  echo "$safe_id,$escaped_title,$term,$exam,$module,$status,$file,$imported,$textfile,$modified,$imported_at" >> "$INDEX"
+
+  echo "Imported [$safe_id]: $filename" >> "$REPORT"
+  echo "  Term: $term | Exam: $exam | Module: $module | Status: $sched_status" >> "$REPORT"
+  echo "  Text: $textfile" >> "$REPORT"
+  echo "" >> "$REPORT"
+
+  counter=$((counter + 1))
+done
+
+cat > "$CHANGELOG" <<CHANGELOG_EOF
+# v0.02.01 - Schedule Atlas Backend
+
+Date: $(date)
+
+Previous build mood: 🟦 Loved Previous Build
+
+## Theme
+
+Converted old and current med-school schedule documents into a structured backend for future visual integration inside Medical School Hub.
+
+## Added
+
+- Schedule import folder
+- Text extraction folder
+- App-readable schedule index CSV
+- Schedule Atlas app data directory
+- Import report
+- Update log branch
+
+## Files Created
+
+- $INDEX
+- $REPORT
+- $IMPORT_DIR
+- $TEXT_DIR
+- $APP_DIR
+
+## Revert Plan
+
+To revert this change, remove:
+
+\`\`\`zsh
+rm -rf "$BASE/09 Admin/App Data/Schedule Atlas"
+rm -rf "$BASE/09 Admin/Schedules/Imported"
+rm -rf "$BASE/09 Admin/Schedules/Text Extracts"
+rm -rf "$BASE/09 Admin/Update Log/🟦 Loved Previous Build/v0.02/v0.02.01 - Schedule Atlas Backend"
+\`\`\`
+CHANGELOG_EOF
+
+echo "" >> "$REPORT"
+echo "Schedule index created:" >> "$REPORT"
+echo "$INDEX" >> "$REPORT"
+
+open "$REPORT"
+open "$APP_DIR"
+
+echo "Schedule Atlas import complete."
+echo "Index:"
+echo "$INDEX"
+echo ""
+echo "Report:"
+echo "$REPORT"

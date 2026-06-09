@@ -1,0 +1,310 @@
+===== MEDICAL SCHOOL HUB APP SOURCE SNAPSHOT =====
+Generated: Thu Apr 30 14:02:33 AST 2026
+Source: /Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift
+
+===== FILE SIZE =====
+    1506 /Users/jd/Medical School/09 Admin/App Framework/MedicalSchoolHub.swift
+
+===== STRUCTS / CLASSES / ENUMS =====
+4:@main
+5:struct MedicalSchoolHubApp: App {
+16:struct Stats {
+36:struct StudyLog: Identifiable {
+45:struct JournalEntry: Identifiable {
+55:struct TaskItem: Identifiable {
+64:struct HubView: View {
+335:struct DashboardPage: View {
+410:struct CoursesPage: View {
+436:struct CourseModules: View {
+490:struct StepPage: View {
+516:struct ReportsPage: View {
+550:struct ProductivityPage: View {
+597:struct TasksPage: View {
+652:struct JournalPage: View {
+697:struct IntegrationsPage: View {
+711:struct PromptPage: View {
+725:struct HubFoldersPage: View {
+759:struct StandupCard: View {
+809:struct Sidebar: View {
+873:struct TopBar: View {
+908:struct DashboardCards: View {
+923:func todayGrade(_ minutes: Int, _ cards: Int) -> String {
+930:struct StatCard: View {
+977:struct CourseCard: View {
+1023:struct RingScore: View {
+1070:struct Heatmap: View {
+1115:struct ReportHero: View {
+1142:struct PanelHeader: View {
+1165:struct ActionTile: View {
+1204:struct MiniLog: View {
+1233:struct MiniButton: View {
+1253:struct SideButton: View {
+1288:struct OuterBackground: View {
+1309:struct Orb: View {
+1325:struct GlassShell<Content: View>: View {
+1364:struct GlassCard<Content: View>: View {
+1383:extension View {
+1406:extension DateFormatter {
+1416:func append(_ line: String, to path: String) {
+1424:func clean(_ text: String) -> String {
+1431:func shell(_ command: String) -> String {
+1449:func parseStats(_ text: String) -> Stats {
+1477:func loadLogs(_ path: String) -> [StudyLog] {
+1488:func loadJournal(_ path: String) -> [JournalEntry] {
+1498:func loadTasks(_ path: String) -> [TaskItem] {
+
+===== SIDEBAR / NAVIGATION REFERENCES =====
+26:    var journalEntries = 0
+27:    var tasksOpen = 0
+28:    var tasksDoneToday = 0
+45:struct JournalEntry: Identifiable {
+55:struct TaskItem: Identifiable {
+65:    @State private var selected = "Dashboard"
+68:    @State private var journal: [JournalEntry] = []
+69:    @State private var tasks: [TaskItem] = []
+79:    @State private var newTask = ""
+86:    var logFile: String { "\(appData)/productivity_log.csv" }
+87:    var taskFile: String { "\(appData)/tasks.csv" }
+88:    var journalFile: String { "\(appData)/journal.csv" }
+97:                    Sidebar(selected: $selected)
+129:                case "Dashboard":
+130:                    DashboardPage(
+150:                case "Courses":
+151:                    CoursesPage(stats: stats, open: openPath)
+156:                case "Reports":
+157:                    ReportsPage(stats: stats, logs: logs, status: status, open: openPath, base: base)
+159:                case "Productivity":
+160:                    ProductivityPage(
+171:                case "Tasks":
+172:                    TasksPage(tasks: tasks, newTask: $newTask, addTask: addTask, completeTask: completeTask)
+174:                case "Journal":
+175:                    JournalPage(entries: journal, openJournalFolder: { open("\(base)/09 Admin/Journal") })
+180:                case "Prompt Library":
+181:                    PromptPage(base: base, open: openPath)
+193:        case "Courses": return "Term-based course map with module-level folders"
+194:        case "Journal": return "Daily standups, review, blockers, and tomorrow’s plan"
+196:        case "Productivity": return "Study time, Anki cards, lecture blocks, day usefulness"
+197:        case "Reports": return "Visual summaries of your medical school operating system"
+207:        if !FileManager.default.fileExists(atPath: taskFile) {
+208:            try? "id,created,due,title,status,completed\n".write(toFile: taskFile, atomically: true, encoding: .utf8)
+210:        if !FileManager.default.fileExists(atPath: journalFile) {
+211:            try? "date,today,tomorrow,blockers,energy,rating\n".write(toFile: journalFile, atomically: true, encoding: .utf8)
+218:            let output = shell("\"\(scripts)/dashboard_stats.sh\"")
+221:            let j = loadJournal(journalFile)
+222:            let t = loadTasks(taskFile)
+227:                journal = j
+228:                tasks = t
+268:        append(line, to: journalFile)
+270:        try? FileManager.default.createDirectory(atPath: "\(base)/09 Admin/Journal", withIntermediateDirectories: true)
+291:        let fileName = "\(base)/09 Admin/Journal/Standup - \(DateFormatter.fileSafe.string(from: Date())).md"
+300:        log(type: "Journal", minutes: 5, cards: 0, note: "Daily standup")
+304:    func addTask() {
+305:        let trimmed = newTask.trimmingCharacters(in: .whitespacesAndNewlines)
+311:        append("\(id),\(now),\(now),\(clean(trimmed)),open,\n", to: taskFile)
+312:        newTask = ""
+316:    func completeTask(_ task: TaskItem) {
+317:        guard let text = try? String(contentsOfFile: taskFile) else { return }
+321:            if line.hasPrefix(task.id + ",") {
+327:        try? updated.joined(separator: "\n").appending("\n").write(toFile: taskFile, atomically: true, encoding: .utf8)
+328:        log(type: "Task", minutes: 10, cards: 0, note: "Completed task")
+335:struct DashboardPage: View {
+357:            DashboardCards(stats: stats)
+410:struct CoursesPage: View {
+420:                CourseCard("01 BPM 500", term: "Term 1", files: stats.bpm500, action: { open("\(base)/10 Courses/Term 1/01 BPM 500") })
+421:                CourseCard("01 BPM 501", term: "Term 1", files: stats.bpm501, action: { open("\(base)/10 Courses/Term 1/01 BPM 501") })
+422:                CourseCard("02 PPM 500", term: "Term 2", files: stats.ppm500, action: { open("\(base)/10 Courses/Term 2/02 PPM 500") })
+423:                CourseCard("02 PPM 501", term: "Term 2", files: stats.ppm501, action: { open("\(base)/10 Courses/Term 2/02 PPM 501") })
+424:                CourseCard("02 PPM 502", term: "Term 2", files: stats.ppm502, action: { open("\(base)/10 Courses/Term 2/02 PPM 502") })
+427:            CourseModules(
+436:struct CourseModules: View {
+442:        ("01 BPM 500", "10 Courses/Term 1/01 BPM 500", ["FTM 1", "FTM 2", "MSK", "CPR 1", "CPR 2"]),
+443:        ("01 BPM 501", "10 Courses/Term 1/01 BPM 501", ["ER", "DM", "NB 1", "NB 2", "NB 3"]),
+444:        ("02 PPM 500", "10 Courses/Term 2/02 PPM 500", ["Lectures", "Slides", "Notes", "Study Guides", "Weak Areas"]),
+445:        ("02 PPM 501", "10 Courses/Term 2/02 PPM 501", ["Lectures", "Slides", "Notes", "Study Guides", "Weak Areas"]),
+446:        ("02 PPM 502", "10 Courses/Term 2/02 PPM 502", ["Lectures", "Slides", "Notes", "Study Guides", "Weak Areas"])
+452:                PanelHeader("Course Modules", "Dropdown-style module access")
+456:                        Button {
+467:                            .glassButton()
+469:                        .buttonStyle(.plain)
+474:                                    MiniButton(module) {
+498:            DashboardCards(stats: stats)
+516:struct ReportsPage: View {
+526:                ReportHero(title: "Inbox Pressure", value: "\(stats.inbox)", caption: "files waiting")
+527:                ReportHero(title: "Needs Review", value: "\(stats.needsReview)", caption: "tagged items")
+528:                ReportHero(title: "Today Output", value: "\(stats.todayMinutes)m", caption: "\(stats.todayCards) cards")
+529:                ReportHero(title: "Journal Entries", value: "\(stats.journalEntries)", caption: "standups saved")
+534:                    PanelHeader("Live System Report", "Raw backend status")
+541:                    MiniButton("Open Reports Folder") {
+542:                        open("\(base)/09 Admin/Reports")
+550:struct ProductivityPage: View {
+564:                    PanelHeader("Productivity Console", "Manual entries now. API integrations later.")
+588:                    Text("Anki API / local collection parsing, ScreenTime export parsing, iCal calendar import, manual correction reports, and day usefulness scoring will plug into this page.")
+597:struct TasksPage: View {
+598:    let tasks: [TaskItem]
+599:    @Binding var newTask: String
+600:    let addTask: () -> Void
+601:    let completeTask: (TaskItem) -> Void
+603:    var openTasks: [TaskItem] { tasks.filter { $0.status != "done" } }
+609:                    PanelHeader("Task Capture", "Tasks become productivity events when completed")
+611:                        TextField("Add task", text: $newTask)
+617:                        Button("Add", action: addTask)
+618:                            .buttonStyle(.plain)
+621:                            .glassButton()
+628:                    PanelHeader("Open Tasks", "\(openTasks.count) active")
+629:                    ForEach(openTasks) { task in
+631:                            Button(action: { completeTask(task) }) {
+634:                            .buttonStyle(.plain)
+637:                            Text(task.title)
+652:struct JournalPage: View {
+653:    let entries: [JournalEntry]
+654:    let openJournalFolder: () -> Void
+660:                    PanelHeader("Journal Archive", "Previous standups")
+661:                    MiniButton("Open Journal Folder", openJournalFolder)
+704:            ActionTile("ScreenTime", "future report import", "desktopcomputer") { open("\(base)/09 Admin/Integrations/ScreenTime") }
+711:struct PromptPage: View {
+717:            ActionTile("Prompt Library", "All prompts", "text.book.closed") { open("\(base)/10 Prompt Library") }
+718:            ActionTile("Anki Prompts", "text/file to cards", "sparkles.rectangle.stack") { open("\(base)/10 Prompt Library/Anki Card Generation") }
+719:            ActionTile("CSS / HTML", "card templates", "curlybraces.square") { open("\(base)/10 Prompt Library/Anki CSS and HTML") }
+720:            ActionTile("Uploads", "future file workflow", "doc.badge.plus") { open("\(base)/10 Prompt Library/File Upload Workflows") }
+732:            ("01 BPM 500", "10 Courses/Term 1/01 BPM 500", "book"),
+733:            ("01 BPM 501", "10 Courses/Term 1/01 BPM 501", "book.closed"),
+734:            ("02 PPM 500", "10 Courses/Term 2/02 PPM 500", "cross.case"),
+735:            ("02 PPM 501", "10 Courses/Term 2/02 PPM 501", "cross.case.fill"),
+736:            ("02 PPM 502", "10 Courses/Term 2/02 PPM 502", "stethoscope"),
+796:                Button("Save Standup", action: save)
+797:                    .buttonStyle(.plain)
+802:                    .glassButton()
+809:struct Sidebar: View {
+813:        ("Dashboard", "square.grid.2x2"),
+814:        ("Courses", "books.vertical"),
+816:        ("Reports", "chart.xyaxis.line"),
+817:        ("Productivity", "calendar"),
+818:        ("Tasks", "checklist"),
+819:        ("Journal", "book.pages"),
+821:        ("Prompt Library", "text.book.closed"),
+853:                    SideButton(item.0, item.1, selected == item.0) {
+892:            Button(action: refreshAction) {
+901:                .glassButton()
+903:            .buttonStyle(.plain)
+908:struct DashboardCards: View {
+917:            StatCard("Tasks", "\(stats.tasksOpen)", "\(stats.tasksDoneToday) done today", "checklist", trend: "Execute")
+918:            StatCard("Journal", "\(stats.journalEntries)", "standups", "book.pages", trend: "Reflect")
+977:struct CourseCard: View {
+1008:                Button("Open", action: action)
+1009:                    .buttonStyle(.plain)
+1014:                    .glassButton()
+1115:struct ReportHero: View {
+1180:        Button(action: action) {
+1197:            .glassButton(hover)
+1199:        .buttonStyle(.plain)
+1216:        Button(action: action) {
+1227:            .glassButton()
+1229:        .buttonStyle(.plain)
+1233:struct MiniButton: View {
+1243:        Button(title, action: action)
+1244:            .buttonStyle(.plain)
+1249:            .glassButton()
+1253:struct SideButton: View {
+1267:        Button(action: action) {
+1284:        .buttonStyle(.plain)
+1384:    func glassButton(_ hover: Bool = false, radius: CGFloat = 14) -> some View {
+1434:    p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+1466:        journalEntries: d["journal_entries"] ?? 0,
+1467:        tasksOpen: d["tasks_open"] ?? 0,
+1468:        tasksDoneToday: d["tasks_done_today"] ?? 0,
+1488:func loadJournal(_ path: String) -> [JournalEntry] {
+1494:        return JournalEntry(date: p[0], today: p[1], tomorrow: p[2], blockers: p[3], energy: p[4], rating: p[5])
+1498:func loadTasks(_ path: String) -> [TaskItem] {
+1504:        return TaskItem(id: p[0], created: p[1], due: p[2], title: p[3], status: p[4], completed: p[5])
+
+===== PROMPT LIBRARY REFERENCES =====
+24:    var todayCards = 0
+41:    let cards: Int
+138:                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+139:                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+140:                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+141:                        logStudy60: { log(type: "Study", minutes: 60, cards: 0, note: "1 hour focused study") },
+163:                        logLecture: { log(type: "Lecture", minutes: 50, cards: 0, note: "Lecture completed") },
+164:                        logAnki50: { log(type: "Anki", minutes: 15, cards: 50, note: "50 cards") },
+165:                        logAnki100: { log(type: "Anki", minutes: 30, cards: 100, note: "100 cards") },
+166:                        logAnki150: { log(type: "Anki", minutes: 45, cards: 150, note: "150 cards") },
+167:                        logAnki200: { log(type: "Anki", minutes: 60, cards: 200, note: "200 cards") },
+168:                        logStudy180: { log(type: "Study", minutes: 180, cards: 0, note: "3 hour study block") }
+180:                case "Prompt Library":
+181:                    PromptPage(base: base, open: openPath)
+196:        case "Productivity": return "Study time, Anki cards, lecture blocks, day usefulness"
+205:            try? "date,type,minutes,cards,note\n".write(toFile: logFile, atomically: true, encoding: .utf8)
+256:    func log(type: String, minutes: Int, cards: Int, note: String) {
+260:        append("\(f.string(from: Date())),\(type),\(minutes),\(cards),\(safeNote)\n", to: logFile)
+300:        log(type: "Journal", minutes: 5, cards: 0, note: "Daily standup")
+328:        log(type: "Task", minutes: 10, cards: 0, note: "Completed task")
+357:            DashboardCards(stats: stats)
+360:                GlassCard {
+373:                GlassCard {
+388:                StandupCard(
+397:                GlassCard {
+399:                        PanelHeader("Today’s Vital Signs", "Time, cards, and usefulness signal")
+400:                        RingScore(minutes: stats.todayMinutes + stats.manualMinutesToday, cards: stats.todayCards)
+420:                CourseCard("01 BPM 500", term: "Term 1", files: stats.bpm500, action: { open("\(base)/10 Courses/Term 1/01 BPM 500") })
+421:                CourseCard("01 BPM 501", term: "Term 1", files: stats.bpm501, action: { open("\(base)/10 Courses/Term 1/01 BPM 501") })
+422:                CourseCard("02 PPM 500", term: "Term 2", files: stats.ppm500, action: { open("\(base)/10 Courses/Term 2/02 PPM 500") })
+423:                CourseCard("02 PPM 501", term: "Term 2", files: stats.ppm501, action: { open("\(base)/10 Courses/Term 2/02 PPM 501") })
+424:                CourseCard("02 PPM 502", term: "Term 2", files: stats.ppm502, action: { open("\(base)/10 Courses/Term 2/02 PPM 502") })
+450:        GlassCard {
+498:            DashboardCards(stats: stats)
+500:            GlassCard {
+528:                ReportHero(title: "Today Output", value: "\(stats.todayMinutes)m", caption: "\(stats.todayCards) cards")
+532:            GlassCard {
+562:            GlassCard {
+565:                    RingScore(minutes: stats.todayMinutes + stats.manualMinutesToday, cards: stats.todayCards)
+578:            GlassCard {
+580:                    PanelHeader("Calendar Heatmap", "Red <3h or <100 cards • Orange <5h or 150-200 • Green >6h or 250-300 • Blue 👑 >8h or 350-400")
+585:            GlassCard {
+607:            GlassCard {
+626:            GlassCard {
+658:            GlassCard {
+666:                GlassCard {
+711:struct PromptPage: View {
+717:            ActionTile("Prompt Library", "All prompts", "text.book.closed") { open("\(base)/10 Prompt Library") }
+718:            ActionTile("Anki Prompts", "text/file to cards", "sparkles.rectangle.stack") { open("\(base)/10 Prompt Library/Anki Card Generation") }
+719:            ActionTile("CSS / HTML", "card templates", "curlybraces.square") { open("\(base)/10 Prompt Library/Anki CSS and HTML") }
+720:            ActionTile("Uploads", "future file workflow", "doc.badge.plus") { open("\(base)/10 Prompt Library/File Upload Workflows") }
+759:struct StandupCard: View {
+771:        GlassCard {
+821:        ("Prompt Library", "text.book.closed"),
+908:struct DashboardCards: View {
+913:            StatCard("Inbox", "\(stats.inbox)", "files waiting", "tray.full", trend: stats.inbox > 30 ? "Heavy" : "Clean")
+914:            StatCard("Downloads", "\(stats.downloads)", "loose files", "arrow.down.doc", trend: stats.downloads > 0 ? "Sort" : "Clear")
+915:            StatCard("Anki", "\(stats.todayCards)", "cards today", "rectangle.stack", trend: "🃜🃚🃖")
+916:            StatCard("Study", "\(stats.todayMinutes + stats.manualMinutesToday)m", "logged today", "clock", trend: todayGrade(stats.todayMinutes, stats.todayCards))
+917:            StatCard("Tasks", "\(stats.tasksOpen)", "\(stats.tasksDoneToday) done today", "checklist", trend: "Execute")
+918:            StatCard("Journal", "\(stats.journalEntries)", "standups", "book.pages", trend: "Reflect")
+923:func todayGrade(_ minutes: Int, _ cards: Int) -> String {
+924:    if minutes >= 480 || cards >= 350 { return "👑 Blue" }
+925:    if minutes >= 360 || cards >= 250 { return "Green" }
+926:    if minutes >= 300 || cards >= 150 { return "Orange" }
+930:struct StatCard: View {
+946:        GlassCard {
+977:struct CourseCard: View {
+991:        GlassCard {
+1025:    let cards: Int
+1027:    var grade: String { todayGrade(minutes, cards) }
+1030:        if minutes >= 480 || cards >= 350 { return .blue }
+1031:        if minutes >= 360 || cards >= 250 { return .green }
+1032:        if minutes >= 300 || cards >= 150 { return .orange }
+1056:                Text("\(cards) 🃜🃚🃖🃁🂭🂺")
+1077:                let c = cards(day)
+1079:                    .fill(color(minutes: m, cards: c))
+1082:                    .help("\(label(day)): \(m) min, \(c) cards")
+1096:    func cards(_ date: Date) -> Int {
+1097:        logs.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }.reduce(0) { $0 + $1.cards }
+1100:    func color(minutes: Int, cards: Int) -> Color {
+1101:        if minutes >= 480 || cards >= 350 { return .blue.opacity(0.88) }
+1102:        if minutes >= 360 || cards >= 250 { return .green.opacity(0.78) }
+1103:        if minutes >= 300 || (cards >= 150 && cards <= 200) { return .orange.opacity(0.82) }
+1104:        if minutes > 0 || cards > 0 { return .red.opacity(0.80) }
+1121:        GlassCard {
+1364:struct GlassCard<Content: View>: View {
+1464:        todayCards: d["today_cards"] ?? 0,
+1484:        return StudyLog(date: date, type: p[1], minutes: Int(p[2]) ?? 0, cards: Int(p[3]) ?? 0, note: p[4])
+

@@ -1,6 +1,12 @@
 # Noctyrium
 
-A local-first macOS command center for medical school execution — courses, module mastery tracking, productivity logging, daily standups, journal, prompt library, folder routing, tasks, reports, and STEP 1 prep, in one cockpit.
+A local-first command center for medical school execution — courses, module mastery tracking, productivity logging, daily standups, journal, prompt library, folder routing, tasks, reports, and STEP 1 prep, in one cockpit.
+
+> **New: web app.** Noctyrium now also ships as a **deployable web app** in
+> [`web/`](web/) — Vite + React + TypeScript, runs in VS Code (`cd web && npm install && npm run dev`),
+> builds to a static bundle you can host, embed in an iframe, or hand out as a download,
+> and stores data in the browser (no backend). See [`web/README.md`](web/README.md).
+> The Swift/macOS app below is the original build and is unchanged.
 
 **Version:** v0.03.01.5 (technical preview)
 **Stack:** SwiftUI + AppKit, native macOS (Apple Silicon)

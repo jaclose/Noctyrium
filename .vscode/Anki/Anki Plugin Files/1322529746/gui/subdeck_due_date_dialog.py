@@ -1,0 +1,341 @@
+"""Dialog for handling expired block exam subdecks."""
+
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from typing import Optional
+
+import aqt
+from anki.decks import DeckId
+from aqt import QTimer, qconnect
+from aqt.qt import QDateEdit, QDialog, QHBoxLayout, QLabel, QPushButton, Qt, QVBoxLayout
+from aqt.utils import tooltip
+
+from .. import LOGGER
+from ..main.block_exam_subdecks import (
+    get_expired_block_exam_subdecks,
+    get_subdeck_log_context,
+    get_subdeck_name_without_parent,
+    move_subdeck_to_main_deck,
+    set_subdeck_due_date,
+)
+from ..settings import ActionSource, BlockExamSubdeckConfig, BlockExamSubdeckOrigin, config
+
+
+@dataclass
+class _DueDateReminderDialogState:
+    """Manages sequential display of due date reminder dialogs with a queue."""
+
+    dialog: "SubdeckDueDateReminderDialog | None" = None
+    queue: list[BlockExamSubdeckConfig] = field(default_factory=list)
+
+
+_reminder_dialog_state = _DueDateReminderDialogState()
+
+
+class SubdeckDueDateReminderDialog(QDialog):
+    """Reminder dialog shown when a block exam subdeck's due date has been reached."""
+
+    def __init__(self, subdeck_config: BlockExamSubdeckConfig, parent=None):
+        super().__init__(parent)
+        self.subdeck_config = subdeck_config
+        self.subdeck_name = get_subdeck_name_without_parent(subdeck_config.subdeck_id)
+        self.action_source = ActionSource.DUE_DATE_REMINDER_DIRECT
+
+        self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowTitle("AnkiHub | Subdecks")
+        self.setMinimumWidth(400)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # Delete on close to prevent memory leaks
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Set up the dialog UI."""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(28, 28, 28, 28)
+        main_layout.setSpacing(12)
+
+        # Title
+        title_label = QLabel("Subdeck due date reached")
+        title_font = title_label.font()
+        title_font.setBold(True)
+        title_font.setPointSize(title_font.pointSize() + 2)
+        title_label.setFont(title_font)
+        main_layout.addWidget(title_label)
+
+        # Main message
+        message_text = (
+            f"The due date you set for <strong>{self.subdeck_name}</strong> has arrived. "
+            "Please choose what you'd like to do next:"
+        )
+        message_label = QLabel(message_text)
+        message_label.setWordWrap(True)
+        main_layout.addWidget(message_label)
+
+        # Options list
+        options_text = (
+            "<strong>• Move to main deck:</strong> Delete the subdeck and move all notes back into the main deck.<br>"
+            "<strong>• Keep as is:</strong> Leave the subdeck and notes unchanged.<br>"
+            "<strong>• Set new due date:</strong> Pick a new date to be reminded later."
+        )
+        options_label = QLabel(options_text)
+        options_label.setWordWrap(True)
+        main_layout.addWidget(options_label)
+
+        # Add stretch to push buttons to bottom
+        main_layout.addStretch()
+
+        # Buttons layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(12)
+
+        # Set new due date button (leftmost)
+        self.set_new_date_button = QPushButton("Set new due date")
+        qconnect(self.set_new_date_button.clicked, self._on_set_new_due_date)
+        button_layout.addWidget(self.set_new_date_button)
+
+        # Keep as is button (middle)
+        self.keep_as_is_button = QPushButton("Keep it")
+        qconnect(self.keep_as_is_button.clicked, self._on_keep_as_is)
+        button_layout.addWidget(self.keep_as_is_button)
+
+        # Move to main deck button (rightmost, primary action)
+        self.move_to_main_button = QPushButton("Move to main deck")
+        qconnect(self.move_to_main_button.clicked, self._on_move_to_main_deck)
+        self.move_to_main_button.setDefault(True)
+
+        has_parents = bool(aqt.mw.col.decks.parents(self.subdeck_config.subdeck_id))
+        self.move_to_main_button.setEnabled(has_parents)
+        if not has_parents:
+            self.move_to_main_button.setToolTip("The deck is already a top-level deck")
+
+        button_layout.addWidget(self.move_to_main_button)
+
+        main_layout.addLayout(button_layout)
+        self.adjustSize()
+
+    def _on_move_to_main_deck(self):
+        """Handle moving subdeck to main deck."""
+        note_count = move_subdeck_to_main_deck(self.subdeck_config.subdeck_id, action_source=self.action_source)
+        tooltip(f"{note_count} notes merged into the parent deck", parent=aqt.mw)
+        self.accept()
+        aqt.mw.deckBrowser.refresh()
+
+    def _on_keep_as_is(self):
+        """Handle keeping subdeck unchanged."""
+        set_subdeck_due_date(
+            self.subdeck_config.subdeck_id,
+            None,
+            origin_hint=self.subdeck_config.config_origin,
+            action_source=self.action_source,
+        )
+        self.accept()
+        tooltip(f"<b>{self.subdeck_name}</b> kept with no due date set.", parent=aqt.mw)
+
+    def _on_set_new_due_date(self):
+        """Handle setting a new due date."""
+        self._show_date_picker()
+
+    def _show_date_picker(self):
+        """Show date picker dialog."""
+        date_picker_dialog = SubdeckDueDatePickerDialog(
+            subdeck_id=self.subdeck_config.subdeck_id,
+            initial_due_date=self.subdeck_config.due_date,
+            parent=self,
+            origin_hint=self.subdeck_config.config_origin,
+            action_source=ActionSource.DUE_DATE_REMINDER_PICKER,
+        )
+        qconnect(date_picker_dialog.accepted, self.accept)
+        date_picker_dialog.show()
+
+
+class SubdeckDueDatePickerDialog(QDialog):
+    """Dialog for selecting a new due date for a subdeck."""
+
+    def __init__(
+        self,
+        subdeck_id: DeckId,
+        *,
+        origin_hint: BlockExamSubdeckOrigin,
+        initial_due_date: Optional[str] = None,
+        parent=None,
+        action_source: Optional[ActionSource] = None,
+    ):
+        super().__init__(parent)
+        self.subdeck_id = subdeck_id
+        self.subdeck_name = get_subdeck_name_without_parent(subdeck_id)
+        self.initial_due_date = initial_due_date
+        self.action_source = action_source
+        self.origin_hint = origin_hint
+
+        self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.setWindowTitle("AnkiHub | Subdecks")
+        self.setMinimumWidth(400)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)  # Delete on close to prevent memory leaks
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Set up the date picker dialog UI."""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(28, 28, 28, 28)
+        main_layout.setSpacing(12)
+
+        # Title
+        title_label = QLabel("Set due date")
+        title_font = title_label.font()
+        title_font.setBold(True)
+        title_font.setPointSize(title_font.pointSize() + 2)
+        title_label.setFont(title_font)
+        main_layout.addWidget(title_label)
+
+        # Message
+        message_text = f"Pick a new due date for <strong>{self.subdeck_name}</strong>."
+        message_label = QLabel(message_text)
+        message_label.setWordWrap(True)
+        main_layout.addWidget(message_label)
+        main_layout.addSpacing(8)
+
+        # Date picker
+        date_layout = QVBoxLayout()
+        date_label = QLabel("Due date:")
+        date_label_font = date_label.font()
+        date_label_font.setBold(True)
+        date_label.setFont(date_label_font)
+        date_layout.addWidget(date_label)
+
+        self.date_input = QDateEdit()
+        last_due_date = (
+            date.fromisoformat(self.initial_due_date) if self.initial_due_date else date.today() + timedelta(days=1)
+        )
+        self.date_input.setDate(last_due_date)
+        self.date_input.setMinimumDate(date.today())
+        self.date_input.setCalendarPopup(True)
+        date_layout.addWidget(self.date_input)
+        main_layout.addLayout(date_layout)
+
+        # Add stretch to push buttons to bottom
+        main_layout.addStretch()
+
+        # Buttons layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(12)
+        button_layout.addStretch()
+
+        # Cancel button
+        cancel_button = QPushButton("Cancel")
+        qconnect(cancel_button.clicked, self.reject)
+        button_layout.addWidget(cancel_button)
+
+        # Remove due date button (only show if subdeck has a due date)
+        if self.initial_due_date:
+            remove_due_date_button = QPushButton("Remove due date")
+            qconnect(remove_due_date_button.clicked, self._on_remove_due_date)
+            button_layout.addWidget(remove_due_date_button)
+
+        # Confirm button
+        confirm_button = QPushButton("Save")
+        qconnect(confirm_button.clicked, self._on_confirm)
+        confirm_button.setDefault(True)
+        button_layout.addWidget(confirm_button)
+
+        main_layout.addLayout(button_layout)
+
+        # Focus on date input
+        self.date_input.setFocus()
+
+        self.adjustSize()
+
+    def _on_confirm(self):
+        """Handle confirming the selected date."""
+        selected_date_str = self.date_input.date().toString("yyyy-MM-dd")
+        set_subdeck_due_date(
+            self.subdeck_id,
+            new_due_date=selected_date_str,
+            origin_hint=self.origin_hint,
+            action_source=self.action_source,
+        )
+        self.accept()
+
+        tooltip(f"Due date for <strong>{self.subdeck_name}</strong> updated successfully", parent=aqt.mw)
+
+    def _on_remove_due_date(self):
+        """Handle removing the due date from the subdeck."""
+        set_subdeck_due_date(
+            self.subdeck_id,
+            new_due_date=None,
+            origin_hint=self.origin_hint,
+            action_source=self.action_source,
+        )
+        self.accept()
+
+        tooltip(f"Due date removed for <strong>{self.subdeck_name}</strong>", parent=aqt.mw)
+
+
+def _show_next_due_date_reminder_dialog() -> None:
+    """Show the next due date reminder dialog from the queue."""
+
+    # Get next valid subdeck config from the queue
+    subdeck_config = None
+    found_valid_subdeck = False
+
+    while _reminder_dialog_state.queue:
+        subdeck_config = _reminder_dialog_state.queue.pop(0)
+        subdeck = aqt.mw.col.decks.get(subdeck_config.subdeck_id, default=False)
+        if subdeck:
+            found_valid_subdeck = True
+            break
+
+        # If subdeck no longer exists, remove the config and continue to next
+        config.remove_block_exam_subdeck(subdeck_config.subdeck_id)
+        LOGGER.warning(
+            "expired_subdeck_not_found",
+            subdeck_id=subdeck_config.subdeck_id,
+        )
+        subdeck_config = None
+
+    if not found_valid_subdeck or not subdeck_config:
+        _reminder_dialog_state.dialog = None
+        return
+
+    # Create dialog for this subdeck
+    dialog = SubdeckDueDateReminderDialog(subdeck_config, parent=aqt.mw)
+
+    _reminder_dialog_state.dialog = dialog
+
+    # When dialog is closed, show the next one in the queue
+    qconnect(dialog.finished, lambda _: QTimer.singleShot(0, _show_next_due_date_reminder_dialog))
+
+    # Show the dialog
+    dialog.show()
+    dialog.raise_()
+    dialog.activateWindow()
+    dialog.setFocus()
+
+    LOGGER.info(
+        "subdeck_reminder_dialog_shown",
+        **get_subdeck_log_context(subdeck_config.subdeck_id, ActionSource.DUE_DATE_REMINDER_DIRECT),
+        due_date=subdeck_config.due_date,
+    )
+
+
+def maybe_show_subdeck_due_date_reminders() -> None:
+    """Show due date reminder dialogs for any expired block exam subdecks.
+
+    If a due date reminder dialog is already active, does nothing.
+    """
+
+    if not config.get_feature_flags().get("block_exam_subdecks"):
+        return
+
+    if _reminder_dialog_state.dialog:
+        LOGGER.info("subdeck_reminder_dialog_already_active")
+        return
+
+    expired_subdecks = get_expired_block_exam_subdecks()
+    if not expired_subdecks:
+        return
+
+    _reminder_dialog_state.queue = expired_subdecks
+    _show_next_due_date_reminder_dialog()

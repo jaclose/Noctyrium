@@ -26,6 +26,17 @@
             "target": "Noctyrium",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release Noctyrium"
+        },
+        {
+            "name": "Containers: Node.js Launch",
+            "type": "docker",
+            "request": "launch",
+            "preLaunchTask": "docker-run: debug",
+            "platform": "node",
+            "node": {
+                "package": "${workspaceFolder}/web/package.json",
+                "localRoot": "${workspaceFolder}/web"
+            }
         }
     ]
 }

@@ -1,0 +1,51 @@
+<!--
+  Drop-in example for the Noctyrium website.
+  ──────────────────────────────────────────
+  Shows two things JD asked for:
+    1) Noctyrium embedded near the bottom of a page (responsive iframe).
+    2) A "download" card with a download icon that links to the zip.
+
+  Replace the URLs:
+    • IFRAME_SRC  → where you host the built app (the contents of web/dist/)
+    • DOWNLOAD_URL → where you host Noctyrium-web-vX.Y.Z.zip
+    • APP_URL      → the standalone page (same as IFRAME_SRC, opened full-page)
+-->
+<section style="max-width:1200px;margin:64px auto;padding:0 20px;font-family:system-ui,sans-serif;color:#fff">
+  <!-- Download card -->
+  <div style="display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap;
+              padding:20px 22px;margin-bottom:20px;border-radius:18px;
+              background:linear-gradient(135deg,rgba(90,215,239,.12),rgba(155,123,255,.08));
+              border:1px solid rgba(90,215,239,.22)">
+    <div>
+      <div style="font-size:18px;font-weight:800">Noctyrium</div>
+      <div style="opacity:.6;font-size:13px">A premium command center for medical-school execution. Runs in your browser — no install required.</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="APP_URL" target="_blank" rel="noreferrer"
+         style="display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;
+                font-weight:700;text-decoration:none;color:#fff;
+                background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)">
+        Open app
+      </a>
+      <a href="DOWNLOAD_URL" download
+         style="display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:12px;
+                font-weight:700;text-decoration:none;color:#04210f;
+                background:linear-gradient(135deg,#5ad7ef,#4d8dff)">
+        <!-- download icon -->
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download
+      </a>
+    </div>
+  </div>
+
+  <!-- Embedded app -->
+  <div style="position:relative;border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.12);
+              box-shadow:0 32px 60px rgba(0,0,0,.5)">
+    <iframe src="IFRAME_SRC" title="Noctyrium"
+            style="display:block;width:100%;height:760px;border:0;background:#05060d"
+            loading="lazy" allow="clipboard-write"></iframe>
+  </div>
+</section>
