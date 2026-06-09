@@ -38,6 +38,25 @@ swift build          # or open Package.swift in Xcode and hit Run
 ```sh
 ./scripts/build_app.sh
 ```
+> If Xcode is installed but its license hasn't been accepted, `build_app.sh`
+> automatically falls back to the Command Line Tools so the build never blocks.
+
+**Package a downloadable build** (creates `dist/Noctyrium-<version>.zip`):
+```sh
+./scripts/package.sh
+```
+The zip is **unsigned** — fine for you; others will hit a Gatekeeper warning
+until it's code-signed + notarized (requires an Apple Developer account).
+
+## Runtime dependencies
+
+Noctyrium shells out to a stats script at runtime:
+`~/Medical School/09 Admin/Scripts/dashboard_stats.sh`. The canonical copy now
+lives in this repo at [`scripts/dashboard_stats.sh`](scripts/dashboard_stats.sh),
+and `build_app.sh` deploys it to that runtime path if it's missing (it never
+overwrites an existing one). The script optionally uses the
+[`tag`](https://github.com/jdberry/tag) CLI for Finder-tag counts
+(`brew install tag`); without it, those counts simply read 0.
 
 ## Important: data lives outside this repo
 

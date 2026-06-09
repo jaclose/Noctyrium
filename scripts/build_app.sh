@@ -67,6 +67,17 @@ if [[ -f "$ICON" ]]; then
   cp "$ICON" "$STAGE_APP/Contents/Resources/Noctyrium.icns"
 fi
 
+# Ensure the app's runtime stats script exists. The app shells out to
+# "$HOME/Medical School/09 Admin/Scripts/dashboard_stats.sh" at runtime; deploy
+# the repo's canonical copy if it's missing (never overwrite an existing one).
+RUNTIME_SCRIPTS="$HOME/Medical School/09 Admin/Scripts"
+if [[ -f "$REPO/scripts/dashboard_stats.sh" && ! -f "$RUNTIME_SCRIPTS/dashboard_stats.sh" ]]; then
+  mkdir -p "$RUNTIME_SCRIPTS"
+  cp "$REPO/scripts/dashboard_stats.sh" "$RUNTIME_SCRIPTS/dashboard_stats.sh"
+  chmod +x "$RUNTIME_SCRIPTS/dashboard_stats.sh"
+  echo "Deployed dashboard_stats.sh to runtime path (was missing)."
+fi
+
 echo "Installing to /Applications..."
 rm -rf "$DEST_APP"
 cp -R "$STAGE_APP" "$DEST_APP"
