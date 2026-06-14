@@ -6,10 +6,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
-  BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
+  BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   Prompt, Resource, Task, TrackerItem, Profile, StudyLog,
 } from "./types";
-import { makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
+import { APP_VERSION_LABEL, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
@@ -77,6 +77,8 @@ interface Actions {
 
   // board prep
   updateBoardPrep: (exam: BoardExamId, patch: Partial<BoardPrepProfile>) => void;
+  addBoardBlueprintLog: (exam: BoardExamId, entry: Omit<BoardBlueprintLog, "id" | "updated">) => void;
+  removeBoardBlueprintLog: (exam: BoardExamId, id: string) => void;
 
   // win the day
   setDayPlan: (dayKey: string, intention: string, wins: string[]) => void;
@@ -245,6 +247,42 @@ export const useStore = create<Store>()(
             },
           },
         })),
+      addBoardBlueprintLog: (exam, entry) =>
+        set((s) => {
+          const current = {
+            ...defaultBoardPrep(exam),
+            ...s.boardPrep?.[exam],
+          };
+          return {
+            boardPrep: {
+              ...defaultBoardPrepState(),
+              ...s.boardPrep,
+              [exam]: {
+                ...current,
+                blueprintLogs: [{ ...entry, id: uid(), updated: now() }, ...(current.blueprintLogs ?? [])],
+                updated: now(),
+              },
+            },
+          };
+        }),
+      removeBoardBlueprintLog: (exam, id) =>
+        set((s) => {
+          const current = {
+            ...defaultBoardPrep(exam),
+            ...s.boardPrep?.[exam],
+          };
+          return {
+            boardPrep: {
+              ...defaultBoardPrepState(),
+              ...s.boardPrep,
+              [exam]: {
+                ...current,
+                blueprintLogs: (current.blueprintLogs ?? []).filter((log) => log.id !== id),
+                updated: now(),
+              },
+            },
+          };
+        }),
 
       setDayPlan: (dk, intention, wins) =>
         set((s) => {
@@ -331,7 +369,7 @@ export const useStore = create<Store>()(
         }
         if (fromVersion < 6) {
           const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = "v0.10.0 · web";
+          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
           s.profile = profile;
         }
         if (fromVersion < 7) {
@@ -351,10 +389,20 @@ export const useStore = create<Store>()(
         }
         if (fromVersion < 9) {
           const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = "v0.10.0 · web";
+          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
           s.profile = profile;
           s.resources = normalizeResourceLinks(s.resources);
           s.dayPlans = s.dayPlans ?? [];
+        }
+        if (fromVersion < 10) {
+          const profile = normalizeProfile(s.profile);
+          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) || profile.versionLabel === "v0.10.0 · web") {
+            profile.versionLabel = APP_VERSION_LABEL;
+          }
+          s.profile = profile;
+        }
+        if (fromVersion < 11) {
+          s.boardPrep = normalizeBoardPrep(s.boardPrep);
         }
         return s as unknown as NoctyriumState;
       },
@@ -396,7 +444,7 @@ const CANONICAL_COURSES = [
     aliases: ["bpm501", "01bpm501"],
     name: "Basic Principles of Medicine II",
     termName: "Term 2",
-    modules: ["Heme", "Renal"],
+    modules: ["DM", "ER", "NB1", "NB2", "NB3"],
   },
   {
     code: "BPM 502",
@@ -459,7 +507,7 @@ function normalizeAcademicMap(state: AnyRecord) {
   }
 
   const profile = isRecord(state.profile) ? state.profile : {};
-  profile.versionLabel = "v0.10.0 · web";
+  profile.versionLabel = APP_VERSION_LABEL;
   state.profile = normalizeProfile(profile);
   state.terms = terms;
   state.courses = courses;
@@ -473,7 +521,7 @@ function normalizeProfile(value: unknown): Profile {
     userId: typeof profile.userId === "string" && profile.userId.trim()
       ? profile.userId
       : userIdFromName(name),
-    versionLabel: String(profile.versionLabel ?? "v0.10.0 · web"),
+    versionLabel: String(profile.versionLabel ?? APP_VERSION_LABEL),
     tagline: String(profile.tagline ?? "Designed for execution, not decoration."),
     avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
     dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
@@ -497,6 +545,8 @@ function defaultBoardPrep(exam: BoardExamId): BoardPrepProfile {
     resourcesDone: [],
     otherResources: "",
     confidence: "medium",
+    blueprintLogs: [],
+    aiStrategy: "",
     updated: new Date().toISOString(),
   };
 }
@@ -563,8 +613,37 @@ function normalizeBoardPrepProfile(value: unknown, exam: BoardExamId): BoardPrep
     resourcesDone: Array.isArray(profile.resourcesDone) ? profile.resourcesDone.filter((x): x is string => typeof x === "string") : [],
     otherResources: String(profile.otherResources ?? ""),
     confidence,
+    blueprintLogs: normalizeBoardBlueprintLogs(profile.blueprintLogs),
+    aiStrategy: typeof profile.aiStrategy === "string" ? profile.aiStrategy : "",
     updated: typeof profile.updated === "string" ? profile.updated : new Date().toISOString(),
   };
+}
+
+function normalizeBoardBlueprintLogs(value: unknown): BoardBlueprintLog[] {
+  return arrayOfRecords(value).map((log) => {
+    const dimension = ["system", "competency", "discipline"].includes(String(log.dimension))
+      ? log.dimension as BoardBlueprintLog["dimension"]
+      : "system";
+    const mode = ["Content", "Retrieval", "Questions", "Assessment", "Review"].includes(String(log.mode))
+      ? log.mode as BoardBlueprintLog["mode"]
+      : "Questions";
+    const confidence = ["red", "orange", "green", "blue"].includes(String(log.confidence))
+      ? log.confidence as BoardBlueprintLog["confidence"]
+      : "orange";
+    return {
+      id: typeof log.id === "string" && log.id ? log.id : uid(),
+      date: typeof log.date === "string" && log.date ? log.date : dayKey(),
+      dimension,
+      area: String(log.area ?? "Unmapped"),
+      mode,
+      minutes: typeof log.minutes === "number" ? log.minutes : 0,
+      questions: typeof log.questions === "number" ? log.questions : 0,
+      correct: typeof log.correct === "number" ? log.correct : 0,
+      confidence,
+      notes: typeof log.notes === "string" ? log.notes : undefined,
+      updated: typeof log.updated === "string" ? log.updated : new Date().toISOString(),
+    };
+  });
 }
 
 function mergeModules(existing: AnyRecord[], names: string[]) {

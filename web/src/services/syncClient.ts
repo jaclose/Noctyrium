@@ -1,4 +1,4 @@
-import type { CloudBackup, CloudSnapshot, CloudUser, SaveCloudInput } from "../types/sync";
+import type { BackendHealth, CloudBackup, CloudSnapshot, CloudUser, SaveCloudInput } from "../types/sync";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -22,6 +22,26 @@ export async function loginByName(name: string) {
     body: JSON.stringify({ name }),
   });
   return data.user;
+}
+
+export async function getBackendHealth() {
+  return api<BackendHealth>("/api/health");
+}
+
+export async function saveProgressByName(name: string, input: SaveCloudInput) {
+  const data = await api<{ user: CloudUser; snapshot: CloudSnapshot }>("/api/progress/save", {
+    method: "POST",
+    body: JSON.stringify({ name, ...toApiPayload(input) }),
+  });
+  return data;
+}
+
+export async function loadProgressByName(name: string) {
+  const data = await api<{ user: CloudUser; snapshot: CloudSnapshot | null }>("/api/progress/load", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+  return data;
 }
 
 export async function getCloudUser(userId: string) {

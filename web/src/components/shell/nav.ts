@@ -18,7 +18,7 @@ export const NAV: NavItem[] = [
   { id: "tracker", label: "Course Tracker", subtitle: "Lecture, DLA, and PQ completion map", icon: BadgeCheck },
   { id: "anki", label: "Anki Lab", subtitle: "Turn lectures, DLAs & slides into Anki cards", icon: Wand2 },
   { id: "resources", label: "Resources", subtitle: "Saved hyperlinks — STEP 1 prep, references, tools", icon: Link },
-  { id: "step", label: "STEP 1", subtitle: "Board prep — weak areas and drills", icon: Brain },
+  { id: "step", label: "STEP 1", subtitle: "Blueprint logs, schedule, and AI board strategy", icon: Brain },
   { id: "reports", label: "Reports", subtitle: "Traceable summaries from your data", icon: LineChart },
   { id: "productivity", label: "Productivity", subtitle: "Study time, Anki cards, lecture blocks, day usefulness", icon: Calendar },
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },

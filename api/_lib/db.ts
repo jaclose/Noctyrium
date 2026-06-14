@@ -45,7 +45,7 @@ async function ensureSchema(sql: SqlClient) {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       app_version text NOT NULL DEFAULT 'unknown',
-      schema_version integer NOT NULL DEFAULT 1,
+      schema_version integer NOT NULL DEFAULT 11,
       data_json jsonb NOT NULL,
       device_label text,
       backup_label text,

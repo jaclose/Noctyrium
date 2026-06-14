@@ -1,6 +1,11 @@
 node_modules/
 dist/
+playwright-report/
+test-results/
 *.local
 .DS_Store
 *.tsbuildinfo
 Noctyrium-web-*.zip
+Noctyrium-mac-*.zip
+Noctyrium-web-v*/
+Noctyrium.app/

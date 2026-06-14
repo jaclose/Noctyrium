@@ -1,13 +1,14 @@
 // ===========================================================================
-// Starter data. Mirrors what the v0.03.01.5 build showed (Terms, BPM/PPM
-// courses, the T2 ▸ NB3 mastery tree, sample prompts/journal) so a brand-new
-// install looks alive. Everything here is fully editable + deletable in-app.
+// Alpha starter data. Keep the app useful on first launch without shipping a
+// personal workload: canonical SGU terms/courses, a few sample tracker rows,
+// official board resources, and empty logs/journal.
 // ===========================================================================
 import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield } from "./types";
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 11;
+export const APP_VERSION_LABEL = "alpha 1 · web";
 
 const now = () => new Date().toISOString();
 
@@ -35,7 +36,7 @@ export function makeSeed(): NoctyriumState {
     profile: {
       name: "Noctyrium",
       userId: userIdFromName("Noctyrium"),
-      versionLabel: "v0.10.0 · web",
+      versionLabel: APP_VERSION_LABEL,
       tagline: "Designed for execution, not decoration.",
       dailyCardTarget: 120,
       dailyMinuteTarget: 240,
@@ -50,42 +51,26 @@ export function makeSeed(): NoctyriumState {
     courses: [
       {
         id: crypto.randomUUID(), termId: t1, code: "BPM 500", name: "Basic Principles of Medicine I",
-        files: 6, modules: ["FTM 1", "FTM 2", "MSK", "CPR 1", "CPR 2"].map((n) => ({ id: crypto.randomUUID(), name: n })),
+        files: 0, modules: ["FTM 1", "FTM 2", "MSK", "CPR 1", "CPR 2"].map((n) => ({ id: crypto.randomUUID(), name: n })),
       },
       {
         id: crypto.randomUUID(), termId: t2, code: "BPM 501", name: "Basic Principles of Medicine II",
-        files: 2, modules: ["Heme", "Renal"].map((n) => ({ id: crypto.randomUUID(), name: n })),
+        files: 0, modules: ["DM", "ER", "NB1", "NB2", "NB3"].map((n) => ({ id: crypto.randomUUID(), name: n })),
       },
       {
         id: crypto.randomUUID(), termId: t3, code: "BPM 502", name: "Basic Principles of Medicine III",
         files: 0, modules: ["Neuro", "Behavioral", "Endocrine/Repro"].map((n) => ({ id: crypto.randomUUID(), name: n })),
       },
-      {
-        id: crypto.randomUUID(), termId: t4, code: "SPPM 500", name: "Systems-Based Principles & Practice of Medicine",
-        files: 0, modules: [],
-      },
-      {
-        id: crypto.randomUUID(), termId: t5, code: "PPM 501", name: "Principles & Practice of Medicine I",
-        files: 0, modules: [],
-      },
+      { id: crypto.randomUUID(), termId: t4, code: "SPPM 500", name: "Systems-Based Principles & Practice of Medicine", files: 0, modules: [] },
+      { id: crypto.randomUUID(), termId: t5, code: "PPM 501", name: "Principles & Practice of Medicine I", files: 0, modules: [] },
     ],
     tracker: [
-      // path, label, kind, passes, ankiPasses, yield — new items default to "none" (Set yield);
-      // only a couple are pre-flagged here to demo the review/high states.
-      trackerRow("T2/NB3/Lectures", "NB 58 Emotions", "Lecture", 0, 0),
-      trackerRow("T2/NB3/Lectures", "NB 58 Introduction to Psychopathology", "Lecture", 0, 0),
-      trackerRow("T2/NB3/Lectures", "NB 57 OCD and Somatic Symptom Disorders", "Lecture", 1, 1, "review"),
-      trackerRow("T2/NB3/Lectures", "NB 58 Trauma/Stressor and Dissociative Disorders", "Lecture", 2, 0),
-      trackerRow("T2/NB3/Lectures", "NB 58 Depressive Disorders and Bipolar", "Lecture", 2, 1),
-      trackerRow("T2/NB3/Lectures", "NB 60 Biological Rhythms", "Lecture", 3, 1),
-      trackerRow("T2/NB3/Lectures", "NB 61 Sleep", "Lecture", 4, 3),
-      trackerRow("T2/NB3/Lectures", "NB 62 Sleep-Wake Disorders", "Lecture", 1, 1, "review"),
-      trackerRow("T2/NB3/DLAs", "NB3 DLA: Mood & Anxiety Pharmacology", "DLA", 0, 0),
-      trackerRow("T2/NB3/DLAs", "NB3 DLA: Sleep Physiology Case", "DLA", 2, 0),
-      trackerRow("T2/NB3/PQs", "NB3 Sakai Question Bank", "PQ", 2, 0),
-      trackerRow("T2/ER/Lectures", "ER Cardiovascular Block", "Lecture", 3, 1),
-      trackerRow("T2/ER/DLAs", "ER DLA: ECG Interpretation", "DLA", 1, 1),
-      trackerRow("T1/BPM500/MSK", "MSK Upper Limb", "Lecture", 4, 3),
+      // Small examples only. Users can bulk-import real lecture/DLA/PQ lists.
+      trackerRow("Term 1/BPM 500/FTM 1/Lectures", "Example lecture: Cellular adaptation", "Lecture", 0, 0, "high"),
+      trackerRow("Term 1/BPM 500/FTM 1/DLAs", "Example DLA: Histology orientation", "DLA", 0, 0),
+      trackerRow("Term 1/BPM 500/FTM 1/PQs", "Example PQ set: General principles", "PQ", 0, 0),
+      trackerRow("Term 2/BPM 501/NB3/Lectures", "Example lecture: Sleep and biological rhythms", "Lecture", 1, 1, "review"),
+      trackerRow("Term 2/BPM 501/NB3/PQs", "Example PQ set: Psych foundations", "PQ", 1, 0),
     ],
     resources: [
       { id: crypto.randomUUID(), title: "USMLE Step 1 Content Outline", url: "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications", category: "STEP 1", tags: ["official", "blueprint"], favorite: true, created: now() },
@@ -95,16 +80,12 @@ export function makeSeed(): NoctyriumState {
       { id: crypto.randomUUID(), title: "AnKing Overview (Step 1 deck)", url: "https://www.ankingmed.com/", category: "Anki", tags: ["deck", "step1"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "AnKing Step Deck on AnkiHub", url: "https://www.ankihub.net/step-deck", category: "Anki", tags: ["deck", "step1", "step2"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "Mehlman Medical Free HY Documents", url: "https://mehlmanmedical.com/free-stuff/", category: "STEP 1", tags: ["review", "hy"], favorite: true, created: now() },
-      { id: crypto.randomUUID(), title: "Boards & Beyond", url: "https://www.boardsbeyond.com/", category: "STEP 1", tags: ["videos"], created: now() },
-      { id: crypto.randomUUID(), title: "Sketchy (Micro/Pharm)", url: "https://www.sketchy.com/", category: "STEP 1", tags: ["mnemonics"], created: now() },
-      { id: crypto.randomUUID(), title: "UpToDate", url: "https://www.uptodate.com/", category: "Reference", tags: ["clinical"], created: now() },
-      { id: crypto.randomUUID(), title: "AMBOSS", url: "https://www.amboss.com/us", category: "Reference", tags: ["qbank", "library"], created: now() },
-      { id: crypto.randomUUID(), title: "First Aid for the USMLE Step 1", url: "https://www.usmle-rx.com/", category: "STEP 1", tags: ["book"], created: now() },
       { id: crypto.randomUUID(), title: "St. George's University (SGU)", url: "https://www.sgu.edu/", category: "Drives", tags: ["sgu", "official"], note: "Home base for SGU students.", created: now() },
     ],
     tasks: [
       { id: crypto.randomUUID(), title: "Create today's standup", done: false, archived: false, scope: "Journal", created: now(), due: isoDate(new Date()) },
-      { id: crypto.randomUUID(), title: "Import current lecture list into Course Tracker", done: false, archived: false, scope: "Course Tracker", created: now() },
+      { id: crypto.randomUUID(), title: "Add your real lecture/DLA/PQ list", done: false, archived: false, scope: "Course Tracker", created: now() },
+      { id: crypto.randomUUID(), title: "Save progress from Settings", done: false, archived: false, scope: "Cloud Sync", created: now() },
     ],
     journal: [],
     prompts: [
@@ -168,6 +149,8 @@ function boardPrepSeed(
     resourcesDone: [],
     otherResources: "",
     confidence: "medium",
+    blueprintLogs: [],
+    aiStrategy: "",
     updated: now(),
   };
 }

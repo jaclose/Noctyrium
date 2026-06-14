@@ -2,7 +2,7 @@
 // JSON export / import. The portable backup story for the browser-stored data.
 // ===========================================================================
 import type { NoctyriumState } from "./types";
-import { SCHEMA_VERSION } from "./seed";
+import { APP_VERSION_LABEL, SCHEMA_VERSION } from "./seed";
 import { userIdFromName } from "./userIdentity";
 
 const DATA_KEYS = [
@@ -50,7 +50,7 @@ export function parseImport(text: string): NoctyriumState {
     profile: {
       name,
       userId: typeof profile.userId === "string" && profile.userId.trim() ? profile.userId : userIdFromName(name),
-      versionLabel: String(profile.versionLabel ?? "v0.10.0 · web"),
+      versionLabel: String(profile.versionLabel ?? APP_VERSION_LABEL),
       tagline: String(profile.tagline ?? "Designed for execution, not decoration."),
       avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
       dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
@@ -84,6 +84,8 @@ function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: 
     resourcesDone: [],
     otherResources: "",
     confidence: "medium",
+    blueprintLogs: [],
+    aiStrategy: "",
     updated: new Date().toISOString(),
   };
 }

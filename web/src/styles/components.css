@@ -231,7 +231,7 @@ select.field, .scope-select {
 .sync-toggle input { accent-color: var(--cyan); }
 .sync-meta-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 .sync-meta-item {

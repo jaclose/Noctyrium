@@ -19,8 +19,8 @@ and can also be wrapped into a double-clickable macOS app package.
 - **Lecture, DLA, and PQ tracker** — mastery tree with a split pass/Anki status shard,
   click-to-fill pass blocks, Anki-round blocks, high-yield/low-yield/needs-review flags, scope filtering, and adaptive
   suggested next moves.
-- **STEP 1 + STEP 2 CK control surfaces** — USMLE-weighted blueprint areas, readiness bars,
-  and one-click tracker scaffolds for Lecture/DLA/PQ/Anki work.
+- **STEP 1 + STEP 2 CK control surfaces** — USMLE-weighted blueprint logging,
+  readiness bars, schedule planning, and AI-assisted board strategy.
 - **Anki Lab** — turn lecture/DLA/slide text into cards with a prompt workflow or a browser-local
   draft generator, then export tab-separated Anki import files for Basic, Cloze, or custom note types.
 - **Resources** — save and **bulk-import hyperlinks** (STEP 1 prep, references, decks, tools),
@@ -29,6 +29,16 @@ and can also be wrapped into a double-clickable macOS app package.
   nudge to *stop* when you hit target (the #1 cause of Anki burnout is grinding 500 cards/day).
 - **Per-course smart suggestions** — the Dashboard and Course Tracker use pass count, yield/review
   flags, scope size, and Anki rounds to suggest the next best move.
+
+## Alpha 1 starter state
+
+Alpha 1 opens with a fresh SGU-oriented scaffold, not a personal workload:
+
+- Terms 1-5 and the core BPM/SPPM/PPM course shells are present.
+- Course Tracker includes only a few example Lecture/DLA/PQ rows so the UI is understandable.
+- Productivity logs, journal entries, and reports start empty.
+- STEP 1 / STEP 2 stay fully usable: the Step page now logs board work by blueprint systems, tasks/competencies, and disciplines instead of lecture-style tracker rows.
+- Local Vault autosave is always on; Settings -> Progress Save can optionally sync the JSON snapshot to the backend.
 
 ## Run it in VS Code
 
@@ -80,7 +90,7 @@ Required Vercel env vars:
 ```sh
 DATABASE_URL=
 AI_PROVIDER=mock
-APP_SCHEMA_VERSION=9
+APP_SCHEMA_VERSION=11
 NOCTYRIUM_AUTO_MIGRATE=true
 ```
 
@@ -175,10 +185,10 @@ config files.
 ## Test cloud sync and mock AI
 
 1. Open Settings & Backup.
-2. Enter a name and click **Login by name**.
-3. Click **Save cloud**.
+2. Enter a name and click **Link name**.
+3. Click **Save progress**.
 4. Make a small local change, then click **Create backup**.
-5. Click **Load cloud** or restore a backup and confirm the conflict prompt.
+5. Click **Load progress** or restore a backup and confirm the conflict prompt.
 6. Confirm JSON export/import still works without a backend.
 7. With `AI_PROVIDER=mock`, call `/api/ai/next-move` or use the frontend AI
    client from future UI work. Mock mode never exposes provider keys.

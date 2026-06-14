@@ -1,5 +1,22 @@
 # Noctyrium Changelog
 
+## Alpha 1 — 2026-06-14
+
+First clean web/backend alpha candidate.
+
+- Added optional Vercel serverless backend routes for name-only users, JSON snapshot sync,
+  cloud backups, restore, health checks, and simple progress save/load by account name.
+- Added Postgres schema/migration for users, snapshots, sync change logs, and AI usage logs.
+- Added mock AI endpoint scaffolding for next move, Anki generation, Step planning, weak-area
+  analysis, and daily reports.
+- Integrated the frontend Settings sync panel with backend health, progress save/load,
+  manual backups, restore, conflict prompts, and optional auto-sync.
+- Refreshed Alpha 1 seed data so the app opens with SGU course shells and only a few
+  example Lecture/DLA/PQ tracker rows.
+- Cleaned the repository so personal study folders, old packages, Docker leftovers,
+  build output, caches, and generated zip files are not part of the commit.
+- Upgraded the web build to Vite 8 / React plugin 6 and verified build/typecheck/audit.
+
 ## web v0.5.0 — 2026-06-13
 
 Feature expansion of the web app (informed by research into how med students actually use Anki).
@@ -90,4 +107,3 @@ Not functional yet. Continue from the daily-file architecture patch in the next 
 
 
 All notable Noctyrium app changes, bugs, removals, regressions, and architecture notes are tracked here.
-

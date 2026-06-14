@@ -67,12 +67,13 @@ export async function saveCurrentSnapshot(userId: string, input: SaveSnapshotInp
   ensureDb();
   await getUser(userId);
   const sql = await getReadySql();
+  const dataJson = JSON.stringify(input.dataJson);
   const rows = (await sql`
     INSERT INTO user_data_snapshots (
       user_id, app_version, schema_version, data_json, device_label, backup_label, updated_at
     )
     VALUES (
-      ${userId}, ${input.appVersion}, ${input.schemaVersion}, ${input.dataJson}, ${input.deviceLabel ?? null}, NULL, now()
+      ${userId}, ${input.appVersion}, ${input.schemaVersion}, ${dataJson}::jsonb, ${input.deviceLabel ?? null}, NULL, now()
     )
     ON CONFLICT (user_id) WHERE backup_label IS NULL
     DO UPDATE SET
@@ -95,12 +96,13 @@ export async function createBackupSnapshot(userId: string, input: SaveSnapshotIn
   await getUser(userId);
   const sql = await getReadySql();
   const label = input.backupLabel || `Backup ${new Date().toISOString()}`;
+  const dataJson = JSON.stringify(input.dataJson);
   const rows = (await sql`
     INSERT INTO user_data_snapshots (
       user_id, app_version, schema_version, data_json, device_label, backup_label
     )
     VALUES (
-      ${userId}, ${input.appVersion}, ${input.schemaVersion}, ${input.dataJson}, ${input.deviceLabel ?? null}, ${label}
+      ${userId}, ${input.appVersion}, ${input.schemaVersion}, ${dataJson}::jsonb, ${input.deviceLabel ?? null}, ${label}
     )
     RETURNING id, user_id, app_version, schema_version, data_json, device_label, backup_label, created_at, updated_at
   `) as DbRow[];
@@ -183,9 +185,10 @@ async function logChange(
   sourceDevice?: string,
 ) {
   const sql = await getReadySql();
+  const patchJson = JSON.stringify(patch);
   await sql`
     INSERT INTO sync_change_log (user_id, change_type, entity_type, entity_id, patch_json, source_device)
-    VALUES (${userId}, ${changeType}, ${entityType}, ${entityId}, ${patch}, ${sourceDevice ?? null})
+    VALUES (${userId}, ${changeType}, ${entityType}, ${entityId}, ${patchJson}::jsonb, ${sourceDevice ?? null})
   `;
 }
 

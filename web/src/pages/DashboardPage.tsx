@@ -7,6 +7,7 @@ import {
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
 import type { Grade } from "../lib/scoring";
+import type { Course, TrackerItem } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { StatCard } from "../components/ui/StatCard";
@@ -130,25 +131,7 @@ export function DashboardPage() {
         </GlassCard>
       </div>
 
-      <GlassCard pad>
-        <PanelHeader title="Term Map" sub="Canonical course sequence"
-          action={<a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a>} />
-        <div className="grid grid-courses">
-          {s.courses.map((c) => {
-            const term = s.terms.find((t) => t.id === c.termId);
-            return (
-              <GlassCard key={c.id} pad hoverable className="course-card" onClick={() => (location.hash = "courses")}>
-                <Tag>{term?.name ?? "Term"}</Tag>
-                <div className="cc-code">{c.code}</div>
-                {c.name && <div className="cc-name">{c.name}</div>}
-                <div className="cc-files">{c.files} files · {c.modules.length} modules</div>
-              </GlassCard>
-            );
-          })}
-        </div>
-      </GlassCard>
-
-      <GlassCard pad>
+      <GlassCard pad className="dashboard-schedule-card">
         <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
           action={<Tag tone={schedule.weekActive >= 5 ? "green" : schedule.weekActive >= 3 ? "orange" : "neutral"}>{schedule.weekActive}/7 this week</Tag>} />
         <div className="dashboard-schedule">
@@ -191,6 +174,52 @@ export function DashboardPage() {
           <span><i style={{ background: PASS_COLOR.young }} />2 passes: young</span>
           <span><i style={{ background: PASS_COLOR.mature }} />3 passes: mature</span>
           <span><i style={{ background: PASS_COLOR.mastered }} />4+: mastered</span>
+        </div>
+      </GlassCard>
+
+      <GlassCard pad className="term-map-card">
+        <PanelHeader title="Term Map" sub="SGU sequence, modules, tracker readiness, and review pressure"
+          action={<a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a>} />
+        <div className="term-map-rail">
+          {s.terms.map((term, index) => {
+            const courses = s.courses.filter((c) => c.termId === term.id);
+            const termStats = summarizeTermCourses(courses, s.tracker);
+            return (
+              <div className="term-map-column" key={term.id}>
+                <div className="term-map-head">
+                  <span className="term-index">{index + 1}</span>
+                  <div>
+                    <b>{term.name}</b>
+                    <span>{courses.length} course{courses.length === 1 ? "" : "s"} · {termStats.modules} modules</span>
+                  </div>
+                  <Tag tone={termStats.ready >= 70 ? "green" : termStats.ready >= 35 ? "orange" : "neutral"}>{termStats.ready}%</Tag>
+                </div>
+                <div className="term-course-stack">
+                  {courses.map((course) => {
+                    const courseStats = summarizeCourse(course, s.tracker);
+                    return (
+                      <button className="term-course" key={course.id} onClick={() => (location.hash = "courses")}>
+                        <div className="spread">
+                          <b>{course.code}</b>
+                          <span>{courseStats.items ? `${courseStats.ready}% ready` : "shell"}</span>
+                        </div>
+                        {course.name && <em>{course.name}</em>}
+                        <div className="track">
+                          <div className="track-fill" style={{ width: `${courseStats.ready}%`, background: courseStats.ready >= 70 ? PASS_COLOR.mastered : courseStats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.32)" }} />
+                        </div>
+                        <div className="term-course-meta">
+                          <span>{course.modules.length} modules</span>
+                          <span>{courseStats.items} tracker rows</span>
+                          {courseStats.review > 0 && <span className="needs-review">{courseStats.review} review</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {!courses.length && <div className="term-empty">Add a course shell for this term.</div>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </GlassCard>
 
@@ -379,6 +408,33 @@ function buildSuggestions(s: ReturnType<typeof useStore.getState>) {
 
   if (!out.length) out.push({ title: "You're on track", reason: "Nothing urgent — keep the streak going", color: "var(--green)" });
   return out.slice(0, 4);
+}
+
+function summarizeTermCourses(courses: Course[], tracker: TrackerItem[]) {
+  const stats = courses.map((course) => summarizeCourse(course, tracker));
+  const ready = stats.length ? Math.round(stats.reduce((sum, item) => sum + item.ready, 0) / stats.length) : 0;
+  return {
+    ready,
+    modules: courses.reduce((sum, course) => sum + course.modules.length, 0),
+  };
+}
+
+function summarizeCourse(course: Course, tracker: TrackerItem[]) {
+  const needles = [
+    course.code,
+    course.code.replace(/\s+/g, ""),
+    course.name,
+    ...course.modules.map((module) => module.name),
+  ].map((value) => value.toLowerCase()).filter(Boolean);
+  const items = tracker.filter((item) => {
+    const hay = `${item.path} ${item.label}`.toLowerCase().replace(/\s+/g, "");
+    return needles.some((needle) => hay.includes(needle.replace(/\s+/g, "")));
+  });
+  const ready = items.length
+    ? Math.round(items.reduce((sum, item) => sum + Math.min(100, (Math.min(item.passes, 4) / 4) * 100), 0) / items.length)
+    : 0;
+  const review = items.filter((item) => item.yield === "review" || item.passes < 2).length;
+  return { items: items.length, ready, review };
 }
 
 function weeklySummary(logs: ReturnType<typeof useStore.getState>["logs"]) {

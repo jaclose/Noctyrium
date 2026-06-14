@@ -3,15 +3,20 @@
 build/
 dist/
 node_modules/
+playwright-report/
+test-results/
 .env
 .env.local
 .env.*.local
 *.app
+web/Noctyrium-web-v*/
+web/Noctyrium-*.zip
 DerivedData/
 .swiftpm/
 *.o
 
 # Xcode user state
+.vscode/
 *.xcuserstate
 xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
@@ -22,6 +27,23 @@ xcuserdata/
 # Personal study data must never enter the code repo.
 # Noctyrium reads/writes this at runtime from "~/Medical School/".
 # Keep it OUT of version control:
+00 */
+01 BPM 500/
+01 BPM 501/
+02 PPM500/
+02 PPM501/
+02 PPM502/
+03 */
+04 */
+05 */
+06 */
+07 Personal Med/
+08 Drives and External/
+09 Admin/
+10 Courses/
+10 Prompt Library/
+99 */
+ANKI Decks/
 Medical School/
 *.csv
 *.md.bak

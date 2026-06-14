@@ -5,11 +5,14 @@ import { CloudBackupPanel } from "./CloudBackupPanel";
 import { useStore } from "../../lib/store";
 import {
   createCloudBackup,
+  getBackendHealth,
   getCloudData,
   listCloudBackups,
+  loadProgressByName,
   loginByName,
   restoreCloudBackup,
   saveCloudData,
+  saveProgressByName,
 } from "../../services/syncClient";
 import {
   defaultDeviceLabel,
@@ -29,7 +32,8 @@ export function AccountSyncPanel() {
   const [backupLabel, setBackupLabel] = useState("");
   const [backups, setBackups] = useState<CloudBackup[]>([]);
   const [busy, setBusy] = useState<BusyState>("idle");
-  const [status, setStatus] = useState("Cloud sync is optional. Local Vault still works offline.");
+  const [status, setStatus] = useState("Local autosave is always on. Link a name to save progress to cloud.");
+  const [backendStatus, setBackendStatus] = useState("Checking backend...");
   const metaRef = useRef(meta);
   const busyRef = useRef(false);
 
@@ -77,12 +81,33 @@ export function AccountSyncPanel() {
   }
 
   async function handleSave() {
-    const user = metaRef.current.user;
-    if (!user) {
-      setStatus("Sign in by name first.");
+    const account = accountName.trim();
+    if (!account) {
+      setStatus("Enter an account name first.");
       return;
     }
     await withBusy("save", async () => {
+      const activeUser = metaRef.current.user;
+      if (!activeUser) {
+        const existing = await loadProgressByName(account);
+        if (existing.snapshot) {
+          if (!confirm("This name already has saved cloud progress. Create a cloud backup, then replace it with this browser's progress?")) return;
+          await backupSnapshot(existing.user.id, existing.snapshot, "Cloud before alpha progress save");
+        }
+        const { user, snapshot } = await saveProgressByName(account, makeSaveInput());
+        persistMeta({
+          ...metaRef.current,
+          user,
+          lastSyncedAt: new Date().toISOString(),
+          lastCloudUpdatedAt: snapshot.updatedAt,
+          lastLocalFingerprint: fingerprintState(useStore.getState()),
+        });
+        setStatus("Saved progress to cloud.");
+        await refreshBackups(user.id);
+        return;
+      }
+
+      const user = activeUser;
       const cloud = await getCloudData(user.id);
       const cloudChanged = hasCloudChanged(cloud, metaRef.current.lastCloudUpdatedAt);
       const localChanged = fingerprintState(useStore.getState()) !== metaRef.current.lastLocalFingerprint;
@@ -110,15 +135,19 @@ export function AccountSyncPanel() {
   }
 
   async function handleLoad() {
-    const user = metaRef.current.user;
-    if (!user) {
-      setStatus("Sign in by name first.");
+    const account = accountName.trim();
+    if (!account) {
+      setStatus("Enter an account name first.");
       return;
     }
     await withBusy("load", async () => {
-      const snapshot = await getCloudData(user.id);
+      const loaded = metaRef.current.user
+        ? { user: metaRef.current.user, snapshot: await getCloudData(metaRef.current.user.id) }
+        : await loadProgressByName(account);
+      const { user, snapshot } = loaded;
       if (!snapshot) {
         setStatus("No cloud snapshot found for this account.");
+        persistMeta({ ...metaRef.current, user });
         return;
       }
 
@@ -210,6 +239,12 @@ export function AccountSyncPanel() {
   }, [meta]);
 
   useEffect(() => {
+    getBackendHealth()
+      .then((health) => setBackendStatus(health.databaseConfigured ? "API + database ready" : "API online; DATABASE_URL missing"))
+      .catch(() => setBackendStatus("Backend unavailable; local mode only"));
+  }, []);
+
+  useEffect(() => {
     if (meta.user?.id) {
       refreshBackups(meta.user.id).catch((error) => {
         setStatus(error instanceof Error ? error.message : "Could not load backups.");
@@ -274,8 +309,8 @@ export function AccountSyncPanel() {
         <div className="row gap8">
           <Cloud size={18} />
           <div>
-            <div className="sync-title">Optional Cloud Sync</div>
-            <div className="sub">Name-only account, JSON snapshots, and local-first fallback.</div>
+            <div className="sync-title">Progress Save & Cloud Sync</div>
+            <div className="sub">Local-first autosave, name-only cloud progress, JSON backups.</div>
           </div>
         </div>
         <span className={`sync-pill ${meta.user ? "on" : ""}`}>{meta.user ? "Linked" : "Local"}</span>
@@ -294,13 +329,13 @@ export function AccountSyncPanel() {
 
       <div className="row wrap gap8">
         <GButton size="sm" variant="primary" onClick={handleLogin} disabled={isBusy || !accountName.trim()}>
-          <Database size={14} /> {meta.user ? "Refresh login" : "Login by name"}
+          <Database size={14} /> {meta.user ? "Refresh link" : "Link name"}
         </GButton>
-        <GButton size="sm" onClick={handleSave} disabled={isBusy || !meta.user}>
-          <CloudUpload size={14} /> Save cloud
+        <GButton size="sm" onClick={handleSave} disabled={isBusy || !accountName.trim()}>
+          <CloudUpload size={14} /> Save progress
         </GButton>
-        <GButton size="sm" onClick={handleLoad} disabled={isBusy || !meta.user}>
-          <CloudDownload size={14} /> Load cloud
+        <GButton size="sm" onClick={handleLoad} disabled={isBusy || !accountName.trim()}>
+          <CloudDownload size={14} /> Load progress
         </GButton>
         <GButton size="sm" onClick={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} disabled={isBusy || !meta.user}>
           <RefreshCw size={14} className={busy === "auto" ? "spin" : ""} /> Refresh
@@ -315,6 +350,7 @@ export function AccountSyncPanel() {
       <div className="sync-meta-grid">
         <Meta label="User ID" value={meta.user?.id || "Not linked"} />
         <Meta label="Last synced" value={meta.lastSyncedAt ? formatDate(meta.lastSyncedAt) : "Never"} />
+        <Meta label="Backend" value={backendStatus} />
         <Meta label="Status" value={busy === "idle" ? status : `${labelBusy(busy)}...`} />
       </div>
 

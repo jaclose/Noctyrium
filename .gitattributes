@@ -1,16 +1,9 @@
-/00[[:space:]]📥[[:space:]]Inbox[[:space:]]-[[:space:]]Need[[:space:]]Work[[:space:]]Look[[:space:]]Over/To[[:space:]]Sort/Comprehensive[[:space:]]Notes.pdf filter=lfs diff=lfs merge=lfs -text
-/00[[:space:]]📥[[:space:]]Inbox[[:space:]]-[[:space:]]Need[[:space:]]Work[[:space:]]Look[[:space:]]Over/To[[:space:]]Sort/LAB[[:space:]]PRACTICAL[[:space:]]BPM2.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]500/CPR1/CPR1[[:space:]]ALL[[:space:]]Slides[[:space:]]+[[:space:]]DLAs.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]500/CPR2/CPR2[[:space:]]ALL[[:space:]]Slides[[:space:]]+[[:space:]]DLAs.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]500/FTM1/FTM1[[:space:]]ALL[[:space:]]Slides[[:space:]]+[[:space:]]DLAs.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]500/FTM2/FTM2[[:space:]]ALL[[:space:]]Slides[[:space:]]+[[:space:]]DLAs.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]500/MSK/MSK[[:space:]]ALL[[:space:]]Slides[[:space:]]+[[:space:]]DLAs[[:space:]].pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T1/CPR[[:space:]]1[[:space:]]&[[:space:]]2/CPR[[:space:]]1/MADCOW_CPR1_COMPLETE_REVIEW.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T1/CPR[[:space:]]1[[:space:]]&[[:space:]]2/CPR[[:space:]]2/Natalies_CPR2_PLG.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T2/BSCE[[:space:]]T2[[:space:]]Review[[:space:]]eSofts/180_page_Blue_Slide_BSCE_Doc.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T2/DM[[:space:]]T2/Natalie_Cumulative_PLG.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T2/ER[[:space:]]T2/Natalies_ER_PLG.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/BCSE[[:space:]]T2/T2/NB2[[:space:]]T2/Natalies_NB2_PLG.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/DM/DM[[:space:]]All[[:space:]]Materials.pdf filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/ER/Week[[:space:]]1/ER[[:space:]]Lecture[[:space:]]1-Flipped[[:space:]]Class[[:space:]]Room[[:space:]]Pre-Read[[:space:]]Activity.ppsx filter=lfs diff=lfs merge=lfs -text
-/01[[:space:]]BPM[[:space:]]501/NB1/NB1[[:space:]]All[[:space:]]Material.pdf filter=lfs diff=lfs merge=lfs -text
+* text=auto
+
+*.icns binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary
+*.app binary

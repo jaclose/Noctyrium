@@ -49,3 +49,12 @@ export interface SaveCloudInput {
   deviceLabel?: string;
   backupLabel?: string;
 }
+
+export interface BackendHealth {
+  ok: boolean;
+  service: string;
+  version: string;
+  databaseConfigured: boolean;
+  aiProvider: string;
+  schemaVersion: number;
+}

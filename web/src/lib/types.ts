@@ -119,6 +119,24 @@ export interface StudyLog {
   note?: string;
 }
 
+export type BoardBlueprintDimension = "system" | "competency" | "discipline";
+export type BoardBlueprintMode = "Content" | "Retrieval" | "Questions" | "Assessment" | "Review";
+export type BoardConfidence = "red" | "orange" | "green" | "blue";
+
+export interface BoardBlueprintLog {
+  id: ID;
+  date: string; // yyyy-MM-dd
+  dimension: BoardBlueprintDimension;
+  area: string;
+  mode: BoardBlueprintMode;
+  minutes: number;
+  questions: number;
+  correct: number;
+  confidence: BoardConfidence;
+  notes?: string;
+  updated: string;
+}
+
 export interface Integration {
   id: ID;
   name: string;
@@ -136,6 +154,8 @@ export interface BoardPrepProfile {
   resourcesDone: string[];
   otherResources: string;
   confidence: "low" | "medium" | "high";
+  blueprintLogs: BoardBlueprintLog[];
+  aiStrategy?: string;
   updated: string;
 }
 

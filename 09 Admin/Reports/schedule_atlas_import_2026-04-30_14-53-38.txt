@@ -1,5 +1,0 @@
-===== SCHEDULE ATLAS IMPORT =====
-Generated: Thu Apr 30 14:53:38 AST 2026
-Downloads: /Users/jd/Downloads
-Import Dir: /Users/jd/Medical School/09 Admin/Schedules/Imported
-
