@@ -1,7 +1,7 @@
 {
   "name": "noctyrium-web",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.10.0",
   "type": "module",
   "description": "Noctyrium — a premium, local-first medical-school command center, as a deployable web app.",
   "scripts": {

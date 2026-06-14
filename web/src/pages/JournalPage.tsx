@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { CheckCircle2, Circle, ListChecks, Plus, Trash2, Pencil } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, TextAreaField, SelectField } from "../components/ui/Modal";
@@ -49,6 +49,7 @@ function JournalEditor({ entry, onClose }: { entry: JournalEntry | null; onClose
   const [blockers, setBlockers] = useState(entry?.blockers ?? "");
   const [energy, setEnergy] = useState<JournalEntry["energy"]>(entry?.energy ?? "Medium");
   const [rating, setRating] = useState(entry?.rating ?? "Useful");
+  const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 6);
 
   function save() {
     if (!today.trim()) return;
@@ -64,6 +65,21 @@ function JournalEditor({ entry, onClose }: { entry: JournalEntry | null; onClose
       <TextAreaField label="Today — what did you do?" value={today} onChange={(e) => setToday(e.target.value)} autoFocus />
       <TextAreaField label="Tomorrow — the plan" value={tomorrow} onChange={(e) => setTomorrow(e.target.value)} />
       <Field label="Blockers" value={blockers} onChange={(e) => setBlockers(e.target.value)} />
+      <div className="standup-task-log">
+        <div className="spread">
+          <span className="field-label">Task quick log</span>
+          <a className="gbtn tiny" href="#tasks"><ListChecks size={12} /> Tasks</a>
+        </div>
+        {openTasks.length ? openTasks.map((task) => (
+          <button key={task.id} className="standup-task" onClick={() => s.toggleTask(task.id)}>
+            <Circle size={14} />
+            <span>{task.title}</span>
+            {task.scope && <em>{task.scope}</em>}
+          </button>
+        )) : (
+          <div className="standup-task empty-line"><CheckCircle2 size={14} /> No open tasks to log.</div>
+        )}
+      </div>
       <div className="row gap12">
         <SelectField label="Energy" value={energy} onChange={(e) => setEnergy(e.target.value as JournalEntry["energy"])}>
           <option>Low</option><option>Medium</option><option>High</option>

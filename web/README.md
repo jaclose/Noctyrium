@@ -44,6 +44,12 @@ That's the whole dev loop — no Xcode, no native build, nothing installed on th
 
 Yes, inside the same browser/profile and same site origin. If you add `Term 3` online, it persists in that browser's Local Vault after refreshes and app updates. It will not automatically appear on another device, another browser, or another domain unless you export/import a JSON backup or later add a real hosted account sync service.
 
+## Update safety
+
+- **App code and user data are separate.** Builds replace `dist/` files and the PWA cache; user data stays in the Local Vault via IndexedDB with localStorage fallback.
+- **Schema migrations protect existing profiles.** When the app adds fields such as STEP prep settings, day plans, or curated shared drives, the store fills the missing pieces without wiping personal edits.
+- **Backups are portable.** Export JSON before changing browsers, domains, devices, or app containers.
+
 ## Build a static bundle
 
 ```sh
@@ -87,6 +93,23 @@ and choose **Open** once.
 
 Because a service worker + web manifest ship in the build, visitors who open the
 hosted version can also **Install** it from the browser as a PWA.
+
+## Deploy on Vercel
+
+This repo has a root `vercel.json` so Vercel can deploy the app even though the
+actual React/Vite project lives in `web/`.
+
+Use either setup:
+
+- **Repo root as Vercel Root Directory:** leave Root Directory empty/default.
+  Vercel runs `npm --prefix web ci`, builds with `npm --prefix web run build`,
+  and serves `web/dist`.
+- **`web` as Vercel Root Directory:** set Root Directory to `web`. The local
+  `web/vercel.json` provides the SPA rewrite, and Vercel auto-detects Vite.
+
+If `https://noctyrium.vercel.app/` shows `404: NOT_FOUND`, Vercel is probably
+serving the wrong root or an older deployment. Redeploy after committing these
+config files.
 
 ## Layout
 

@@ -5,7 +5,6 @@ import { useStore } from "../lib/store";
 import { dayKey, dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, todayGrade } from "../lib/scoring";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Ring } from "../components/ui/Ring";
-import { Heatmap } from "../components/ui/Heatmap";
 
 const QUICK: { label: string; type: string; minutes?: number; cards?: number; icon?: boolean }[] = [
   { label: "Lecture +60m", type: "Lecture", minutes: 60 },
@@ -29,6 +28,7 @@ export function ProductivityPage() {
   const isActive = viewKey === s.activeDayKey;
   const canStartNewDay = s.activeDayKey < dayKey();
   const weekly = useMemo(() => summarizePeriod(s.logs, lastNDays(7), "week"), [s.logs]);
+  const calendarWeek = useMemo(() => summarizePeriod(s.logs, currentWeekDays(), "week"), [s.logs]);
   const monthly = useMemo(() => summarizePeriod(s.logs, currentMonthDays(), "month"), [s.logs]);
   const monthCells = useMemo(() => buildMonthCells(monthly.days), [monthly.days]);
   const calendarToday = isoDate(new Date());
@@ -124,13 +124,42 @@ export function ProductivityPage() {
       </div>
 
       <GlassCard pad>
-        <PanelHeader title="Calendar Heatmap" sub="Click any day to inspect it" />
-        <Heatmap logs={s.logs} onPick={(k) => setPickedDay(k)} />
+        <PanelHeader title="Productivity Schedule" sub={`${monthly.label} · same calendar engine as Dashboard`}
+          action={<Tag tone={scoreTone(calendarWeek.grade)}>{calendarWeek.activeDays}/7 this week</Tag>} />
+        <div className="dashboard-schedule productivity-schedule">
+          <div className="schedule-calendar">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
+            {monthCells.map((cell, i) => cell
+              ? <button key={cell.key}
+                  className={`cal-day schedule-day ${cell.key === viewKey ? "on" : ""} ${cell.key === calendarToday ? "today" : ""} ${cell.active ? "worked" : ""}`}
+                  style={{ borderColor: cell.active ? gradeColor(cell.grade) : undefined }}
+                  title={`${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
+                  onClick={() => setPickedDay(cell.key)}>
+                  <span>{cell.date.getDate()}</span>
+                  <i style={{ background: cell.active ? gradeColor(cell.grade) : "rgba(255,255,255,0.08)" }} />
+                </button>
+              : <span className="cal-day blank" key={`schedule-blank-${i}`} />)}
+          </div>
+          <div className="schedule-side">
+            <div className="schedule-stat">
+              <CalendarDays size={15} />
+              <div><b>{calendarWeek.minutes}m</b><span>this calendar week · {calendarWeek.cards} cards</span></div>
+            </div>
+            <div className="schedule-stat">
+              <Clock size={15} />
+              <div><b>{monthly.minutes}m</b><span>this month · {monthly.activeDays}/{monthly.days.length} active</span></div>
+            </div>
+            <div className="schedule-note">
+              <b>{scheduleNote(calendarWeek).title}</b>
+              <span>{scheduleNote(calendarWeek).body}</span>
+            </div>
+          </div>
+        </div>
         <div className="heat-legend">
-          <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red &lt;30m or &lt;50 cards</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange ≥300m / 150–200</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green ≥360m / ≥250</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> 👑 Blue ≥480m / ≥350</span>
+          <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red: logged, below baseline</span>
+          <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
+          <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
+          <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> 👑 Blue: excellent day</span>
         </div>
       </GlassCard>
 
@@ -341,10 +370,46 @@ function currentMonthDays(): Date[] {
   return days;
 }
 
+function currentWeekDays(): Date[] {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());
+  return Array.from({ length: 7 }, (_, idx) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + idx);
+    return d;
+  });
+}
+
 function buildMonthCells(days: PeriodDay[]): Array<PeriodDay | null> {
   const first = days[0];
   const blanks = first ? first.date.getDay() : 0;
   return [...Array.from({ length: blanks }, () => null), ...days];
+}
+
+function scheduleNote(summary: PeriodSummary): { title: string; body: string } {
+  const today = isoDate(new Date());
+  const elapsed = summary.days.filter((day) => day.key <= today);
+  const elapsedNeedsWork = summary.needsWorkDays.filter((day) => day.key <= today);
+  const strongElapsed = summary.strongDays.filter((day) => day.key <= today);
+
+  if (strongElapsed.length >= 3) {
+    return {
+      title: "Strong execution week",
+      body: `${strongElapsed.length} strong day${strongElapsed.length === 1 ? "" : "s"} are on the board. Repeat the best day, but keep one recovery block protected.`,
+    };
+  }
+  if (elapsed.length && elapsedNeedsWork.length >= Math.max(2, Math.ceil(elapsed.length * 0.6))) {
+    return {
+      title: "Pick the pace back up",
+      body: `${elapsedNeedsWork.length} day${elapsedNeedsWork.length === 1 ? "" : "s"} need attention so far. It is okay - restart with one 30-minute block and a small card target today.`,
+    };
+  }
+  return {
+    title: "Useful middle ground",
+    body: "The week has activity, but the next gain is consistency. Add one retrieval block to the next quiet day.",
+  };
 }
 
 function shortDate(key: string): string {

@@ -7,7 +7,7 @@ import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield 
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 9;
 
 const now = () => new Date().toISOString();
 
@@ -35,7 +35,7 @@ export function makeSeed(): NoctyriumState {
     profile: {
       name: "Noctyrium",
       userId: userIdFromName("Noctyrium"),
-      versionLabel: "v0.8.0 · web",
+      versionLabel: "v0.10.0 · web",
       tagline: "Designed for execution, not decoration.",
       dailyCardTarget: 120,
       dailyMinuteTarget: 240,
@@ -70,27 +70,28 @@ export function makeSeed(): NoctyriumState {
       },
     ],
     tracker: [
-      // path, label, kind, passes, ankiPasses, yield
-      trackerRow("T2/NB3/Lectures", "NB 58 Emotions", "Lecture", 0, 0, "high"),
-      trackerRow("T2/NB3/Lectures", "NB 58 Introduction to Psychopathology", "Lecture", 0, 0, "high"),
+      // path, label, kind, passes, ankiPasses, yield — new items default to "none" (Set yield);
+      // only a couple are pre-flagged here to demo the review/high states.
+      trackerRow("T2/NB3/Lectures", "NB 58 Emotions", "Lecture", 0, 0),
+      trackerRow("T2/NB3/Lectures", "NB 58 Introduction to Psychopathology", "Lecture", 0, 0),
       trackerRow("T2/NB3/Lectures", "NB 57 OCD and Somatic Symptom Disorders", "Lecture", 1, 1, "review"),
       trackerRow("T2/NB3/Lectures", "NB 58 Trauma/Stressor and Dissociative Disorders", "Lecture", 2, 0),
-      trackerRow("T2/NB3/Lectures", "NB 58 Depressive Disorders and Bipolar", "Lecture", 2, 1, "high"),
+      trackerRow("T2/NB3/Lectures", "NB 58 Depressive Disorders and Bipolar", "Lecture", 2, 1),
       trackerRow("T2/NB3/Lectures", "NB 60 Biological Rhythms", "Lecture", 3, 1),
       trackerRow("T2/NB3/Lectures", "NB 61 Sleep", "Lecture", 4, 3),
       trackerRow("T2/NB3/Lectures", "NB 62 Sleep-Wake Disorders", "Lecture", 1, 1, "review"),
       trackerRow("T2/NB3/DLAs", "NB3 DLA: Mood & Anxiety Pharmacology", "DLA", 0, 0),
       trackerRow("T2/NB3/DLAs", "NB3 DLA: Sleep Physiology Case", "DLA", 2, 0),
-      trackerRow("T2/NB3/PQs", "NB3 Sakai Question Bank", "PQ", 2, 0, "high"),
+      trackerRow("T2/NB3/PQs", "NB3 Sakai Question Bank", "PQ", 2, 0),
       trackerRow("T2/ER/Lectures", "ER Cardiovascular Block", "Lecture", 3, 1),
       trackerRow("T2/ER/DLAs", "ER DLA: ECG Interpretation", "DLA", 1, 1),
       trackerRow("T1/BPM500/MSK", "MSK Upper Limb", "Lecture", 4, 3),
     ],
     resources: [
       { id: crypto.randomUUID(), title: "USMLE Step 1 Content Outline", url: "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications", category: "STEP 1", tags: ["official", "blueprint"], favorite: true, created: now() },
-      { id: crypto.randomUUID(), title: "USMLE Step 1 Practice Materials", url: "https://www.usmle.org/prepare-your-exam/step-1-materials", category: "STEP 1", tags: ["official", "practice"], favorite: true, created: now() },
+      { id: crypto.randomUUID(), title: "USMLE Step 1 Sample Questions", url: "https://www.usmle.org/exam-resources/step-1-materials/step-1-sample-test-questions", category: "STEP 1", tags: ["official", "practice"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "USMLE Step 2 CK Content Outline", url: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications", category: "STEP 2", tags: ["official", "blueprint"], favorite: true, created: now() },
-      { id: crypto.randomUUID(), title: "USMLE Step 2 CK Practice Materials", url: "https://www.usmle.org/prepare-your-exam/step-2-ck-materials", category: "STEP 2", tags: ["official", "practice"], created: now() },
+      { id: crypto.randomUUID(), title: "USMLE Step 2 CK Sample Questions", url: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-sample-test-questions", category: "STEP 2", tags: ["official", "practice"], created: now() },
       { id: crypto.randomUUID(), title: "AnKing Overview (Step 1 deck)", url: "https://www.ankingmed.com/", category: "Anki", tags: ["deck", "step1"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "AnKing Step Deck on AnkiHub", url: "https://www.ankihub.net/step-deck", category: "Anki", tags: ["deck", "step1", "step2"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "Mehlman Medical Free HY Documents", url: "https://mehlmanmedical.com/free-stuff/", category: "STEP 1", tags: ["review", "hy"], favorite: true, created: now() },
@@ -99,6 +100,7 @@ export function makeSeed(): NoctyriumState {
       { id: crypto.randomUUID(), title: "UpToDate", url: "https://www.uptodate.com/", category: "Reference", tags: ["clinical"], created: now() },
       { id: crypto.randomUUID(), title: "AMBOSS", url: "https://www.amboss.com/us", category: "Reference", tags: ["qbank", "library"], created: now() },
       { id: crypto.randomUUID(), title: "First Aid for the USMLE Step 1", url: "https://www.usmle-rx.com/", category: "STEP 1", tags: ["book"], created: now() },
+      { id: crypto.randomUUID(), title: "St. George's University (SGU)", url: "https://www.sgu.edu/", category: "Drives", tags: ["sgu", "official"], note: "Home base for SGU students.", created: now() },
     ],
     tasks: [
       { id: crypto.randomUUID(), title: "Create today's standup", done: false, archived: false, scope: "Journal", created: now(), due: isoDate(new Date()) },
@@ -143,8 +145,15 @@ export function makeSeed(): NoctyriumState {
       step1: boardPrepSeed("light", 18, 40),
       step2: boardPrepSeed("not-started", 14, 40),
     },
+    dayPlans: [],
   };
 }
+
+// Curated shared drives — mostly SGU. These ship with every build so they are
+// present for all users. Paste real SGU shared-drive links here to bake them in.
+export const SGU_DRIVES: { title: string; url: string; tags: string[]; note?: string }[] = [
+  { title: "St. George's University (SGU)", url: "https://www.sgu.edu/", tags: ["sgu", "official"], note: "Home base for SGU students." },
+];
 
 function boardPrepSeed(
   contentStarted: BoardPrepProfile["contentStarted"],

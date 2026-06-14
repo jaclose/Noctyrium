@@ -6,10 +6,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
-  Course, CourseModule, HubFolder, JournalEntry, NoctyriumState,
+  BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   Prompt, Resource, Task, TrackerItem, Profile, StudyLog,
 } from "./types";
-import { makeSeed, SCHEMA_VERSION } from "./seed";
+import { makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
@@ -74,6 +74,13 @@ interface Actions {
   // productivity
   logStudy: (entry: { type: string; minutes?: number; cards?: number; note?: string }) => void;
   startNewStudyDay: () => void;
+
+  // board prep
+  updateBoardPrep: (exam: BoardExamId, patch: Partial<BoardPrepProfile>) => void;
+
+  // win the day
+  setDayPlan: (dayKey: string, intention: string, wins: string[]) => void;
+  reviewDayPlan: (dayKey: string, outcome: DayPlan["outcome"], reviewNote?: string) => void;
 
   // data management
   replaceAll: (state: NoctyriumState) => void;
@@ -225,12 +232,52 @@ export const useStore = create<Store>()(
           return { activeDayKey: today };
         }),
 
+      updateBoardPrep: (exam, patch) =>
+        set((s) => ({
+          boardPrep: {
+            ...defaultBoardPrepState(),
+            ...s.boardPrep,
+            [exam]: {
+              ...defaultBoardPrep(exam),
+              ...s.boardPrep?.[exam],
+              ...patch,
+              updated: now(),
+            },
+          },
+        })),
+
+      setDayPlan: (dk, intention, wins) =>
+        set((s) => {
+          const rest = s.dayPlans.filter((p) => p.dayKey !== dk);
+          if (!intention.trim()) return { dayPlans: rest };
+          const prev = s.dayPlans.find((p) => p.dayKey === dk);
+          return {
+            dayPlans: [
+              { dayKey: dk, intention, wins, createdAt: prev?.createdAt ?? now(),
+                reviewedAt: prev?.reviewedAt, outcome: prev?.outcome, reviewNote: prev?.reviewNote },
+              ...rest,
+            ],
+          };
+        }),
+      reviewDayPlan: (dk, outcome, reviewNote) =>
+        set((s) => ({
+          dayPlans: s.dayPlans.map((p) =>
+            p.dayKey === dk
+              ? outcome
+                ? { ...p, outcome, reviewNote, reviewedAt: now() }
+                : { ...p, outcome: undefined, reviewNote: undefined, reviewedAt: undefined }
+              : p),
+        })),
+
       replaceAll: (state) => set(() => ({ ...state })),
       resetToSeed: () => set(() => ({ ...makeSeed() })),
       startFresh: () =>
         set((s) => ({
-          terms: [], courses: [], tracker: [], resources: [], tasks: [],
-          journal: [], prompts: [], folders: [], logs: [],
+          terms: [], courses: [], tracker: [], tasks: [],
+          // keep the curated shared drives even on a fresh start
+          resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), category: "Drives", favorite: false, ...d })),
+          journal: [], prompts: [], folders: [], logs: [], dayPlans: [],
+          boardPrep: defaultBoardPrepState(),
           activeDayKey: dayKey(),
           // keep the user's profile + integrations catalog
           profile: normalizeProfile({ ...s.profile, name: s.profile.name === "Noctyrium" ? "" : s.profile.name }),
@@ -284,8 +331,30 @@ export const useStore = create<Store>()(
         }
         if (fromVersion < 6) {
           const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = "v0.8.0 · web";
+          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = "v0.10.0 · web";
           s.profile = profile;
+        }
+        if (fromVersion < 7) {
+          s.boardPrep = normalizeBoardPrep(s.boardPrep);
+        }
+        if (fromVersion < 8) {
+          // Win-the-day plans + curated SGU drives that ship for everyone.
+          s.dayPlans = s.dayPlans ?? [];
+          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+          const urls = new Set(resources.map((r) => r.url));
+          for (const d of SGU_DRIVES) {
+            if (!urls.has(d.url)) {
+              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), category: "Drives", favorite: false, ...d });
+            }
+          }
+          s.resources = resources;
+        }
+        if (fromVersion < 9) {
+          const profile = normalizeProfile(s.profile);
+          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = "v0.10.0 · web";
+          s.profile = profile;
+          s.resources = normalizeResourceLinks(s.resources);
+          s.dayPlans = s.dayPlans ?? [];
         }
         return s as unknown as NoctyriumState;
       },
@@ -293,11 +362,11 @@ export const useStore = create<Store>()(
         // persist data only — strip the action functions
         const {
           profile, terms, courses, tracker, resources, tasks, journal, prompts,
-          folders, logs, integrations, activeDayKey, schemaVersion,
+          folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, resources, tasks, journal, prompts,
-          folders, logs, integrations, activeDayKey, schemaVersion,
+          folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -390,7 +459,7 @@ function normalizeAcademicMap(state: AnyRecord) {
   }
 
   const profile = isRecord(state.profile) ? state.profile : {};
-  profile.versionLabel = "v0.8.0 · web";
+  profile.versionLabel = "v0.10.0 · web";
   state.profile = normalizeProfile(profile);
   state.terms = terms;
   state.courses = courses;
@@ -404,11 +473,97 @@ function normalizeProfile(value: unknown): Profile {
     userId: typeof profile.userId === "string" && profile.userId.trim()
       ? profile.userId
       : userIdFromName(name),
-    versionLabel: String(profile.versionLabel ?? "v0.8.0 · web"),
+    versionLabel: String(profile.versionLabel ?? "v0.10.0 · web"),
     tagline: String(profile.tagline ?? "Designed for execution, not decoration."),
     avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
     dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
     dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
+  };
+}
+
+function defaultBoardPrepState(): Record<BoardExamId, BoardPrepProfile> {
+  return {
+    step1: defaultBoardPrep("step1"),
+    step2: defaultBoardPrep("step2"),
+  };
+}
+
+function defaultBoardPrep(exam: BoardExamId): BoardPrepProfile {
+  return {
+    medYear: exam === "step1" ? "MS2" : "MS3",
+    contentStarted: exam === "step1" ? "light" : "not-started",
+    weeklyHours: exam === "step1" ? 18 : 14,
+    questionTarget: 40,
+    resourcesDone: [],
+    otherResources: "",
+    confidence: "medium",
+    updated: new Date().toISOString(),
+  };
+}
+
+function normalizeBoardPrep(value: unknown): Record<BoardExamId, BoardPrepProfile> {
+  const src = isRecord(value) ? value : {};
+  return {
+    step1: normalizeBoardPrepProfile(src.step1, "step1"),
+    step2: normalizeBoardPrepProfile(src.step2, "step2"),
+  };
+}
+
+function normalizeResourceLinks(value: unknown): AnyRecord[] {
+  const resources = arrayOfRecords(value);
+  const replacements = new Map([
+    [
+      "https://www.usmle.org/prepare-your-exam/step-1-materials",
+      {
+        title: "USMLE Step 1 Sample Questions",
+        url: "https://www.usmle.org/exam-resources/step-1-materials/step-1-sample-test-questions",
+      },
+    ],
+    [
+      "https://www.usmle.org/prepare-your-exam/step-2-ck-materials",
+      {
+        title: "USMLE Step 2 CK Sample Questions",
+        url: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-sample-test-questions",
+      },
+    ],
+  ]);
+
+  for (const resource of resources) {
+    const replacement = replacements.get(String(resource.url ?? ""));
+    if (replacement) {
+      resource.url = replacement.url;
+      if (String(resource.title ?? "").includes("Practice Materials")) resource.title = replacement.title;
+    }
+  }
+
+  const urls = new Set(resources.map((r) => r.url));
+  for (const d of SGU_DRIVES) {
+    if (!urls.has(d.url)) {
+      resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), category: "Drives", favorite: false, ...d });
+    }
+  }
+  return resources;
+}
+
+function normalizeBoardPrepProfile(value: unknown, exam: BoardExamId): BoardPrepProfile {
+  const base = defaultBoardPrep(exam);
+  const profile = isRecord(value) ? value : {};
+  const contentStarted = ["not-started", "light", "half", "most", "dedicated"].includes(String(profile.contentStarted))
+    ? profile.contentStarted as BoardPrepProfile["contentStarted"]
+    : base.contentStarted;
+  const confidence = ["low", "medium", "high"].includes(String(profile.confidence))
+    ? profile.confidence as BoardPrepProfile["confidence"]
+    : base.confidence;
+  return {
+    medYear: String(profile.medYear ?? base.medYear),
+    contentStarted,
+    examDate: typeof profile.examDate === "string" ? profile.examDate : undefined,
+    weeklyHours: typeof profile.weeklyHours === "number" ? profile.weeklyHours : base.weeklyHours,
+    questionTarget: typeof profile.questionTarget === "number" ? profile.questionTarget : base.questionTarget,
+    resourcesDone: Array.isArray(profile.resourcesDone) ? profile.resourcesDone.filter((x): x is string => typeof x === "string") : [],
+    otherResources: String(profile.otherResources ?? ""),
+    confidence,
+    updated: typeof profile.updated === "string" ? profile.updated : new Date().toISOString(),
   };
 }
 

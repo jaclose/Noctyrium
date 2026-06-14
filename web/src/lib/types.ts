@@ -139,6 +139,17 @@ export interface BoardPrepProfile {
   updated: string;
 }
 
+/** "Win the day" — a morning intention reviewed at the end of the day. */
+export interface DayPlan {
+  dayKey: string; // the study day this plan is for (yyyy-MM-dd)
+  intention: string; // what would make today a win
+  wins: string[]; // a few concrete win conditions / mini-tasks
+  createdAt: string;
+  reviewedAt?: string;
+  outcome?: "won" | "partial" | "missed";
+  reviewNote?: string;
+}
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -163,6 +174,7 @@ export interface NoctyriumState {
   logs: StudyLog[];
   integrations: Integration[];
   boardPrep: Record<BoardExamId, BoardPrepProfile>;
+  dayPlans: DayPlan[];
   activeDayKey: string; // current study day
   schemaVersion: number;
 }

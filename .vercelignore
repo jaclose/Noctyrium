@@ -1,0 +1,13 @@
+# Keep Vercel uploads focused on the deployable web app.
+*
+!vercel.json
+!web/
+!web/**
+
+# Heavy/local artifacts inside web.
+web/node_modules
+web/dist
+web/Noctyrium-*.zip
+web/Noctyrium.app
+web/tsconfig.tsbuildinfo
+**/.DS_Store

@@ -7,7 +7,7 @@ import { userIdFromName } from "./userIdentity";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
-  "prompts", "folders", "logs", "integrations", "activeDayKey", "schemaVersion",
+  "prompts", "folders", "logs", "integrations", "boardPrep", "dayPlans", "activeDayKey", "schemaVersion",
 ] as const;
 
 export function exportState(state: NoctyriumState) {
@@ -41,7 +41,7 @@ export function parseImport(text: string): NoctyriumState {
     profile: {
       name,
       userId: typeof profile.userId === "string" && profile.userId.trim() ? profile.userId : userIdFromName(name),
-      versionLabel: String(profile.versionLabel ?? "v0.8.0 · web"),
+      versionLabel: String(profile.versionLabel ?? "v0.10.0 · web"),
       tagline: String(profile.tagline ?? "Designed for execution, not decoration."),
       avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
       dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
@@ -57,6 +57,24 @@ export function parseImport(text: string): NoctyriumState {
     folders: data.folders ?? [],
     logs: data.logs ?? [],
     integrations: data.integrations ?? [],
+    boardPrep: data.boardPrep ?? {
+      step1: defaultBoardPrep("MS2", "light", 18),
+      step2: defaultBoardPrep("MS3", "not-started", 14),
+    },
+    dayPlans: data.dayPlans ?? [],
     activeDayKey: data.activeDayKey,
   } as NoctyriumState;
+}
+
+function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: number) {
+  return {
+    medYear,
+    contentStarted,
+    weeklyHours,
+    questionTarget: 40,
+    resourcesDone: [],
+    otherResources: "",
+    confidence: "medium",
+    updated: new Date().toISOString(),
+  };
 }

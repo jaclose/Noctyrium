@@ -1,6 +1,6 @@
 // Noctyrium service worker — offline-first for the installable / downloadable app.
 // Cache name is bumped per build via the version query; old caches are purged.
-const CACHE = "noctyrium-v0.5.0";
+const CACHE = "noctyrium-v0.10.0";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png"];
 
 self.addEventListener("install", (e) => {

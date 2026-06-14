@@ -1,0 +1,6 @@
+node_modules
+dist
+Noctyrium-*.zip
+Noctyrium.app
+tsconfig.tsbuildinfo
+.DS_Store

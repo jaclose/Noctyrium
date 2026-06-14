@@ -82,9 +82,9 @@ export function CourseTrackerPage() {
           <PanelHeader title="Suggested next move" sub="Adaptive — by passes, yield, and how much is left"
             action={
               <div className="row gap6">
-                <GhostButton title="Open tracker guide" onClick={() => setGuideOpen((open) => !open)}>
-                  <HelpCircle size={15} />
-                </GhostButton>
+                <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}>
+                  <HelpCircle size={14} /> {guideOpen ? "Hide guide" : "How passes work"}
+                </GButton>
                 <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Scope">
                   <option value="">Everything</option>
                   {scopeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -139,7 +139,9 @@ export function CourseTrackerPage() {
         </GlassCard>
 
         <GlassCard pad>
-          <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery" />
+          <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
+            action={<GButton size="sm" onClick={() => setGuideOpen((open) => !open)}><HelpCircle size={14} /> {guideOpen ? "Hide" : "Help"}</GButton>} />
+          {guideOpen && <TrackerGuide />}
           <div className="filter-bar" style={{ marginBottom: 12 }}>
             {TABS.map((t) => (
               <button key={t} className={`filter-pill ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</button>
@@ -159,9 +161,10 @@ export function CourseTrackerPage() {
 
 function ItemRow({ item }: { item: TrackerItem }) {
   const s = useStore();
+  const isPQ = item.kind === "PQ";
   return (
-    <div className="dense-row tracker-item-row">
-      <MasteryShard item={item} />
+    <div className={`dense-row tracker-item-row ${isPQ ? "pq-row" : ""}`}>
+      {!isPQ && <MasteryShard item={item} />}
       <div className="grow">
         <div className="dr-label">{item.label}</div>
         <div className="dr-type">{item.path}</div>
@@ -172,10 +175,39 @@ function ItemRow({ item }: { item: TrackerItem }) {
       </button>
       <Tag tone={kindTone[item.kind]}>{item.kind}</Tag>
 
-      <PassBlocks item={item} />
-      <AnkiBlocks item={item} />
+      {isPQ ? <PQCompleteBlocks item={item} /> : <>
+        <PassBlocks item={item} />
+        <AnkiBlocks item={item} />
+      </>}
 
       <GhostButton className="danger" onClick={() => s.removeTrackerItem(item.id)}><Trash2 size={14} /></GhostButton>
+    </div>
+  );
+}
+
+function PQCompleteBlocks({ item }: { item: TrackerItem }) {
+  const s = useStore();
+  const clamped = Math.min(item.passes, 3);
+  return (
+    <div className="pq-complete" aria-label="Practice question completion mastery">
+      <span className="pq-label">Completed</span>
+      {[1, 2, 3].map((n) => {
+        const active = clamped >= n;
+        const stage = n === 1 ? "red" : n === 2 ? "young" : "mastered";
+        const style = { "--block-color": PASS_COLOR[stage] } as CSSProperties;
+        return (
+          <button key={n}
+            className={`pass-block pq-block ${active ? "on" : ""}`}
+            style={style}
+            onClick={() => s.setPasses(item.id, n)}
+            title={`PQ completed level ${n}/3`}>
+            <span>{n}</span>
+          </button>
+        );
+      })}
+      <span className="pass-num" style={{ color: clamped ? PASS_COLOR[passStage(clamped)] : PASS_COLOR.untouched }}>
+        {clamped}/3
+      </span>
     </div>
   );
 }
@@ -250,10 +282,11 @@ function TrackerGuide() {
         <GuideChip color={ankiColor(1)} label="Anki 1" note="First card pass/round. The right side of the shard turns on." />
         <GuideChip color={ankiColor(2)} label="Anki 2" note="Second card pass. More stable recall." />
         <GuideChip color={ankiColor(3)} label="Anki 3" note="Third card pass. Purple means Anki mastery." />
+        <GuideChip color={PASS_COLOR.mastered} label="PQ 1-2-3" note="Practice questions skip Anki and use only Completed 1, 2, 3." />
       </div>
       <div className="guide-note">
         Click a pass box to set lecture mastery directly. Click the Anki control to cycle 0 → 1 → 2 → 3 → 0.
-        Yield stays separate and feeds suggested next moves.
+        Practice question rows intentionally show only Completed 1-2-3. Yield stays separate and feeds suggested next moves.
       </div>
     </div>
   );
@@ -436,6 +469,11 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
           Import {names.length || ""} item{names.length === 1 ? "" : "s"}
         </GButton>
       </>}>
+      <ol className="import-steps">
+        <li>Pick the <b>destination</b> (e.g. <span className="mono">Term 2/BPM 501/NB3</span>) and the <b>kind</b> (Lecture, DLA, PQ…).</li>
+        <li>Paste your list — <b>one name per line</b>. Copy straight from a syllabus or Sakai; numbering like “1.” is stripped automatically.</li>
+        <li>Click <b>Import</b>. Every row starts at <b>0 passes</b> and <b>Set yield</b> — you grade them later.</li>
+      </ol>
       <div className="row gap12">
         <Field label="Destination path" value={path} onChange={(e) => setPath(e.target.value)} />
         <SelectField label="Kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>

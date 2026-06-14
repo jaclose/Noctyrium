@@ -64,6 +64,7 @@ export interface Suggestion {
  *   mastered (4+)               → never suggested
  */
 function targetPasses(it: TrackerItem): number {
+  if (it.kind === "PQ") return 3;
   if (it.yield === "low") return 2;
   if (it.yield === "high" || it.yield === "review") return 4;
   return 3;
@@ -78,8 +79,8 @@ function kindWeight(it: TrackerItem): number {
 }
 
 function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): number {
-  if (it.passes >= 4) return -1; // mastered — done
   const target = targetPasses(it);
+  if (it.passes >= target) return -1; // mastered for this item type
   const deficit = Math.max(target - it.passes, 0);
   let s = deficit * 28 + kindWeight(it);
   if (it.yield === "review") s += 80;
@@ -88,8 +89,8 @@ function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): 
   if (it.passes === 0) s += 38 + Math.min(scopeSize, 40) * 0.4;
   if (it.passes === 1) s += 30; // red — fragile, push it
   if (it.passes === 2) s += 18; // young — near mature
-  if (it.ankiPasses === 0 && it.passes >= 1 && it.yield !== "low") s += 16;
-  if (it.ankiPasses < 3 && it.passes >= 3 && it.yield === "high") s += 12;
+  if (it.kind !== "PQ" && it.ankiPasses === 0 && it.passes >= 1 && it.yield !== "low") s += 16;
+  if (it.kind !== "PQ" && it.ankiPasses < 3 && it.passes >= 3 && it.yield === "high") s += 12;
   s += untouchedRatio * 16;
   return s;
 }
@@ -102,7 +103,7 @@ export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[
   if (!items.length) {
     return [{ title: "No tracked items yet", reason: "Install a blueprint or import lectures to create the first suggested move.", color: PASS_COLOR.untouched }];
   }
-  const live = items.filter((it) => it.passes < 4);
+  const live = items.filter((it) => it.passes < targetPasses(it));
   if (!live.length) {
     return [{ title: "This scope is mastered", reason: "Every item here is at 4+ passes. Pick another scope or protect recovery.", color: PASS_COLOR.mastered }];
   }
@@ -130,6 +131,7 @@ export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[
 
 function moveTitle(it: TrackerItem): string {
   if (it.passes === 0) return `Start: ${it.label}`;
+  if (it.kind === "PQ") return `PQ completed #${Math.min(it.passes + 1, 3)}: ${it.label}`;
   if (it.passes < 3) return `Pass #${it.passes + 1}: ${it.label}`;
   if (it.ankiPasses < 3) return `Anki round #${it.ankiPasses + 1}: ${it.label}`;
   return `Mastery check: ${it.label}`;
@@ -140,6 +142,7 @@ function moveReason(it: TrackerItem, untouched: number, review: number): string 
   if (it.passes === 0) return it.yield === "high"
     ? `High-yield and untouched — best ROI (${untouched} untouched in scope).`
     : `Untouched (${untouched} left in this scope).`;
+  if (it.kind === "PQ") return "Practice questions use 1-2-3 completed sets; review explanations before increasing mastery.";
   if (it.passes === 1) return "Only 1 pass (red) — fragile, push toward young.";
   if (it.passes === 2) return "Young — one more pass reaches mature.";
   if (it.ankiPasses === 0) return "Mature in lecture tracker but not anchored in Anki yet.";
@@ -150,6 +153,9 @@ function moveReason(it: TrackerItem, untouched: number, review: number): string 
 /** A compact mastery % for a scope, weighting passes 0..4. */
 export function scopeMastery(items: TrackerItem[]): number {
   if (!items.length) return 0;
-  const score = items.reduce((a, i) => a + Math.min(i.passes, 4) / 4, 0);
+  const score = items.reduce((a, i) => {
+    const target = i.kind === "PQ" ? 3 : 4;
+    return a + Math.min(i.passes, target) / target;
+  }, 0);
   return Math.round((score / items.length) * 100);
 }
