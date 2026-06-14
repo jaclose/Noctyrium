@@ -4,6 +4,7 @@ import { Modal, Field } from "../ui/Modal";
 import { GButton } from "../ui/primitives";
 import { useStore } from "../../lib/store";
 import { exportState, parseImport } from "../../lib/backup";
+import { AccountSyncPanel } from "./AccountSyncPanel";
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const store = useStore();
@@ -89,8 +90,10 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])} />
         </div>
         {msg && <div className="sub" style={{ color: "var(--cyan)" }}>{msg}</div>}
-        <div className="sub">Your local user ID is derived from your display name and saved with the Local Vault + JSON backups. Your data still lives only in this browser unless you export/import it.</div>
+        <div className="sub">Your local user ID is derived from your display name and saved with the Local Vault + JSON backups. Your data stays local unless you export/import it or use optional cloud sync.</div>
       </div>
+
+      <AccountSyncPanel />
     </Modal>
   );
 }

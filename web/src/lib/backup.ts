@@ -10,10 +10,19 @@ const DATA_KEYS = [
   "prompts", "folders", "logs", "integrations", "boardPrep", "dayPlans", "activeDayKey", "schemaVersion",
 ] as const;
 
-export function exportState(state: NoctyriumState) {
-  const payload: Record<string, unknown> = { _app: "Noctyrium", _exported: new Date().toISOString() };
+export function toPortableState(state: NoctyriumState): NoctyriumState {
+  const payload: Record<string, unknown> = {};
   const src = state as unknown as Record<string, unknown>;
   for (const k of DATA_KEYS) payload[k] = src[k];
+  return payload as unknown as NoctyriumState;
+}
+
+export function exportState(state: NoctyriumState) {
+  const payload: Record<string, unknown> = {
+    _app: "Noctyrium",
+    _exported: new Date().toISOString(),
+    ...toPortableState(state),
+  };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

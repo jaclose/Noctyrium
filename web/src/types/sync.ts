@@ -1,0 +1,51 @@
+import type { NoctyriumState } from "../lib/types";
+
+export interface CloudUser {
+  id: string;
+  displayName: string;
+  normalizedName: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt: string;
+  authNote?: string;
+}
+
+export interface CloudSnapshot {
+  id: string;
+  userId: string;
+  appVersion: string;
+  schemaVersion: number;
+  dataJson: NoctyriumState;
+  deviceLabel?: string;
+  backupLabel?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CloudBackup {
+  id: string;
+  userId: string;
+  appVersion: string;
+  schemaVersion: number;
+  deviceLabel?: string;
+  backupLabel?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SyncMeta {
+  user?: CloudUser;
+  autoSync: boolean;
+  lastSyncedAt?: string;
+  lastCloudUpdatedAt?: string;
+  lastLocalFingerprint?: string;
+  deviceLabel?: string;
+}
+
+export interface SaveCloudInput {
+  appVersion: string;
+  schemaVersion: number;
+  dataJson: NoctyriumState;
+  deviceLabel?: string;
+  backupLabel?: string;
+}

@@ -1,6 +1,13 @@
 # Keep Vercel uploads focused on the deployable web app.
 *
+!api/
+!api/**
+!db/
+!db/**
+!package.json
+!package-lock.json
 !vercel.json
+!.env.example
 !web/
 !web/**
 

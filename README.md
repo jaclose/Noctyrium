@@ -5,7 +5,8 @@ A local-first command center for medical school execution — courses, module ma
 > **New: web app.** Noctyrium now also ships as a **deployable web app** in
 > [`web/`](web/) — Vite + React + TypeScript, runs in VS Code (`cd web && npm install && npm run dev`),
 > builds to a static bundle you can host, embed in an iframe, or hand out as a download,
-> and stores data in the browser (no backend). See [`web/README.md`](web/README.md).
+> stores data locally by default, and includes an optional Vercel/Neon backend
+> for name-login cloud sync, backups, restore, and mock AI endpoints. See [`web/README.md`](web/README.md).
 > The Swift/macOS app below is the original build and is unchanged.
 
 **Version:** v0.03.01.5 (technical preview)
@@ -14,12 +15,18 @@ A local-first command center for medical school execution — courses, module ma
 
 ## What this is
 
-The entire app is a single Swift source file (`Sources/Noctyrium/MedicalSchoolHub.swift`, ~4,300 lines). It compiles to a native `.app`. There is no web component — Noctyrium runs as a desktop application.
+The original macOS app is a single Swift source file
+(`Sources/Noctyrium/MedicalSchoolHub.swift`, ~4,300 lines). It compiles to a
+native `.app`. The newer web build lives in [`web/`](web/) and now has optional
+Vercel API routes in [`api/`](api/).
 
 ## Repository layout
 
 ```
 Noctyrium/
+  api/                                # Vercel serverless backend for optional cloud sync + AI mock routes
+  db/migrations/001_initial.sql        # Postgres schema for users, snapshots, backups, logs
+  web/                                # Vite/React web app
   Package.swift                       # SwiftPM manifest (opens in Xcode + VS Code)
   Sources/Noctyrium/
     MedicalSchoolHub.swift            # THE APP — all source lives here
@@ -32,6 +39,20 @@ Noctyrium/
   CHANGELOG.md
   current_version.txt
 ```
+
+## Web backend quick start
+
+```sh
+npm install
+cp .env.example .env.local
+# set DATABASE_URL to a Neon/Supabase/Postgres connection string
+npm run dev
+```
+
+`npm run dev` uses Vercel dev so the React app and `/api/*` routes run together.
+For browser-only work, use `cd web && npm run dev`. The backend is optional:
+without `DATABASE_URL`, the Local Vault, JSON backup/export, and static package
+continue to work.
 
 ## Building
 

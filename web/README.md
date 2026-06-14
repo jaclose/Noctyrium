@@ -8,8 +8,8 @@ This is the web port of the original SwiftUI/macOS Noctyrium. It runs in VS Code
 via a dev server, builds to a static bundle you can host or hand out as a download,
 and can also be wrapped into a double-clickable macOS app package.
 
-- **Stack:** Vite + React + TypeScript, Zustand, IndexedDB/localStorage Local Vault, lucide-react.
-- **Data:** lives only in the visitor's current browser/profile or app container. Export/import a JSON backup from **Settings & Backup**.
+- **Stack:** Vite + React + TypeScript, Zustand, IndexedDB/localStorage Local Vault, Vercel serverless API routes, optional Neon Postgres sync, lucide-react.
+- **Data:** local-first by default. Export/import a JSON backup from **Settings & Backup**, or enable optional cloud sync after configuring the backend.
 - **Local user ID:** the display name creates a simple local owner key saved with the profile and backups.
 - **Modular:** terms, courses, modules, tracker items, resources, tasks, journal, prompts, and folders
   are all add/edit/delete in-app — nothing is hard-coded.
@@ -40,9 +40,66 @@ npm run dev          # opens http://localhost:5173
 
 That's the whole dev loop — no Xcode, no native build, nothing installed on the Mac.
 
+## Optional cloud backend
+
+Noctyrium keeps the Local Vault as the default persistence layer. The backend is
+an optional sync layer for name-only accounts, full JSON snapshots, manual cloud
+backups, restore, and mock AI endpoints.
+
+Recommended architecture:
+
+- Keep the Vite app in `web/`.
+- Use root-level Vercel serverless functions in `api/`.
+- Use Neon Postgres on Vercel for production storage.
+- Store the app state as a JSON snapshot first; split into relational tables later
+  only after the data model stabilizes.
+
+From the repo root:
+
+```sh
+npm install
+cp .env.example .env.local
+# fill DATABASE_URL with your Neon pooled Postgres connection string
+npm run dev          # Vercel dev: serves web + /api together
+```
+
+For frontend-only work, `cd web && npm run dev` still works and stays local-only.
+
+Database setup:
+
+```sh
+cat db/migrations/001_initial.sql
+```
+
+Run that SQL in Neon, Supabase, or another Postgres SQL editor. If
+`NOCTYRIUM_AUTO_MIGRATE=true`, the serverless backend also creates the required
+tables on first API use.
+
+Required Vercel env vars:
+
+```sh
+DATABASE_URL=
+AI_PROVIDER=mock
+APP_SCHEMA_VERSION=9
+NOCTYRIUM_AUTO_MIGRATE=true
+```
+
+Optional AI keys are intentionally server-only:
+
+```sh
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+```
+
+Security note: name login is lightweight identity, not secure authentication. For
+production multi-user use, migrate to email magic links, OAuth, or passkeys.
+
 ## Will my online edits save?
 
-Yes, inside the same browser/profile and same site origin. If you add `Term 3` online, it persists in that browser's Local Vault after refreshes and app updates. It will not automatically appear on another device, another browser, or another domain unless you export/import a JSON backup or later add a real hosted account sync service.
+Yes, inside the same browser/profile and same site origin. If you add `Term 3`
+online, it persists in that browser's Local Vault after refreshes and app
+updates. It appears on another browser/device only if you export/import JSON or
+use Settings -> Optional Cloud Sync after configuring the backend.
 
 ## Update safety
 
@@ -94,22 +151,37 @@ and choose **Open** once.
 Because a service worker + web manifest ship in the build, visitors who open the
 hosted version can also **Install** it from the browser as a PWA.
 
+The downloadable static packages remain local-first. Cloud sync requires the
+hosted Vercel deployment because `/api/*` needs serverless functions and a
+Postgres connection string.
+
 ## Deploy on Vercel
 
-This repo has a root `vercel.json` so Vercel can deploy the app even though the
-actual React/Vite project lives in `web/`.
+This repo has a root `vercel.json` so Vercel can deploy the app and the
+serverless API even though the actual React/Vite project lives in `web/`.
 
 Use either setup:
 
-- **Repo root as Vercel Root Directory:** leave Root Directory empty/default.
-  Vercel runs `npm --prefix web ci`, builds with `npm --prefix web run build`,
-  and serves `web/dist`.
-- **`web` as Vercel Root Directory:** set Root Directory to `web`. The local
-  `web/vercel.json` provides the SPA rewrite, and Vercel auto-detects Vite.
+- **Repo root as Vercel Root Directory, recommended:** leave Root Directory
+  empty/default. Vercel runs `npm ci && npm --prefix web ci`, builds with
+  `npm run build`, serves `web/dist`, and exposes `/api/*`.
+- **`web` as Vercel Root Directory:** only use this for a static/local-only
+  deployment. The cloud sync API will not deploy from that mode.
 
 If `https://noctyrium.vercel.app/` shows `404: NOT_FOUND`, Vercel is probably
 serving the wrong root or an older deployment. Redeploy after committing these
 config files.
+
+## Test cloud sync and mock AI
+
+1. Open Settings & Backup.
+2. Enter a name and click **Login by name**.
+3. Click **Save cloud**.
+4. Make a small local change, then click **Create backup**.
+5. Click **Load cloud** or restore a backup and confirm the conflict prompt.
+6. Confirm JSON export/import still works without a backend.
+7. With `AI_PROVIDER=mock`, call `/api/ai/next-move` or use the frontend AI
+   client from future UI work. Mock mode never exposes provider keys.
 
 ## Layout
 
@@ -125,6 +197,8 @@ web/
     main.tsx  App.tsx       # shell, hash router, service-worker registration
     styles/                 # theme tokens + glass design system (ported from Swift)
     lib/                    # types, store (Zustand+persist), seed, scoring, backup, icons
+    services/               # sync client, AI client, local storage helpers
+    types/                  # sync and AI DTOs
     components/shell|ui/     # Sidebar, TopBar, GlassCard, Ring, Heatmap, Modal, …
     pages/                   # the 11 pages
 ```
