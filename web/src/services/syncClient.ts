@@ -32,19 +32,15 @@ export async function getBackendHealth() {
 }
 
 export async function saveProgressByName(name: string, input: SaveCloudInput) {
-  const data = await api<{ user: CloudUser; snapshot: CloudSnapshot }>("/api/progress/save", {
-    method: "POST",
-    body: JSON.stringify({ name, ...toApiPayload(input) }),
-  });
-  return data;
+  const user = await loginByName(name);
+  const snapshot = await saveCloudData(user.id, input);
+  return { user, snapshot };
 }
 
 export async function loadProgressByName(name: string) {
-  const data = await api<{ user: CloudUser; snapshot: CloudSnapshot | null }>("/api/progress/load", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-  return data;
+  const user = await loginByName(name);
+  const snapshot = await getCloudData(user.id);
+  return { user, snapshot };
 }
 
 export async function getCloudUser(userId: string) {

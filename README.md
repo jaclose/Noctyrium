@@ -65,8 +65,7 @@ Core API routes:
 - `POST /api/data/:userId/backup`
 - `GET /api/data/:userId/backups`
 - `POST /api/data/:userId/restore/:backupId`
-- `POST /api/progress/save`
-- `POST /api/progress/load`
+- The frontend “save/load by name” flow composes `POST /api/user/login` with the data endpoints so the deployment stays under the Hobby plan serverless function limit.
 - `POST /api/ai/next-move`
 - `POST /api/ai/anki-generator`
 - `POST /api/ai/step-planner`
