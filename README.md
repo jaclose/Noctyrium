@@ -15,7 +15,7 @@ The app combines:
 
 ## Alpha 1 Status
 
-- **Version:** `1.0.0-alpha.1`
+- **Version:** `0.1.0-alpha.1`
 - **Frontend:** Vite + React + TypeScript in `web/`
 - **Backend:** Vercel serverless functions in `api/`
 - **Database:** Neon/Supabase/Postgres via `DATABASE_URL`
@@ -98,8 +98,8 @@ npm --prefix web run package
 
 This creates:
 
-- `web/Noctyrium-web-v1.0.0-alpha.1.zip`
-- `web/Noctyrium-mac-v1.0.0-alpha.1.zip` on macOS with `swiftc`
+- `web/Noctyrium-web-v0.1.0-alpha.1.zip`
+- `web/Noctyrium-mac-v0.1.0-alpha.1.zip` on macOS with `swiftc`
 
 Generated packages, `dist/`, cache files, and personal study folders are ignored
 and should not be committed.

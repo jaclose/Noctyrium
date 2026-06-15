@@ -7,9 +7,10 @@ import {
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
 import type { Grade } from "../lib/scoring";
-import type { Course, TrackerItem } from "../lib/types";
+import type { Course, Term, TrackerItem } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
+import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/seed";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 
@@ -35,9 +36,16 @@ export function DashboardPage() {
 
   const suggestions = buildSuggestions(s);
   const schedule = buildDashboardSchedule(s.logs, s.tasks);
+  const termMap = buildTermSequence(s.terms, s.courses, s.tracker);
 
   return (
     <>
+      <AlphaBuildBanner
+        activeDayKey={s.activeDayKey}
+        courseCount={s.courses.length}
+        termCount={s.terms.length}
+      />
+
       <div className="grid grid-stats">
         <StatCard title="Inbox" value={`${inboxFolder ? 1 : 0}`} note="folders to sort" icon={<Inbox size={18} />}
           trend={s.folders.length > 3 ? "Heavy" : "Clean"} trendTone={s.folders.length > 3 ? "orange" : "green"} />
@@ -178,46 +186,60 @@ export function DashboardPage() {
       </GlassCard>
 
       <GlassCard pad className="term-map-card">
-        <PanelHeader title="Term Map" sub="SGU sequence, modules, tracker readiness, and review pressure"
-          action={<a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a>} />
-        <div className="term-map-rail">
-          {s.terms.map((term, index) => {
-            const courses = s.courses.filter((c) => c.termId === term.id);
-            const termStats = summarizeTermCourses(courses, s.tracker);
+        <PanelHeader title="Term Map" sub="SGU academic runway: course shells, modules, tracker maturity, and review pressure"
+          action={<div className="term-map-actions"><Tag tone={termMap.ready >= 70 ? "green" : termMap.ready >= 35 ? "orange" : "neutral"}>{termMap.ready}% overall</Tag><a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a></div>} />
+        <div className="term-map-overview">
+          <div><b>{termMap.entries.length}</b><span>terms mapped</span></div>
+          <div><b>{termMap.courseCount}</b><span>course shells</span></div>
+          <div><b>{termMap.modules}</b><span>modules</span></div>
+          <div><b>{termMap.review}</b><span>review signals</span></div>
+        </div>
+        <div className="term-sequence" aria-label="SGU term sequence">
+          {termMap.entries.map(({ term, courses, stats }, index) => {
+            const current = index === termMap.focusIndex;
             return (
-              <div className="term-map-column" key={term.id}>
-                <div className="term-map-head">
-                  <span className="term-index">{index + 1}</span>
+              <section className={`term-node-card ${current ? "current" : ""}`} key={term.id}>
+                <div className="term-node-cap">
+                  <span className="term-index">T{index + 1}</span>
                   <div>
                     <b>{term.name}</b>
-                    <span>{courses.length} course{courses.length === 1 ? "" : "s"} · {termStats.modules} modules</span>
+                    <span>{stats.primaryCode || "Course shell"} · {stats.modules} module{stats.modules === 1 ? "" : "s"}</span>
                   </div>
-                  <Tag tone={termStats.ready >= 70 ? "green" : termStats.ready >= 35 ? "orange" : "neutral"}>{termStats.ready}%</Tag>
+                  <Tag tone={current ? "cyan" : stats.ready >= 70 ? "green" : stats.ready >= 35 ? "orange" : "neutral"}>{current ? "focus" : `${stats.ready}%`}</Tag>
                 </div>
-                <div className="term-course-stack">
+                <div className="term-course-lane">
                   {courses.map((course) => {
                     const courseStats = summarizeCourse(course, s.tracker);
                     return (
-                      <button className="term-course" key={course.id} onClick={() => (location.hash = "courses")}>
+                      <button className="term-course-pill" key={course.id} onClick={() => (location.hash = "courses")}>
                         <div className="spread">
                           <b>{course.code}</b>
-                          <span>{courseStats.items ? `${courseStats.ready}% ready` : "shell"}</span>
+                          <span>{courseStats.items ? `${courseStats.ready}%` : "shell"}</span>
                         </div>
-                        {course.name && <em>{course.name}</em>}
-                        <div className="track">
-                          <div className="track-fill" style={{ width: `${courseStats.ready}%`, background: courseStats.ready >= 70 ? PASS_COLOR.mastered : courseStats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.32)" }} />
-                        </div>
-                        <div className="term-course-meta">
-                          <span>{course.modules.length} modules</span>
-                          <span>{courseStats.items} tracker rows</span>
-                          {courseStats.review > 0 && <span className="needs-review">{courseStats.review} review</span>}
-                        </div>
+                        <em>{course.name || "Course shell"}</em>
+                        <small>{course.modules.length} modules · {courseStats.items || 0} tracker rows{courseStats.review ? ` · ${courseStats.review} review` : ""}</small>
                       </button>
                     );
                   })}
                   {!courses.length && <div className="term-empty">Add a course shell for this term.</div>}
                 </div>
-              </div>
+                <div className="term-node-meter">
+                  <div className="spread"><span>Readiness</span><b>{stats.ready}%</b></div>
+                  <div className="track">
+                    <div className="track-fill" style={{ width: `${stats.ready}%`, background: stats.ready >= 70 ? PASS_COLOR.mastered : stats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.34)" }} />
+                  </div>
+                </div>
+                <div className="term-node-signals">
+                  <span>{stats.items} tracked</span>
+                  <span>{stats.review} review</span>
+                  <span>{stats.highYield} high-yield</span>
+                </div>
+                <div className="term-module-row">
+                  {stats.moduleNames.slice(0, 5).map((module) => <span key={module}>{module}</span>)}
+                  {stats.moduleNames.length > 5 && <span>+{stats.moduleNames.length - 5}</span>}
+                  {!stats.moduleNames.length && <span>Modules ready to add</span>}
+                </div>
+              </section>
             );
           })}
         </div>
@@ -262,6 +284,33 @@ export function DashboardPage() {
         ) : <div className="dim">No journal entries yet.</div>}
       </GlassCard>
     </>
+  );
+}
+
+function AlphaBuildBanner({
+  activeDayKey, courseCount, termCount,
+}: {
+  activeDayKey: string;
+  courseCount: number;
+  termCount: number;
+}) {
+  return (
+    <GlassCard pad className="alpha-build-banner">
+      <div className="alpha-build-mark">
+        <PackageCheck size={19} />
+      </div>
+      <div className="alpha-build-copy">
+        <span>First alpha package</span>
+        <b>{APP_BUILD_LABEL}</b>
+        <p>Local-first web build, Vercel-ready backend shell, and packaged-download workflow.</p>
+      </div>
+      <div className="alpha-build-meta">
+        <span><ShieldCheck size={13} /> Version v{APP_RELEASE_VERSION}</span>
+        <span><Database size={13} /> Schema {SCHEMA_VERSION}</span>
+        <span><CalendarDays size={13} /> Study day {activeDayKey}</span>
+        <span>{termCount} terms · {courseCount} courses</span>
+      </div>
+    </GlassCard>
   );
 }
 
@@ -410,12 +459,35 @@ function buildSuggestions(s: ReturnType<typeof useStore.getState>) {
   return out.slice(0, 4);
 }
 
+function buildTermSequence(terms: Term[], courses: Course[], tracker: TrackerItem[]) {
+  const entries = terms.map((term) => {
+    const termCourses = courses.filter((course) => course.termId === term.id);
+    return { term, courses: termCourses, stats: summarizeTermCourses(termCourses, tracker) };
+  });
+  const ready = entries.length ? Math.round(entries.reduce((sum, entry) => sum + entry.stats.ready, 0) / entries.length) : 0;
+  const focus = entries.findIndex((entry) => entry.courses.length > 0 && (entry.stats.ready < 70 || entry.stats.review > 0));
+  return {
+    entries,
+    ready,
+    focusIndex: focus >= 0 ? focus : Math.max(0, entries.length - 1),
+    courseCount: courses.length,
+    modules: entries.reduce((sum, entry) => sum + entry.stats.modules, 0),
+    review: entries.reduce((sum, entry) => sum + entry.stats.review, 0),
+  };
+}
+
 function summarizeTermCourses(courses: Course[], tracker: TrackerItem[]) {
   const stats = courses.map((course) => summarizeCourse(course, tracker));
   const ready = stats.length ? Math.round(stats.reduce((sum, item) => sum + item.ready, 0) / stats.length) : 0;
+  const moduleNames = courses.flatMap((course) => course.modules.map((module) => module.name));
   return {
     ready,
+    primaryCode: courses.map((course) => course.code).join(" / "),
     modules: courses.reduce((sum, course) => sum + course.modules.length, 0),
+    items: stats.reduce((sum, item) => sum + item.items, 0),
+    review: stats.reduce((sum, item) => sum + item.review, 0),
+    highYield: stats.reduce((sum, item) => sum + item.highYield, 0),
+    moduleNames,
   };
 }
 
@@ -434,7 +506,8 @@ function summarizeCourse(course: Course, tracker: TrackerItem[]) {
     ? Math.round(items.reduce((sum, item) => sum + Math.min(100, (Math.min(item.passes, 4) / 4) * 100), 0) / items.length)
     : 0;
   const review = items.filter((item) => item.yield === "review" || item.passes < 2).length;
-  return { items: items.length, ready, review };
+  const highYield = items.filter((item) => item.yield === "high").length;
+  return { items: items.length, ready, review, highYield };
 }
 
 function weeklySummary(logs: ReturnType<typeof useStore.getState>["logs"]) {

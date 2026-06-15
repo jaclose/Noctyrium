@@ -5,9 +5,9 @@ export default withApi(["GET"], async (_req, res) => {
   sendJson(res, {
     ok: true,
     service: "noctyrium-api",
-    version: "alpha 1",
+    version: "0.1.0-alpha.1",
     databaseConfigured: hasDatabase(),
     aiProvider: process.env.AI_PROVIDER || "mock",
-    schemaVersion: Number(process.env.APP_SCHEMA_VERSION || 11),
+    schemaVersion: Number(process.env.APP_SCHEMA_VERSION || 12),
   });
 }, { rateLimit: 120 });

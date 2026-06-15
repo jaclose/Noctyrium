@@ -7,8 +7,10 @@ import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield 
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 
-export const SCHEMA_VERSION = 11;
-export const APP_VERSION_LABEL = "alpha 1 · web";
+export const SCHEMA_VERSION = 12;
+export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
+export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
+export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
 
 const now = () => new Date().toISOString();
 

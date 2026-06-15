@@ -404,6 +404,18 @@ export const useStore = create<Store>()(
         if (fromVersion < 11) {
           s.boardPrep = normalizeBoardPrep(s.boardPrep);
         }
+        if (fromVersion < 12) {
+          const profile = normalizeProfile(s.profile);
+          if (
+            /^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) ||
+            profile.versionLabel === "v0.10.0 · web" ||
+            profile.versionLabel === "alpha 1 · web" ||
+            /^Noctyrium Alpha 1 · v[\d.-]+alpha[\d.-]* · web$/.test(profile.versionLabel)
+          ) {
+            profile.versionLabel = APP_VERSION_LABEL;
+          }
+          s.profile = profile;
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
