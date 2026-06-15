@@ -1355,6 +1355,18 @@
 .import-steps li { margin: 2px 0; }
 .import-steps b { color: var(--text-80); }
 
+.import-preview-list {
+  margin-top: 8px; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--hairline-soft);
+}
+.import-preview-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 6px; border-radius: 8px; }
+.import-preview-row .mono {
+  color: var(--text-45); flex: 0 0 auto; max-width: 38%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.import-preview-row > span:not(.mono) { flex: 1; color: var(--text-80); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-preview-row.dupe { opacity: 0.5; }
+
 /* ---- STEP action feedback ---- */
 .step-flash {
   display: flex; align-items: center; gap: 9px; margin-top: 12px;

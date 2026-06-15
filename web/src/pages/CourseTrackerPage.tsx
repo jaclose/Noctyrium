@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
-  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye,
+  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
@@ -450,52 +450,157 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   const [kind, setKind] = useState<TrackerKind>("Lecture");
   const [text, setText] = useState("");
   const [stripNums, setStripNums] = useState(true);
+  const [skipDupes, setSkipDupes] = useState(true);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const names = parseNames(text, stripNums);
+  const existing = useMemo(
+    () => new Set(s.tracker.map((t) => `${t.path.toLowerCase()}::${t.label.toLowerCase()}`)),
+    [s.tracker],
+  );
+  const rows = useMemo(
+    () => parseImportRows(text, path.trim(), kind, stripNums, existing),
+    [text, path, kind, stripNums, existing],
+  );
+  const toImport = rows.filter((r) => !r.duplicate || !skipDupes);
+  const dupeCount = rows.length - toImport.length;
+  const kindCounts = useMemo(() => {
+    const counts: Partial<Record<TrackerKind, number>> = {};
+    for (const r of toImport) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
+    return counts;
+  }, [toImport]);
 
   function run() {
-    if (!names.length) return;
+    if (!toImport.length) return;
     s.bulkAddTrackerItems(
-      names.map((label) => ({ path: path.trim(), label, kind, passes: 0, ankiPasses: 0, yield: "none" as const })),
+      toImport.map((r) => ({ path: r.path, label: r.label, kind: r.kind, passes: 0, ankiPasses: 0, yield: "none" as const })),
     );
     onClose();
+  }
+
+  function loadFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => setText(String(reader.result ?? ""));
+    reader.readAsText(file);
   }
 
   return (
     <Modal title="Import lectures by name" onClose={onClose}
       footer={<>
         <GButton onClick={onClose}>Cancel</GButton>
-        <GButton variant="primary" disabled={!names.length} onClick={run}>
-          Import {names.length || ""} item{names.length === 1 ? "" : "s"}
+        <GButton variant="primary" disabled={!toImport.length} onClick={run}>
+          Import {toImport.length || ""} item{toImport.length === 1 ? "" : "s"}
         </GButton>
       </>}>
       <ol className="import-steps">
-        <li>Pick the <b>destination</b> (e.g. <span className="mono">Term 2/BPM 501/NB3</span>) and the <b>kind</b> (Lecture, DLA, PQ…).</li>
-        <li>Paste your list — <b>one name per line</b>. Copy straight from a syllabus or Sakai; numbering like “1.” is stripped automatically.</li>
-        <li>Click <b>Import</b>. Every row starts at <b>0 passes</b> and <b>Set yield</b> — you grade them later.</li>
+        <li>Pick the <b>destination</b> and default <b>kind</b> — or tag individual lines with <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[Lab]</span>, <span className="mono">[Reading]</span> to override per line.</li>
+        <li>Paste your list or <b>upload a .txt/.csv</b> — one item per line. A line ending in “:” becomes a sub-folder for the lines beneath it (e.g. <span className="mono">Module 3:</span>).</li>
+        <li>Review the preview below, then <b>Import</b>. Items already in your tracker are flagged as duplicates and skipped by default.</li>
       </ol>
       <div className="row gap12">
         <Field label="Destination path" value={path} onChange={(e) => setPath(e.target.value)} />
-        <SelectField label="Kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
+        <SelectField label="Default kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </SelectField>
       </div>
       <TextAreaField label="One name per line"
-        placeholder={"NB 58 Emotions\nNB 58 Introduction to Psychopathology\nNB 60 Biological Rhythms"}
+        placeholder={"Module 3:\nNB 58 Emotions\nNB 58 Introduction to Psychopathology [DLA]\nNB 60 Biological Rhythms"}
         value={text} onChange={(e) => setText(e.target.value)} rows={9} autoFocus />
-      <label className="row gap8" style={{ fontSize: 13, color: "var(--text-60)", cursor: "pointer" }}>
-        <input type="checkbox" checked={stripNums} onChange={(e) => setStripNums(e.target.checked)} />
-        Strip leading numbering (“1.”, “1)”, “- ”)
-      </label>
-      <div className="sub">{names.length} item{names.length === 1 ? "" : "s"} → <span className="mono">{path || "—"}</span> as <b>{kind}</b>, all starting at <b>0 passes</b>.</div>
+      <div className="row wrap gap12" style={{ alignItems: "center" }}>
+        <label className="row gap8" style={{ fontSize: 13, color: "var(--text-60)", cursor: "pointer" }}>
+          <input type="checkbox" checked={stripNums} onChange={(e) => setStripNums(e.target.checked)} />
+          Strip leading numbering (“1.”, “1)”, “- ”)
+        </label>
+        <label className="row gap8" style={{ fontSize: 13, color: "var(--text-60)", cursor: "pointer" }}>
+          <input type="checkbox" checked={skipDupes} onChange={(e) => setSkipDupes(e.target.checked)} />
+          Skip duplicates already in tracker
+        </label>
+        <GButton size="sm" onClick={() => fileRef.current?.click()}>
+          <Upload size={14} /> Upload .txt / .csv
+        </GButton>
+        <input ref={fileRef} type="file" accept=".txt,.csv,text/plain,text/csv" hidden
+          onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])} />
+      </div>
+      {rows.length > 0 && (
+        <div className="import-preview">
+          <div className="sub">
+            {toImport.length} item{toImport.length === 1 ? "" : "s"} ready → <span className="mono">{path || "—"}</span>
+            {dupeCount > 0 && <> · <span style={{ color: "var(--orange)" }}>
+              {dupeCount} duplicate{dupeCount === 1 ? "" : "s"}{skipDupes ? " skipped" : " will be re-added"}
+            </span></>}
+          </div>
+          <div className="row wrap gap6" style={{ marginTop: 6 }}>
+            {KINDS.filter((k) => kindCounts[k]).map((k) => (
+              <Tag key={k} tone={kindTone[k]}>{kindCounts[k]} {k}</Tag>
+            ))}
+          </div>
+          <div className="import-preview-list">
+            {rows.slice(0, 8).map((r, i) => (
+              <div key={i} className={`import-preview-row ${r.duplicate ? "dupe" : ""}`}>
+                <span className="mono">{r.path}</span>
+                <span>{r.label}</span>
+                <Tag tone={kindTone[r.kind]}>{r.kind}</Tag>
+                {r.duplicate && <Tag tone="orange">Duplicate</Tag>}
+              </div>
+            ))}
+            {rows.length > 8 && <div className="sub">…and {rows.length - 8} more</div>}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
 
-function parseNames(text: string, stripNums: boolean): string[] {
-  return text.split("\n").map((l) => {
-    let v = l.trim();
-    if (stripNums) v = v.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
-    return v;
-  }).filter(Boolean);
+interface ImportRow { path: string; label: string; kind: TrackerKind; duplicate: boolean; }
+
+const KIND_TAG_RE = /\[(lecture|dla|pq|lab|reading)\]/i;
+
+function parseImportRows(
+  text: string, basePath: string, defaultKind: TrackerKind, stripNums: boolean, existing: Set<string>,
+): ImportRow[] {
+  const rows: ImportRow[] = [];
+  let subPath = "";
+  for (const raw of text.split("\n")) {
+    let line = raw.trim();
+    if (!line) { subPath = ""; continue; }
+
+    const headerMatch = line.match(/^#*\s*(.+):$/);
+    if (headerMatch && !KIND_TAG_RE.test(line)) {
+      let header = headerMatch[1].trim();
+      if (stripNums) header = header.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
+      subPath = header;
+      continue;
+    }
+
+    if (stripNums) line = line.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
+    if (!line) continue;
+
+    let kind = defaultKind;
+    const tagMatch = line.match(KIND_TAG_RE);
+    if (tagMatch) {
+      const tag = tagMatch[1].toLowerCase();
+      kind = KINDS.find((k) => k.toLowerCase() === tag) ?? defaultKind;
+      line = line.replace(KIND_TAG_RE, "").trim();
+    }
+
+    const commaIdx = line.indexOf(",");
+    if (commaIdx > -1) {
+      const first = line.slice(0, commaIdx).trim();
+      const rest = line.slice(commaIdx + 1).trim();
+      const maybeKind = KINDS.find((k) => k.toLowerCase() === rest.toLowerCase());
+      if (first && maybeKind) {
+        kind = maybeKind;
+        line = first;
+      }
+    }
+
+    if (!line) continue;
+    const fullPath = subPath ? `${basePath}/${subPath}` : basePath;
+    rows.push({
+      path: fullPath,
+      label: line,
+      kind,
+      duplicate: existing.has(`${fullPath.toLowerCase()}::${line.toLowerCase()}`),
+    });
+  }
+  return rows;
 }

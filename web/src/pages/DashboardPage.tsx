@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Inbox, ArrowDownToLine, Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
-  Sunrise, Trophy, Check, Circle, ArrowRightCircle,
+  Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
@@ -13,6 +13,7 @@ import { exportState } from "../lib/backup";
 import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/seed";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
+import { runAi } from "../services/aiClient";
 
 export function DashboardPage() {
   const s = useStore();
@@ -138,6 +139,8 @@ export function DashboardPage() {
           </div>
         </GlassCard>
       </div>
+
+      <AiSuggestedActions />
 
       <GlassCard pad className="dashboard-schedule-card">
         <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
@@ -426,6 +429,92 @@ function WinTheDay() {
           )}
         </>
       )}
+    </GlassCard>
+  );
+}
+
+interface AiMove { title: string; why: string; mode: string; effortMinutes: number }
+
+// AI-backed "what should I do right now" queue. Builds context from the live
+// tracker/tasks/board-prep state so the mock (or configured) provider can react
+// to the same signals as the rule-based "Suggested next moves" card.
+function AiSuggestedActions() {
+  const s = useStore();
+  const [queue, setQueue] = useState<AiMove[] | null>(null);
+  const [rule, setRule] = useState("");
+  const [provider, setProvider] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function fetchSuggestions() {
+    setLoading(true);
+    setError("");
+    try {
+      const weakAreas = [...new Set(
+        s.tracker.filter((t) => t.yield === "review" || t.yield === "high").map((t) => t.label),
+      )].slice(0, 5);
+      const dueReviews = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
+      const tasks = s.tasks.filter((t) => !t.done).map((t) => t.title);
+      const focusCourse = s.courses[0];
+      const exam: "step1" | "step2" = s.profile.phase === "step2-dedicated" ? "step2" : "step1";
+
+      const res = await runAi("next-move", {
+        userId: s.profile.userId,
+        context: {
+          weakAreas,
+          dueReviews,
+          tasks,
+          currentCourse: focusCourse?.code,
+          stepStatus: s.boardPrep[exam]?.contentStarted,
+        },
+      });
+
+      const result = res.result as { queue?: AiMove[]; rule?: string };
+      setQueue(result.queue ?? []);
+      setRule(result.rule ?? "");
+      setProvider(res.provider);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchSuggestions(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <GlassCard pad>
+      <PanelHeader title="AI Suggested Actions" sub="Context-aware queue from your tracker, tasks, and board prep"
+        action={
+          <div className="row gap6">
+            {provider && <Tag tone="purple">{provider}</Tag>}
+            <GhostButton title="Refresh" onClick={fetchSuggestions} disabled={loading}>
+              <RefreshCw size={15} className={loading ? "spin" : ""} />
+            </GhostButton>
+          </div>} />
+
+      {error && <div className="sub" style={{ color: "var(--red)" }}>Couldn't reach the AI service: {error}</div>}
+
+      {!error && (
+        <div className="stack gap8">
+          {(queue ?? []).map((move, i) => (
+            <div className="sugg" key={i}>
+              <span className="sugg-dot" style={{ background: i === 0 ? "var(--cyan)" : "var(--purple)" }} />
+              <div className="grow">
+                <div className="sugg-title">{move.title}</div>
+                <div className="sugg-reason">{move.why} · {move.mode} · ~{move.effortMinutes}m</div>
+              </div>
+              <Bot size={15} style={{ color: "var(--cyan)" }} />
+            </div>
+          ))}
+          {!loading && queue && queue.length === 0 && (
+            <div className="dim">No AI suggestions yet — keep logging study activity and check back.</div>
+          )}
+          {loading && !queue && <div className="dim">Thinking…</div>}
+        </div>
+      )}
+
+      {rule && <div className="sub" style={{ marginTop: 8 }}>{rule}</div>}
     </GlassCard>
   );
 }

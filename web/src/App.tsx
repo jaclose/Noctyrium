@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
-import { SettingsModal } from "./components/shell/SettingsModal";
+import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
+import { OnboardingWizard } from "./components/shell/OnboardingWizard";
 import { NAV } from "./components/shell/nav";
+import { useStore } from "./lib/store";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -39,7 +41,9 @@ export default function App() {
   const [route, setRoute] = useState<string>(() => location.hash.replace("#", "") || "dashboard");
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [refreshing, setRefreshing] = useState(false);
+  const onboarded = useStore((s) => s.profile.onboarded);
 
   useEffect(() => {
     const onHash = () => setRoute(location.hash.replace("#", "") || "dashboard");
@@ -60,6 +64,19 @@ export default function App() {
   const nav = NAV.find((n) => n.id === route) ?? NAV[0];
   const Page = PAGES[route] ?? DashboardPage;
 
+  if (!onboarded) {
+    return (
+      <div className="app-root">
+        <div className="backdrop">
+          <div className="orb cyan" />
+          <div className="orb purple" />
+          <div className="orb blue" />
+        </div>
+        <OnboardingWizard />
+      </div>
+    );
+  }
+
   return (
     <div className="app-root">
       <div className="backdrop">
@@ -72,7 +89,7 @@ export default function App() {
         <Sidebar
           active={route}
           onSelect={go}
-          onOpenSettings={() => setSettings(true)}
+          onOpenSettings={(tab) => { setSettingsTab(tab ?? "general"); setSettings(true); }}
           collapsed={drawer}
           onClose={() => setDrawer(false)}
         />
@@ -93,7 +110,7 @@ export default function App() {
         </div>
       </div>
 
-      {settings && <SettingsModal onClose={() => setSettings(false)} />}
+      {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
     </div>
   );
 }

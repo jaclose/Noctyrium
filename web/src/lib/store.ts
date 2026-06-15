@@ -416,6 +416,13 @@ export const useStore = create<Store>()(
           }
           s.profile = profile;
         }
+        if (fromVersion < 13) {
+          // Anyone upgrading from an earlier schema already has a workspace —
+          // never show the first-launch onboarding wizard to them.
+          const profile = normalizeProfile(s.profile);
+          profile.onboarded = true;
+          s.profile = profile;
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -525,9 +532,16 @@ function normalizeAcademicMap(state: AnyRecord) {
   state.courses = courses;
 }
 
+const ACADEMIC_PHASES = [
+  "pre-med", "mcat", "preclinical", "clinical", "step1-dedicated", "step2-dedicated", "other",
+] as const;
+
 function normalizeProfile(value: unknown): Profile {
   const profile = isRecord(value) ? value : {};
   const name = String(profile.name ?? "");
+  const phase = ACADEMIC_PHASES.includes(profile.phase as typeof ACADEMIC_PHASES[number])
+    ? profile.phase as Profile["phase"]
+    : undefined;
   return {
     name,
     userId: typeof profile.userId === "string" && profile.userId.trim()
@@ -538,6 +552,8 @@ function normalizeProfile(value: unknown): Profile {
     avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
     dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
     dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
+    onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
+    phase,
   };
 }
 

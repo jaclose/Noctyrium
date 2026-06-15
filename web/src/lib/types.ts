@@ -170,6 +170,16 @@ export interface DayPlan {
   reviewNote?: string;
 }
 
+/** Academic phase, set during first-launch onboarding — tailors targets, tagline, and AI context. */
+export type AcademicPhase =
+  | "pre-med"
+  | "mcat"
+  | "preclinical"
+  | "clinical"
+  | "step1-dedicated"
+  | "step2-dedicated"
+  | "other";
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -179,6 +189,9 @@ export interface Profile {
   // Anti-overload targets: a "good enough" day, not a maximum to grind past.
   dailyCardTarget: number;
   dailyMinuteTarget: number;
+  // First-launch onboarding
+  onboarded: boolean;
+  phase?: AcademicPhase;
 }
 
 export interface NoctyriumState {
