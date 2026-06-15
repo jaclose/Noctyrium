@@ -1,15 +1,17 @@
 import { useRef, useState } from "react";
 import {
   Cloud, Database, Download, FileJson, ImagePlus, RotateCcw, ShieldCheck,
-  SlidersHorizontal, Upload, UserCircle2,
+  SlidersHorizontal, Sparkles, Upload, UserCircle2, Check,
 } from "lucide-react";
 import { Modal, Field } from "../ui/Modal";
-import { GButton } from "../ui/primitives";
+import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
 import { exportState, parseImport } from "../../lib/backup";
 import { AccountSyncPanel } from "./AccountSyncPanel";
+import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
+import type { ExperienceFocusId } from "../../lib/types";
 
-export type SettingsTab = "general" | "backup" | "account";
+export type SettingsTab = "general" | "personalization" | "backup" | "account";
 
 export function SettingsModal({ onClose, initialTab = "general" }: { onClose: () => void; initialTab?: SettingsTab }) {
   const store = useStore();
@@ -59,6 +61,9 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
         <button className={`filter-pill ${tab === "general" ? "on" : ""}`} onClick={() => setTab("general")}>
           <SlidersHorizontal size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Profile
         </button>
+        <button className={`filter-pill ${tab === "personalization" ? "on" : ""}`} onClick={() => setTab("personalization")}>
+          <Sparkles size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Personalization
+        </button>
         <button className={`filter-pill ${tab === "backup" ? "on" : ""}`} onClick={() => setTab("backup")}>
           <FileJson size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Backup &amp; Restore
         </button>
@@ -98,6 +103,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
           <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
         </>
       )}
+
+      {tab === "personalization" && <PersonalizationPanel />}
 
       {tab === "backup" && (
         <div className="backup-center">
@@ -168,5 +175,73 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
       {tab === "account" && <AccountSyncPanel />}
     </Modal>
+  );
+}
+
+function PersonalizationPanel() {
+  const store = useStore();
+  const profile = store.profile;
+  const subscriptions = normalizedFocusIds(profile.focusSubscriptions);
+  const activeFocusId = profile.activeFocusId && subscriptions.includes(profile.activeFocusId)
+    ? profile.activeFocusId
+    : subscriptions[0];
+  const activeFocus = focusOption(activeFocusId);
+
+  function toggleFocus(id: ExperienceFocusId) {
+    const set = new Set(subscriptions);
+    if (set.has(id) && id !== activeFocusId) set.delete(id);
+    else set.add(id);
+    store.updateProfile({ focusSubscriptions: [...set] });
+  }
+
+  function makePrimary(id: ExperienceFocusId) {
+    const option = focusOption(id);
+    const next = [...new Set([id, ...subscriptions])];
+    store.updateProfile({
+      activeFocusId: id,
+      focusSubscriptions: next,
+      phase: option?.phase,
+      tagline: option?.tagline ?? profile.tagline,
+      dailyCardTarget: option?.cardTarget ?? profile.dailyCardTarget,
+      dailyMinuteTarget: option?.minuteTarget ?? profile.dailyMinuteTarget,
+    });
+  }
+
+  return (
+    <div className="backup-center">
+      <div className="backup-actions-panel premium-panel">
+        <div>
+          <div className="sync-title">Experience profile</div>
+          <div className="sub">
+            Current focus: <b>{activeFocus?.label ?? "Custom"}</b>. These switches control what Noctyrium emphasizes; they do not delete existing courses, imports, tracker rows, or logs.
+          </div>
+        </div>
+        <GButton size="sm" variant="primary" onClick={() => store.updateProfile({ onboarded: false })}>
+          <Sparkles size={15} /> Run setup again
+        </GButton>
+      </div>
+
+      <div className="focus-settings-grid">
+        {FOCUS_OPTIONS.map((option) => {
+          const subscribed = subscriptions.includes(option.id);
+          const primary = activeFocusId === option.id;
+          return (
+            <div key={option.id} className={`focus-setting-row ${primary ? "primary" : ""}`}>
+              <button className={`focus-check ${subscribed ? "on" : ""}`} onClick={() => toggleFocus(option.id)} title="Toggle subscription">
+                {subscribed && <Check size={12} />}
+              </button>
+              <div className="grow">
+                <b>{option.label}</b>
+                <span>{option.blurb}</span>
+              </div>
+              <Tag tone={option.group === "SGU Terms" ? "cyan" : option.group === "Boards" ? "purple" : "green"}>{option.group}</Tag>
+              <GButton size="sm" onClick={() => makePrimary(option.id)} disabled={primary}>
+                {primary ? "Primary" : "Make primary"}
+              </GButton>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

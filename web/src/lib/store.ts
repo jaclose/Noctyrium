@@ -13,6 +13,7 @@ import { APP_VERSION_LABEL, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed"
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
+import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -31,12 +32,14 @@ interface Actions {
   updateCourse: (id: string, patch: Partial<Course>) => void;
   removeCourse: (id: string) => void;
   addModule: (courseId: string, name: string) => void;
+  renameModule: (courseId: string, moduleId: string, name: string) => void;
   removeModule: (courseId: string, moduleId: string) => void;
 
   // tracker
   addTrackerItem: (item: Omit<TrackerItem, "id" | "updated">) => void;
   bulkAddTrackerItems: (items: Omit<TrackerItem, "id" | "updated">[]) => void;
   updateTrackerItem: (id: string, patch: Partial<TrackerItem>) => void;
+  renameTrackerScope: (oldPath: string, newPath: string) => void;
   bumpPasses: (id: string, delta: number) => void; // +1 / -1 study pass (clamped 0..)
   setPasses: (id: string, n: number) => void; // click a dot to set passes directly
   cycleAnki: (id: string) => void; // 0→1→2→3→0 (orange/yellow/purple)
@@ -128,6 +131,14 @@ export const useStore = create<Store>()(
             c.id === courseId ? { ...c, modules: [...c.modules, { id: uid(), name }] } : c,
           ),
         })),
+      renameModule: (courseId, moduleId, name) =>
+        set((s) => ({
+          courses: s.courses.map((c) =>
+            c.id === courseId
+              ? { ...c, modules: c.modules.map((m) => (m.id === moduleId ? { ...m, name } : m)) }
+              : c,
+          ),
+        })),
       removeModule: (courseId, moduleId) =>
         set((s) => ({
           courses: s.courses.map((c) =>
@@ -147,6 +158,19 @@ export const useStore = create<Store>()(
         set((s) => ({
           tracker: s.tracker.map((t) => (t.id === id ? { ...t, ...patch, updated: now() } : t)),
         })),
+      renameTrackerScope: (oldPath, newPath) =>
+        set((s) => {
+          const from = oldPath.trim().replace(/\/+$/, "");
+          const to = newPath.trim().replace(/\/+$/, "");
+          if (!from || !to || from === to) return {};
+          return {
+            tracker: s.tracker.map((t) =>
+              t.path === from || t.path.startsWith(`${from}/`)
+                ? { ...t, path: `${to}${t.path.slice(from.length)}`, updated: now() }
+                : t,
+            ),
+          };
+        }),
       bumpPasses: (id, delta) =>
         set((s) => ({
           tracker: s.tracker.map((t) =>
@@ -423,6 +447,13 @@ export const useStore = create<Store>()(
           profile.onboarded = true;
           s.profile = profile;
         }
+        if (fromVersion < 14) {
+          normalizeAcademicMap(s);
+          s.boardPrep = normalizeBoardPrep(s.boardPrep);
+          const profile = normalizeProfile(s.profile);
+          profile.onboarded = true;
+          s.profile = profile;
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -442,71 +473,27 @@ export const useStore = create<Store>()(
 
 type AnyRecord = Record<string, unknown>;
 
-const CANONICAL_TERMS = [
-  { key: "term-1", name: "Term 1" },
-  { key: "term-2", name: "Term 2" },
-  { key: "term-3", name: "Term 3" },
-  { key: "term-4", name: "Term 4" },
-  { key: "term-5", name: "Term 5" },
-];
-
-const CANONICAL_COURSES = [
-  {
-    code: "BPM 500",
-    aliases: ["bpm500", "01bpm500"],
-    name: "Basic Principles of Medicine I",
-    termName: "Term 1",
-    modules: ["FTM 1", "FTM 2", "MSK", "CPR 1", "CPR 2"],
-  },
-  {
-    code: "BPM 501",
-    aliases: ["bpm501", "01bpm501"],
-    name: "Basic Principles of Medicine II",
-    termName: "Term 2",
-    modules: ["DM", "ER", "NB1", "NB2", "NB3"],
-  },
-  {
-    code: "BPM 502",
-    aliases: ["bpm502", "ppm502", "02ppm502"],
-    name: "Basic Principles of Medicine III",
-    termName: "Term 3",
-    modules: ["Neuro", "Behavioral", "Endocrine/Repro"],
-  },
-  {
-    code: "SPPM 500",
-    aliases: ["sppm500", "ppm500", "02ppm500"],
-    name: "Systems-Based Principles & Practice of Medicine",
-    termName: "Term 4",
-    modules: [],
-  },
-  {
-    code: "PPM 501",
-    aliases: ["ppm501", "02ppm501"],
-    name: "Principles & Practice of Medicine I",
-    termName: "Term 5",
-    modules: [],
-  },
-];
-
 function normalizeAcademicMap(state: AnyRecord) {
   const terms = arrayOfRecords(state.terms);
   const courses = arrayOfRecords(state.courses);
   const termIds = new Map<string, string>();
 
-  for (const termDef of CANONICAL_TERMS) {
+  for (const termDef of ACADEMIC_TEMPLATE_TERMS) {
     const existing = terms.find((t) => cleanText(t.name) === cleanText(termDef.name));
     if (existing) {
       existing.name = termDef.name;
-      termIds.set(termDef.name, String(existing.id ?? termDef.key));
+      termIds.set(termDef.name, String(existing.id ?? termDef.id));
     } else {
-      terms.push({ id: termDef.key, name: termDef.name });
-      termIds.set(termDef.name, termDef.key);
+      terms.push({ id: termDef.id, name: termDef.name });
+      termIds.set(termDef.name, termDef.id);
     }
   }
 
-  for (const courseDef of CANONICAL_COURSES) {
+  const termNameById = new Map(ACADEMIC_TEMPLATE_TERMS.map((term) => [term.id, term.name]));
+  for (const courseDef of ACADEMIC_TEMPLATE_COURSES) {
     const existing = courses.find((c) => courseDef.aliases.includes(cleanCode(c.code)));
-    const termId = termIds.get(courseDef.termName) ?? courseDef.termName.toLowerCase().replace(/\s+/g, "-");
+    const termName = termNameById.get(courseDef.termId) ?? "Term";
+    const termId = termIds.get(termName) ?? courseDef.termId;
     if (existing) {
       existing.termId = termId;
       existing.code = courseDef.code;
@@ -542,6 +529,11 @@ function normalizeProfile(value: unknown): Profile {
   const phase = ACADEMIC_PHASES.includes(profile.phase as typeof ACADEMIC_PHASES[number])
     ? profile.phase as Profile["phase"]
     : undefined;
+  const focusSubscriptions = normalizedFocusIds(profile.focusSubscriptions);
+  const activeFocus = focusSubscriptions.includes(profile.activeFocusId as typeof focusSubscriptions[number])
+    ? profile.activeFocusId as Profile["activeFocusId"]
+    : focusSubscriptions[0];
+  const focus = focusOption(activeFocus);
   return {
     name,
     userId: typeof profile.userId === "string" && profile.userId.trim()
@@ -553,23 +545,24 @@ function normalizeProfile(value: unknown): Profile {
     dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
     dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
     onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
-    phase,
+    phase: phase ?? focus?.phase,
+    activeFocusId: activeFocus,
+    focusSubscriptions,
   };
 }
 
+const BOARD_EXAMS: BoardExamId[] = ["step1", "step2", "step3", "shelf", "mcat", "premed"];
+
 function defaultBoardPrepState(): Record<BoardExamId, BoardPrepProfile> {
-  return {
-    step1: defaultBoardPrep("step1"),
-    step2: defaultBoardPrep("step2"),
-  };
+  return Object.fromEntries(BOARD_EXAMS.map((exam) => [exam, defaultBoardPrep(exam)])) as Record<BoardExamId, BoardPrepProfile>;
 }
 
 function defaultBoardPrep(exam: BoardExamId): BoardPrepProfile {
   return {
-    medYear: exam === "step1" ? "MS2" : "MS3",
-    contentStarted: exam === "step1" ? "light" : "not-started",
-    weeklyHours: exam === "step1" ? 18 : 14,
-    questionTarget: 40,
+    medYear: exam === "step1" ? "MS2" : exam === "step2" || exam === "shelf" ? "MS3" : "Other",
+    contentStarted: exam === "step1" || exam === "mcat" || exam === "shelf" ? "light" : "not-started",
+    weeklyHours: exam === "step1" ? 18 : exam === "step2" ? 14 : exam === "mcat" ? 12 : 10,
+    questionTarget: exam === "premed" ? 15 : exam === "shelf" ? 25 : exam === "step3" ? 30 : 40,
     resourcesDone: [],
     otherResources: "",
     confidence: "medium",
@@ -581,10 +574,7 @@ function defaultBoardPrep(exam: BoardExamId): BoardPrepProfile {
 
 function normalizeBoardPrep(value: unknown): Record<BoardExamId, BoardPrepProfile> {
   const src = isRecord(value) ? value : {};
-  return {
-    step1: normalizeBoardPrepProfile(src.step1, "step1"),
-    step2: normalizeBoardPrepProfile(src.step2, "step2"),
-  };
+  return Object.fromEntries(BOARD_EXAMS.map((exam) => [exam, normalizeBoardPrepProfile(src[exam], exam)])) as Record<BoardExamId, BoardPrepProfile>;
 }
 
 function normalizeResourceLinks(value: unknown): AnyRecord[] {
@@ -652,9 +642,14 @@ function normalizeBoardBlueprintLogs(value: unknown): BoardBlueprintLog[] {
     const dimension = ["system", "competency", "discipline"].includes(String(log.dimension))
       ? log.dimension as BoardBlueprintLog["dimension"]
       : "system";
-    const mode = ["Content", "Retrieval", "Questions", "Assessment", "Review"].includes(String(log.mode))
-      ? log.mode as BoardBlueprintLog["mode"]
-      : "Questions";
+    const oldMode = String(log.mode);
+    const mode = oldMode === "Content"
+      ? "First pass"
+      : oldMode === "Retrieval"
+        ? "Missed facts"
+        : ["First pass", "Questions", "Missed facts", "Assessment", "Review"].includes(oldMode)
+          ? oldMode as BoardBlueprintLog["mode"]
+          : "Questions";
     const confidence = ["red", "orange", "green", "blue"].includes(String(log.confidence))
       ? log.confidence as BoardBlueprintLog["confidence"]
       : "orange";

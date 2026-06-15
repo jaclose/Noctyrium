@@ -1,114 +1,91 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  Sparkles, GraduationCap, FlaskConical, Stethoscope, BookOpen, Brain,
-  Activity, Compass, ArrowRight, ArrowLeft, Check, Wand2, LineChart,
+  Sparkles, GraduationCap, Stethoscope, BookOpen, Brain, Activity, Compass,
+  ArrowRight, ArrowLeft, Check, Wand2, LineChart, Layers, ShieldCheck,
 } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { Field } from "../ui/Modal";
-import type { AcademicPhase } from "../../lib/types";
+import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
+import type { ExperienceFocusId } from "../../lib/types";
 
-interface PhaseOption {
-  id: AcademicPhase;
-  label: string;
-  blurb: string;
-  icon: LucideIcon;
-  cardTarget: number;
-  minuteTarget: number;
-  tagline: string;
-}
+const STEP_TITLES = ["Welcome", "Focus", "Targets", "AI tools", "Ready"];
 
-const PHASES: PhaseOption[] = [
-  {
-    id: "pre-med",
-    label: "Pre-Med",
-    blurb: "Building prerequisites and the application — light, sustainable daily reps.",
-    icon: Compass,
-    cardTarget: 60,
-    minuteTarget: 120,
-    tagline: "Building the foundation, one rep at a time.",
-  },
-  {
-    id: "mcat",
-    label: "MCAT Prep",
-    blurb: "Content review, full-lengths, and a question-bank-first routine.",
-    icon: Brain,
-    cardTarget: 80,
-    minuteTarget: 180,
-    tagline: "MCAT-focused execution — content, then questions, then review.",
-  },
-  {
-    id: "preclinical",
-    label: "Medical School (Term 1-5)",
-    blurb: "Coursework-driven — lectures, DLAs, and PQs with Anki running alongside.",
-    icon: BookOpen,
-    cardTarget: 120,
-    minuteTarget: 240,
-    tagline: "Designed for execution, not decoration.",
-  },
-  {
-    id: "step1-dedicated",
-    label: "STEP 1 Dedicated",
-    blurb: "Full-time board prep — high-volume review with a tight resource set.",
-    icon: GraduationCap,
-    cardTarget: 200,
-    minuteTarget: 360,
-    tagline: "Dedicated. Locked in. One blueprint, one pass at a time.",
-  },
-  {
-    id: "clinical",
-    label: "Clinical / Rotations",
-    blurb: "Ward hours plus shelf prep — protect a small, durable daily floor.",
-    icon: Stethoscope,
-    cardTarget: 60,
-    minuteTarget: 120,
-    tagline: "Balancing the wards and the books.",
-  },
-  {
-    id: "step2-dedicated",
-    label: "STEP 2 CK Dedicated",
-    blurb: "Final stretch before STEP 2 — case-based review and timed blocks.",
-    icon: Activity,
-    cardTarget: 180,
-    minuteTarget: 300,
-    tagline: "STEP 2 CK — the final stretch.",
-  },
-  {
-    id: "other",
-    label: "Other / Custom",
-    blurb: "Set your own pace — defaults stay editable any time in Settings.",
-    icon: FlaskConical,
-    cardTarget: 100,
-    minuteTarget: 180,
-    tagline: "Designed for execution, not decoration.",
-  },
-];
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  "SGU Terms": BookOpen,
+  Boards: GraduationCap,
+  "Pre-Med": Compass,
+};
 
-const STEP_TITLES = ["Welcome", "Your phase", "Daily targets", "AI tools", "You're set"];
+const FOCUS_ICONS: Partial<Record<ExperienceFocusId, LucideIcon>> = {
+  term1: BookOpen,
+  term2: BookOpen,
+  term3: BookOpen,
+  term4: Stethoscope,
+  term5: Layers,
+  cbse: Brain,
+  step1: GraduationCap,
+  step2: Activity,
+  step3: Stethoscope,
+  shelf: Stethoscope,
+  mcat: Brain,
+  premed: Compass,
+};
 
 export function OnboardingWizard() {
   const store = useStore();
+  const savedSubscriptions = normalizedFocusIds(store.profile.focusSubscriptions);
+  const savedActive = store.profile.activeFocusId && savedSubscriptions.includes(store.profile.activeFocusId)
+    ? store.profile.activeFocusId
+    : savedSubscriptions[0];
+  const initialFocus = focusOption(savedActive) ?? FOCUS_OPTIONS[0];
   const [step, setStep] = useState(0);
   const [name, setName] = useState(store.profile.name === "Noctyrium" ? "" : store.profile.name);
-  const [phaseId, setPhaseId] = useState<AcademicPhase>("preclinical");
-  const [cardTarget, setCardTarget] = useState(120);
-  const [minuteTarget, setMinuteTarget] = useState(240);
+  const [activeFocusId, setActiveFocusId] = useState<ExperienceFocusId>(initialFocus.id);
+  const [subscriptions, setSubscriptions] = useState<Set<ExperienceFocusId>>(() => new Set(savedSubscriptions));
+  const [cardTarget, setCardTarget] = useState(store.profile.dailyCardTarget || initialFocus.cardTarget);
+  const [minuteTarget, setMinuteTarget] = useState(store.profile.dailyMinuteTarget || initialFocus.minuteTarget);
 
-  const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[2];
+  const activeFocus = focusOption(activeFocusId) ?? initialFocus;
   const last = STEP_TITLES.length - 1;
 
-  function selectPhase(p: PhaseOption) {
-    setPhaseId(p.id);
-    setCardTarget(p.cardTarget);
-    setMinuteTarget(p.minuteTarget);
+  const grouped = useMemo(() => {
+    const map = new Map<string, typeof FOCUS_OPTIONS>();
+    for (const option of FOCUS_OPTIONS) {
+      const items = map.get(option.group) ?? [];
+      items.push(option);
+      map.set(option.group, items);
+    }
+    return [...map.entries()];
+  }, []);
+
+  function choosePrimary(id: ExperienceFocusId) {
+    const option = focusOption(id);
+    if (!option) return;
+    setActiveFocusId(id);
+    setSubscriptions((prev) => new Set(prev).add(id));
+    setCardTarget(option.cardTarget);
+    setMinuteTarget(option.minuteTarget);
+  }
+
+  function toggleSubscription(id: ExperienceFocusId) {
+    setSubscriptions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id) && id !== activeFocusId) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function finish() {
+    const nextSubscriptions = [...new Set([activeFocusId, ...subscriptions])];
     store.updateProfile({
       name: name.trim() || "Noctyrium",
-      phase: phaseId,
-      tagline: phase.tagline,
+      phase: activeFocus.phase,
+      activeFocusId,
+      focusSubscriptions: nextSubscriptions,
+      tagline: activeFocus.tagline,
       dailyCardTarget: cardTarget,
       dailyMinuteTarget: minuteTarget,
       onboarded: true,
@@ -117,7 +94,7 @@ export function OnboardingWizard() {
 
   return (
     <div className="onboarding-scrim">
-      <div className="onboarding-card">
+      <div className="onboarding-card wide">
         <div className="onboarding-steps">
           {STEP_TITLES.map((title, i) => (
             <div key={title} className={`onboarding-step-dot ${i === step ? "on" : ""} ${i < step ? "done" : ""}`}>
@@ -130,18 +107,18 @@ export function OnboardingWizard() {
         {step === 0 && (
           <div className="onboarding-body">
             <div className="onboarding-mark"><Sparkles size={26} /></div>
-            <h2>Welcome to Noctyrium</h2>
+            <h2>Personalize Noctyrium</h2>
             <p className="onboarding-lede">
-              Your local-first command center for medical school — course tracking, Anki-aware
-              mastery, productivity, journaling, and STEP prep in one premium workspace. Your
-              data stays on this device unless you export or sync it.
+              Choose the academic lanes you want visible: SGU terms, CBSE, board prep, shelf exams,
+              MCAT, or pre-med. This only shapes the dashboard and suggestions. It never erases
+              imported courses, tracker rows, logs, folders, or backups.
             </p>
             <Field label="What should we call you?" placeholder="Your name" value={name}
               onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="onboarding-actions">
-              <span className="sub">Takes under a minute — fully editable later in Settings.</span>
+              <span className="sub">You can rerun this later from Settings without resetting data.</span>
               <GButton variant="primary" onClick={() => setStep(1)}>
-                Get started <ArrowRight size={15} />
+                Start setup <ArrowRight size={15} />
               </GButton>
             </div>
           </div>
@@ -149,24 +126,47 @@ export function OnboardingWizard() {
 
         {step === 1 && (
           <div className="onboarding-body">
-            <h2>Where are you right now?</h2>
+            <h2>Choose your focus stack</h2>
             <p className="onboarding-lede">
-              This tailors your daily targets, dashboard emphasis, and AI suggestions. You can
-              change it any time in Settings.
+              Select every lane you want Noctyrium to track, then mark one as your current primary
+              focus. The app uses this for targets, command-center copy, and AI context.
             </p>
-            <div className="onboarding-phase-grid">
-              {PHASES.map((p) => {
-                const Icon = p.icon;
-                const on = p.id === phaseId;
+            <div className="focus-group-stack">
+              {grouped.map(([group, options]) => {
+                const GroupIcon = GROUP_ICONS[group] ?? Sparkles;
                 return (
-                  <button key={p.id} className={`onboarding-phase ${on ? "on" : ""}`} onClick={() => selectPhase(p)}>
-                    <span className="onboarding-phase-icon"><Icon size={18} /></span>
-                    <div>
-                      <b>{p.label}</b>
-                      <span>{p.blurb}</span>
+                  <div className="focus-group" key={group}>
+                    <div className="focus-group-title"><GroupIcon size={15} /> {group}</div>
+                    <div className="focus-card-grid">
+                      {options.map((option) => {
+                        const Icon = FOCUS_ICONS[option.id] ?? Sparkles;
+                        const subscribed = subscriptions.has(option.id);
+                        const primary = activeFocusId === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            className={`focus-card ${subscribed ? "subscribed" : ""} ${primary ? "primary" : ""}`}
+                            onClick={() => choosePrimary(option.id)}
+                            type="button"
+                          >
+                            <span className="focus-card-icon"><Icon size={18} /></span>
+                            <span className="focus-card-copy">
+                              <b>{option.label}</b>
+                              <small>{option.blurb}</small>
+                            </span>
+                            <span
+                              className={`focus-check ${subscribed ? "on" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); toggleSubscription(option.id); }}
+                              title={subscribed ? "Subscribed" : "Subscribe"}
+                            >
+                              {subscribed && <Check size={12} />}
+                            </span>
+                            {primary && <Tag tone="cyan">Primary</Tag>}
+                          </button>
+                        );
+                      })}
                     </div>
-                    {on && <Tag tone="cyan"><Check size={11} /> Selected</Tag>}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -181,10 +181,10 @@ export function OnboardingWizard() {
 
         {step === 2 && (
           <div className="onboarding-body">
-            <h2>Set your daily targets</h2>
+            <h2>Set your daily floor</h2>
             <p className="onboarding-lede">
-              These are a "good enough" line, not a ceiling — the dashboard nudges you to stop
-              once you hit them. Recommended for <b>{phase.label}</b>, but fully yours to set.
+              Recommended for <b>{activeFocus.label}</b>. This is a sustainable floor for the
+              dashboard, not a ceiling or a guilt engine.
             </p>
             <div className="row gap12">
               <Field label="Daily Anki cards" type="number" value={String(cardTarget)}
@@ -193,10 +193,18 @@ export function OnboardingWizard() {
                 onChange={(e) => setMinuteTarget(Number(e.target.value) || 0)} />
             </div>
             <div className="onboarding-presets">
-              {PHASES.map((p) => (
-                <button key={p.id} className={`onboarding-preset ${p.id === phaseId ? "on" : ""}`}
-                  onClick={() => { setCardTarget(p.cardTarget); setMinuteTarget(p.minuteTarget); }}>
-                  {p.label}: {p.cardTarget} cards / {p.minuteTarget}m
+              {FOCUS_OPTIONS.filter((option) => subscriptions.has(option.id)).map((option) => (
+                <button
+                  key={option.id}
+                  className={`onboarding-preset ${option.id === activeFocusId ? "on" : ""}`}
+                  onClick={() => {
+                    choosePrimary(option.id);
+                    setCardTarget(option.cardTarget);
+                    setMinuteTarget(option.minuteTarget);
+                  }}
+                  type="button"
+                >
+                  {option.label}: {option.cardTarget} cards / {option.minuteTarget}m
                 </button>
               ))}
             </div>
@@ -213,17 +221,19 @@ export function OnboardingWizard() {
           <div className="onboarding-body">
             <h2>AI strategy layer</h2>
             <p className="onboarding-lede">
-              Noctyrium ships with safe local/mock AI behavior and Vercel-ready endpoints. The app can suggest next moves, draft Anki cards, plan Step prep, and summarize daily progress without exposing provider keys to the browser.
+              Alpha ships with local/mock AI behavior and Vercel-ready endpoints. The app can
+              suggest next moves, draft Anki cards, plan board prep, and summarize daily progress
+              without exposing provider keys in the browser.
             </p>
             <div className="onboarding-ai-grid">
-              <div><Brain size={17} /><b>Next move</b><span>Uses tracker, tasks, due reviews, and board prep status.</span></div>
+              <div><Brain size={17} /><b>Next move</b><span>Uses tracker rows, due tasks, weak areas, and board prep status.</span></div>
               <div><Wand2 size={17} /><b>Anki draft</b><span>Turns pasted lectures or objectives into import-friendly cards.</span></div>
-              <div><GraduationCap size={17} /><b>Step planner</b><span>Builds blueprint-aware plans for Step 1 and Step 2 CK.</span></div>
+              <div><GraduationCap size={17} /><b>Blueprint planner</b><span>Builds broad Step, Shelf, MCAT, or CBSE schedules first.</span></div>
               <div><LineChart size={17} /><b>Daily report</b><span>Summarizes logs, tasks, and journal entries into an action readout.</span></div>
             </div>
             <div className="backup-note">
-              <Sparkles size={15} />
-              <span>Alpha mode uses local fallbacks when `/api/ai/*` is unavailable. Add provider keys in Vercel later for real model output.</span>
+              <ShieldCheck size={15} />
+              <span>Local-first remains the source of truth. Cloud sync and AI providers are optional upgrades.</span>
             </div>
             <div className="onboarding-actions">
               <GhostButton onClick={() => setStep(2)}><ArrowLeft size={15} /> Back</GhostButton>
@@ -237,15 +247,15 @@ export function OnboardingWizard() {
         {step === last && (
           <div className="onboarding-body">
             <div className="onboarding-mark good"><Check size={26} /></div>
-            <h2>You're all set, {name.trim() || "there"}.</h2>
+            <h2>Ready, {name.trim() || "there"}.</h2>
             <p className="onboarding-lede">
-              Noctyrium is configured for <b>{phase.label}</b>. Here's what carries into your dashboard:
+              Noctyrium is configured around <b>{activeFocus.label}</b> with {subscriptions.size} subscribed lane{subscriptions.size === 1 ? "" : "s"}.
             </p>
             <div className="onboarding-summary">
-              <div><span>Phase</span><b>{phase.label}</b></div>
-              <div><span>Daily Anki target</span><b>{cardTarget} cards</b></div>
-              <div><span>Daily study target</span><b>{minuteTarget} minutes</b></div>
-              <div><span>Tagline</span><b>{phase.tagline}</b></div>
+              <div><span>Primary focus</span><b>{activeFocus.label}</b></div>
+              <div><span>Visible lanes</span><b>{[...subscriptions].map((id) => focusOption(id)?.label ?? id).join(", ")}</b></div>
+              <div><span>Daily Anki floor</span><b>{cardTarget} cards</b></div>
+              <div><span>Daily study floor</span><b>{minuteTarget} minutes</b></div>
             </div>
             <div className="onboarding-actions">
               <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>

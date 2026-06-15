@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
-  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload,
+  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
@@ -50,6 +50,15 @@ export function CourseTrackerPage() {
       next.has(path) ? next.delete(path) : next.add(path);
       return next;
     });
+  }
+
+  function renameCurrentScope() {
+    if (!scope) return;
+    const next = prompt("Rename this tracker group/path", scope);
+    if (!next?.trim()) return;
+    const cleaned = next.trim().replace(/\/+$/, "");
+    s.renameTrackerScope(scope, cleaned);
+    setScope(cleaned);
   }
 
   return (
@@ -144,7 +153,12 @@ export function CourseTrackerPage() {
 
         <GlassCard pad>
           <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
-            action={<GButton size="sm" onClick={() => setGuideOpen((open) => !open)}><HelpCircle size={14} /> {guideOpen ? "Hide" : "Help"}</GButton>} />
+            action={
+              <div className="row gap6">
+                {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={14} /></GhostButton>}
+                <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}><HelpCircle size={14} /> {guideOpen ? "Hide" : "Help"}</GButton>
+              </div>
+            } />
           {guideOpen && <TrackerGuide />}
           <div className="filter-bar" style={{ marginBottom: 12 }}>
             {TABS.map((t) => (
@@ -184,6 +198,13 @@ function ItemRow({ item }: { item: TrackerItem }) {
         <AnkiBlocks item={item} />
       </>}
 
+      <GhostButton title="Rename item"
+        onClick={() => {
+          const label = prompt("Rename tracker item", item.label);
+          if (label?.trim()) s.updateTrackerItem(item.id, { label: label.trim() });
+        }}>
+        <Pencil size={14} />
+      </GhostButton>
       <GhostButton className="danger" onClick={() => s.removeTrackerItem(item.id)}><Trash2 size={14} /></GhostButton>
     </div>
   );
@@ -276,30 +297,46 @@ function AnkiBlocks({ item }: { item: TrackerItem }) {
 function TrackerGuide() {
   return (
     <div className="tracker-guide">
-      <div className="guide-title">Course Tracker guide</div>
-      <div className="guide-grid">
-        <GuideChip color={PASS_COLOR.untouched} label="Blue" note="Untouched. It exists in the tracker, but no pass has been logged." />
-        <GuideChip color={PASS_COLOR.red} label="Red" note="One lecture/DLA/PQ pass. Fragile and should be reinforced soon." />
-        <GuideChip color={PASS_COLOR.young} label="Light green" note="Two passes. Young memory; one more pass moves it to mature." />
-        <GuideChip color={PASS_COLOR.mature} label="Green" note="Three passes. Mature enough for maintenance and questions." />
-        <GuideChip color={PASS_COLOR.mastered} label="Dark green" note="Four or more passes. Mastered for this tracker cycle." />
-        <GuideChip color={ankiColor(1)} label="Anki 1" note="First card pass/round. The right side of the shard turns on." />
-        <GuideChip color={ankiColor(2)} label="Anki 2" note="Second card pass. More stable recall." />
-        <GuideChip color={ankiColor(3)} label="Anki 3" note="Third card pass. Purple means Anki mastery." />
-        <GuideChip color={PASS_COLOR.mastered} label="PQ 1-2-3" note="Practice questions skip Anki and use only Completed 1, 2, 3." />
+      <div className="guide-title">How the Course Tracker works</div>
+
+      <div className="guide-section">
+        <div className="guide-h"><span className="guide-num">1</span> Log a pass</div>
+        <p>Every time you study an item, click its <b>pass boxes</b> (1 → 2 → 3 → 4+). Click a box again to clear back a level. The left edge changes colour as mastery grows:</p>
+        <div className="guide-scale">
+          <GuideStep color={PASS_COLOR.untouched} n="0" label="Untouched" note="exists, no pass yet" />
+          <GuideStep color={PASS_COLOR.red} n="1" label="Red" note="first exposure — fragile" />
+          <GuideStep color={PASS_COLOR.young} n="2" label="Young" note="recall forming" />
+          <GuideStep color={PASS_COLOR.mature} n="3" label="Mature" note="solid for questions" />
+          <GuideStep color={PASS_COLOR.mastered} n="4+" label="Mastered" note="keep alive w/ spaced review" />
+        </div>
       </div>
-      <div className="guide-note">
-        Click a pass box to set lecture mastery directly. Click the Anki control to cycle 0 → 1 → 2 → 3 → 0.
-        Practice question rows intentionally show only Completed 1-2-3. Yield stays separate and feeds suggested next moves.
+
+      <div className="guide-section">
+        <div className="guide-h"><span className="guide-num">2</span> Track Anki rounds</div>
+        <p>The right-hand <b>Anki</b> blocks are a separate recall layer — click to cycle rounds:</p>
+        <div className="guide-scale">
+          <GuideStep color={ankiColor(1)} n="1" label="Orange" note="first card pass" />
+          <GuideStep color={ankiColor(2)} n="2" label="Yellow" note="stabilizing" />
+          <GuideStep color={ankiColor(3)} n="3" label="Purple" note="Anki mastery" />
+        </div>
+      </div>
+
+      <div className="guide-section">
+        <div className="guide-h"><span className="guide-num">3</span> Set yield &amp; rename</div>
+        <p>
+          Click the <b>yield badge</b> to cycle <i>Set yield → High → Needs review → Low</i> — this feeds “Suggested next move”.
+          New items start at <b>Set yield</b>. <b>Rename</b> any item with the <Pencil size={11} /> pencil, or rename a whole
+          group from the Items header. <b>PQ rows</b> use a simpler <b>Completed 1·2·3</b> (no Anki side).
+        </p>
       </div>
     </div>
   );
 }
 
-function GuideChip({ color, label, note }: { color: string; label: string; note: string }) {
+function GuideStep({ color, n, label, note }: { color: string; n: string; label: string; note: string }) {
   return (
-    <div className="guide-chip">
-      <span style={{ background: color }} />
+    <div className="guide-step">
+      <span className="guide-step-dot" style={{ background: color }}>{n}</span>
       <div><b>{label}</b><small>{note}</small></div>
     </div>
   );

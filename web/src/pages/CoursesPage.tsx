@@ -76,6 +76,8 @@ export function CoursesPage() {
           {s.courses.length === 0 && <div style={{ padding: 24 }}><EmptyState title="No courses yet" hint="Add a course above to get started." /></div>}
           {s.courses.map((c) => {
             const open = expanded === c.id;
+            const courseTerm = s.terms.find((t) => t.id === c.termId);
+            const courseTermName = courseTerm?.name ?? "Term";
             return (
               <div key={c.id}>
                 <button className="acc-row" onClick={() => setExpanded(open ? null : c.id)}>
@@ -88,6 +90,18 @@ export function CoursesPage() {
                     {c.modules.map((m) => (
                       <span className="chip" key={m.id}>
                         {m.name}
+                        <button className="chip-x" title="Rename module"
+                          onClick={() => {
+                            const name = prompt("Rename module", m.name);
+                            if (name?.trim()) {
+                              const oldScope = `${courseTermName}/${c.code}/${m.name}`;
+                              const nextName = name.trim();
+                              s.renameModule(c.id, m.id, nextName);
+                              s.renameTrackerScope(oldScope, `${courseTermName}/${c.code}/${nextName}`);
+                            }
+                          }}>
+                          <Pencil size={12} />
+                        </button>
                         <button className="chip-x" onClick={() => s.removeModule(c.id, m.id)}><X size={12} /></button>
                       </span>
                     ))}
@@ -125,7 +139,14 @@ function CourseEditor({ course, onClose }: { course: Course | null; onClose: () 
   function save() {
     if (!code.trim() || !termId) return;
     const payload = { code: code.trim(), name: name.trim(), termId, files: Number(files) || 0, link: link.trim() || undefined };
-    if (course) s.updateCourse(course.id, payload);
+    if (course) {
+      const oldTerm = s.terms.find((t) => t.id === course.termId);
+      const newTerm = s.terms.find((t) => t.id === termId);
+      s.updateCourse(course.id, payload);
+      if (oldTerm && newTerm && (oldTerm.id !== newTerm.id || course.code !== payload.code)) {
+        s.renameTrackerScope(`${oldTerm.name}/${course.code}`, `${newTerm.name}/${payload.code}`);
+      }
+    }
     else s.addCourse(payload);
     onClose();
   }

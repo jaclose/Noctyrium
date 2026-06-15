@@ -8,7 +8,7 @@
 .course-card .cc-actions { margin-top: auto; display: flex; gap: 8px; align-items: center; }
 .card-hover-tools {
   position: absolute; top: 12px; right: 12px; display: flex; gap: 4px;
-  opacity: 0; transition: opacity .12s ease;
+  opacity: 0.4; transition: opacity .12s ease;
 }
 .glass-card.hoverable:hover .card-hover-tools { opacity: 1; }
 
@@ -1353,6 +1353,34 @@
   padding: 12px 13px; border-radius: 13px;
   background: rgba(255,255,255,0.028); border: 1px solid var(--hairline-soft);
 }
+
+/* ---- Tracker guide (rehauled) ---- */
+.tracker-guide .guide-section { margin-top: 14px; }
+.tracker-guide .guide-section:first-of-type { margin-top: 8px; }
+.tracker-guide .guide-h {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 800; color: var(--text);
+}
+.tracker-guide .guide-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-weight: 800;
+  color: var(--cyan); background: rgba(90,215,239,0.14); border: 1px solid rgba(90,215,239,0.3);
+}
+.tracker-guide p { margin: 6px 0 8px; font-size: 12.5px; line-height: 1.6; color: var(--text-60); }
+.tracker-guide p b { color: var(--text-80); }
+.guide-scale { display: flex; flex-wrap: wrap; gap: 8px; }
+.guide-step {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 11px 7px 7px; border-radius: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--hairline-soft);
+}
+.guide-step-dot {
+  width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: rgba(0,0,0,0.7);
+}
+.guide-step b { font-size: 12px; display: block; }
+.guide-step small { font-size: 10.5px; color: var(--text-45); }
 
 /* ---- Bulk import instructions ---- */
 .import-steps {

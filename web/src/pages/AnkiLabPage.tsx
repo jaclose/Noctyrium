@@ -35,7 +35,7 @@ export function AnkiLabPage() {
   // step 2 — paste AI output, export an Anki-importable file
   const [aiOut, setAiOut] = useState("");
 
-  const lectures = s.tracker.filter((t) => t.kind === "Lecture" || t.kind === "DLA");
+  const lectures = s.tracker.filter((t) => (t.kind === "Lecture" || t.kind === "DLA") && !isBoardPrepSource(t.path, t.label));
 
   function toggleStyle(st: CardStyle) {
     setStyles((prev) => {
@@ -189,6 +189,10 @@ export function AnkiLabPage() {
 
 function sourceLabel(lectures: { id: string; label: string }[], id: string): string {
   return lectures.find((l) => l.id === id)?.label ?? "";
+}
+
+function isBoardPrepSource(path: string, label: string): boolean {
+  return /\b(step\s*[123]|step\s*2\s*ck|cbse|usmle|nbme|shelf|mcat|pre[-\s]?med)\b/i.test(`${path} ${label}`);
 }
 
 function buildPrompt({

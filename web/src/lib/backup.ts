@@ -4,6 +4,7 @@
 import type { NoctyriumState } from "./types";
 import { APP_VERSION_LABEL, SCHEMA_VERSION } from "./seed";
 import { userIdFromName } from "./userIdentity";
+import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
@@ -44,6 +45,11 @@ export function parseImport(text: string): NoctyriumState {
     ? data.profile as Record<string, unknown>
     : {};
   const name = String(profile.name ?? "");
+  const focusSubscriptions = normalizedFocusIds(profile.focusSubscriptions);
+  const activeFocusId = focusSubscriptions.includes(profile.activeFocusId as (typeof focusSubscriptions)[number])
+    ? profile.activeFocusId as NoctyriumState["profile"]["activeFocusId"]
+    : focusSubscriptions[0] ?? DEFAULT_FOCUS_IDS[0];
+  const activeFocus = focusOption(activeFocusId);
 
   return {
     schemaVersion: data.schemaVersion ?? SCHEMA_VERSION,
@@ -56,7 +62,9 @@ export function parseImport(text: string): NoctyriumState {
       dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
       dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
       onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
-      phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : undefined,
+      phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : activeFocus?.phase,
+      activeFocusId,
+      focusSubscriptions,
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],
@@ -68,21 +76,26 @@ export function parseImport(text: string): NoctyriumState {
     folders: data.folders ?? [],
     logs: data.logs ?? [],
     integrations: data.integrations ?? [],
-    boardPrep: data.boardPrep ?? {
-      step1: defaultBoardPrep("MS2", "light", 18),
-      step2: defaultBoardPrep("MS3", "not-started", 14),
+    boardPrep: {
+      step1: defaultBoardPrep("MS2", "light", 18, 40),
+      step2: defaultBoardPrep("MS3", "not-started", 14, 40),
+      step3: defaultBoardPrep("Graduate / IMG", "not-started", 10, 30),
+      shelf: defaultBoardPrep("MS3", "light", 10, 25),
+      mcat: defaultBoardPrep("Pre-Med", "light", 12, 35),
+      premed: defaultBoardPrep("Pre-Med", "not-started", 8, 15),
+      ...(data.boardPrep ?? {}),
     },
     dayPlans: data.dayPlans ?? [],
     activeDayKey: data.activeDayKey,
   } as NoctyriumState;
 }
 
-function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: number) {
+function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: number, questionTarget: number) {
   return {
     medYear,
     contentStarted,
     weeklyHours,
-    questionTarget: 40,
+    questionTarget,
     resourcesDone: [],
     otherResources: "",
     confidence: "medium",

@@ -6,8 +6,9 @@
 import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield } from "./types";
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
+import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -26,12 +27,6 @@ function trackerRow(
 }
 
 export function makeSeed(): NoctyriumState {
-  const t1 = "term-1";
-  const t2 = "term-2";
-  const t3 = "term-3";
-  const t4 = "term-4";
-  const t5 = "term-5";
-
   return {
     schemaVersion: SCHEMA_VERSION,
     activeDayKey: dayKey(),
@@ -43,30 +38,15 @@ export function makeSeed(): NoctyriumState {
       dailyCardTarget: 120,
       dailyMinuteTarget: 240,
       onboarded: false,
+      activeFocusId: "term1",
+      focusSubscriptions: DEFAULT_FOCUS_IDS,
     },
-    terms: [
-      { id: t1, name: "Term 1" },
-      { id: t2, name: "Term 2" },
-      { id: t3, name: "Term 3" },
-      { id: t4, name: "Term 4" },
-      { id: t5, name: "Term 5" },
-    ],
-    courses: [
-      {
-        id: crypto.randomUUID(), termId: t1, code: "BPM 500", name: "Basic Principles of Medicine I",
-        files: 0, modules: ["FTM 1", "FTM 2", "MSK", "CPR 1", "CPR 2"].map((n) => ({ id: crypto.randomUUID(), name: n })),
-      },
-      {
-        id: crypto.randomUUID(), termId: t2, code: "BPM 501", name: "Basic Principles of Medicine II",
-        files: 0, modules: ["DM", "ER", "NB1", "NB2", "NB3"].map((n) => ({ id: crypto.randomUUID(), name: n })),
-      },
-      {
-        id: crypto.randomUUID(), termId: t3, code: "BPM 502", name: "Basic Principles of Medicine III",
-        files: 0, modules: ["Neuro", "Behavioral", "Endocrine/Repro"].map((n) => ({ id: crypto.randomUUID(), name: n })),
-      },
-      { id: crypto.randomUUID(), termId: t4, code: "SPPM 500", name: "Systems-Based Principles & Practice of Medicine", files: 0, modules: [] },
-      { id: crypto.randomUUID(), termId: t5, code: "PPM 501", name: "Principles & Practice of Medicine I", files: 0, modules: [] },
-    ],
+    terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),
+    courses: ACADEMIC_TEMPLATE_COURSES.map(({ aliases: _aliases, modules, ...course }) => ({
+      ...course,
+      id: crypto.randomUUID(),
+      modules: modules.map((n) => ({ id: crypto.randomUUID(), name: n })),
+    })),
     tracker: [
       // Small examples only. Users can bulk-import real lecture/DLA/PQ lists.
       trackerRow("Term 1/BPM 500/FTM 1/Lectures", "Example lecture: Cellular adaptation", "Lecture", 0, 0, "high"),
@@ -128,6 +108,10 @@ export function makeSeed(): NoctyriumState {
     boardPrep: {
       step1: boardPrepSeed("light", 18, 40),
       step2: boardPrepSeed("not-started", 14, 40),
+      step3: boardPrepSeed("not-started", 10, 30),
+      shelf: boardPrepSeed("light", 10, 25),
+      mcat: boardPrepSeed("light", 12, 35),
+      premed: boardPrepSeed("not-started", 8, 15),
     },
     dayPlans: [],
   };

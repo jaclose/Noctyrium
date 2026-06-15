@@ -5,7 +5,7 @@
 // ===========================================================================
 
 export type ID = string;
-export type BoardExamId = "step1" | "step2";
+export type BoardExamId = "step1" | "step2" | "step3" | "shelf" | "mcat" | "premed";
 
 /** A term groups courses (e.g. "Term 1"). */
 export interface Term {
@@ -120,7 +120,7 @@ export interface StudyLog {
 }
 
 export type BoardBlueprintDimension = "system" | "competency" | "discipline";
-export type BoardBlueprintMode = "Content" | "Retrieval" | "Questions" | "Assessment" | "Review";
+export type BoardBlueprintMode = "First pass" | "Questions" | "Missed facts" | "Assessment" | "Review";
 export type BoardConfidence = "red" | "orange" | "green" | "blue";
 
 export interface BoardBlueprintLog {
@@ -180,6 +180,20 @@ export type AcademicPhase =
   | "step2-dedicated"
   | "other";
 
+export type ExperienceFocusId =
+  | "term1"
+  | "term2"
+  | "term3"
+  | "term4"
+  | "term5"
+  | "cbse"
+  | "step1"
+  | "step2"
+  | "step3"
+  | "shelf"
+  | "mcat"
+  | "premed";
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -192,6 +206,8 @@ export interface Profile {
   // First-launch onboarding
   onboarded: boolean;
   phase?: AcademicPhase;
+  activeFocusId?: ExperienceFocusId;
+  focusSubscriptions: ExperienceFocusId[];
 }
 
 export interface NoctyriumState {
