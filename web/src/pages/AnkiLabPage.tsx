@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Wand2, Copy, Check, Download, Save, Sparkles, Layers } from "lucide-react";
+import { Wand2, Copy, Check, Download, Save, Sparkles, Layers, FolderDown } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Field, SelectField, TextAreaField } from "../components/ui/Modal";
@@ -71,9 +71,14 @@ export function AnkiLabPage() {
       content,
     }));
   }
+  function tsvBody() {
+    return aiOut.trim() ? toTsv(aiOut, system) : cardsToTsv(localCards, noteType, customFields);
+  }
   function exportTsv() {
-    const body = aiOut.trim() ? toTsv(aiOut, system) : cardsToTsv(localCards, noteType, customFields);
-    download(`noctyrium-anki-import.txt`, body, "text/plain");
+    download(`noctyrium-anki-import.txt`, tsvBody(), "text/plain");
+  }
+  function exportCsv() {
+    download(`noctyrium-anki-import.csv`, tsvToCsv(tsvBody()), "text/csv");
   }
 
   return (
@@ -162,7 +167,11 @@ export function AnkiLabPage() {
 
       <GlassCard pad>
         <PanelHeader title="4 · Export to Anki" sub="Paste AI output or export the local draft cards"
-          action={<GButton size="sm" variant="primary" disabled={!aiOut.trim() && !localCards.length} onClick={exportTsv}><Download size={14} /> Download for Anki</GButton>} />
+          action={
+            <div className="row gap6">
+              <GButton size="sm" variant="primary" disabled={!aiOut.trim() && !localCards.length} onClick={exportTsv}><Download size={14} /> .txt (TSV)</GButton>
+              <GButton size="sm" disabled={!aiOut.trim() && !localCards.length} onClick={exportCsv}><Download size={14} /> .csv</GButton>
+            </div>} />
         <TextAreaField label="Paste the cards the AI returned (Front : Back, or cloze text, one per line)"
           rows={6} placeholder={"What neurotransmitter is most implicated in depression? : Serotonin\n{{c1::Serotonin}} is the main monoamine targeted by SSRIs."}
           value={aiOut} onChange={(e) => setAiOut(e.target.value)} />
@@ -171,6 +180,33 @@ export function AnkiLabPage() {
           TSV columns: Basic = <span className="mono">Front / Back / Tags</span>; Cloze = <span className="mono">Text / Extra / Tags</span>;
           Custom = <span className="mono">{customFields || "your fields"}</span>. Tagged <span className="mono">{system || "system"}</span>.
         </div>
+      </GlassCard>
+
+      <GlassCard pad>
+        <PanelHeader title="5 · Your own card style & note types"
+          sub="Load the Noctyrium / MADCOW glass card style, or build a custom note type"
+          action={<a className="gbtn sm" href="https://drive.google.com/drive/u/0/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp" target="_blank" rel="noreferrer noopener"><FolderDown size={14} /> Get the Anki style</a>} />
+        <div className="anki-guide">
+          <div className="anki-guide-col">
+            <div className="anki-guide-h">Install the styled deck</div>
+            <ol className="import-steps">
+              <li>Open the <b>Anki style drive</b> above and download the <span className="mono">.apkg</span> (and any media/fonts).</li>
+              <li>In Anki: <b>File → Import</b> the <span className="mono">.apkg</span> once — this installs the note type <i>and</i> its styling.</li>
+              <li>Check <b>Tools → Manage Note Types</b> to confirm the styled type is there.</li>
+              <li>Re-import your cards from above (<b>.csv</b> or <b>.txt</b>), choosing that note type and mapping the fields.</li>
+            </ol>
+          </div>
+          <div className="anki-guide-col">
+            <div className="anki-guide-h">Make your own note type</div>
+            <ol className="import-steps">
+              <li><b>Tools → Manage Note Types → Add</b> → clone <i>Basic</i> or <i>Cloze</i>, name it.</li>
+              <li>Select it → <b>Fields…</b> to add fields (e.g. <span className="mono">Front, Back, Extra, Source, Tags</span>).</li>
+              <li><b>Cards…</b> → edit the <i>Front</i>/<i>Back</i> templates and paste CSS into <b>Styling</b> for the glass look.</li>
+              <li>When importing, set <b>Field separator</b> (Comma for .csv, Tab for .txt) and map columns to your fields.</li>
+            </ol>
+          </div>
+        </div>
+        <div className="sub" style={{ marginTop: 8 }}>Drop me screenshots of your build and I'll bake the exact field map + styling steps into this guide.</div>
       </GlassCard>
 
       <GlassCard pad>
@@ -228,60 +264,92 @@ ${content || "(paste lecture / DLA / slide text here)"}
 """`;
 }
 
+// Lines that are slide boilerplate, headings, citations, codes — never cards.
+const NOISE_RE: RegExp[] = [
+  /copyright|all rights reserved|may not be copied|downloadable files|strictly illegal|permitted to make|view only files|alterations to the documents/i,
+  /st\.?\s*george'?s university|school of medicine/i,
+  /^(learning objectives?|road ?map|summary|outline|overview|terminology|notable|key concept)\b/i,
+  /^som\.mk|^[a-z]{2,}\.\d|\bmicr\.\d|\.bpm\d/i,            // objective / module codes
+  /https?:\/\/|www\.|\.com\b|\.org\b|\.gov\b|doi:|et al\.?|\bvolume:|\bissue:/i, // urls / citations
+  /pubmed|sciencedirect|researchgate|libretexts|chegg|pinterest|theconversation|mdpi|wikipedia|microbiologykey|basicmedicalkey|lookfordiagnosis|textbookofbacteriology/i,
+  /@\w+\.\w+/,                                              // emails
+  /^(under investigation|adapted from|source|figure|fig\.?|table)\b/i,
+];
+
+function isNoise(l: string): boolean {
+  if (l.length < 24) return true;
+  const letters = l.replace(/[^a-zA-Z]/g, "");
+  if (letters.length < 12) return true;
+  const lower = (l.match(/[a-z]/g) || []).length;
+  if (lower < letters.length * 0.35) return true; // mostly caps → heading/title/code
+  if ((l.match(/[A-Z]/g) || []).length > 6 && /^[A-Z][^a-z]*$/.test(l.split(" ")[0] || "")) return true;
+  return NOISE_RE.some((re) => re.test(l));
+}
+
+const CLOZE_VERB = /\b(is|are|causes?|inhibits?|stimulates?|activates?|presents? with|results? in|leads? to|increases?|decreases?|treats?|produces?|mediates?|requires?|prevents?|degrades?|enhances?|binds?|consists? of|refers? to)\b/i;
+
+/** Cloze the ANSWER (the phrase after a key verb), never the subject. */
+function pickCloze(line: string): string | null {
+  const m = line.match(CLOZE_VERB);
+  if (m && m.index !== undefined) {
+    const after = line.slice(m.index + m[0].length).trim();
+    const answer = after.split(/[,;:(]| - /)[0].trim().replace(/[.]+$/, "").trim();
+    if (answer.length >= 4 && answer.split(/\s+/).length <= 9 && /[a-z]/i.test(answer)) {
+      return line.replace(answer, `{{c1::${answer}}}`);
+    }
+  }
+  return null; // refuse to force a bad cloze
+}
+
+function basicType(n: NoteType): NoteType { return n === "Cloze" ? "Basic" : n; }
+
+function lineToCard(line: string, styles: Set<CardStyle>, noteType: NoteType, tag: string): DraftCard | null {
+  // "Term: definition" → clean Q&A or a clozed definition
+  const def = line.match(/^([A-Za-z][\w +\-/()]{2,52}):\s+(.{12,})$/);
+  if (def) {
+    const term = def[1].trim();
+    const body = def[2].trim();
+    if (styles.has("qa")) return { noteType: basicType(noteType), front: `What is ${term}?`, back: body, tags: tag };
+    if (styles.has("cloze")) return { noteType: "Cloze", front: `${term}: {{c1::${body}}}`, back: "", tags: tag };
+  }
+  // declarative fact → cloze the answer
+  if (styles.has("cloze")) {
+    const c = pickCloze(line);
+    if (c) return { noteType: "Cloze", front: c, back: "", tags: tag };
+  }
+  return null; // no clean card from this line — skip it
+}
+
 function makeLocalCards({
   topic, system, maxCards, styles, noteType, content,
 }: {
   topic: string; system: string; maxCards: number; styles: Set<CardStyle>; noteType: NoteType; content: string;
 }): DraftCard[] {
   const tag = tagify(system || topic || "Noctyrium");
-  const lines = content
-    .split(/\n+/)
-    .map((l) => l.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim())
-    .filter((l) => l.length > 18 && !/^slide\s*\d+$/i.test(l));
-
+  const seen = new Set<string>();
   const out: DraftCard[] = [];
+  const lines = content.split(/\n+/).map((l) => l.replace(/^(\d+[.)]\s*|[-*•✓▪–]\s*)/, "").trim());
+
   for (const line of lines) {
     if (out.length >= maxCards) break;
-    const colon = line.match(/^([^:]{3,70}):\s*(.{8,})$/);
-    if (colon && styles.has("qa")) {
-      if (noteType === "Cloze") {
-        out.push({ noteType: "Cloze", front: `{{c1::${colon[1].trim()}}}: ${colon[2].trim()}`, back: "", tags: tag });
-      } else {
-        out.push({ noteType: noteType === "Custom" ? "Custom" : noteType, front: `What is ${colon[1].trim()}?`, back: colon[2].trim(), tags: tag });
-      }
+    if (isNoise(line)) continue;
+
+    if (styles.has("image") && /\b(figure|diagram|table|histology|gross|microscopy|specimen|agar|gram stain|morphology)\b/i.test(line)) {
+      const key = `img:${line.slice(0, 40).toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ noteType: "Basic", front: `Image occlusion: ${topic || "lecture figure"}`, back: `Occlude the key labels/findings from: ${line}`, tags: `${tag} image-occlusion` });
       continue;
     }
-    if (styles.has("image") && /\b(figure|diagram|image|table|histology|gross|microscopy|pathology specimen)\b/i.test(line)) {
-      out.push({ noteType: "Basic", front: `Image occlusion prompt: ${topic || "lecture figure"}`, back: `Occlude the key labels/findings from: ${line}`, tags: `${tag} image-occlusion` });
-      continue;
-    }
-    if (styles.has("cloze")) {
-      out.push({ noteType: "Cloze", front: clozeLine(line), back: "", tags: tag });
-      continue;
-    }
-    out.push({ noteType: "Basic", front: `High-yield point: ${topic || "lecture"}`, back: line, tags: tag });
+
+    const card = lineToCard(line, styles, noteType, tag);
+    if (!card) continue;
+    const key = (card.front + card.back).toLowerCase().replace(/\s+/g, " ").slice(0, 70);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(card);
   }
   return out;
-}
-
-function clozeLine(line: string): string {
-  const patterns = [
-    /\b(is|are|causes|cause|inhibits|stimulates|activates|presents with|results in|leads to)\b/i,
-    /\b(increases|decreases|treats|diagnoses|indicates)\b/i,
-  ];
-  for (const pattern of patterns) {
-    const match = line.match(pattern);
-    if (match?.index && match.index > 4) {
-      const key = line.slice(0, match.index).trim();
-      return `${line.slice(0, match.index).replace(key, `{{c1::${key}}}`)}${line.slice(match.index)}`;
-    }
-  }
-  const words = line.split(/\s+/);
-  if (words.length > 8) {
-    const key = words.slice(0, Math.min(4, words.length - 4)).join(" ");
-    return line.replace(key, `{{c1::${key}}}`);
-  }
-  return `{{c1::${line}}}`;
 }
 
 function tagify(value: string): string {
@@ -318,6 +386,10 @@ function toTsv(text: string, system: string): string {
 
 function cleanField(value: string): string {
   return value.replace(/\t/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function tsvToCsv(tsv: string): string {
+  return tsv.split("\n").map((row) => row.split("\t").map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
 function download(name: string, content: string, type: string) {

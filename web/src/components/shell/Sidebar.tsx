@@ -56,6 +56,10 @@ export function Sidebar({
             <UserCircle2 size={17} />
             <span>Account &amp; Sync</span>
           </button>
+          <div className="brand-lockup">
+            <img src="./icon-192.png" alt="" className="brand-logo" width={22} height={22} />
+            <span className="brand-wordmark">Noctyrium</span>
+          </div>
           <div className="tagline">{profile.tagline}</div>
         </div>
       </div>

@@ -33,7 +33,7 @@ export function ReportsPage() {
         <ReportStat label="Tasks completed" value={`${completedTasks.length}`} note={`${openTasks.length} still open`} />
       </div>
 
-      <GlassCard pad>
+      <GlassCard pad data-tour="reports-top">
         <PanelHeader title="Useful-day distribution" sub="Last 14 days that had any activity" />
         <div className="stack gap8">
           {(["blue", "green", "orange", "red"] as const).map((g) => {

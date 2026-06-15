@@ -1354,6 +1354,99 @@
   background: rgba(255,255,255,0.028); border: 1px solid var(--hairline-soft);
 }
 
+/* ---- Help & Guide (Hub Folders) ---- */
+.help-card { background: linear-gradient(150deg, rgba(90,215,239,0.06), rgba(155,123,255,0.05)); border-color: rgba(90,215,239,0.16); }
+.master-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.guide-tile {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 12px 13px; border-radius: 13px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--hairline-soft);
+}
+.guide-tile-icon {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cyan); background: rgba(90,215,239,0.1); border: 1px solid rgba(90,215,239,0.2);
+}
+.guide-tile b { display: block; font-size: 13.5px; }
+.guide-tile span { font-size: 11.5px; color: var(--text-45); line-height: 1.45; }
+.help-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 11.5px; color: var(--text-45); }
+.help-foot svg { color: var(--cyan); }
+
+/* ---- Under construction (masking tape) ---- */
+.under-construction {
+  position: relative; overflow: hidden;
+  border-style: dashed !important; border-color: rgba(255,200,80,0.3) !important;
+}
+.under-construction .uc-inner { opacity: 0.5; filter: grayscale(0.4); pointer-events: none; }
+.uc-tape {
+  position: absolute; z-index: 3; padding: 5px 28px;
+  font-size: 12px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(40,30,0,0.78);
+  background: repeating-linear-gradient(45deg, #ffcf4d, #ffcf4d 14px, #e8b73e 14px, #e8b73e 28px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4); opacity: 0.94;
+}
+.uc-tape.t1 { top: 22px; left: -40px; transform: rotate(-14deg); }
+.uc-tape.t2 { bottom: 30px; right: -44px; transform: rotate(-11deg); }
+.uc-badge {
+  position: absolute; z-index: 4; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 999px; font-size: 12.5px; font-weight: 800;
+  color: #2a1f00; background: linear-gradient(135deg, #ffe08a, #ffc24d);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+}
+
+/* Pomodoro mock (under construction) */
+.pomo-mock { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 6px; }
+.pomo-dial {
+  width: 100px; height: 100px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800; color: var(--text);
+  background: conic-gradient(var(--cyan) 0% 30%, rgba(255,255,255,0.08) 30% 100%);
+  box-shadow: inset 0 0 0 6px rgba(0,0,0,0.25);
+}
+.pomo-dial span { background: var(--bg-2); width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+/* ---- In-app Alpha notice ---- */
+.alpha-notice {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding: 9px 12px; border-radius: 12px; font-size: 12.5px; color: var(--text-60);
+  background: rgba(255,166,77,0.08); border: 1px solid rgba(255,166,77,0.22);
+}
+.alpha-pill {
+  flex-shrink: 0; padding: 3px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 900; letter-spacing: 0.08em;
+  color: #2a1a00; background: linear-gradient(135deg, #ffd86b, #ffb84d);
+}
+
+/* ---- ±10 stepper (Productivity manual log) ---- */
+.stepper { display: flex; align-items: stretch; gap: 4px; }
+.stepper .field { width: 64px; text-align: center; }
+.step-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; flex-shrink: 0; border-radius: 10px;
+  color: var(--text-60); background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+  transition: color .12s ease, background .12s ease, border-color .12s ease;
+}
+.step-btn:hover { color: var(--text); background: rgba(90,215,239,0.12); border-color: rgba(90,215,239,0.3); }
+
+/* ---- Sidebar brand lockup (app logo) ---- */
+.brand-lockup {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 9px 0; padding-top: 10px;
+  border-top: 1px solid var(--hairline-soft);
+}
+.brand-logo { border-radius: 6px; opacity: 0.95; }
+.brand-wordmark {
+  font-size: 14px; font-weight: 800; letter-spacing: -0.01em;
+  background: linear-gradient(120deg, #ffffff, #bfe9ff 60%, #b9a7ff);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ---- Anki Lab card-style guide ---- */
+.anki-guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.anki-guide-h { font-size: 13px; font-weight: 800; color: var(--text-80); margin-bottom: 6px; }
+.anki-guide .import-steps { background: rgba(155,123,255,0.06); border-color: rgba(155,123,255,0.16); }
+
 /* ---- Tracker guide (rehauled) ---- */
 .tracker-guide .guide-section { margin-top: 14px; }
 .tracker-guide .guide-section:first-of-type { margin-top: 8px; }
@@ -1426,6 +1519,25 @@
 }
 .drive-tile:hover { border-color: rgba(155,123,255,0.4); transform: translateY(-2px); background: rgba(155,123,255,0.08); }
 .drive-tile svg { color: var(--text-45); flex-shrink: 0; }
+
+/* drive tile with rating badge + footer */
+.drive-tile-wrap { position: relative; display: flex; flex-direction: column; }
+.drive-tile-wrap .drive-tile { border-radius: 14px 14px 0 0; }
+.drive-rating {
+  position: absolute; top: 8px; right: 8px; z-index: 2; cursor: help;
+  display: inline-flex; align-items: baseline; gap: 1px;
+  padding: 3px 8px; border-radius: 999px; font-size: 13px; font-weight: 900;
+  color: #04210f; background: var(--green); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.drive-rating small { font-size: 9px; font-weight: 700; opacity: 0.7; }
+.drive-rating.r10 { background: linear-gradient(135deg, #ffd86b, #ffb84d); color: #2a1a00; }
+.drive-rating.r8 { background: var(--green); }
+.drive-rating.rlow { background: rgba(255,255,255,0.16); color: var(--text); }
+.drive-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 0 0 14px 14px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--hairline); border-top: none;
+}
 .drive-tile.missing {
   border-style: dashed;
   color: var(--text-60);

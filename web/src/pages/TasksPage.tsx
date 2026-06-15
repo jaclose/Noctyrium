@@ -27,7 +27,7 @@ export function TasksPage() {
 
   return (
     <>
-      <GlassCard pad>
+      <GlassCard pad data-tour="tasks">
         <PanelHeader title="Add a task" sub="Tasks auto-scope to courses/modules when the title matches" />
         <div className="row wrap gap8">
           <input className="field grow" placeholder="What needs doing?" value={title}

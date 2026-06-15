@@ -9,7 +9,7 @@ import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   Prompt, Resource, Task, TrackerItem, Profile, StudyLog,
 } from "./types";
-import { APP_VERSION_LABEL, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
+import { APP_VERSION_LABEL, driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
@@ -40,6 +40,7 @@ interface Actions {
   bulkAddTrackerItems: (items: Omit<TrackerItem, "id" | "updated">[]) => void;
   updateTrackerItem: (id: string, patch: Partial<TrackerItem>) => void;
   renameTrackerScope: (oldPath: string, newPath: string) => void;
+  removeTrackerScope: (path: string) => void;
   bumpPasses: (id: string, delta: number) => void; // +1 / -1 study pass (clamped 0..)
   setPasses: (id: string, n: number) => void; // click a dot to set passes directly
   cycleAnki: (id: string) => void; // 0→1→2→3→0 (orange/yellow/purple)
@@ -170,6 +171,12 @@ export const useStore = create<Store>()(
                 : t,
             ),
           };
+        }),
+      removeTrackerScope: (path) =>
+        set((s) => {
+          const from = path.trim().replace(/\/+$/, "");
+          if (!from) return {};
+          return { tracker: s.tracker.filter((t) => !(t.path === from || t.path.startsWith(`${from}/`))) };
         }),
       bumpPasses: (id, delta) =>
         set((s) => ({
@@ -337,7 +344,7 @@ export const useStore = create<Store>()(
         set((s) => ({
           terms: [], courses: [], tracker: [], tasks: [],
           // keep the curated shared drives even on a fresh start
-          resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), category: "Drives", favorite: false, ...d })),
+          resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
           journal: [], prompts: [], folders: [], logs: [], dayPlans: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: dayKey(),
@@ -406,7 +413,7 @@ export const useStore = create<Store>()(
           const urls = new Set(resources.map((r) => r.url));
           for (const d of SGU_DRIVES) {
             if (!urls.has(d.url)) {
-              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), category: "Drives", favorite: false, ...d });
+              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
             }
           }
           s.resources = resources;
@@ -453,6 +460,18 @@ export const useStore = create<Store>()(
           const profile = normalizeProfile(s.profile);
           profile.onboarded = true;
           s.profile = profile;
+        }
+        if (fromVersion < 15) {
+          // Refresh the curated drive set (My Drive + MADCOW + SGU shared) with
+          // personal usefulness ratings. Adds any missing by URL; keeps user drives.
+          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+          const urls = new Set(resources.map((r) => r.url));
+          for (const d of SGU_DRIVES) {
+            if (!urls.has(d.url)) {
+              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
+            }
+          }
+          s.resources = resources;
         }
         return s as unknown as NoctyriumState;
       },
@@ -607,7 +626,7 @@ function normalizeResourceLinks(value: unknown): AnyRecord[] {
   const urls = new Set(resources.map((r) => r.url));
   for (const d of SGU_DRIVES) {
     if (!urls.has(d.url)) {
-      resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), category: "Drives", favorite: false, ...d });
+      resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
     }
   }
   return resources;

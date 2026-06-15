@@ -5,6 +5,7 @@ import "./styles/global.css";
 import "./styles/components.css";
 import "./styles/shell.css";
 import "./styles/pages.css";
+import "./styles/tour.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

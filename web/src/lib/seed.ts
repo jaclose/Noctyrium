@@ -8,7 +8,7 @@ import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -63,7 +63,7 @@ export function makeSeed(): NoctyriumState {
       { id: crypto.randomUUID(), title: "AnKing Overview (Step 1 deck)", url: "https://www.ankingmed.com/", category: "Anki", tags: ["deck", "step1"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "AnKing Step Deck on AnkiHub", url: "https://www.ankihub.net/step-deck", category: "Anki", tags: ["deck", "step1", "step2"], favorite: true, created: now() },
       { id: crypto.randomUUID(), title: "Mehlman Medical Free HY Documents", url: "https://mehlmanmedical.com/free-stuff/", category: "STEP 1", tags: ["review", "hy"], favorite: true, created: now() },
-      { id: crypto.randomUUID(), title: "St. George's University (SGU)", url: "https://www.sgu.edu/", category: "Drives", tags: ["sgu", "official"], note: "Home base for SGU students.", created: now() },
+      ...SGU_DRIVES.map((d) => ({ id: crypto.randomUUID(), created: now(), ...driveResourceFields(d) })),
     ],
     tasks: [
       { id: crypto.randomUUID(), title: "Create today's standup", done: false, archived: false, scope: "Journal", created: now(), due: isoDate(new Date()) },
@@ -119,9 +119,31 @@ export function makeSeed(): NoctyriumState {
 
 // Curated shared drives — mostly SGU. These ship with every build so they are
 // present for all users. Paste real SGU shared-drive links here to bake them in.
-export const SGU_DRIVES: { title: string; url: string; tags: string[]; note?: string }[] = [
-  { title: "St. George's University (SGU)", url: "https://www.sgu.edu/", tags: ["sgu", "official"], note: "Home base for SGU students." },
+// Permanent curated drives. `rating` (1–10) is JD's personal usefulness score;
+// `ratingReason` shows on hover. My Drive + MADCOW are 10/10. Titles/ratings on
+// the SGU Shared entries are placeholders — rename + re-rate them in-app.
+export type SeedDrive = { title: string; url: string; category: string; rating: number; ratingReason: string; tags: string[]; note?: string };
+export const SGU_DRIVES: SeedDrive[] = [
+  { title: "My Drive — Med School + Anki Build", url: "https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp", category: "My Drive", rating: 10, ratingReason: "My own drive — the Noctyrium / MADCOW Anki build and my high-yield materials live here.", tags: ["mine", "anki", "sgu"] },
+  { title: "MADCOW Drive", url: "https://accidental-scallion-328.notion.site/MADCOW-Drive-1a51388b1e708076b592e522eda64aeb", category: "MADCOW", rating: 10, ratingReason: "The MADCOW collection — the gold-standard, most complete SGU resource hub.", tags: ["madcow", "sgu"] },
+  { title: "SillyGoose Wiki", url: "https://baquino.notion.site/sillygoosewiki?v=6feec2d3e6b64760bf5d9b6e84a60fa7", category: "Wiki", rating: 9, ratingReason: "Crowd-sourced SGU wiki — fast, organized answers and resource links.", tags: ["wiki", "sgu"] },
+  { title: "SGU Shared Drive · 1", url: "https://drive.google.com/drive/folders/1qju4aorkQCH6lZ5xrfEgyzR8BUAhPe7l", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 2", url: "https://drive.google.com/drive/folders/1vrL1kLb5p9RaoSjD6694ZrXOdn5T1kzJ", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "MEGA Drive — SGU Archive", url: "https://mega.nz/folder/QqwggaSR#K_dXqEHbtBKYAzWjT2GeLQ", category: "SGU Shared", rating: 8, ratingReason: "MEGA archive of SGU materials — rename + re-rate to match its contents.", tags: ["sgu", "mega"] },
+  { title: "SGU Shared Drive · 3", url: "https://drive.google.com/drive/folders/1w2k2j-RGy6WWvYi4iXk4yye_nw_2EL6Y", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 4", url: "https://drive.google.com/drive/folders/1_P0tj-OayBawZtAT8WkY22Osepg1oCfy", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 5", url: "https://drive.google.com/drive/folders/1fnL3d74y4S8ocCfOPlKzrQAAqkpDVjsS", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
 ];
+
+/** Map a curated drive to Resource fields. category stays "Drives" (band
+ *  membership); the sub-group rides in tags[0] and drives the band's grouping. */
+export function driveResourceFields(d: SeedDrive) {
+  return {
+    title: d.title, url: d.url, category: "Drives",
+    tags: [d.category, ...d.tags], note: d.note,
+    rating: d.rating, ratingReason: d.ratingReason, favorite: d.rating >= 10,
+  };
+}
 
 function boardPrepSeed(
   contentStarted: BoardPrepProfile["contentStarted"],

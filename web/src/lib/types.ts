@@ -90,10 +90,12 @@ export interface Resource {
   id: ID;
   title: string;
   url: string;
-  category: string; // "STEP 1", "Reference", "Anki", "Tools", …
+  category: string; // "STEP 1", "Reference", "Anki", "Tools", "Drives", …
   tags: string[];
   note?: string;
   favorite?: boolean;
+  rating?: number; // 1–10 personal usefulness (mainly for Drives)
+  ratingReason?: string; // shown on hover over the rating badge
   created: string;
 }
 
@@ -205,6 +207,8 @@ export interface Profile {
   dailyMinuteTarget: number;
   // First-launch onboarding
   onboarded: boolean;
+  tourDone?: boolean; // guided tour + promise cutscene completed
+  promise?: { signedName: string; signedAt: string }; // the signed "promise to yourself"
   phase?: AcademicPhase;
   activeFocusId?: ExperienceFocusId;
   focusSubscriptions: ExperienceFocusId[];

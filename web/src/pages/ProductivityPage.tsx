@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, CalendarDays, Clock, Layers, Plus, Sunrise, Target, TrendingUp, Zap } from "lucide-react";
+import { Activity, CalendarDays, Clock, Layers, Minus, Plus, Sunrise, Target, Timer, TrendingUp, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayKey, dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, todayGrade } from "../lib/scoring";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Ring } from "../components/ui/Ring";
+
+function stepVal(current: string, delta: number): string {
+  return String(Math.max(0, (Number(current) || 0) + delta));
+}
 
 const QUICK: { label: string; type: string; minutes?: number; cards?: number; icon?: boolean }[] = [
   { label: "Lecture +60m", type: "Lecture", minutes: 60 },
@@ -61,7 +65,7 @@ export function ProductivityPage() {
         </div>
       </GlassCard>
 
-      <GlassCard pad>
+      <GlassCard pad data-tour="log">
         <PanelHeader
           title="Productivity Console"
           sub={isActive ? "Logging to today's study day" : `Viewing ${viewKey}`}
@@ -77,15 +81,23 @@ export function ProductivityPage() {
         </div>
         <div className="manual-log" style={{ opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
           <input className="field" placeholder="Type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
-          <input className="field" type="number" placeholder="Minutes" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />
-          <input className="field" type="number" placeholder="Cards" value={manualCards} onChange={(e) => setManualCards(e.target.value)} />
+          <div className="stepper" title="Minutes (±10)">
+            <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={13} /></button>
+            <input className="field" type="number" placeholder="Min" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />
+            <button type="button" className="step-btn" aria-label="Plus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, 10))}><Plus size={13} /></button>
+          </div>
+          <div className="stepper" title="Anki cards (±10)">
+            <button type="button" className="step-btn" aria-label="Minus 10 cards" onClick={() => setManualCards(stepVal(manualCards, -10))}><Minus size={13} /></button>
+            <input className="field" type="number" placeholder="Cards" value={manualCards} onChange={(e) => setManualCards(e.target.value)} />
+            <button type="button" className="step-btn" aria-label="Plus 10 cards" onClick={() => setManualCards(stepVal(manualCards, 10))}><Plus size={13} /></button>
+          </div>
           <input className="field grow" placeholder="Note (optional)" value={manualNote} onChange={(e) => setManualNote(e.target.value)} />
           <GButton variant="primary" onClick={logManual}><Plus size={14} /> Log</GButton>
         </div>
       </GlassCard>
 
       <div className="productivity-analytics">
-        <GlassCard pad className="productivity-intel">
+        <GlassCard pad className="productivity-intel" data-tour="insights">
           <PanelHeader title="Weekly Productivity Intelligence" sub="Calendar-aligned 7-day signal from minutes and cards"
             action={<Tag tone={scoreTone(weekly.grade)}>{weekly.activeDays}/7 active</Tag>} />
           <div className="period-metrics">
@@ -160,6 +172,23 @@ export function ProductivityPage() {
           <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
           <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
           <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> 👑 Blue: excellent day</span>
+        </div>
+      </GlassCard>
+
+      <GlassCard pad className="under-construction">
+        <span className="uc-tape t1">Under Construction</span>
+        <span className="uc-tape t2">Coming Soon</span>
+        <span className="uc-badge"><Timer size={15} /> Pomodoro timer — coming soon</span>
+        <div className="uc-inner">
+          <PanelHeader title="Pomodoro" sub="Focus sprints that auto-log minutes when you finish" />
+          <div className="pomo-mock">
+            <div className="pomo-dial"><span>25:00</span></div>
+            <div className="row gap8">
+              <span className="gbtn sm">25 / 5</span>
+              <span className="gbtn sm">50 / 10</span>
+              <span className="gbtn sm primary">Start</span>
+            </div>
+          </div>
         </div>
       </GlassCard>
 

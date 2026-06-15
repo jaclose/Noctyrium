@@ -1,11 +1,56 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import { Plus, Trash2, Pencil, ExternalLink } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, ExternalLink, Sparkles, Bug, PlayCircle,
+  Sunrise, Timer, BadgeCheck, Layers, Link2, Brain,
+} from "lucide-react";
 import { useStore } from "../lib/store";
-import { GlassCard, GButton, GhostButton, EmptyState } from "../components/ui/primitives";
+import { GlassCard, GButton, GhostButton, PanelHeader, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, SelectField } from "../components/ui/Modal";
 import { Icon, ICON_NAMES } from "../lib/icons";
 import type { HubFolder } from "../lib/types";
+
+const BUG_EMAIL = "jdabbagh@sgu.edu";
+
+const GUIDE = [
+  { icon: Sunrise, title: "Win the day", body: "Set one intention each morning; close it at night." },
+  { icon: Timer, title: "Log effort", body: "Minutes + Anki cards. Use −/+10 to fine-tune." },
+  { icon: BadgeCheck, title: "Passes", body: "Tap 1→4 as you study. Green = mature, dark = mastered." },
+  { icon: Layers, title: "Anki", body: "Cycle Anki rounds; draft cards in Anki Lab." },
+  { icon: Link2, title: "Resources", body: "Saved links + the curated SGU drives, rated." },
+  { icon: Brain, title: "Boards", body: "Install a big-picture Step blueprint into the tracker." },
+];
+
+function HelpGuide() {
+  const s = useStore();
+  const mailto = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent("Noctyrium feedback — " + s.profile.versionLabel)}&body=${encodeURIComponent("What happened / what you'd like:\n\n\nPage:\nSteps to reproduce (if a bug):\n")}`;
+  return (
+    <GlassCard pad className="help-card">
+      <PanelHeader title="Help & Guide" sub="The basics, the tour, and a direct line for bugs + ideas"
+        action={
+          <div className="row gap8">
+            <GButton size="sm" onClick={() => { s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
+              <PlayCircle size={15} /> Replay guided tour
+            </GButton>
+            <a className="gbtn sm primary" href={mailto}><Bug size={15} /> Report bug / suggest feature</a>
+          </div>} />
+      <div className="master-guide">
+        {GUIDE.map((g) => {
+          const I = g.icon;
+          return (
+            <div className="guide-tile" key={g.title}>
+              <span className="guide-tile-icon"><I size={18} /></span>
+              <div><b>{g.title}</b><span>{g.body}</span></div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="help-foot">
+        <Sparkles size={14} /> Replaying the tour ends with the promise again. Feedback goes straight to {BUG_EMAIL}.
+      </div>
+    </GlassCard>
+  );
+}
 
 export function HubFoldersPage() {
   const s = useStore();
@@ -47,6 +92,8 @@ export function HubFoldersPage() {
           <Plus size={16} /> Add folder
         </div>
       </div>
+
+      <HelpGuide />
 
       {editing && <FolderEditor folder={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </>

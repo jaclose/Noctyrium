@@ -61,9 +61,18 @@ export function CourseTrackerPage() {
     setScope(cleaned);
   }
 
+  function deleteCurrentScope() {
+    if (!scope) return;
+    const count = s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")).length;
+    if (confirm(`Delete the “${scope}” group and its ${count} item${count === 1 ? "" : "s"}? This cannot be undone.`)) {
+      s.removeTrackerScope(scope);
+      setScope("");
+    }
+  }
+
   return (
     <div className="tracker-grid">
-      <GlassCard pad>
+      <GlassCard pad data-tour="import">
         <PanelHeader title="Mastery tree" sub="Click any group to expand or collapse it"
           action={
             <div className="row gap6">
@@ -151,11 +160,12 @@ export function CourseTrackerPage() {
           </div>
         </GlassCard>
 
-        <GlassCard pad>
+        <GlassCard pad data-tour="tracker-help">
           <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
             action={
               <div className="row gap6">
                 {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={14} /></GhostButton>}
+                {scope && <GhostButton className="danger" title="Delete selected tracker group" onClick={deleteCurrentScope}><Trash2 size={14} /></GhostButton>}
                 <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}><HelpCircle size={14} /> {guideOpen ? "Hide" : "Help"}</GButton>
               </div>
             } />
@@ -499,6 +509,12 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
     () => new Set(s.tracker.map((t) => `${t.path.toLowerCase()}::${t.label.toLowerCase()}`)),
     [s.tracker],
   );
+  // Existing destinations so the field autocompletes instead of spawning duplicate folders.
+  const scopeSuggestions = useMemo(
+    () => mergeScopes(collectScopes(s.tracker), collectCourseScopes(s.terms, s.courses)),
+    [s.tracker, s.terms, s.courses],
+  );
+  const pathIsNew = path.trim() !== "" && !scopeSuggestions.some((p) => p.toLowerCase() === path.trim().toLowerCase());
   const rows = useMemo(
     () => parseImportRows(text, path.trim(), kind, defaultYield, stripNums, existing),
     [text, path, kind, defaultYield, stripNums, existing],
@@ -552,7 +568,18 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
         <li>Preview duplicates, yield flags, and starting mastery before importing. Duplicate rows are skipped by default.</li>
       </ol>
       <div className="row gap12">
-        <Field label="Destination path" value={path} onChange={(e) => setPath(e.target.value)} />
+        <div className="grow">
+          <Field label="Destination path" value={path} list="tracker-scope-options"
+            placeholder="Start typing — picks an existing folder" onChange={(e) => setPath(e.target.value)} />
+          <datalist id="tracker-scope-options">
+            {scopeSuggestions.map((p) => <option key={p} value={p} />)}
+          </datalist>
+          <div className="sub" style={{ marginTop: 4 }}>
+            {pathIsNew
+              ? <span style={{ color: "var(--orange)" }}>★ Creates a new folder “{path.trim()}”.</span>
+              : <span style={{ color: "var(--green)" }}>✓ Existing folder — items go here, no duplicate created.</span>}
+          </div>
+        </div>
         <SelectField label="Default kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </SelectField>

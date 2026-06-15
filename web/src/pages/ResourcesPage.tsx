@@ -15,7 +15,9 @@ export function ResourcesPage() {
   const [cat, setCat] = useState("All");
   const [q, setQ] = useState("");
 
-  const drives = s.resources.filter((r) => r.category === "Drives");
+  const drives = s.resources
+    .filter((r) => r.category === "Drives")
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || a.title.localeCompare(b.title));
 
   const categories = useMemo(
     () => ["All", "★ Favorites", ...Array.from(new Set(s.resources.map((r) => r.category)))],
@@ -54,7 +56,7 @@ export function ResourcesPage() {
 
       {/* Shared Drives — curated, mostly SGU. Always visible. */}
       {(cat === "All" || cat === "Drives") && (
-        <GlassCard pad className="drives-band">
+        <GlassCard pad className="drives-band" data-tour="resources">
           <PanelHeader title="Shared Drives" sub="Resource drives & packages — a lot of this is from SGU. These ship with the app for everyone."
             action={<GButton size="sm" onClick={() => setAddDrive(true)}><Plus size={15} /> Add drive</GButton>} />
           {drives.length === 0 ? (
@@ -64,19 +66,36 @@ export function ResourcesPage() {
             <div className="grid grid-courses">
               {drives.map((r) => {
                 const href = usableHref(r.url);
-                const body = (
+                const group = r.tags?.[0] && r.tags[0] !== "sgu" ? r.tags[0] : "Drive";
+                const main = (
                   <>
                     <span className="folder-icon"><HardDrive size={18} /></span>
                     <div className="grow">
-                      <div className="fc-name">{r.title}</div>
+                      <div className="fc-name truncate">{r.title}</div>
                       <div className="fc-desc truncate">{href ? hostOf(href) : "Missing or invalid drive link"}</div>
                     </div>
-                    {href ? <ExternalLink size={14} /> : <Pencil size={14} />}
                   </>
                 );
-                return href
-                  ? <a key={r.id} className="drive-tile" href={href} target="_blank" rel="noreferrer">{body}</a>
-                  : <button key={r.id} className="drive-tile missing" onClick={() => setEditing(r)}>{body}</button>;
+                return (
+                  <div className="drive-tile-wrap" key={r.id}>
+                    {typeof r.rating === "number" && (
+                      <span className={`drive-rating r${r.rating >= 10 ? "10" : r.rating >= 8 ? "8" : "low"}`}
+                        title={r.ratingReason || `Personal usefulness: ${r.rating}/10`}>
+                        {r.rating}<small>/10</small>
+                      </span>
+                    )}
+                    {href
+                      ? <a className="drive-tile" href={href} target="_blank" rel="noreferrer noopener">{main}</a>
+                      : <button type="button" className="drive-tile missing" onClick={() => setEditing(r)}>{main}</button>}
+                    <div className="drive-foot">
+                      <Tag tone="purple">{group}</Tag>
+                      <div className="right row gap6">
+                        <GhostButton title="Edit / rate" onClick={() => setEditing(r)}><Pencil size={13} /></GhostButton>
+                        <GhostButton className="danger" title="Remove drive" onClick={() => confirm(`Remove “${r.title}” from drives?`) && s.removeResource(r.id)}><Trash2 size={13} /></GhostButton>
+                      </div>
+                    </div>
+                  </div>
+                );
               })}
             </div>
           )}
@@ -148,6 +167,9 @@ function ResourceEditor({ resource, defaultCategory, onClose }: { resource: Reso
   const [category, setCategory] = useState(resource?.category ?? defaultCategory ?? "STEP 1");
   const [tags, setTags] = useState((resource?.tags ?? []).join(", "));
   const [note, setNote] = useState(resource?.note ?? "");
+  const [rating, setRating] = useState(resource?.rating != null ? String(resource.rating) : "");
+  const [ratingReason, setRatingReason] = useState(resource?.ratingReason ?? "");
+  const isDrive = category === "Drives";
 
   const normalized = url.trim() ? normalizeUrl(url.trim()) : "";
   const urlValid = !url.trim() || Boolean(usableHref(normalized));
@@ -155,10 +177,12 @@ function ResourceEditor({ resource, defaultCategory, onClose }: { resource: Reso
   function save() {
     if (!title.trim() || !url.trim()) return;
     if (!usableHref(normalized)) return;
+    const ratingNum = rating.trim() ? Math.max(1, Math.min(10, Number(rating) || 0)) : undefined;
     const payload = {
       title: title.trim(), url: normalized, category: category.trim() || "General",
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean), note: note.trim() || undefined,
       favorite: resource?.favorite,
+      rating: ratingNum, ratingReason: ratingReason.trim() || undefined,
     };
     if (resource) s.updateResource(resource.id, payload);
     else s.addResource(payload);
@@ -178,6 +202,13 @@ function ResourceEditor({ resource, defaultCategory, onClose }: { resource: Reso
         <Field label="Tags (comma-separated)" value={tags} onChange={(e) => setTags(e.target.value)} />
       </div>
       <TextAreaField label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+      {isDrive && (
+        <div className="row gap12">
+          <Field label="Usefulness (1–10)" type="number" min={1} max={10} placeholder="10"
+            value={rating} onChange={(e) => setRating(e.target.value)} />
+          <Field label="Why this rating (shown on hover)" value={ratingReason} onChange={(e) => setRatingReason(e.target.value)} />
+        </div>
+      )}
     </Modal>
   );
 }

@@ -2,16 +2,17 @@
 import React from "react";
 
 export function GlassCard({
-  children, className = "", pad = true, hoverable = false, style, onClick,
+  children, className = "", pad = true, hoverable = false, style, onClick, ...rest
 }: {
   children: React.ReactNode; className?: string; pad?: boolean; hoverable?: boolean;
   style?: React.CSSProperties; onClick?: () => void;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={`glass-card ${pad ? "pad" : ""} ${hoverable ? "hoverable" : ""} ${className}`}
       style={style}
       onClick={onClick}
+      {...rest}
     >
       {children}
     </div>

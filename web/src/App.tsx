@@ -3,6 +3,7 @@ import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
 import { OnboardingWizard } from "./components/shell/OnboardingWizard";
+import { GuidedTour } from "./components/shell/GuidedTour";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
 
@@ -44,6 +45,15 @@ export default function App() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [refreshing, setRefreshing] = useState(false);
   const onboarded = useStore((s) => s.profile.onboarded);
+  const tourDone = useStore((s) => s.profile.tourDone);
+  const updateProfile = useStore((s) => s.updateProfile);
+  // Show the tour once after onboarding; "Replay tour" simply clears tourDone.
+  const showTour = onboarded && !tourDone;
+
+  function endTour() {
+    updateProfile({ tourDone: true });
+    location.hash = "dashboard";
+  }
 
   useEffect(() => {
     const onHash = () => setRoute(location.hash.replace("#", "") || "dashboard");
@@ -111,6 +121,7 @@ export default function App() {
       </div>
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
+      {showTour && <GuidedTour onExit={endTour} />}
     </div>
   );
 }

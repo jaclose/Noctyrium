@@ -1,5 +1,35 @@
 # Noctyrium Changelog
 
+## 0.1.0-alpha.1 — 2026-06-15
+
+Public Alpha 1 release candidate: packaging, release flow, and beta-feedback polish.
+
+### Release & packaging
+
+- Verified `npm install`, `npm run build`, and `npm --prefix web run package` from a clean tree.
+- `npm --prefix web run package` produces `web/Noctyrium-web-v0.1.0-alpha.1.zip` (static) and, on
+  macOS with `swiftc`, `web/Noctyrium-mac-v0.1.0-alpha.1.zip` (double-clickable wrapper). Both are
+  gitignored and never committed.
+- Added [`docs/ALPHA-RELEASE.md`](docs/ALPHA-RELEASE.md) (Vercel deploy, packaging, GitHub Release flow)
+  and [`docs/UPDATE-POLICY.md`](docs/UPDATE-POLICY.md) (web auto-updates via Vercel; Mac wrapper is
+  manual for Alpha 1; data is separate from app code; future Tauri v2 updater).
+- Added an in-app Alpha notice on the Dashboard: the web version updates automatically; the
+  downloadable Mac app requires downloading the latest release. No fake auto-update added.
+
+### Beta-feedback polish
+
+- **Anki Lab generator fixed:** filters slide boilerplate (copyright, objective codes, citations,
+  URLs, emails, headings), clozes the *answer* (not the subject/first words), de-dupes, and now
+  exports both `.txt` (TSV) and `.csv`. Added a card-style / custom-note-type guide that links to the
+  MADCOW Anki build drive.
+- **Course Tracker import:** the destination field now autocompletes existing folders (datalist) and
+  flags new-vs-existing, so correct paths stop spawning duplicate folders.
+- **Course Tracker:** delete an entire group/directory (mirrors rename).
+- **Drives:** curated permanent set (My Drive + MADCOW = 10/10, SillyGoose Wiki, SGU shared, MEGA)
+  with a personal usefulness rating badge (top-right) + hover reason, sorted by rating; add/remove/
+  re-rate in-app.
+- **Logo** added to the sidebar lockup; **±10 steppers** for minutes/cards in the Productivity log.
+
 ## Alpha 1 — 2026-06-14
 
 First clean web/backend alpha candidate.

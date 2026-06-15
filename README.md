@@ -110,6 +110,20 @@ This creates:
 Generated packages, `dist/`, cache files, and personal study folders are ignored
 and should not be committed.
 
+## Updating (Alpha 1 limitation)
+
+- **Hosted web app:** updates **automatically** — pushing to the default branch
+  redeploys on Vercel and users get the new build on next load (service worker
+  refreshes the app shell; Local Vault data is untouched).
+- **Downloadable web zip and Mac wrapper:** **manual** for Alpha 1 — re-download
+  the latest [GitHub Release](docs/ALPHA-RELEASE.md) asset. There is no in-app
+  auto-updater yet (and we don't ship a fake one).
+- The Local Vault is per-browser/origin, so **always Export a JSON backup**
+  (Settings → Backup) before switching devices, domains, or package types.
+
+Full detail: [`docs/UPDATE-POLICY.md`](docs/UPDATE-POLICY.md) ·
+release steps: [`docs/ALPHA-RELEASE.md`](docs/ALPHA-RELEASE.md).
+
 ## Legacy Native App
 
 The original SwiftUI/macOS source is still present in:

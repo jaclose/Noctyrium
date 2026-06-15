@@ -144,7 +144,7 @@ export function DashboardPage() {
 
       <AiSuggestedActions />
 
-      <GlassCard pad className="dashboard-schedule-card">
+      <GlassCard pad className="dashboard-schedule-card" data-tour="schedule">
         <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
           action={<Tag tone={schedule.weekActive >= 5 ? "green" : schedule.weekActive >= 3 ? "orange" : "neutral"}>{schedule.weekActive}/7 this week</Tag>} />
         <div className="dashboard-schedule">
@@ -253,6 +253,10 @@ export function DashboardPage() {
       <GlassCard pad className="local-data-card">
         <PanelHeader title="Local Data & Package" sub="Your online edits persist in this browser; exported backups move between installs"
           action={<GButton size="sm" onClick={() => exportState(s)}><Download size={14} /> Export backup</GButton>} />
+        <div className="alpha-notice">
+          <span className="alpha-pill">ALPHA</span>
+          <span>Alpha build: the web version updates automatically; the downloadable Mac app requires downloading the latest release.</span>
+        </div>
         <div className="local-data-grid">
           <div className="local-data-item">
             <Database size={17} />
@@ -359,7 +363,7 @@ function WinTheDay() {
   }
 
   return (
-    <GlassCard pad className="win-day">
+    <GlassCard pad className="win-day" data-tour="intention">
       {pendingPast && (
         <div className="carry-over">
           <ArrowRightCircle size={16} />

@@ -218,7 +218,7 @@ export function StepPage() {
 
   return (
     <>
-      <GlassCard pad className="step-command">
+      <GlassCard pad className="step-command" data-tour="step">
         <div className="tk-hero">
           <div className="row gap12">
             <span className="folder-icon" style={{ color: "var(--purple)" }}><Brain size={22} /></span>
