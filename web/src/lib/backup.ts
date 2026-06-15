@@ -55,6 +55,8 @@ export function parseImport(text: string): NoctyriumState {
       avatarDataUrl: typeof profile.avatarDataUrl === "string" ? profile.avatarDataUrl : undefined,
       dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
       dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
+      onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
+      phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : undefined,
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],

@@ -220,6 +220,29 @@ select.field, .scope-select {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
+.sync-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.sync-flow > div {
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,226,255,0.075);
+}
+.sync-flow b {
+  display: block;
+  color: var(--text-80);
+  font-size: 11.5px;
+  margin-bottom: 3px;
+}
+.sync-flow span {
+  display: block;
+  color: var(--text-45);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
 .sync-toggle {
   display: inline-flex;
   align-items: center;
@@ -306,11 +329,97 @@ select.field, .scope-select {
 }
 .sync-warning svg { flex: 0 0 auto; margin-top: 1px; }
 
+.backup-center {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.backup-explainer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.backup-explainer-card,
+.backup-actions-panel {
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(90,215,239,0.08), transparent 38%),
+    rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,226,255,0.095);
+}
+.backup-explainer-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+}
+.backup-explainer-card svg,
+.backup-note svg {
+  color: var(--cyan);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.backup-explainer-card b {
+  display: block;
+  font-size: 12.5px;
+  margin-bottom: 3px;
+}
+.backup-explainer-card span,
+.backup-note span {
+  display: block;
+  color: var(--text-45);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.backup-actions-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 13px;
+}
+.backup-actions-panel.danger-zone {
+  border-color: rgba(255,93,108,0.15);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255,93,108,0.08), transparent 38%),
+    rgba(255,255,255,0.035);
+}
+.backup-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(90,215,239,0.07);
+  border: 1px solid rgba(90,215,239,0.12);
+}
+.backup-status {
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(90,215,239,0.08);
+  border: 1px solid rgba(90,215,239,0.14);
+}
+
 @media (max-width: 620px) {
   .sync-grid,
+  .sync-flow,
   .sync-meta-grid,
   .sync-backup-create {
     grid-template-columns: 1fr;
+  }
+  .backup-explainer {
+    grid-template-columns: 1fr;
+  }
+  .backup-actions-panel {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -437,6 +546,29 @@ select.field, .scope-select {
 .onboarding-preset:hover { color: var(--text); background: rgba(255,255,255,0.08); }
 .onboarding-preset.on { color: var(--cyan); border-color: rgba(90,215,239,0.35); background: rgba(90,215,239,0.1); }
 
+.onboarding-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.onboarding-ai-grid > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(155,123,255,0.1), transparent 42%),
+    rgba(255,255,255,0.035);
+  border: 1px solid rgba(180,226,255,0.09);
+}
+.onboarding-ai-grid svg { color: var(--purple); }
+.onboarding-ai-grid b { font-size: 13px; }
+.onboarding-ai-grid span {
+  color: var(--text-45);
+  font-size: 11.5px;
+  line-height: 1.42;
+}
+
 .onboarding-summary {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
@@ -453,7 +585,7 @@ select.field, .scope-select {
 .onboarding-actions .sub { font-size: 11.5px; }
 
 @media (max-width: 640px) {
-  .onboarding-phase-grid, .onboarding-summary { grid-template-columns: 1fr; }
+  .onboarding-phase-grid, .onboarding-summary, .onboarding-ai-grid { grid-template-columns: 1fr; }
   .onboarding-card { padding: 20px; }
   .onboarding-step-dot small { display: none; }
 }

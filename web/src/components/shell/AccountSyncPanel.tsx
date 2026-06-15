@@ -309,11 +309,18 @@ export function AccountSyncPanel() {
         <div className="row gap8">
           <Cloud size={18} />
           <div>
-            <div className="sync-title">Progress Save & Cloud Sync</div>
-            <div className="sub">Local-first autosave, name-only cloud progress, JSON backups.</div>
+            <div className="sync-title">Simple Account & Cloud Progress</div>
+            <div className="sub">Local autosave stays on. Cloud sync is optional and uses a name-only Alpha account.</div>
           </div>
         </div>
         <span className={`sync-pill ${meta.user ? "on" : ""}`}>{meta.user ? "Linked" : "Local"}</span>
+      </div>
+
+      <div className="sync-flow">
+        <div><b>1 · Link</b><span>Creates or finds your cloud profile by name.</span></div>
+        <div><b>2 · Save</b><span>Uploads this browser's current Noctyrium state.</span></div>
+        <div><b>3 · Load</b><span>Downloads cloud state into this browser after confirmation.</span></div>
+        <div><b>4 · Backup</b><span>Creates restore points before risky replaces.</span></div>
       </div>
 
       <div className="sync-grid">
@@ -332,10 +339,10 @@ export function AccountSyncPanel() {
           <Database size={14} /> {meta.user ? "Refresh link" : "Link name"}
         </GButton>
         <GButton size="sm" onClick={handleSave} disabled={isBusy || !accountName.trim()}>
-          <CloudUpload size={14} /> Save progress
+          <CloudUpload size={14} /> Save this browser
         </GButton>
         <GButton size="sm" onClick={handleLoad} disabled={isBusy || !accountName.trim()}>
-          <CloudDownload size={14} /> Load progress
+          <CloudDownload size={14} /> Load cloud copy
         </GButton>
         <GButton size="sm" onClick={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} disabled={isBusy || !meta.user}>
           <RefreshCw size={14} className={busy === "auto" ? "spin" : ""} /> Refresh
@@ -356,7 +363,7 @@ export function AccountSyncPanel() {
 
       <div className="sync-backup-create">
         <input className="field" value={backupLabel} onChange={(e) => setBackupLabel(e.target.value)} placeholder="Backup label, optional" />
-        <GButton size="sm" onClick={handleBackup} disabled={isBusy || !meta.user}>Create backup</GButton>
+        <GButton size="sm" onClick={handleBackup} disabled={isBusy || !meta.user}>Create cloud backup</GButton>
       </div>
 
       <CloudBackupPanel backups={backups} busy={isBusy} onRefresh={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} onRestore={handleRestore} />

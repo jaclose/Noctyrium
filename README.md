@@ -90,6 +90,13 @@ If Vercel shows `404: NOT_FOUND`, the project is usually pointed at the wrong
 root or an older deployment. Redeploy from the repository root after committing
 the Vercel config.
 
+Current hosted Alpha instance:
+
+- https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard
+
+See [`docs/FIELD-NOTES.md`](docs/FIELD-NOTES.md) for the website-friendly live
+deployment note and the future GitHub package-link slot.
+
 ## Package
 
 ```sh

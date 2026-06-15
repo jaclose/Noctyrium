@@ -86,9 +86,11 @@ function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): 
   if (it.yield === "review") s += 80;
   if (it.yield === "high") s += 42;
   if (it.yield === "low") s -= 14;
+  if (it.note && /miss|weak|again|wrong|confus|unclear|hard/i.test(it.note)) s += 20;
   if (it.passes === 0) s += 38 + Math.min(scopeSize, 40) * 0.4;
   if (it.passes === 1) s += 30; // red — fragile, push it
   if (it.passes === 2) s += 18; // young — near mature
+  if (it.kind === "PQ" && it.passes === 0 && (it.yield === "high" || it.yield === "review")) s += 22;
   if (it.kind !== "PQ" && it.ankiPasses === 0 && it.passes >= 1 && it.yield !== "low") s += 16;
   if (it.kind !== "PQ" && it.ankiPasses < 3 && it.passes >= 3 && it.yield === "high") s += 12;
   s += untouchedRatio * 16;
@@ -101,14 +103,16 @@ function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): 
  */
 export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[] {
   if (!items.length) {
-    return [{ title: "No tracked items yet", reason: "Install a blueprint or import lectures to create the first suggested move.", color: PASS_COLOR.untouched }];
+    return [{ title: "Import the first tracker items", reason: "Add lectures, DLAs, PQs, or a CSV so Noctyrium can rank the next move.", color: PASS_COLOR.untouched }];
   }
   const live = items.filter((it) => it.passes < targetPasses(it));
   if (!live.length) {
     return [{ title: "This scope is mastered", reason: "Every item here is at 4+ passes. Pick another scope or protect recovery.", color: PASS_COLOR.mastered }];
   }
   const untouched = live.filter((i) => i.passes === 0).length;
+  const red = live.filter((i) => i.passes === 1).length;
   const untouchedRatio = untouched / Math.max(live.length, 1);
+  const unclassified = items.filter((i) => i.yield === "none").length;
 
   const ranked = live
     .map((it) => ({ it, score: scoreItem(it, live.length, untouchedRatio) }))
@@ -122,11 +126,18 @@ export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[
 
   const out: Suggestion[] = rotated.slice(0, n).map(({ it }) => ({
     title: moveTitle(it),
-    reason: moveReason(it, untouched, review),
+    reason: moveReason(it, untouched, red, review, live.length),
     color: PASS_COLOR[passStage(it.passes)],
     itemId: it.id,
   }));
-  return out;
+  if (unclassified >= Math.max(4, Math.ceil(items.length * 0.3))) {
+    out.splice(Math.min(1, out.length), 0, {
+      title: "Classify yield for this scope",
+      reason: `${unclassified} item${unclassified === 1 ? "" : "s"} still need high-yield, needs-review, low-yield, or normal labels. Better labels make suggestions sharper.`,
+      color: "#f7d99a",
+    });
+  }
+  return out.slice(0, n);
 }
 
 function moveTitle(it: TrackerItem): string {
@@ -137,14 +148,14 @@ function moveTitle(it: TrackerItem): string {
   return `Mastery check: ${it.label}`;
 }
 
-function moveReason(it: TrackerItem, untouched: number, review: number): string {
-  if (it.yield === "review") return "Flagged for review — re-pass before it decays.";
+function moveReason(it: TrackerItem, untouched: number, red: number, review: number, live: number): string {
+  if (it.yield === "review") return `Flagged for review — repair this before expanding. ${review} review item${review === 1 ? "" : "s"} in scope.`;
   if (it.passes === 0) return it.yield === "high"
-    ? `High-yield and untouched — best ROI (${untouched} untouched in scope).`
-    : `Untouched (${untouched} left in this scope).`;
+    ? `High-yield and untouched — best ROI while ${untouched}/${live} active items are still untouched.`
+    : `Untouched (${untouched}/${live} active items left). Start here, then log recall quality.`;
   if (it.kind === "PQ") return "Practice questions use 1-2-3 completed sets; review explanations before increasing mastery.";
-  if (it.passes === 1) return "Only 1 pass (red) — fragile, push toward young.";
-  if (it.passes === 2) return "Young — one more pass reaches mature.";
+  if (it.passes === 1) return `Only 1 pass (red) — fragile. ${red} red item${red === 1 ? "" : "s"} should be lifted toward young.`;
+  if (it.passes === 2) return "Young — one focused pass reaches mature and makes PQ/Anki work more productive.";
   if (it.ankiPasses === 0) return "Mature in lecture tracker but not anchored in Anki yet.";
   if (review) return "Mature already — refresh cards after the review flags are handled.";
   return "Reinforce with Anki to reach mastery.";

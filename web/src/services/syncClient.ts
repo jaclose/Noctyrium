@@ -1,6 +1,9 @@
 import type { BackendHealth, CloudBackup, CloudSnapshot, CloudUser, SaveCloudInput } from "../types/sync";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  if (isLocalOnlyRuntime()) {
+    throw new Error("Cloud sync requires the hosted Vercel app or `npm run dev` from the repository root.");
+  }
   const res = await fetch(path, {
     ...init,
     headers: {
@@ -90,4 +93,11 @@ function toApiPayload(input: SaveCloudInput) {
     device_label: input.deviceLabel,
     backup_label: input.backupLabel,
   };
+}
+
+function isLocalOnlyRuntime() {
+  if (typeof window === "undefined") return false;
+  if (window.location.protocol === "file:") return true;
+  const localHost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return localHost && ["5173", "4173"].includes(window.location.port);
 }

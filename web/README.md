@@ -182,6 +182,10 @@ If `https://noctyrium.vercel.app/` shows `404: NOT_FOUND`, Vercel is probably
 serving the wrong root or an older deployment. Redeploy after committing these
 config files.
 
+Hosted Alpha instance:
+
+- https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard
+
 ## Test cloud sync and mock AI
 
 1. Open Settings & Backup.

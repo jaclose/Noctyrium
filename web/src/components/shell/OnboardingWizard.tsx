@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sparkles, GraduationCap, FlaskConical, Stethoscope, BookOpen, Brain,
-  Activity, Compass, ArrowRight, ArrowLeft, Check,
+  Activity, Compass, ArrowRight, ArrowLeft, Check, Wand2, LineChart,
 } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
@@ -85,7 +85,7 @@ const PHASES: PhaseOption[] = [
   },
 ];
 
-const STEP_TITLES = ["Welcome", "Your phase", "Daily targets", "You're set"];
+const STEP_TITLES = ["Welcome", "Your phase", "Daily targets", "AI tools", "You're set"];
 
 export function OnboardingWizard() {
   const store = useStore();
@@ -209,6 +209,31 @@ export function OnboardingWizard() {
           </div>
         )}
 
+        {step === 3 && (
+          <div className="onboarding-body">
+            <h2>AI strategy layer</h2>
+            <p className="onboarding-lede">
+              Noctyrium ships with safe local/mock AI behavior and Vercel-ready endpoints. The app can suggest next moves, draft Anki cards, plan Step prep, and summarize daily progress without exposing provider keys to the browser.
+            </p>
+            <div className="onboarding-ai-grid">
+              <div><Brain size={17} /><b>Next move</b><span>Uses tracker, tasks, due reviews, and board prep status.</span></div>
+              <div><Wand2 size={17} /><b>Anki draft</b><span>Turns pasted lectures or objectives into import-friendly cards.</span></div>
+              <div><GraduationCap size={17} /><b>Step planner</b><span>Builds blueprint-aware plans for Step 1 and Step 2 CK.</span></div>
+              <div><LineChart size={17} /><b>Daily report</b><span>Summarizes logs, tasks, and journal entries into an action readout.</span></div>
+            </div>
+            <div className="backup-note">
+              <Sparkles size={15} />
+              <span>Alpha mode uses local fallbacks when `/api/ai/*` is unavailable. Add provider keys in Vercel later for real model output.</span>
+            </div>
+            <div className="onboarding-actions">
+              <GhostButton onClick={() => setStep(2)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GButton variant="primary" onClick={() => setStep(4)}>
+                Continue <ArrowRight size={15} />
+              </GButton>
+            </div>
+          </div>
+        )}
+
         {step === last && (
           <div className="onboarding-body">
             <div className="onboarding-mark good"><Check size={26} /></div>
@@ -223,7 +248,7 @@ export function OnboardingWizard() {
               <div><span>Tagline</span><b>{phase.tagline}</b></div>
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(2)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>
               <GButton variant="primary" onClick={finish}>
                 Enter dashboard <ArrowRight size={15} />
               </GButton>

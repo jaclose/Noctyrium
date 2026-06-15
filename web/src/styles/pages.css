@@ -154,6 +154,14 @@
   padding: 13px 14px; border-radius: 14px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(180,226,255,0.095);
+  color: inherit;
+  text-decoration: none;
+  transition: transform .13s ease, border-color .13s ease, background .13s ease;
+}
+.local-data-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(90,215,239,0.22);
+  background: rgba(255,255,255,0.055);
 }
 .local-data-item svg { color: var(--cyan); margin-top: 1px; flex-shrink: 0; }
 .local-data-item b { display: block; font-size: 13px; margin-bottom: 2px; }

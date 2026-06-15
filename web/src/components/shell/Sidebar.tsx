@@ -54,7 +54,7 @@ export function Sidebar({
           </button>
           <button className="nav-item" onClick={() => onOpenSettings("account")}>
             <UserCircle2 size={17} />
-            <span>Account</span>
+            <span>Account &amp; Sync</span>
           </button>
           <div className="tagline">{profile.tagline}</div>
         </div>

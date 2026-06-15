@@ -10,7 +10,7 @@ import {
   passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
   suggestMoves, scopeMastery,
 } from "../lib/tracker";
-import type { Course, Term, TrackerItem, TrackerKind } from "../lib/types";
+import type { Course, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Extra"] as const;
@@ -18,6 +18,10 @@ type Tab = (typeof TABS)[number];
 
 const kindTone: Record<TrackerKind, "cyan" | "purple" | "orange" | "green" | "neutral"> = {
   Lecture: "cyan", DLA: "purple", PQ: "orange", Lab: "green", Reading: "neutral",
+};
+const YIELDS: Yield[] = ["none", "high", "review", "low"];
+const yieldTone: Record<Yield, "cyan" | "green" | "orange" | "neutral"> = {
+  none: "neutral", high: "green", review: "orange", low: "neutral",
 };
 
 export function CourseTrackerPage() {
@@ -448,6 +452,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   const s = useStore();
   const [path, setPath] = useState(defaultPath || "T2/NB3/Lectures");
   const [kind, setKind] = useState<TrackerKind>("Lecture");
+  const [defaultYield, setDefaultYield] = useState<Yield>("none");
   const [text, setText] = useState("");
   const [stripNums, setStripNums] = useState(true);
   const [skipDupes, setSkipDupes] = useState(true);
@@ -458,8 +463,8 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
     [s.tracker],
   );
   const rows = useMemo(
-    () => parseImportRows(text, path.trim(), kind, stripNums, existing),
-    [text, path, kind, stripNums, existing],
+    () => parseImportRows(text, path.trim(), kind, defaultYield, stripNums, existing),
+    [text, path, kind, defaultYield, stripNums, existing],
   );
   const toImport = rows.filter((r) => !r.duplicate || !skipDupes);
   const dupeCount = rows.length - toImport.length;
@@ -468,11 +473,24 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
     for (const r of toImport) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
     return counts;
   }, [toImport]);
+  const yieldCounts = useMemo(() => {
+    const counts: Partial<Record<Yield, number>> = {};
+    for (const r of toImport) counts[r.yield] = (counts[r.yield] ?? 0) + 1;
+    return counts;
+  }, [toImport]);
 
   function run() {
     if (!toImport.length) return;
     s.bulkAddTrackerItems(
-      toImport.map((r) => ({ path: r.path, label: r.label, kind: r.kind, passes: 0, ankiPasses: 0, yield: "none" as const })),
+      toImport.map((r) => ({
+        path: r.path,
+        label: r.label,
+        kind: r.kind,
+        passes: r.passes,
+        ankiPasses: r.kind === "PQ" ? 0 : r.ankiPasses,
+        yield: r.yield,
+        note: r.note,
+      })),
     );
     onClose();
   }
@@ -484,7 +502,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   }
 
   return (
-    <Modal title="Import lectures by name" onClose={onClose}
+    <Modal title="Import tracker items" onClose={onClose}
       footer={<>
         <GButton onClick={onClose}>Cancel</GButton>
         <GButton variant="primary" disabled={!toImport.length} onClick={run}>
@@ -492,18 +510,21 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
         </GButton>
       </>}>
       <ol className="import-steps">
-        <li>Pick the <b>destination</b> and default <b>kind</b> — or tag individual lines with <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[Lab]</span>, <span className="mono">[Reading]</span> to override per line.</li>
-        <li>Paste your list or <b>upload a .txt/.csv</b> — one item per line. A line ending in “:” becomes a sub-folder for the lines beneath it (e.g. <span className="mono">Module 3:</span>).</li>
-        <li>Review the preview below, then <b>Import</b>. Items already in your tracker are flagged as duplicates and skipped by default.</li>
+        <li>Pick the <b>destination</b>, default <b>kind</b>, and default <b>yield</b>. Inline tags like <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[high]</span>, <span className="mono">[review]</span>, <span className="mono">[passes=2]</span>, or <span className="mono">[anki=1]</span> override a single line.</li>
+        <li>Paste one item per line, or upload CSV with headers: <span className="mono">label, kind, path, yield, passes, anki, note</span>. A plain line ending in “:” becomes a sub-folder for the lines beneath it.</li>
+        <li>Preview duplicates, yield flags, and starting mastery before importing. Duplicate rows are skipped by default.</li>
       </ol>
       <div className="row gap12">
         <Field label="Destination path" value={path} onChange={(e) => setPath(e.target.value)} />
         <SelectField label="Default kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </SelectField>
+        <SelectField label="Default yield" value={defaultYield} onChange={(e) => setDefaultYield(e.target.value as Yield)}>
+          {YIELDS.map((y) => <option key={y} value={y}>{YIELD_LABEL[y]}</option>)}
+        </SelectField>
       </div>
       <TextAreaField label="One name per line"
-        placeholder={"Module 3:\nNB 58 Emotions\nNB 58 Introduction to Psychopathology [DLA]\nNB 60 Biological Rhythms"}
+        placeholder={"Module 3:\nNB 58 Emotions [Lecture] [high]\nNB 58 Introduction to Psychopathology [DLA] [review] [passes=1]\nNB 60 Biological Rhythms [PQ]\n\nCSV also works:\nlabel,kind,path,yield,passes,anki,note\nSleep and rhythms,Lecture,Term 2/BPM 501/NB3,review,1,1,Rewatch circadian section"}
         value={text} onChange={(e) => setText(e.target.value)} rows={9} autoFocus />
       <div className="row wrap gap12" style={{ alignItems: "center" }}>
         <label className="row gap8" style={{ fontSize: 13, color: "var(--text-60)", cursor: "pointer" }}>
@@ -532,6 +553,9 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
             {KINDS.filter((k) => kindCounts[k]).map((k) => (
               <Tag key={k} tone={kindTone[k]}>{kindCounts[k]} {k}</Tag>
             ))}
+            {YIELDS.filter((y) => y !== "none" && yieldCounts[y]).map((y) => (
+              <Tag key={y} tone={yieldTone[y]}>{yieldCounts[y]} {YIELD_LABEL[y]}</Tag>
+            ))}
           </div>
           <div className="import-preview-list">
             {rows.slice(0, 8).map((r, i) => (
@@ -539,6 +563,8 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
                 <span className="mono">{r.path}</span>
                 <span>{r.label}</span>
                 <Tag tone={kindTone[r.kind]}>{r.kind}</Tag>
+                {r.yield !== "none" && <Tag tone={yieldTone[r.yield]}>{YIELD_LABEL[r.yield]}</Tag>}
+                {(r.passes > 0 || r.ankiPasses > 0) && <Tag tone="neutral">{r.passes} pass{r.passes === 1 ? "" : "es"}{r.ankiPasses ? ` · Anki ${r.ankiPasses}` : ""}</Tag>}
                 {r.duplicate && <Tag tone="orange">Duplicate</Tag>}
               </div>
             ))}
@@ -550,13 +576,33 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   );
 }
 
-interface ImportRow { path: string; label: string; kind: TrackerKind; duplicate: boolean; }
+interface ImportRow {
+  path: string;
+  label: string;
+  kind: TrackerKind;
+  yield: Yield;
+  passes: number;
+  ankiPasses: number;
+  note?: string;
+  duplicate: boolean;
+}
 
 const KIND_TAG_RE = /\[(lecture|dla|pq|lab|reading)\]/i;
+const YIELD_TAG_RE = /\[(high(?:[-\s]?yield)?|needs[-\s]?review|review|low(?:[-\s]?yield)?)\]/i;
+const PASS_TAG_RE = /\[(?:passes?|p)=(\d+)\]/i;
+const ANKI_TAG_RE = /\[(?:anki|a)=(\d+)\]/i;
+const CSV_HEADERS = new Set(["label", "name", "title", "kind", "type", "path", "scope", "destination", "module", "yield", "priority", "passes", "pass", "anki", "ankipasses", "note", "notes"]);
 
 function parseImportRows(
-  text: string, basePath: string, defaultKind: TrackerKind, stripNums: boolean, existing: Set<string>,
+  text: string, basePath: string, defaultKind: TrackerKind, defaultYield: Yield, stripNums: boolean, existing: Set<string>,
 ): ImportRow[] {
+  const csv = parseCsvRows(text);
+  const header = csv[0]?.map((cell) => normalizeHeader(cell)) ?? [];
+  const hasHeader = header.some((cell) => CSV_HEADERS.has(cell)) && header.some((cell) => ["label", "name", "title"].includes(cell));
+  if (hasHeader) {
+    return csv.slice(1).flatMap((cells) => rowFromCsv(cells, header, basePath, defaultKind, defaultYield, stripNums, existing));
+  }
+
   const rows: ImportRow[] = [];
   let subPath = "";
   for (const raw of text.split("\n")) {
@@ -564,7 +610,7 @@ function parseImportRows(
     if (!line) { subPath = ""; continue; }
 
     const headerMatch = line.match(/^#*\s*(.+):$/);
-    if (headerMatch && !KIND_TAG_RE.test(line)) {
+    if (headerMatch && !KIND_TAG_RE.test(line) && !YIELD_TAG_RE.test(line)) {
       let header = headerMatch[1].trim();
       if (stripNums) header = header.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
       subPath = header;
@@ -574,33 +620,179 @@ function parseImportRows(
     if (stripNums) line = line.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
     if (!line) continue;
 
-    let kind = defaultKind;
-    const tagMatch = line.match(KIND_TAG_RE);
-    if (tagMatch) {
-      const tag = tagMatch[1].toLowerCase();
-      kind = KINDS.find((k) => k.toLowerCase() === tag) ?? defaultKind;
-      line = line.replace(KIND_TAG_RE, "").trim();
-    }
+    const parsed = extractInlineMetadata(line, defaultKind, defaultYield);
+    let kind = parsed.kind;
+    let itemYield = parsed.yield;
+    let passes = parsed.passes;
+    let ankiPasses = parsed.ankiPasses;
+    line = parsed.label;
 
     const commaIdx = line.indexOf(",");
     if (commaIdx > -1) {
-      const first = line.slice(0, commaIdx).trim();
-      const rest = line.slice(commaIdx + 1).trim();
-      const maybeKind = KINDS.find((k) => k.toLowerCase() === rest.toLowerCase());
-      if (first && maybeKind) {
+      const cells = parseCsvLine(line);
+      const first = cells[0]?.trim() ?? "";
+      const maybeKind = parseKind(cells[1], kind);
+      const maybePath = cells[2]?.trim();
+      const maybeYield = parseYield(cells[3], itemYield);
+      if (first && cells.length > 1) {
         kind = maybeKind;
+        itemYield = maybeYield;
         line = first;
+        if (cells[4]) passes = clampInt(Number(cells[4]), 0, kind === "PQ" ? 3 : 12);
+        if (cells[5]) ankiPasses = clampInt(Number(cells[5]), 0, 3);
+        const fullPath = maybePath || (subPath ? `${basePath}/${subPath}` : basePath);
+        rows.push(makeImportRow(fullPath, line, kind, itemYield, passes, ankiPasses, cells[6], existing));
+        continue;
       }
     }
 
     if (!line) continue;
     const fullPath = subPath ? `${basePath}/${subPath}` : basePath;
-    rows.push({
-      path: fullPath,
-      label: line,
-      kind,
-      duplicate: existing.has(`${fullPath.toLowerCase()}::${line.toLowerCase()}`),
-    });
+    rows.push(makeImportRow(fullPath, line, kind, itemYield, passes, ankiPasses, undefined, existing));
   }
   return rows;
+}
+
+function rowFromCsv(
+  cells: string[],
+  header: string[],
+  basePath: string,
+  defaultKind: TrackerKind,
+  defaultYield: Yield,
+  stripNums: boolean,
+  existing: Set<string>,
+): ImportRow[] {
+  const get = (...names: string[]) => {
+    const index = header.findIndex((h) => names.includes(h));
+    return index >= 0 ? cells[index]?.trim() ?? "" : "";
+  };
+  let label = get("label", "name", "title");
+  if (stripNums) label = label.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
+  if (!label) return [];
+  const kind = parseKind(get("kind", "type"), defaultKind);
+  const itemYield = parseYield(get("yield", "priority"), defaultYield);
+  const rawPath = get("path", "scope", "destination");
+  const module = get("module");
+  const path = rawPath || (module ? `${basePath}/${module}` : basePath);
+  const passes = clampInt(Number(get("passes", "pass")), 0, kind === "PQ" ? 3 : 12);
+  const ankiPasses = kind === "PQ" ? 0 : clampInt(Number(get("anki", "ankipasses")), 0, 3);
+  return [makeImportRow(path, label, kind, itemYield, passes, ankiPasses, get("note", "notes"), existing)];
+}
+
+function makeImportRow(
+  path: string,
+  label: string,
+  kind: TrackerKind,
+  y: Yield,
+  passes: number,
+  ankiPasses: number,
+  note: string | undefined,
+  existing: Set<string>,
+): ImportRow {
+  const cleanPath = path.trim();
+  const cleanLabel = label.trim();
+  return {
+    path: cleanPath,
+    label: cleanLabel,
+    kind,
+    yield: y,
+    passes: clampInt(passes, 0, kind === "PQ" ? 3 : 12),
+    ankiPasses: kind === "PQ" ? 0 : clampInt(ankiPasses, 0, 3),
+    note: note?.trim() || undefined,
+    duplicate: existing.has(`${cleanPath.toLowerCase()}::${cleanLabel.toLowerCase()}`),
+  };
+}
+
+function extractInlineMetadata(raw: string, defaultKind: TrackerKind, defaultYield: Yield) {
+  let label = raw;
+  let kind = defaultKind;
+  let itemYield = defaultYield;
+  let passes = 0;
+  let ankiPasses = 0;
+
+  const tagMatch = label.match(KIND_TAG_RE);
+  if (tagMatch) {
+    kind = parseKind(tagMatch[1], defaultKind);
+    label = label.replace(KIND_TAG_RE, "").trim();
+  }
+
+  const prefixMatch = label.match(/^(lecture|dla|pq|lab|reading)\s*[:|-]\s*/i);
+  if (prefixMatch) {
+    kind = parseKind(prefixMatch[1], kind);
+    label = label.replace(prefixMatch[0], "").trim();
+  }
+
+  const yieldMatch = label.match(YIELD_TAG_RE);
+  if (yieldMatch) {
+    itemYield = parseYield(yieldMatch[1], defaultYield);
+    label = label.replace(YIELD_TAG_RE, "").trim();
+  }
+
+  const passMatch = label.match(PASS_TAG_RE);
+  if (passMatch) {
+    passes = clampInt(Number(passMatch[1]), 0, kind === "PQ" ? 3 : 12);
+    label = label.replace(PASS_TAG_RE, "").trim();
+  }
+
+  const ankiMatch = label.match(ANKI_TAG_RE);
+  if (ankiMatch) {
+    ankiPasses = clampInt(Number(ankiMatch[1]), 0, 3);
+    label = label.replace(ANKI_TAG_RE, "").trim();
+  }
+
+  return { label, kind, yield: itemYield, passes, ankiPasses };
+}
+
+function parseKind(value: unknown, fallback: TrackerKind): TrackerKind {
+  const clean = String(value ?? "").trim().toLowerCase();
+  return KINDS.find((k) => k.toLowerCase() === clean) ?? fallback;
+}
+
+function parseYield(value: unknown, fallback: Yield): Yield {
+  const clean = String(value ?? "").trim().toLowerCase().replace(/[-_\s]+/g, "");
+  if (!clean) return fallback;
+  if (clean === "high" || clean === "highyield" || clean === "hy") return "high";
+  if (clean === "review" || clean === "needsreview" || clean === "weak") return "review";
+  if (clean === "low" || clean === "lowyield") return "low";
+  if (clean === "none" || clean === "normal") return "none";
+  return fallback;
+}
+
+function parseCsvRows(text: string): string[][] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => parseCsvLine(line))
+    .filter((row) => row.some((cell) => cell.trim()));
+}
+
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let current = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === "\"" && quoted && next === "\"") {
+      current += "\"";
+      i++;
+    } else if (char === "\"") {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      out.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  out.push(current.trim());
+  return out;
+}
+
+function normalizeHeader(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function clampInt(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.round(value)));
 }

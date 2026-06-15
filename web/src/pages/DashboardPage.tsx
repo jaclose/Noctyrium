@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Inbox, ArrowDownToLine, Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
-  Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot,
+  Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
@@ -14,6 +14,8 @@ import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/see
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { runAi } from "../services/aiClient";
+
+const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
 export function DashboardPage() {
   const s = useStore();
@@ -273,6 +275,13 @@ export function DashboardPage() {
               <span>The package runs from the built static app, not the dev localhost server.</span>
             </div>
           </div>
+          <a className="local-data-item" href={HOSTED_ALPHA_URL} target="_blank" rel="noreferrer">
+            <ExternalLink size={17} />
+            <div>
+              <b>Hosted Alpha</b>
+              <span>Open the Vercel instance for website embedding, API routes, and cloud-sync testing.</span>
+            </div>
+          </a>
         </div>
       </GlassCard>
 
@@ -473,8 +482,12 @@ function AiSuggestedActions() {
       setQueue(result.queue ?? []);
       setRule(result.rule ?? "");
       setProvider(res.provider);
-    } catch (e) {
-      setError((e as Error).message);
+    } catch {
+      const local = buildLocalAiQueue(s);
+      setQueue(local.queue);
+      setRule(local.rule);
+      setProvider("local strategist");
+      setError("");
     } finally {
       setLoading(false);
     }
@@ -517,6 +530,42 @@ function AiSuggestedActions() {
       {rule && <div className="sub" style={{ marginTop: 8 }}>{rule}</div>}
     </GlassCard>
   );
+}
+
+function buildLocalAiQueue(s: ReturnType<typeof useStore.getState>): { queue: AiMove[]; rule: string } {
+  const trackerMoves = suggestMoves(s.tracker, 2);
+  const openTasks = s.tasks.filter((t) => !t.done && !t.archived);
+  const dueReviews = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
+  const phase = s.profile.phase || "preclinical";
+  const queue: AiMove[] = trackerMoves.map((move, index) => ({
+    title: move.title,
+    why: move.reason,
+    mode: index === 0 ? "active recall" : "targeted repair",
+    effortMinutes: index === 0 ? 35 : 25,
+  }));
+
+  if (openTasks.length) {
+    queue.push({
+      title: `Clear: ${openTasks[0].title}`,
+      why: `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"} are competing with study execution.`,
+      mode: "task closure",
+      effortMinutes: 15,
+    });
+  }
+
+  if (!queue.length) {
+    queue.push({
+      title: phase.includes("step") ? "Run a timed question block" : "Log one focused study block",
+      why: dueReviews ? `${dueReviews} review signals need fresh evidence.` : "No urgent signal yet; generate signal with retrieval or questions.",
+      mode: "signal generation",
+      effortMinutes: phase.includes("step") ? 45 : 30,
+    });
+  }
+
+  return {
+    queue: queue.slice(0, 4),
+    rule: "Local strategist fallback: prioritize review flags, red/untouched items, then one small task closure. Configure Vercel API + AI_PROVIDER for provider-backed output.",
+  };
 }
 
 function ProgressBar({
