@@ -1,5 +1,5 @@
-import { runAiFeature, type AiFeature, type AiRequestBody } from "./aiService";
-import { requireBodyObject, sendJson, withApi } from "./http";
+import { runAiFeature, type AiFeature, type AiRequestBody } from "./aiService.js";
+import { requireBodyObject, sendJson, withApi } from "./http.js";
 
 export function aiRoute(feature: AiFeature) {
   return withApi(["POST"], async (req, res) => {

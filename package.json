@@ -8,7 +8,7 @@
     "build": "npm --prefix web run build",
     "dev": "npx vercel dev",
     "web:dev": "npm --prefix web run dev",
-    "typecheck:api": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck --types node api/_lib/*.ts api/health.ts api/user/login.ts \"api/user/[id].ts\" \"api/data/[userId].ts\" \"api/data/[userId]/backup.ts\" \"api/data/[userId]/backups.ts\" \"api/data/[userId]/restore/[backupId].ts\" api/progress/save.ts api/progress/load.ts api/ai/*.ts",
+    "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node api/_lib/*.ts api/health.ts api/user/login.ts \"api/user/[id].ts\" \"api/data/[userId].ts\" \"api/data/[userId]/backup.ts\" \"api/data/[userId]/backups.ts\" \"api/data/[userId]/restore/[backupId].ts\" api/progress/save.ts api/progress/load.ts api/ai/*.ts",
     "db:migration": "cat db/migrations/001_initial.sql"
   },
   "dependencies": {

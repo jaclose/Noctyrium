@@ -1,5 +1,5 @@
-import { listBackups } from "../../_lib/dataService";
-import { assertUuid, getParam, sendJson, withApi } from "../../_lib/http";
+import { listBackups } from "../../_lib/dataService.js";
+import { assertUuid, getParam, sendJson, withApi } from "../../_lib/http.js";
 
 export default withApi(["GET"], async (req, res) => {
   const userId = assertUuid(getParam(req, "userId"), "user id");

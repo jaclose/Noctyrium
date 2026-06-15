@@ -1,5 +1,5 @@
-import { ApiError } from "./http";
-import { getReadySql, hasDatabase } from "./db";
+import { ApiError } from "./http.js";
+import { getReadySql, hasDatabase } from "./db.js";
 
 type DbRow = Record<string, unknown>;
 

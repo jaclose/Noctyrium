@@ -1,4 +1,4 @@
-import { loginByName, saveCurrentSnapshot } from "../_lib/dataService";
+import { loginByName, saveCurrentSnapshot } from "../_lib/dataService.js";
 import {
   optionalString,
   requireBodyObject,
@@ -7,7 +7,7 @@ import {
   requireString,
   sendJson,
   withApi,
-} from "../_lib/http";
+} from "../_lib/http.js";
 
 export default withApi(["POST"], async (req, res) => {
   const body = requireBodyObject(req);

@@ -1,5 +1,5 @@
-import { hasDatabase } from "./_lib/db";
-import { sendJson, withApi } from "./_lib/http";
+import { hasDatabase } from "./_lib/db.js";
+import { sendJson, withApi } from "./_lib/http.js";
 
 export default withApi(["GET"], async (_req, res) => {
   sendJson(res, {

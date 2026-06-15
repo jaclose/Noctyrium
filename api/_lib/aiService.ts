@@ -1,4 +1,4 @@
-import { logAiUsage } from "./dataService";
+import { logAiUsage } from "./dataService.js";
 
 export type AiFeature =
   | "next-move"
