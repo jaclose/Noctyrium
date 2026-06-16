@@ -1,4 +1,4 @@
-import { optionalString, requireBodyObject, requireString, sendJson, withApi } from "./_lib/http.js";
+import { optionalString, requireBodyObject, requireString, sendJson, withApi } from "../lib/api/http.js";
 
 // Alpha feedback intake. Sends an email via Resend when RESEND_API_KEY is set;
 // otherwise returns 501 so the client shows the clean "copy + email" fallback.

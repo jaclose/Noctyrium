@@ -61,7 +61,7 @@ backups, restore, and mock AI endpoints.
 Recommended architecture:
 
 - Keep the Vite app in `web/`.
-- Use root-level Vercel serverless functions in `api/`.
+- Use grouped root-level Vercel serverless functions in `api/` with shared backend helpers in `lib/api/`.
 - Use Neon Postgres on Vercel for production storage.
 - Store the app state as a JSON snapshot first; split into relational tables later
   only after the data model stabilizes.
@@ -191,6 +191,8 @@ Use either setup:
 - **Repo root as Vercel Root Directory, recommended:** leave Root Directory
   empty/default. Vercel runs `npm ci && npm --prefix web ci`, builds with
   `npm run build`, serves `web/dist`, and exposes `/api/*`.
+  Legacy public URLs are rewritten into five grouped functions:
+  `/api/user`, `/api/data`, `/api/ai`, `/api/feedback`, and `/api/health`.
 - **`web` as Vercel Root Directory:** only use this for a static/local-only
   deployment. The cloud sync API will not deploy from that mode.
 

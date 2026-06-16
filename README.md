@@ -17,7 +17,7 @@ The app combines:
 
 - **Version:** `0.1.0-alpha.1`
 - **Frontend:** Vite + React + TypeScript in `web/`
-- **Backend:** Vercel serverless functions in `api/`
+- **Backend:** Hobby-safe grouped Vercel serverless functions in `api/`, with shared backend code in `lib/api/`
 - **Database:** Neon/Supabase/Postgres via `DATABASE_URL`
 - **Persistence:** Local Vault first; cloud sync is optional
 - **Desktop shell:** experimental Tauri v2 + SQLite scaffold in `src-tauri/`
@@ -57,7 +57,7 @@ Recommended production setup:
 3. Keep `AI_PROVIDER=mock` for Alpha 1.
 4. Run the SQL in [`db/migrations/001_initial.sql`](db/migrations/001_initial.sql), or leave `NOCTYRIUM_AUTO_MIGRATE=true` so the serverless API creates the schema on first use.
 
-Core API routes:
+Core public API URLs:
 
 - `POST /api/user/login`
 - `GET /api/user/:id`
@@ -73,6 +73,10 @@ Core API routes:
 - `POST /api/ai/weak-area-analysis`
 - `POST /api/ai/daily-report`
 
+Those URLs are compatibility rewrites. Vercel only deploys five route files:
+`api/user.ts`, `api/data.ts`, `api/ai.ts`, `api/feedback.ts`, and
+`api/health.ts`, keeping Alpha 1 below the Hobby plan serverless function cap.
+
 Name login is lightweight identity, not secure authentication. For production
 multi-user use, migrate to email magic links, OAuth, or passkeys.
 
@@ -80,10 +84,14 @@ multi-user use, migrate to email magic links, OAuth, or passkeys.
 
 Use the repository root as the Vercel project root. The root `vercel.json`
 builds `web/`, serves `web/dist`, and keeps `/api/*` on serverless functions.
+The API is grouped into five functions, so the Hobby deployment should pass the
+function-count check.
 
 ```sh
 npm install
+npm run typecheck:api
 npm run build
+find api -maxdepth 1 -type f -name '*.ts' | wc -l  # should print 5
 ```
 
 If Vercel shows `404: NOT_FOUND`, the project is usually pointed at the wrong

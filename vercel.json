@@ -5,6 +5,13 @@
   "buildCommand": "npm run build",
   "outputDirectory": "web/dist",
   "rewrites": [
+    { "source": "/api/user/login", "destination": "/api/user?action=login" },
+    { "source": "/api/user/:id", "destination": "/api/user?id=:id" },
+    { "source": "/api/data/:userId/restore/:backupId", "destination": "/api/data?action=restore&userId=:userId&backupId=:backupId" },
+    { "source": "/api/data/:userId/backup", "destination": "/api/data?action=backup&userId=:userId" },
+    { "source": "/api/data/:userId/backups", "destination": "/api/data?action=backups&userId=:userId" },
+    { "source": "/api/data/:userId", "destination": "/api/data?userId=:userId" },
+    { "source": "/api/ai/:feature", "destination": "/api/ai?feature=:feature" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

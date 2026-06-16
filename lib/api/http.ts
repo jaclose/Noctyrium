@@ -2,6 +2,7 @@ type JsonRecord = Record<string, unknown>;
 
 export interface ApiRequest {
   method?: string;
+  url?: string;
   headers: Record<string, string | string[] | undefined>;
   query: Record<string, string | string[] | undefined>;
   body?: unknown;
@@ -107,10 +108,27 @@ export function requireJsonObject(body: JsonRecord, key: string) {
 }
 
 export function getParam(req: ApiRequest, key: string) {
-  const value = req.query[key];
-  const text = Array.isArray(value) ? value[0] : value;
+  const text = getOptionalParam(req, key);
   if (!text) throw new ApiError(400, `Missing ${key}.`);
   return text;
+}
+
+export function getOptionalParam(req: ApiRequest, key: string) {
+  const value = req.query?.[key];
+  const text = Array.isArray(value) ? value[0] : value;
+  if (text) return text;
+
+  if (req.url) {
+    try {
+      const parsed = new URL(req.url, "http://noctyrium.local");
+      const queryValue = parsed.searchParams.get(key);
+      if (queryValue) return queryValue;
+    } catch {
+      // Ignore malformed local URLs and fall through to undefined.
+    }
+  }
+
+  return undefined;
 }
 
 export function assertUuid(value: string, label = "id") {

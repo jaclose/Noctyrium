@@ -62,7 +62,7 @@ class PlaceholderProvider implements AiProvider {
       feature,
       result: {
         status: "not_configured",
-        message: `${this.name} is scaffolded but not enabled yet. Set AI_PROVIDER=mock for development, or implement the provider adapter in api/_lib/aiService.ts.`,
+        message: `${this.name} is scaffolded but not enabled yet. Set AI_PROVIDER=mock for development, or implement the provider adapter in lib/api/aiService.ts.`,
       },
       safetyNote: studyOnlyNote(),
     };

@@ -10,7 +10,7 @@
     "web:dev": "npm --prefix web run dev",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node api/_lib/*.ts api/health.ts api/user/login.ts \"api/user/[id].ts\" \"api/data/[userId].ts\" \"api/data/[userId]/backup.ts\" \"api/data/[userId]/backups.ts\" \"api/data/[userId]/restore/[backupId].ts\" api/ai/*.ts",
+    "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node lib/api/*.ts api/*.ts",
     "db:migration": "cat db/migrations/001_initial.sql"
   },
   "dependencies": {

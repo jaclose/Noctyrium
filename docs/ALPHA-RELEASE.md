@@ -11,6 +11,8 @@ downloadable Mac app — see [UPDATE-POLICY.md](UPDATE-POLICY.md).
   prerequisites for the target platform.
 - A Vercel project pointed at the **repository root** (not `web/`). The root
   `vercel.json` builds `web/`, serves `web/dist`, and keeps `/api/*` serverless.
+  Alpha 1 groups backend actions into five route files so it stays below the
+  Vercel Hobby serverless function cap.
 - (Optional) A Neon/Supabase/Postgres `DATABASE_URL` for cloud sync. The app is
   fully usable without it — the Local Vault (IndexedDB + localStorage) is the
   source of truth.
@@ -36,12 +38,18 @@ Confirm the zips do **not** appear in `git status` (they are gitignored).
 
 ```sh
 npm install
+npm run typecheck:api
 npm run build
 # then deploy from the repo root (CI or `vercel --prod`)
+find api -maxdepth 1 -type f -name '*.ts' | wc -l  # expected: 5
 ```
 
 - Set env on Vercel: `AI_PROVIDER=mock` for Alpha 1; optionally `DATABASE_URL`
   and `NOCTYRIUM_AUTO_MIGRATE=true`.
+- Public API URLs such as `/api/user/login`, `/api/data/:userId/backup`, and
+  `/api/ai/next-move` are compatibility rewrites into grouped functions. Do not
+  add one serverless file per tiny action during Alpha unless the function budget
+  is intentionally revisited.
 - If Vercel returns `404: NOT_FOUND`, the project root is wrong or it's an old
   deployment — redeploy from the repository root after committing `vercel.json`.
 

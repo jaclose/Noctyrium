@@ -4,6 +4,9 @@
 
 Pre-release polish patch: consumer-facing wording, resource corrections, Help, and Anki guide.
 
+- **Vercel Hobby deploy hotfix:** consolidated 13 public route files into five grouped
+  functions (`api/user.ts`, `api/data.ts`, `api/ai.ts`, `api/feedback.ts`, `api/health.ts`)
+  and moved backend helpers to `lib/api/`, preserving the old public URLs through rewrites.
 - **Guided tour + Promise** shipped to production (web auto-deploy) and added **Vercel Analytics**.
 - **Resource Hub corrected**: 11 exact curated drives with proper names/URLs/categories/ratings/tooltips
   (fixes the Claudfather↔My Drive mislabel; adds Mehlman + White Coat; My Drive pinned first;
