@@ -19,15 +19,27 @@ Public Alpha 1 release candidate: packaging, release flow, and beta-feedback pol
 ### Beta-feedback polish
 
 - **Anki Lab generator fixed:** filters slide boilerplate (copyright, objective codes, citations,
-  URLs, emails, headings), clozes the *answer* (not the subject/first words), de-dupes, and now
-  exports both `.txt` (TSV) and `.csv`. Added a card-style / custom-note-type guide that links to the
-  MADCOW Anki build drive.
+  URLs, emails, headings), clozes the *answer* (not the subject/first words), de-dupes, scores cards
+  by quality, warns on likely system-tag mismatch, allows local draft edit/delete, and exports
+  separated Basic/Cloze `.csv` files plus review `.txt` (TSV). Added a card-style / custom-note-type
+  guide that links to the MADCOW/Claudfather Anki build drive.
 - **Course Tracker import:** the destination field now autocompletes existing folders (datalist) and
-  flags new-vs-existing, so correct paths stop spawning duplicate folders.
-- **Course Tracker:** delete an entire group/directory (mirrors rename).
+  flags new-vs-existing; path normalization trims/dedupes spacing/case so correct paths stop spawning
+  duplicate folders.
+- **Course Tracker:** delete an entire group/directory with confirmation, including move-contained-items
+  or delete-contained-items choices.
 - **Drives:** curated permanent set (My Drive + MADCOW = 10/10, SillyGoose Wiki, SGU shared, MEGA)
-  with a personal usefulness rating badge (top-right) + hover reason, sorted by rating; add/remove/
-  re-rate in-app.
+  with MADCOW and Claudfather Auto rated 10/10, personal usefulness rating badges + hover reasons,
+  URL normalization, source/personal/category filters, and add/remove/re-rate in-app.
+- **Guided tour + Promise:** first-launch personalization flows into a spotlight tour and a versioned
+  Promise of Use journal cutscene; replay remains available under Hub/Folders.
+- **Boards page:** Step/Shelf/MCAT/CBSE work now has a board-style blueprint log (domain, mode,
+  minutes, questions, correct, confidence, missed-theme notes) separate from lecture/DLA/PQ pass
+  tracking.
+- **Help feedback:** Hub/Folders now includes an Alpha mailto feedback form for bugs, features,
+  confusion, and praise addressed to `jdabbagh@sgu.edu`.
+- **Native shell scaffold:** added experimental Tauri v2 + SQLite wiring in `src-tauri/`, with SQL
+  migration, permissions, scripts, and a Settings-only native snapshot action for future desktop work.
 - **Logo** added to the sidebar lockup; **±10 steppers** for minutes/cards in the Productivity log.
 
 ## Alpha 1 — 2026-06-14

@@ -7,6 +7,8 @@ downloadable Mac app — see [UPDATE-POLICY.md](UPDATE-POLICY.md).
 ## 0. One-time prerequisites
 
 - Node 18+ and npm.
+- Optional for the experimental native shell: Rust 1.77.2+ and the Tauri v2
+  prerequisites for the target platform.
 - A Vercel project pointed at the **repository root** (not `web/`). The root
   `vercel.json` builds `web/`, serves `web/dist`, and keeps `/api/*` serverless.
 - (Optional) A Neon/Supabase/Postgres `DATABASE_URL` for cloud sync. The app is
@@ -55,6 +57,16 @@ npm --prefix web run package
 
 Upload the two zips from `web/` as release assets (next step).
 
+Experimental native shell checks:
+
+```sh
+npm run tauri:dev      # development shell, uses web dev server
+npm run tauri:build    # future native bundle path; not the Alpha 1 primary asset yet
+```
+
+The Tauri shell is wired to `sqlite:noctyrium.db` and a first migration, but the
+Alpha 1 release assets remain the static web zip and lightweight macOS wrapper.
+
 ## 4. Draft a GitHub Release
 
 1. Tag: `v0.1.0-alpha.1` (annotated) on the release commit.
@@ -87,6 +99,8 @@ Upload the two zips from `web/` as release assets (next step).
 
 ## Remaining blockers before the GitHub Release
 
-- Create the GitHub repo/remote and push the release branch + tag (none configured yet).
+- Push the release branch and annotated tag to `jaclose/Noctyrium`.
 - Decide the canonical hosted URL to advertise (a stable Vercel domain or custom domain).
 - Optional: notarize the Mac wrapper (Apple Developer account) to avoid the Gatekeeper prompt.
+- Optional: build/sign/notarize the Tauri bundle once the native shell graduates
+  from scaffold to release channel.

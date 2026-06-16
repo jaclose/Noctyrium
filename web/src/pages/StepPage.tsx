@@ -6,7 +6,8 @@ import {
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
-import type { BoardExamId, BoardPrepProfile, TrackerItem, Yield } from "../lib/types";
+import { dayKey } from "../lib/scoring";
+import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, TrackerItem, Yield } from "../lib/types";
 
 // ---------------------------------------------------------------------------
 // STEP / boards = a *simple, big-picture* blueprint. Installing a blueprint
@@ -169,16 +170,38 @@ function defaultPrep(exam: BoardExamId): BoardPrepProfile {
   };
 }
 
+function boardReadiness(logs: BoardBlueprintLog[]): number {
+  if (!logs.length) return 0;
+  const confidenceScore: Record<BoardBlueprintLog["confidence"], number> = { red: 20, orange: 45, green: 72, blue: 92 };
+  const recent = logs.slice(0, 20);
+  const confidence = recent.reduce((sum, log) => sum + confidenceScore[log.confidence], 0) / recent.length;
+  const withQuestions = recent.filter((log) => log.questions > 0);
+  const accuracy = withQuestions.length
+    ? withQuestions.reduce((sum, log) => sum + (log.correct / Math.max(1, log.questions)) * 100, 0) / withQuestions.length
+    : confidence;
+  const coverage = Math.min(100, new Set(logs.map((log) => log.area)).size * 10);
+  return Math.round(confidence * 0.4 + accuracy * 0.4 + coverage * 0.2);
+}
+
 export function StepPage() {
   const s = useStore();
   const [examId, setExamId] = useState<BoardExamId>("step1");
   const [flash, setFlash] = useState<{ msg: string; href: string } | null>(null);
+  const [logArea, setLogArea] = useState(EXAMS.step1.domains[0].name);
+  const [logMode, setLogMode] = useState<BoardBlueprintLog["mode"]>("Questions");
+  const [logMinutes, setLogMinutes] = useState("45");
+  const [logQuestions, setLogQuestions] = useState("20");
+  const [logCorrect, setLogCorrect] = useState("0");
+  const [logConfidence, setLogConfidence] = useState<BoardBlueprintLog["confidence"]>("orange");
+  const [logNotes, setLogNotes] = useState("");
   const exam = EXAMS[examId];
   const prep = s.boardPrep?.[examId] ?? defaultPrep(examId);
   const resources = RESOURCE_CATALOG[examId];
+  const activeLogArea = exam.domains.some((d) => d.name === logArea) ? logArea : exam.domains[0]?.name ?? exam.label;
 
   const examItems = useMemo(() => s.tracker.filter((t) => t.path === exam.prefix || t.path.startsWith(exam.prefix + "/")), [s.tracker, exam.prefix]);
-  const readiness = scopeMastery(examItems);
+  const logReadiness = boardReadiness(prep.blueprintLogs);
+  const readiness = prep.blueprintLogs.length ? logReadiness : scopeMastery(examItems);
   const installedNames = new Set(examItems.map((t) => t.label));
   const installedCount = exam.domains.filter((d) => installedNames.has(d.name)).length;
   const officialInstalled = resources.every((res) => s.resources.some((r) => r.url === res.url));
@@ -189,6 +212,21 @@ export function StepPage() {
     window.setTimeout(() => setFlash(null), 6000);
   }
   function patchPrep(patch: Partial<BoardPrepProfile>) { s.updateBoardPrep(examId, patch); }
+  function addBlueprintLog() {
+    s.addBoardBlueprintLog(examId, {
+      date: dayKey(),
+      dimension: "system",
+      area: activeLogArea,
+      mode: logMode,
+      minutes: Math.max(0, Number(logMinutes) || 0),
+      questions: Math.max(0, Number(logQuestions) || 0),
+      correct: Math.max(0, Math.min(Number(logCorrect) || 0, Number(logQuestions) || 0)),
+      confidence: logConfidence,
+      notes: logNotes.trim() || undefined,
+    });
+    setLogNotes("");
+    announce(`Logged ${exam.shortLabel} board work for ${activeLogArea}.`, "#step");
+  }
 
   function domainRow(d: Domain): Omit<TrackerItem, "id" | "updated"> {
     return { path: exam.prefix, label: d.name, kind: "Lecture", passes: 0, ankiPasses: 0, yield: weightYield[d.weight], note: d.focus };
@@ -343,6 +381,69 @@ export function StepPage() {
           </div>
         </GlassCard>
       </div>
+
+      <GlassCard pad>
+        <PanelHeader title={`${exam.shortLabel} blueprint log`} sub="Board-style logging: domain, questions, accuracy, confidence — separate from lecture/DLA/PQ passes" />
+        <div className="step-form-grid">
+          <label className="stack gap6">
+            <span className="field-label">Domain</span>
+            <select className="field" value={activeLogArea} onChange={(e) => setLogArea(e.target.value)}>
+              {exam.domains.map((d) => <option key={d.name}>{d.name}</option>)}
+            </select>
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">Mode</span>
+            <select className="field" value={logMode} onChange={(e) => setLogMode(e.target.value as BoardBlueprintLog["mode"])}>
+              {["Questions", "Assessment", "Missed facts", "First pass", "Review"].map((mode) => <option key={mode}>{mode}</option>)}
+            </select>
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">Minutes</span>
+            <input className="field" type="number" min={0} value={logMinutes} onChange={(e) => setLogMinutes(e.target.value)} />
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">Questions</span>
+            <input className="field" type="number" min={0} value={logQuestions} onChange={(e) => setLogQuestions(e.target.value)} />
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">Correct</span>
+            <input className="field" type="number" min={0} max={Number(logQuestions) || undefined} value={logCorrect} onChange={(e) => setLogCorrect(e.target.value)} />
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">Confidence</span>
+            <select className="field" value={logConfidence} onChange={(e) => setLogConfidence(e.target.value as BoardBlueprintLog["confidence"])}>
+              <option value="red">Red</option>
+              <option value="orange">Orange</option>
+              <option value="green">Green</option>
+              <option value="blue">Blue</option>
+            </select>
+          </label>
+        </div>
+        <label className="stack gap6" style={{ marginTop: 12 }}>
+          <span className="field-label">Notes / missed themes</span>
+          <input className="field" value={logNotes} onChange={(e) => setLogNotes(e.target.value)}
+            placeholder="e.g. Renal acid-base misses; redo NBME explanations tomorrow" />
+        </label>
+        <div className="row wrap gap8" style={{ marginTop: 12 }}>
+          <GButton variant="primary" onClick={addBlueprintLog}><Plus size={14} /> Log board work</GButton>
+          <Tag tone="cyan">{prep.blueprintLogs.length} log{prep.blueprintLogs.length === 1 ? "" : "s"}</Tag>
+          <Tag tone="green">{logReadiness}% board readiness</Tag>
+        </div>
+        {prep.blueprintLogs.length > 0 && (
+          <div className="import-preview-list" style={{ marginTop: 12 }}>
+            {prep.blueprintLogs.slice(0, 6).map((log) => (
+              <div key={log.id} className="import-preview-row">
+                <span className="mono">{log.date}</span>
+                <span>{log.area}</span>
+                <Tag tone="purple">{log.mode}</Tag>
+                <Tag tone={log.confidence === "blue" || log.confidence === "green" ? "green" : log.confidence === "orange" ? "orange" : "neutral"}>{log.confidence}</Tag>
+                <span className="sub">{log.questions ? `${log.correct}/${log.questions} correct` : `${log.minutes} min`}</span>
+                <button type="button" className="tiny-link danger" onClick={() => s.removeBoardBlueprintLog(examId, log.id)}>Delete</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
 
       <div className="step-overview-grid">
         <GlassCard pad>

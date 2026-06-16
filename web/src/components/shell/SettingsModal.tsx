@@ -9,6 +9,7 @@ import { useStore } from "../../lib/store";
 import { exportState, parseImport } from "../../lib/backup";
 import { AccountSyncPanel } from "./AccountSyncPanel";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
+import { isNativeSqliteAvailable, saveNativeSnapshot } from "../../services/nativeSqlite";
 import type { ExperienceFocusId } from "../../lib/types";
 
 export type SettingsTab = "general" | "personalization" | "backup" | "account";
@@ -43,6 +44,11 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   function exportBackup() {
     exportState(store);
     setMsg("Downloaded a portable Noctyrium JSON backup.");
+  }
+
+  async function saveNativeBackup() {
+    const result = await saveNativeSnapshot(store, `Manual native snapshot ${new Date().toLocaleString()}`);
+    setMsg(result.ok ? "Saved a native SQLite snapshot." : "Native SQLite is only available inside the Tauri desktop shell.");
   }
 
   function setAvatar(file: File) {
@@ -130,6 +136,13 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                 <span>Use Account & Sync for name-based cloud progress. JSON import/export still works without a backend.</span>
               </div>
             </div>
+            <div className="backup-explainer-card">
+              <Database size={17} />
+              <div>
+                <b>Native SQLite</b>
+                <span>{isNativeSqliteAvailable() ? "Tauri desktop runtime detected. SQLite snapshots are available." : "Desktop SQLite scaffold is wired for Tauri; browser/Vercel mode stays on Local Vault."}</span>
+              </div>
+            </div>
           </div>
 
           <div className="backup-actions-panel">
@@ -151,6 +164,16 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               <ShieldCheck size={15} />
               <span>Import replaces the current Local Vault in this browser. Download a safety backup first when in doubt.</span>
             </div>
+          </div>
+
+          <div className="backup-actions-panel">
+            <div>
+              <div className="sync-title">Native desktop snapshot</div>
+              <div className="sub">Experimental Tauri SQLite save rail. Local Vault remains the active source of truth in Alpha 1.</div>
+            </div>
+            <GButton size="sm" onClick={saveNativeBackup} disabled={!isNativeSqliteAvailable()}>
+              <Database size={15} /> Save SQLite snapshot
+            </GButton>
           </div>
 
           <div className="backup-actions-panel danger-zone">

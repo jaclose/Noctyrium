@@ -62,6 +62,8 @@ export function parseImport(text: string): NoctyriumState {
       dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
       dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
       onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
+      tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
+      promise: normalizePromise(profile.promise),
       phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : activeFocus?.phase,
       activeFocusId,
       focusSubscriptions,
@@ -88,6 +90,20 @@ export function parseImport(text: string): NoctyriumState {
     dayPlans: data.dayPlans ?? [],
     activeDayKey: data.activeDayKey,
   } as NoctyriumState;
+}
+
+function normalizePromise(value: unknown): NoctyriumState["profile"]["promise"] {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const signedName = typeof record.signedName === "string" ? record.signedName.trim() : "";
+  const signedAt = typeof record.signedAt === "string" ? record.signedAt : "";
+  if (!signedName || !signedAt) return undefined;
+  return {
+    signedName,
+    signedAt,
+    promiseTextVersion: typeof record.promiseTextVersion === "string" ? record.promiseTextVersion : "promise-of-use-v1",
+    journalEntryId: typeof record.journalEntryId === "string" ? record.journalEntryId : undefined,
+  };
 }
 
 function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: number, questionTarget: number) {

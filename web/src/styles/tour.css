@@ -81,13 +81,13 @@
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
 .promise-heading { font-size: 13px; letter-spacing: 0.26em; text-transform: uppercase; color: #8a7f63; margin-bottom: 18px; }
-.promise-lines { min-height: 200px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.promise-lines { min-height: 300px; display: flex; flex-direction: column; gap: 9px; justify-content: center; }
 .promise-line {
-  margin: 0; font-size: 22px; line-height: 1.4; color: #2a2519;
+  margin: 0; font-size: 19px; line-height: 1.35; color: #2a2519;
   opacity: 0; transform: translateY(8px); transition: opacity .8s ease, transform .8s ease; font-style: italic;
 }
 .promise-line.in { opacity: 1; transform: translateY(0); }
-.promise-line.accent { font-size: 27px; font-weight: 700; font-style: normal; color: #14110a; }
+.promise-line.accent { font-size: 24px; font-weight: 700; font-style: normal; color: #14110a; }
 
 .promise-sign { margin-top: 24px; display: flex; flex-direction: column; gap: 14px; animation: tip-in .5s ease; }
 .promise-field { display: flex; flex-direction: column; gap: 6px; text-align: left; }
@@ -97,6 +97,15 @@
   padding: 6px 4px; border: none; border-bottom: 2px solid #b9af93; background: transparent; outline: none;
 }
 .promise-field input:focus { border-color: #1a2742; }
+.promise-oath {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(26, 39, 66, 0.06);
+  border: 1px solid rgba(26, 39, 66, 0.12);
+  text-align: left;
+}
+.promise-oath p { margin: 0 0 6px; color: #2a2519; font-size: 15px; line-height: 1.45; }
+.promise-oath small { display: block; margin-top: 8px; color: #756b52; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 .promise-check { display: flex; align-items: center; gap: 10px; font-size: 15px; color: #2a2519; cursor: pointer; font-family: Georgia, serif; }
 .promise-check input { width: 18px; height: 18px; accent-color: #1a2742; }
 .promise-btn {

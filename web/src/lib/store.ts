@@ -14,6 +14,8 @@ import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
+import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
+import { normalizeResourceUrl } from "./resourceUtils";
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -61,7 +63,7 @@ interface Actions {
   removeTask: (id: string) => void;
 
   // journal
-  addJournal: (e: Omit<JournalEntry, "id">) => void;
+  addJournal: (e: Omit<JournalEntry, "id"> & { id?: string }) => void;
   updateJournal: (id: string, patch: Partial<JournalEntry>) => void;
   removeJournal: (id: string) => void;
 
@@ -150,10 +152,10 @@ export const useStore = create<Store>()(
         })),
 
       addTrackerItem: (item) =>
-        set((s) => ({ tracker: [...s.tracker, { ...item, id: uid(), updated: now() }] })),
+        set((s) => ({ tracker: [...s.tracker, { ...item, path: normalizeTrackerPath(item.path), id: uid(), updated: now() }] })),
       bulkAddTrackerItems: (items) =>
         set((s) => ({
-          tracker: [...s.tracker, ...items.map((item) => ({ ...item, id: uid(), updated: now() }))],
+          tracker: [...s.tracker, ...items.map((item) => ({ ...item, path: normalizeTrackerPath(item.path), id: uid(), updated: now() }))],
         })),
       updateTrackerItem: (id, patch) =>
         set((s) => ({
@@ -161,22 +163,29 @@ export const useStore = create<Store>()(
         })),
       renameTrackerScope: (oldPath, newPath) =>
         set((s) => {
-          const from = oldPath.trim().replace(/\/+$/, "");
-          const to = newPath.trim().replace(/\/+$/, "");
-          if (!from || !to || from === to) return {};
+          const from = normalizeTrackerPath(oldPath);
+          const to = normalizeTrackerPath(newPath);
+          const fromKey = trackerPathKey(from);
+          const toKey = trackerPathKey(to);
+          if (!from || !to || fromKey === toKey) return {};
           return {
-            tracker: s.tracker.map((t) =>
-              t.path === from || t.path.startsWith(`${from}/`)
-                ? { ...t, path: `${to}${t.path.slice(from.length)}`, updated: now() }
-                : t,
-            ),
+            tracker: s.tracker.map((t) => {
+              const cleanPath = normalizeTrackerPath(t.path);
+              const key = trackerPathKey(cleanPath);
+              return key === fromKey || key.startsWith(`${fromKey}/`)
+                ? { ...t, path: `${to}${cleanPath.slice(from.length)}`, updated: now() }
+                : t;
+            }),
           };
         }),
       removeTrackerScope: (path) =>
         set((s) => {
-          const from = path.trim().replace(/\/+$/, "");
+          const from = trackerPathKey(path);
           if (!from) return {};
-          return { tracker: s.tracker.filter((t) => !(t.path === from || t.path.startsWith(`${from}/`))) };
+          return { tracker: s.tracker.filter((t) => {
+            const key = trackerPathKey(t.path);
+            return !(key === from || key.startsWith(`${from}/`));
+          }) };
         }),
       bumpPasses: (id, delta) =>
         set((s) => ({
@@ -207,13 +216,16 @@ export const useStore = create<Store>()(
       removeTrackerItem: (id) => set((s) => ({ tracker: s.tracker.filter((t) => t.id !== id) })),
 
       addResource: (r) =>
-        set((s) => ({ resources: [{ ...r, id: uid(), created: now() }, ...s.resources] })),
+        set((s) => addResourceToState(s.resources, r)),
       bulkAddResources: (rs) =>
-        set((s) => ({
-          resources: [...rs.map((r) => ({ ...r, id: uid(), created: now() })), ...s.resources],
-        })),
+        set((s) => addResourcesToState(s.resources, rs)),
       updateResource: (id, patch) =>
-        set((s) => ({ resources: s.resources.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+        set((s) => {
+          const resources = s.resources.map((r) =>
+            r.id === id ? { ...r, ...patch, url: patch.url ? normalizeResourceUrl(patch.url) : r.url } : r,
+          );
+          return { resources: dedupeResources(resources) };
+        }),
       removeResource: (id) => set((s) => ({ resources: s.resources.filter((r) => r.id !== id) })),
       toggleResourceFavorite: (id) =>
         set((s) => ({ resources: s.resources.map((r) => (r.id === id ? { ...r, favorite: !r.favorite } : r)) })),
@@ -230,7 +242,7 @@ export const useStore = create<Store>()(
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
       removeTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
-      addJournal: (e) => set((s) => ({ journal: [{ ...e, id: uid() }, ...s.journal] })),
+      addJournal: (e) => set((s) => ({ journal: [{ ...e, id: e.id ?? uid() }, ...s.journal] })),
       updateJournal: (id, patch) =>
         set((s) => ({ journal: s.journal.map((j) => (j.id === id ? { ...j, ...patch } : j)) })),
       removeJournal: (id) => set((s) => ({ journal: s.journal.filter((j) => j.id !== id) })),
@@ -410,13 +422,13 @@ export const useStore = create<Store>()(
           // Win-the-day plans + curated SGU drives that ship for everyone.
           s.dayPlans = s.dayPlans ?? [];
           const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
-          const urls = new Set(resources.map((r) => r.url));
+          const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
           for (const d of SGU_DRIVES) {
-            if (!urls.has(d.url)) {
+            if (!urls.has(normalizeResourceUrl(d.url))) {
               resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
             }
           }
-          s.resources = resources;
+          s.resources = dedupeResourceRecords(resources);
         }
         if (fromVersion < 9) {
           const profile = normalizeProfile(s.profile);
@@ -465,13 +477,19 @@ export const useStore = create<Store>()(
           // Refresh the curated drive set (My Drive + MADCOW + SGU shared) with
           // personal usefulness ratings. Adds any missing by URL; keeps user drives.
           const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
-          const urls = new Set(resources.map((r) => r.url));
+          const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
           for (const d of SGU_DRIVES) {
-            if (!urls.has(d.url)) {
+            if (!urls.has(normalizeResourceUrl(d.url))) {
               resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
             }
           }
-          s.resources = resources;
+          s.resources = dedupeResourceRecords(resources);
+        }
+        if (fromVersion < 16) {
+          s.profile = normalizeProfile(s.profile);
+          s.resources = normalizeResourceLinks(s.resources);
+          const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
+          s.tracker = tracker.map((t) => ({ ...t, path: normalizeTrackerPath(String(t.path ?? "")) }));
         }
         return s as unknown as NoctyriumState;
       },
@@ -564,10 +582,105 @@ function normalizeProfile(value: unknown): Profile {
     dailyCardTarget: typeof profile.dailyCardTarget === "number" ? profile.dailyCardTarget : 120,
     dailyMinuteTarget: typeof profile.dailyMinuteTarget === "number" ? profile.dailyMinuteTarget : 240,
     onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
+    tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
+    promise: normalizePromise(profile.promise),
     phase: phase ?? focus?.phase,
     activeFocusId: activeFocus,
     focusSubscriptions,
   };
+}
+
+function normalizePromise(value: unknown): Profile["promise"] {
+  if (!isRecord(value)) return undefined;
+  const signedName = typeof value.signedName === "string" ? value.signedName.trim() : "";
+  const signedAt = typeof value.signedAt === "string" ? value.signedAt : "";
+  if (!signedName || !signedAt) return undefined;
+  return {
+    signedName,
+    signedAt,
+    promiseTextVersion: typeof value.promiseTextVersion === "string" ? value.promiseTextVersion : "promise-of-use-v1",
+    journalEntryId: typeof value.journalEntryId === "string" ? value.journalEntryId : undefined,
+  };
+}
+
+function addResourceToState(resources: Resource[], payload: Omit<Resource, "id" | "created">) {
+  return addResourcesToState(resources, [payload]);
+}
+
+function addResourcesToState(resources: Resource[], payloads: Omit<Resource, "id" | "created">[]) {
+  const created = now();
+  const next = dedupeResources(resources);
+  for (const payload of payloads) {
+    const url = normalizeResourceUrl(payload.url);
+    if (!payload.title.trim() || !url.trim()) continue;
+    const existing = next.find((resource) => normalizeResourceUrl(resource.url).toLowerCase() === url.toLowerCase());
+    if (existing) {
+      Object.assign(existing, {
+        ...existing,
+        ...payload,
+        url,
+        id: existing.id,
+        created: existing.created,
+        favorite: existing.favorite || payload.favorite,
+        tags: Array.from(new Set([...(existing.tags ?? []), ...(payload.tags ?? [])])),
+      });
+    } else {
+      next.unshift({ ...payload, url, id: uid(), created });
+    }
+  }
+  return { resources: next };
+}
+
+function dedupeResources(resources: Resource[]): Resource[] {
+  const seen = new Map<string, Resource>();
+  const out: Resource[] = [];
+  for (const resource of resources) {
+    const normalized = normalizeResourceUrl(resource.url);
+    const key = normalized.toLowerCase();
+    const cleaned = { ...resource, url: normalized };
+    const previous = seen.get(key);
+    if (previous) {
+      Object.assign(previous, {
+        ...previous,
+        ...cleaned,
+        id: previous.id,
+        created: previous.created,
+        favorite: previous.favorite || cleaned.favorite,
+        rating: Math.max(previous.rating ?? 0, cleaned.rating ?? 0) || previous.rating || cleaned.rating,
+        ratingReason: previous.ratingReason || cleaned.ratingReason,
+        tags: Array.from(new Set([...(previous.tags ?? []), ...(cleaned.tags ?? [])])),
+        note: previous.note || cleaned.note,
+      });
+      continue;
+    }
+    seen.set(key, cleaned);
+    out.push(cleaned);
+  }
+  return out;
+}
+
+function dedupeResourceRecords(resources: AnyRecord[]): AnyRecord[] {
+  const typed = resources.map((resource) => ({
+    id: typeof resource.id === "string" ? resource.id : uid(),
+    title: String(resource.title ?? hostFallback(resource.url)),
+    url: normalizeResourceUrl(String(resource.url ?? "")),
+    category: String(resource.category ?? "General"),
+    tags: Array.isArray(resource.tags) ? resource.tags.filter((x): x is string => typeof x === "string") : [],
+    note: typeof resource.note === "string" ? resource.note : undefined,
+    favorite: typeof resource.favorite === "boolean" ? resource.favorite : undefined,
+    rating: typeof resource.rating === "number" ? resource.rating : undefined,
+    ratingReason: typeof resource.ratingReason === "string" ? resource.ratingReason : undefined,
+    created: typeof resource.created === "string" ? resource.created : now(),
+  }));
+  return dedupeResources(typed) as unknown as AnyRecord[];
+}
+
+function hostFallback(value: unknown) {
+  try {
+    return new URL(normalizeResourceUrl(String(value ?? ""))).hostname;
+  } catch {
+    return "Untitled resource";
+  }
 }
 
 const BOARD_EXAMS: BoardExamId[] = ["step1", "step2", "step3", "shelf", "mcat", "premed"];
@@ -616,20 +729,23 @@ function normalizeResourceLinks(value: unknown): AnyRecord[] {
   ]);
 
   for (const resource of resources) {
-    const replacement = replacements.get(String(resource.url ?? ""));
+    const currentUrl = normalizeResourceUrl(String(resource.url ?? ""));
+    const replacement = replacements.get(currentUrl) ?? replacements.get(String(resource.url ?? ""));
     if (replacement) {
       resource.url = replacement.url;
       if (String(resource.title ?? "").includes("Practice Materials")) resource.title = replacement.title;
+    } else {
+      resource.url = currentUrl;
     }
   }
 
-  const urls = new Set(resources.map((r) => r.url));
+  const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
   for (const d of SGU_DRIVES) {
-    if (!urls.has(d.url)) {
+    if (!urls.has(normalizeResourceUrl(d.url))) {
       resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
     }
   }
-  return resources;
+  return dedupeResourceRecords(resources);
 }
 
 function normalizeBoardPrepProfile(value: unknown, exam: BoardExamId): BoardPrepProfile {

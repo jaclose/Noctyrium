@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, EmptyState } from "../components/ui/primitives";
-import { Modal, Field, SelectField } from "../components/ui/Modal";
+import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import { Icon, ICON_NAMES } from "../lib/icons";
 import type { HubFolder } from "../lib/types";
 
@@ -18,12 +18,11 @@ const GUIDE = [
   { icon: BadgeCheck, title: "Passes", body: "Tap 1→4 as you study. Green = mature, dark = mastered." },
   { icon: Layers, title: "Anki", body: "Cycle Anki rounds; draft cards in Anki Lab." },
   { icon: Link2, title: "Resources", body: "Saved links + the curated SGU drives, rated." },
-  { icon: Brain, title: "Boards", body: "Install a big-picture Step blueprint into the tracker." },
+  { icon: Brain, title: "Boards", body: "Use broad Step, Shelf, MCAT, or CBSE blueprint logging without crowding the course tree." },
 ];
 
 function HelpGuide() {
   const s = useStore();
-  const mailto = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent("Noctyrium feedback — " + s.profile.versionLabel)}&body=${encodeURIComponent("What happened / what you'd like:\n\n\nPage:\nSteps to reproduce (if a bug):\n")}`;
   return (
     <GlassCard pad className="help-card">
       <PanelHeader title="Help & Guide" sub="The basics, the tour, and a direct line for bugs + ideas"
@@ -32,7 +31,6 @@ function HelpGuide() {
             <GButton size="sm" onClick={() => { s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
               <PlayCircle size={15} /> Replay guided tour
             </GButton>
-            <a className="gbtn sm primary" href={mailto}><Bug size={15} /> Report bug / suggest feature</a>
           </div>} />
       <div className="master-guide">
         {GUIDE.map((g) => {
@@ -48,7 +46,54 @@ function HelpGuide() {
       <div className="help-foot">
         <Sparkles size={14} /> Replaying the tour ends with the promise again. Feedback goes straight to {BUG_EMAIL}.
       </div>
+      <FeedbackForm versionLabel={s.profile.versionLabel} />
     </GlassCard>
+  );
+}
+
+function FeedbackForm({ versionLabel }: { versionLabel: string }) {
+  const [type, setType] = useState("Bug");
+  const [page, setPage] = useState("");
+  const [message, setMessage] = useState("");
+  const [contact, setContact] = useState("");
+  const body = [
+    `Type: ${type}`,
+    `Page/feature: ${page || "(not specified)"}`,
+    `Contact: ${contact || "(optional / not provided)"}`,
+    `Version: ${versionLabel}`,
+    "",
+    "Message:",
+    message,
+    "",
+    "Screenshot: attach manually if helpful.",
+  ].join("\n");
+  const mailto = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(`Noctyrium ${type} — ${page || "Alpha feedback"}`)}&body=${encodeURIComponent(body)}`;
+  return (
+    <div className="feedback-box">
+      <div className="guide-tile" style={{ alignItems: "flex-start" }}>
+        <span className="guide-tile-icon"><Bug size={18} /></span>
+        <div className="grow">
+          <b>Suggest Feature / Report Bug</b>
+          <span>Alpha 1 uses your email app. Backend email routing is not configured yet.</span>
+        </div>
+      </div>
+      <div className="grid grid-2" style={{ marginTop: 12 }}>
+        <SelectField label="Type" value={type} onChange={(e) => setType(e.target.value)}>
+          <option>Bug</option>
+          <option>Feature</option>
+          <option>Confusion</option>
+          <option>Praise</option>
+        </SelectField>
+        <Field label="Page / feature" placeholder="Course Tracker, Anki Lab, Settings..." value={page} onChange={(e) => setPage(e.target.value)} />
+      </div>
+      <TextAreaField label="Message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)}
+        placeholder="What happened? What did you expect? What would make this faster?" />
+      <Field label="Optional contact email" placeholder="you@example.com" value={contact} onChange={(e) => setContact(e.target.value)} />
+      <a className={`gbtn sm primary ${message.trim() ? "" : "disabled-link"}`} href={message.trim() ? mailto : undefined}
+        onClick={(e) => { if (!message.trim()) e.preventDefault(); }}>
+        <Bug size={15} /> Open email draft
+      </a>
+    </div>
   );
 }
 

@@ -1,0 +1,38 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Noctyrium",
+  "version": "0.1.0-alpha.1",
+  "identifier": "com.noctyrium.alpha",
+  "build": {
+    "beforeDevCommand": "npm --prefix web run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm --prefix web run build",
+    "frontendDist": "../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Noctyrium",
+        "width": 1440,
+        "height": 940,
+        "minWidth": 1080,
+        "minHeight": 720,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["../Resources/Noctyrium.icns"]
+  },
+  "plugins": {
+    "sql": {
+      "preload": ["sqlite:noctyrium.db"]
+    }
+  }
+}

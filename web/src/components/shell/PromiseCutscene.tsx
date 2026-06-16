@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { useStore } from "../../lib/store";
 
+const PROMISE_TEXT_VERSION = "promise-of-use-v1";
+
 // The contract lines, revealed one by one.
 const LINES = [
-  "Noctyrium is just a tool.",
+  "This is only a tool.",
+  "It will not save you.",
   "It will not study for you.",
-  "It will not make you a doctor.",
-  "Only you can do that.",
-  "So before you go further —",
-  "make a promise to yourself.",
+  "It will not become disciplined on your behalf.",
+  "But if you return to it honestly,",
+  "if you record the work,",
+  "if you confront the missed days,",
+  "if you build again after falling behind,",
+  "then this becomes more than software.",
+  "It becomes a witness.",
 ];
 
-const LINE_MS = 950;
+const LINE_MS = 760;
 
 export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   const store = useStore();
@@ -34,12 +40,17 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   function sign() {
     if (!name.trim() || !agreed) return;
     const signedAt = new Date().toISOString();
-    store.updateProfile({ name: name.trim(), promise: { signedName: name.trim(), signedAt } });
+    const journalEntryId = crypto.randomUUID();
+    store.updateProfile({
+      name: name.trim(),
+      promise: { signedName: name.trim(), signedAt, promiseTextVersion: PROMISE_TEXT_VERSION, journalEntryId },
+    });
     // The first journal entry is always the promise.
     store.addJournal({
+      id: journalEntryId,
       date: signedAt,
-      today: `I promise to make something of myself. — ${name.trim()}`,
-      tomorrow: "Show up. Use the tool. Don't break the chain.",
+      today: `Promise of Use signed by ${name.trim()}.`,
+      tomorrow: "Return honestly. Record the work. Build again after missed days.",
       blockers: "",
       energy: "High",
       rating: "Promise",
@@ -55,7 +66,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
       {stage !== "sealed" ? (
         <div className={`promise-paper ${stage === "sign" ? "open" : ""}`}>
           <div className="promise-seal-mark">N</div>
-          <div className="promise-heading">A promise to yourself</div>
+          <div className="promise-heading">Promise of Use</div>
           <div className="promise-lines">
             {LINES.map((line, idx) => (
               <p key={line} className={`promise-line ${idx < shown ? "in" : ""} ${idx === LINES.length - 1 ? "accent" : ""}`}>{line}</p>
@@ -68,12 +79,18 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
                 <span>Sign your name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoFocus />
               </label>
+              <div className="promise-oath">
+                <p>I promise to use this system as a place of return.</p>
+                <p>I promise to build with clarity instead of chaos.</p>
+                <p>I promise to become responsible for the life I say I want.</p>
+                <small>I make this promise to myself.</small>
+              </div>
               <label className="promise-check">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-                <span>I promise to make something of myself.</span>
+                <span>I make this promise to myself.</span>
               </label>
               <button type="button" className="promise-btn" disabled={!name.trim() || !agreed} onClick={sign}>
-                Sign &amp; begin
+                Sign the promise
               </button>
               <button type="button" className="promise-defer" onClick={onDone}>Maybe later</button>
             </div>
@@ -83,8 +100,8 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
         <div className="promise-sealed">
           <div className="promise-sealed-ring"><span>N</span></div>
           <div className="promise-sealed-title">Promise made.</div>
-          <div className="promise-sealed-name">— {name.trim()}</div>
-          <div className="promise-sealed-sub">Now go make something of it.</div>
+          <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
+          <div className="promise-sealed-sub">Begin.</div>
         </div>
       )}
     </div>

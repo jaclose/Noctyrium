@@ -1533,6 +1533,7 @@
 .drive-rating.r10 { background: linear-gradient(135deg, #ffd86b, #ffb84d); color: #2a1a00; }
 .drive-rating.r8 { background: var(--green); }
 .drive-rating.rlow { background: rgba(255,255,255,0.16); color: var(--text); }
+.resource-rating { top: 42px; right: 12px; }
 .drive-foot {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px; border-radius: 0 0 14px 14px;
@@ -1551,6 +1552,29 @@
   color: var(--orange);
   font-size: 11.5px;
   line-height: 1.4;
+}
+.form-warning.danger { color: var(--red); }
+.tiny-link {
+  border: none;
+  background: transparent;
+  color: var(--text-45);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tiny-link:hover { color: var(--text); }
+.tiny-link.danger:hover { color: var(--red); }
+.disabled-link {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.feedback-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-soft);
 }
 
 /* ---- Win the day (Dashboard) ---- */

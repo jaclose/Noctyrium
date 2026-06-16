@@ -22,7 +22,7 @@ const STEPS: TourStep[] = [
   { route: "tracker", target: "import", title: "Build your tracker", body: "Add courses and import your lectures by name. The destination autocompletes existing folders, so you never spawn duplicates." },
   { route: "tracker", target: "tracker-help", title: "Passes, Anki & yield", body: "Tap a pass box (1→4) as you study, cycle Anki rounds, and set each item's yield. The Help button explains the colors any time — try it on the example items." },
   { route: "resources", target: "resources", title: "Resources & drives", body: "Your saved links live here, plus the curated SGU drives — rated by personal usefulness, sorted best-first." },
-  { route: "step", target: "step", title: "When boards come", body: "Install a big-picture Step 1 / Step 2 blueprint straight into your tracker, then build detail under each domain." },
+  { route: "step", target: "step", title: "When boards come", body: "Use broad Step, Shelf, MCAT, or CBSE blueprint logging first. Add detail only when the big domains reveal what needs work." },
   { route: "tasks", target: "tasks", title: "Capture the work", body: "Tasks hold what needs doing. Finish one and it archives itself. Now — one last thing, and it's the most important." },
 ];
 

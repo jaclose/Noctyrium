@@ -8,6 +8,8 @@
     "build": "npm --prefix web run build",
     "dev": "npx vercel dev",
     "web:dev": "npm --prefix web run dev",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node api/_lib/*.ts api/health.ts api/user/login.ts \"api/user/[id].ts\" \"api/data/[userId].ts\" \"api/data/[userId]/backup.ts\" \"api/data/[userId]/backups.ts\" \"api/data/[userId]/restore/[backupId].ts\" api/ai/*.ts",
     "db:migration": "cat db/migrations/001_initial.sql"
   },
@@ -15,6 +17,7 @@
     "@neondatabase/serverless": "^1.0.2"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^22.10.2",
     "typescript": "^5.6.3"
   }

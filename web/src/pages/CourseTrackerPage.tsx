@@ -10,6 +10,7 @@ import {
   passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
   suggestMoves, scopeMastery,
 } from "../lib/tracker";
+import { canonicalTrackerPath, normalizeTrackerPath, trackerItemKey, trackerPathKey } from "../lib/pathUtils";
 import type { Course, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading"];
@@ -32,6 +33,7 @@ export function CourseTrackerPage() {
   const [moduleOpen, setModuleOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [deleteScope, setDeleteScope] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("All");
   const [salt, setSalt] = useState(0);
 
@@ -56,18 +58,14 @@ export function CourseTrackerPage() {
     if (!scope) return;
     const next = prompt("Rename this tracker group/path", scope);
     if (!next?.trim()) return;
-    const cleaned = next.trim().replace(/\/+$/, "");
+    const cleaned = canonicalTrackerPath(next, scopeOptions.filter((p) => trackerPathKey(p) !== trackerPathKey(scope)));
     s.renameTrackerScope(scope, cleaned);
     setScope(cleaned);
   }
 
   function deleteCurrentScope() {
     if (!scope) return;
-    const count = s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")).length;
-    if (confirm(`Delete the “${scope}” group and its ${count} item${count === 1 ? "" : "s"}? This cannot be undone.`)) {
-      s.removeTrackerScope(scope);
-      setScope("");
-    }
+    setDeleteScope(scope);
   }
 
   return (
@@ -183,6 +181,7 @@ export function CourseTrackerPage() {
       {adding && <TrackerEditor defaultPath={scope} onClose={() => setAdding(false)} />}
       {moduleOpen && <ModuleEditor onDone={(nextScope) => { setModuleOpen(false); if (nextScope) setScope(nextScope); }} />}
       {bulkOpen && <BulkImportModal defaultPath={scope} onClose={() => setBulkOpen(false)} />}
+      {deleteScope && <DeleteScopeModal scope={deleteScope} onSelect={setScope} onClose={() => setDeleteScope(null)} />}
     </div>
   );
 }
@@ -452,6 +451,84 @@ function ModuleEditor({ onDone }: { onDone: (nextScope?: string) => void }) {
   );
 }
 
+function DeleteScopeModal({ scope, onSelect, onClose }: { scope: string; onSelect: (scope: string) => void; onClose: () => void }) {
+  const s = useStore();
+  const [mode, setMode] = useState<"move" | "delete">("move");
+  const scopeOptions = useMemo(
+    () => mergeScopes(collectScopes(s.tracker), collectCourseScopes(s.terms, s.courses))
+      .filter((p) => trackerPathKey(p) !== trackerPathKey(scope) && !trackerPathKey(p).startsWith(`${trackerPathKey(scope)}/`)),
+    [s.tracker, s.terms, s.courses, scope],
+  );
+  const [destination, setDestination] = useState(scopeOptions[0] ?? "");
+  const contained = s.tracker.filter((t) => {
+    const key = trackerPathKey(t.path);
+    const current = trackerPathKey(scope);
+    return key === current || key.startsWith(`${current}/`);
+  });
+  const canonicalDestination = canonicalTrackerPath(destination, scopeOptions);
+  const canMove = Boolean(canonicalDestination && trackerPathKey(canonicalDestination) !== trackerPathKey(scope));
+
+  function run() {
+    if (contained.length === 0) {
+      onClose();
+      return;
+    }
+    if (mode === "move") {
+      if (!canMove) return;
+      s.renameTrackerScope(scope, canonicalDestination);
+      onSelect(canonicalDestination);
+    } else {
+      s.removeTrackerScope(scope);
+      onSelect("");
+    }
+    onClose();
+  }
+
+  return (
+    <Modal title="Remove tracker directory" onClose={onClose}
+      footer={<>
+        <GButton onClick={onClose}>Cancel</GButton>
+        <GButton variant={mode === "delete" ? undefined : "primary"} disabled={mode === "move" && !canMove} onClick={run}>
+          {contained.length === 0 ? "Close" : mode === "move" ? "Move items" : "Delete items"}
+        </GButton>
+      </>}>
+      <div className="stack gap12">
+        <div className="form-warning">
+          <b>{scope}</b> contains {contained.length} tracker item{contained.length === 1 ? "" : "s"}.
+          {contained.length === 0 ? " Empty course shells live in the course map, so there is nothing destructive to remove here." : " Choose what should happen before Noctyrium touches the data."}
+        </div>
+        {contained.length > 0 && (
+          <>
+            <SelectField label="Action" value={mode} onChange={(e) => setMode(e.target.value as "move" | "delete")}>
+              <option value="move">Move contained items elsewhere</option>
+              <option value="delete">Delete contained items</option>
+            </SelectField>
+            {mode === "move" ? (
+              <div>
+                <Field label="Move to directory" value={destination} list="delete-scope-destinations"
+                  onChange={(e) => setDestination(e.target.value)}
+                  placeholder="Choose or type a destination" />
+                <datalist id="delete-scope-destinations">
+                  {scopeOptions.map((p) => <option key={p} value={p} />)}
+                </datalist>
+                <div className="sub" style={{ marginTop: 4 }}>
+                  {canMove
+                    ? <>Destination: <span className="mono">{canonicalDestination}</span></>
+                    : "Pick a destination outside the directory being removed."}
+                </div>
+              </div>
+            ) : (
+              <div className="form-warning danger">
+                This permanently removes the contained tracker rows from Local Vault. Export a JSON backup first if you are unsure.
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function TreeNode({
   node, depth, openNodes, onToggle, active, onSelect,
 }: {
@@ -478,19 +555,24 @@ function TreeNode({
 
 function TrackerEditor({ defaultPath, onClose }: { defaultPath: string; onClose: () => void }) {
   const s = useStore();
+  const scopeSuggestions = useMemo(() => mergeScopes(collectScopes(s.tracker), collectCourseScopes(s.terms, s.courses)), [s.tracker, s.terms, s.courses]);
   const [path, setPath] = useState(defaultPath || "T1/General/Lectures");
   const [label, setLabel] = useState("");
   const [kind, setKind] = useState<TrackerKind>("Lecture");
+  const canonicalPath = canonicalTrackerPath(path, scopeSuggestions);
   return (
     <Modal title="Add tracker item" onClose={onClose}
       footer={<><GButton onClick={onClose}>Cancel</GButton>
-        <GButton variant="primary" onClick={() => { if (label.trim()) { s.addTrackerItem({ path: path.trim(), label: label.trim(), kind, passes: 0, ankiPasses: 0, yield: "none" }); onClose(); } }}>Add</GButton></>}>
-      <Field label="Path (e.g. T2/NB3/Lectures)" value={path} onChange={(e) => setPath(e.target.value)} />
+        <GButton variant="primary" onClick={() => { if (label.trim()) { s.addTrackerItem({ path: canonicalPath, label: label.trim(), kind, passes: 0, ankiPasses: 0, yield: "none" }); onClose(); } }}>Add</GButton></>}>
+      <Field label="Path (e.g. T2/NB3/Lectures)" value={path} list="single-tracker-scope-options" onChange={(e) => setPath(e.target.value)} />
+      <datalist id="single-tracker-scope-options">
+        {scopeSuggestions.map((p) => <option key={p} value={p} />)}
+      </datalist>
       <Field label="Label" placeholder="NB 63 Anxiety Disorders" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
       <SelectField label="Kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
         {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
       </SelectField>
-      <div className="sub">The path builds the tree. Use “/” to nest, e.g. <span className="mono">T2/NB3/DLAs</span>.</div>
+      <div className="sub">The path builds the tree. Exact existing names are reused after trimming/case cleanup. Destination: <span className="mono">{canonicalPath || "—"}</span></div>
     </Modal>
   );
 }
@@ -505,19 +587,20 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   const [skipDupes, setSkipDupes] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const existing = useMemo(
-    () => new Set(s.tracker.map((t) => `${t.path.toLowerCase()}::${t.label.toLowerCase()}`)),
-    [s.tracker],
-  );
   // Existing destinations so the field autocompletes instead of spawning duplicate folders.
   const scopeSuggestions = useMemo(
     () => mergeScopes(collectScopes(s.tracker), collectCourseScopes(s.terms, s.courses)),
     [s.tracker, s.terms, s.courses],
   );
-  const pathIsNew = path.trim() !== "" && !scopeSuggestions.some((p) => p.toLowerCase() === path.trim().toLowerCase());
+  const existing = useMemo(
+    () => new Set(s.tracker.map((t) => trackerItemKey(t.path, t.label))),
+    [s.tracker],
+  );
+  const canonicalPath = canonicalTrackerPath(path, scopeSuggestions);
+  const pathIsNew = canonicalPath.trim() !== "" && !scopeSuggestions.some((p) => trackerPathKey(p) === trackerPathKey(canonicalPath));
   const rows = useMemo(
-    () => parseImportRows(text, path.trim(), kind, defaultYield, stripNums, existing),
-    [text, path, kind, defaultYield, stripNums, existing],
+    () => parseImportRows(text, canonicalPath, kind, defaultYield, stripNums, existing, scopeSuggestions),
+    [text, canonicalPath, kind, defaultYield, stripNums, existing, scopeSuggestions],
   );
   const toImport = rows.filter((r) => !r.duplicate || !skipDupes);
   const dupeCount = rows.length - toImport.length;
@@ -576,8 +659,9 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
           </datalist>
           <div className="sub" style={{ marginTop: 4 }}>
             {pathIsNew
-              ? <span style={{ color: "var(--orange)" }}>★ Creates a new folder “{path.trim()}”.</span>
-              : <span style={{ color: "var(--green)" }}>✓ Existing folder — items go here, no duplicate created.</span>}
+              ? <span style={{ color: "var(--orange)" }}>★ Add new directory: <span className="mono">{canonicalPath}</span>.</span>
+              : <span style={{ color: "var(--green)" }}>✓ Existing directory selected: <span className="mono">{canonicalPath || "—"}</span>.</span>}
+            {" "}Trim, double spaces, and case-only differences are normalized before import.
           </div>
         </div>
         <SelectField label="Default kind" value={kind} onChange={(e) => setKind(e.target.value as TrackerKind)}>
@@ -608,7 +692,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
       {rows.length > 0 && (
         <div className="import-preview">
           <div className="sub">
-            {toImport.length} item{toImport.length === 1 ? "" : "s"} ready → <span className="mono">{path || "—"}</span>
+            {toImport.length} item{toImport.length === 1 ? "" : "s"} ready → <span className="mono">{canonicalPath || "—"}</span>
             {dupeCount > 0 && <> · <span style={{ color: "var(--orange)" }}>
               {dupeCount} duplicate{dupeCount === 1 ? "" : "s"}{skipDupes ? " skipped" : " will be re-added"}
             </span></>}
@@ -658,13 +742,19 @@ const ANKI_TAG_RE = /\[(?:anki|a)=(\d+)\]/i;
 const CSV_HEADERS = new Set(["label", "name", "title", "kind", "type", "path", "scope", "destination", "module", "yield", "priority", "passes", "pass", "anki", "ankipasses", "note", "notes"]);
 
 function parseImportRows(
-  text: string, basePath: string, defaultKind: TrackerKind, defaultYield: Yield, stripNums: boolean, existing: Set<string>,
+  text: string,
+  basePath: string,
+  defaultKind: TrackerKind,
+  defaultYield: Yield,
+  stripNums: boolean,
+  existing: Set<string>,
+  scopeSuggestions: string[],
 ): ImportRow[] {
   const csv = parseCsvRows(text);
   const header = csv[0]?.map((cell) => normalizeHeader(cell)) ?? [];
   const hasHeader = header.some((cell) => CSV_HEADERS.has(cell)) && header.some((cell) => ["label", "name", "title"].includes(cell));
   if (hasHeader) {
-    return csv.slice(1).flatMap((cells) => rowFromCsv(cells, header, basePath, defaultKind, defaultYield, stripNums, existing));
+    return csv.slice(1).flatMap((cells) => rowFromCsv(cells, header, basePath, defaultKind, defaultYield, stripNums, existing, scopeSuggestions));
   }
 
   const rows: ImportRow[] = [];
@@ -725,6 +815,7 @@ function rowFromCsv(
   defaultYield: Yield,
   stripNums: boolean,
   existing: Set<string>,
+  scopeSuggestions: string[],
 ): ImportRow[] {
   const get = (...names: string[]) => {
     const index = header.findIndex((h) => names.includes(h));
@@ -737,7 +828,7 @@ function rowFromCsv(
   const itemYield = parseYield(get("yield", "priority"), defaultYield);
   const rawPath = get("path", "scope", "destination");
   const module = get("module");
-  const path = rawPath || (module ? `${basePath}/${module}` : basePath);
+  const path = rawPath ? canonicalTrackerPath(rawPath, scopeSuggestions) : (module ? `${basePath}/${module}` : basePath);
   const passes = clampInt(Number(get("passes", "pass")), 0, kind === "PQ" ? 3 : 12);
   const ankiPasses = kind === "PQ" ? 0 : clampInt(Number(get("anki", "ankipasses")), 0, 3);
   return [makeImportRow(path, label, kind, itemYield, passes, ankiPasses, get("note", "notes"), existing)];
@@ -753,7 +844,7 @@ function makeImportRow(
   note: string | undefined,
   existing: Set<string>,
 ): ImportRow {
-  const cleanPath = path.trim();
+  const cleanPath = normalizeTrackerPath(path);
   const cleanLabel = label.trim();
   return {
     path: cleanPath,
@@ -763,7 +854,7 @@ function makeImportRow(
     passes: clampInt(passes, 0, kind === "PQ" ? 3 : 12),
     ankiPasses: kind === "PQ" ? 0 : clampInt(ankiPasses, 0, 3),
     note: note?.trim() || undefined,
-    duplicate: existing.has(`${cleanPath.toLowerCase()}::${cleanLabel.toLowerCase()}`),
+    duplicate: existing.has(trackerItemKey(cleanPath, cleanLabel)),
   };
 }
 

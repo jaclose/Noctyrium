@@ -7,8 +7,9 @@ import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield 
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
+import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -124,22 +125,22 @@ export function makeSeed(): NoctyriumState {
 // the SGU Shared entries are placeholders — rename + re-rate them in-app.
 export type SeedDrive = { title: string; url: string; category: string; rating: number; ratingReason: string; tags: string[]; note?: string };
 export const SGU_DRIVES: SeedDrive[] = [
-  { title: "My Drive — Med School + Anki Build", url: "https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp", category: "My Drive", rating: 10, ratingReason: "My own drive — the Noctyrium / MADCOW Anki build and my high-yield materials live here.", tags: ["mine", "anki", "sgu"] },
-  { title: "MADCOW Drive", url: "https://accidental-scallion-328.notion.site/MADCOW-Drive-1a51388b1e708076b592e522eda64aeb", category: "MADCOW", rating: 10, ratingReason: "The MADCOW collection — the gold-standard, most complete SGU resource hub.", tags: ["madcow", "sgu"] },
-  { title: "SillyGoose Wiki", url: "https://baquino.notion.site/sillygoosewiki?v=6feec2d3e6b64760bf5d9b6e84a60fa7", category: "Wiki", rating: 9, ratingReason: "Crowd-sourced SGU wiki — fast, organized answers and resource links.", tags: ["wiki", "sgu"] },
-  { title: "SGU Shared Drive · 1", url: "https://drive.google.com/drive/folders/1qju4aorkQCH6lZ5xrfEgyzR8BUAhPe7l", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
-  { title: "SGU Shared Drive · 2", url: "https://drive.google.com/drive/folders/1vrL1kLb5p9RaoSjD6694ZrXOdn5T1kzJ", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
-  { title: "MEGA Drive — SGU Archive", url: "https://mega.nz/folder/QqwggaSR#K_dXqEHbtBKYAzWjT2GeLQ", category: "SGU Shared", rating: 8, ratingReason: "MEGA archive of SGU materials — rename + re-rate to match its contents.", tags: ["sgu", "mega"] },
-  { title: "SGU Shared Drive · 3", url: "https://drive.google.com/drive/folders/1w2k2j-RGy6WWvYi4iXk4yye_nw_2EL6Y", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
-  { title: "SGU Shared Drive · 4", url: "https://drive.google.com/drive/folders/1_P0tj-OayBawZtAT8WkY22Osepg1oCfy", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
-  { title: "SGU Shared Drive · 5", url: "https://drive.google.com/drive/folders/1fnL3d74y4S8ocCfOPlKzrQAAqkpDVjsS", category: "SGU Shared", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "My Drive / Claudfather Auto — Med School + Anki Build", url: "https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp", category: "Personal Core", rating: 10, ratingReason: "Claudfather Auto and my own Noctyrium/MADCOW Anki build — highest personal usefulness.", tags: ["mine", "personal", "claudfather-auto", "anki", "sgu"] },
+  { title: "MADCOW Drive", url: "https://accidental-scallion-328.notion.site/MADCOW-Drive-1a51388b1e708076b592e522eda64aeb", category: "Personal Core", rating: 10, ratingReason: "MADCOW is a 10/10 personal core hub: the fastest route back to the SGU resource stack.", tags: ["madcow", "sgu", "personal"] },
+  { title: "SillyGoose Wiki", url: "https://baquino.notion.site/sillygoosewiki?v=6feec2d3e6b64760bf5d9b6e84a60fa7", category: "Community Wikis", rating: 9, ratingReason: "Crowd-sourced SGU wiki — fast, organized answers and resource links.", tags: ["wiki", "sgu"] },
+  { title: "SGU Shared Drive · 1", url: "https://drive.google.com/drive/folders/1qju4aorkQCH6lZ5xrfEgyzR8BUAhPe7l", category: "Medical School / SGU", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 2", url: "https://drive.google.com/drive/folders/1vrL1kLb5p9RaoSjD6694ZrXOdn5T1kzJ", category: "Medical School / SGU", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "MEGA Drive — SGU Archive", url: "https://mega.nz/folder/QqwggaSR#K_dXqEHbtBKYAzWjT2GeLQ", category: "External Archives", rating: 8, ratingReason: "MEGA archive of SGU materials — useful when a Drive link disappears or changes.", tags: ["sgu", "mega", "archive"] },
+  { title: "SGU Shared Drive · 3", url: "https://drive.google.com/drive/folders/1w2k2j-RGy6WWvYi4iXk4yye_nw_2EL6Y", category: "Medical School / SGU", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 4", url: "https://drive.google.com/drive/folders/1_P0tj-OayBawZtAT8WkY22Osepg1oCfy", category: "Medical School / SGU", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
+  { title: "SGU Shared Drive · 5", url: "https://drive.google.com/drive/folders/1fnL3d74y4S8ocCfOPlKzrQAAqkpDVjsS", category: "Medical School / SGU", rating: 8, ratingReason: "Community SGU drive — rename + re-rate to match its contents.", tags: ["sgu", "shared"] },
 ];
 
 /** Map a curated drive to Resource fields. category stays "Drives" (band
  *  membership); the sub-group rides in tags[0] and drives the band's grouping. */
 export function driveResourceFields(d: SeedDrive) {
   return {
-    title: d.title, url: d.url, category: "Drives",
+    title: d.title, url: normalizeResourceUrl(d.url), category: "Drives",
     tags: [d.category, ...d.tags], note: d.note,
     rating: d.rating, ratingReason: d.ratingReason, favorite: d.rating >= 10,
   };

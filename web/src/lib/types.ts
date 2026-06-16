@@ -208,7 +208,12 @@ export interface Profile {
   // First-launch onboarding
   onboarded: boolean;
   tourDone?: boolean; // guided tour + promise cutscene completed
-  promise?: { signedName: string; signedAt: string }; // the signed "promise to yourself"
+  promise?: {
+    signedName: string;
+    signedAt: string;
+    promiseTextVersion?: string;
+    journalEntryId?: string;
+  }; // the signed "promise to yourself"
   phase?: AcademicPhase;
   activeFocusId?: ExperienceFocusId;
   focusSubscriptions: ExperienceFocusId[];

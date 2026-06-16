@@ -24,7 +24,9 @@ and can also be wrapped into a double-clickable macOS app package.
 - **Anki Lab** — turn lecture/DLA/slide text into cards with a prompt workflow or a browser-local
   draft generator, then export tab-separated Anki import files for Basic, Cloze, or custom note types.
 - **Resources** — save and **bulk-import hyperlinks** (STEP 1 prep, references, decks, tools),
-  categorized, searchable, favoritable, with favicons.
+  curated by category, source type, personal/public status, usefulness rating, and favicons.
+- **Guided setup + tour** — first-launch personalization, spotlight tour, and the
+  Promise of Use journal cutscene. Setup can be rerun from Settings without deleting data.
 - **Anti-overload by design** — daily "good enough" card/minute targets + a study streak, with a
   nudge to *stop* when you hit target (the #1 cause of Anki burnout is grinding 500 cards/day).
 - **Per-course smart suggestions** — the Dashboard and Course Tracker use pass count, yield/review
@@ -90,7 +92,7 @@ Required Vercel env vars:
 ```sh
 DATABASE_URL=
 AI_PROVIDER=mock
-APP_SCHEMA_VERSION=12
+APP_SCHEMA_VERSION=16
 NOCTYRIUM_AUTO_MIGRATE=true
 ```
 
@@ -164,6 +166,20 @@ hosted version can also **Install** it from the browser as a PWA.
 The downloadable static packages remain local-first. Cloud sync requires the
 hosted Vercel deployment because `/api/*` needs serverless functions and a
 Postgres connection string.
+
+## Experimental Tauri + SQLite shell
+
+From the repo root:
+
+```sh
+npm run tauri:dev
+npm run tauri:build
+```
+
+This uses `src-tauri/`, wraps the same `web/` frontend, and preloads
+`sqlite:noctyrium.db` through the Tauri SQL plugin. It is a real scaffold for
+the future native desktop app, but Alpha 1 still treats Local Vault as the
+source of truth and ships the static web/Mac-wrapper packages.
 
 ## Deploy on Vercel
 
