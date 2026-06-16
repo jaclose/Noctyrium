@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
@@ -73,6 +74,7 @@ export default function App() {
           <div className="orb blue" />
         </div>
         <OnboardingWizard />
+        <Analytics />
       </div>
     );
   }
@@ -111,6 +113,7 @@ export default function App() {
       </div>
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
+      <Analytics />
     </div>
   );
 }
