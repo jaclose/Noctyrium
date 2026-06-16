@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, X, Sparkles } from "lucide-react";
 import { PromiseCutscene } from "./PromiseCutscene";
 
@@ -33,44 +33,49 @@ export function GuidedTour({ onExit }: { onExit: () => void }) {
   const [phase, setPhase] = useState<"tour" | "promise">("tour");
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [ready, setReady] = useState(false);
-  const measureRef = useRef<() => void>(() => {});
   const step = STEPS[i];
 
-  // navigate to the step's page
+  // Navigate to the step's page, then keep re-measuring the target as the page
+  // renders and smooth-scrolls into view. Re-measuring (not a single snapshot)
+  // is what stops the tooltip from landing off-screen on the first cross-page
+  // step — the Next button stays reachable the whole time.
   useEffect(() => {
     if (phase !== "tour") return;
     if (location.hash.replace("#", "") !== step.route) location.hash = step.route;
-  }, [i, phase, step.route]);
 
-  // measure the spotlight target (retry while the page renders/scrolls)
-  useLayoutEffect(() => {
-    if (phase !== "tour") return;
-    let raf = 0;
-    let tries = 0;
     setReady(false);
-    const measure = () => {
-      if (!step.target) { setRect(null); setReady(true); return; }
-      const el = document.querySelector(`[data-tour="${step.target}"]`);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        if (r.height > 0) { setRect(r); setReady(true); return; }
-      }
-      if (tries++ < 40) raf = requestAnimationFrame(measure);
-      else { setRect(null); setReady(true); }
+    setRect(null);
+    if (!step.target) { setReady(true); return; }
+
+    let cancelled = false;
+    let scrolled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null;
+      if (!el) return;
+      if (!scrolled) { el.scrollIntoView({ block: "center", behavior: "smooth" }); scrolled = true; }
+      const r = el.getBoundingClientRect();
+      if (r.height > 0) { setRect(r); setReady(true); }
     };
-    measureRef.current = measure;
-    // let the route switch + scroll settle, then measure
-    const el = step.target ? document.querySelector(`[data-tour="${step.target}"]`) : null;
-    el?.scrollIntoView({ block: "center", behavior: "smooth" });
-    const t = setTimeout(measure, 380);
-    const onResize = () => measure();
-    window.addEventListener("resize", onResize, true);
-    window.addEventListener("scroll", onResize, true);
+
+    tick();
+    // poll while the page renders + the smooth scroll settles
+    const start = Date.now();
+    const interval = window.setInterval(() => {
+      tick();
+      if (Date.now() - start > 2000) window.clearInterval(interval);
+    }, 90);
+    // if the target never shows, fall back to the centered card (Next still works)
+    const grace = window.setTimeout(() => { if (!cancelled) setReady(true); }, 750);
+    const onMove = () => tick();
+    window.addEventListener("resize", onMove, true);
+    window.addEventListener("scroll", onMove, true);
     return () => {
-      clearTimeout(t);
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize, true);
-      window.removeEventListener("scroll", onResize, true);
+      cancelled = true;
+      window.clearInterval(interval);
+      window.clearTimeout(grace);
+      window.removeEventListener("resize", onMove, true);
+      window.removeEventListener("scroll", onMove, true);
     };
   }, [i, phase, step.route, step.target]);
 
@@ -79,7 +84,10 @@ export function GuidedTour({ onExit }: { onExit: () => void }) {
 
   if (phase === "promise") return <PromiseCutscene onDone={onExit} />;
 
-  const hasSpot = ready && rect;
+  // Only spotlight when the target is actually on-screen; otherwise show a
+  // centered card so the controls are always reachable.
+  const onScreen = !!rect && rect.bottom > 48 && rect.top < window.innerHeight - 48 && rect.height > 0;
+  const hasSpot = ready && onScreen;
   const total = STEPS.length;
 
   // tooltip placement: below the target if room, else above; centered otherwise
@@ -134,12 +142,15 @@ function ringStyle(rect: DOMRect): React.CSSProperties {
 }
 
 function tooltipStyle(rect: DOMRect | null): React.CSSProperties {
-  if (!rect) return {};
+  // No usable rect → return nothing so the `.centered` class positions it.
+  const onScreen = !!rect && rect.bottom > 48 && rect.top < window.innerHeight - 48;
+  if (!rect || !onScreen) return {};
   const tipW = 340;
-  const below = rect.bottom + 14;
-  const room = window.innerHeight - rect.bottom > 220;
+  const tipH = 230; // approximate; used to keep the card fully on-screen
   const left = Math.min(Math.max(12, rect.left), window.innerWidth - tipW - 12);
-  return room
-    ? { top: below, left }
-    : { top: Math.max(12, rect.top - 14), left, transform: "translateY(-100%)" };
+  const roomBelow = window.innerHeight - rect.bottom > tipH + 24;
+  // place below if there's room, else above; then clamp to the viewport either way
+  let top = roomBelow ? rect.bottom + 14 : rect.top - 14 - tipH;
+  top = Math.min(Math.max(12, top), window.innerHeight - tipH - 12);
+  return { top, left };
 }
