@@ -491,6 +491,29 @@ export const useStore = create<Store>()(
           const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
           s.tracker = tracker.map((t) => ({ ...t, path: normalizeTrackerPath(String(t.path ?? "")) }));
         }
+        if (fromVersion < 17) {
+          // Correct curated drive labels/categories/ratings to the canonical set
+          // (fixes "Claudfather"↔"My Drive" mislabel + placeholder SGU names; adds
+          // Mehlman + White Coat). Matches by normalized URL; injects any missing.
+          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+          const byUrl = new Map(resources.map((r) => [normalizeResourceUrl(String(r.url ?? "")), r]));
+          for (const d of SGU_DRIVES) {
+            const fields = driveResourceFields(d);
+            const existing = byUrl.get(normalizeResourceUrl(d.url));
+            if (existing) {
+              existing.title = fields.title;
+              existing.url = fields.url;
+              existing.category = "Drives";
+              existing.tags = fields.tags;
+              existing.rating = fields.rating;
+              existing.ratingReason = fields.ratingReason;
+              if (fields.note !== undefined) existing.note = fields.note;
+            } else {
+              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...fields });
+            }
+          }
+          s.resources = dedupeResourceRecords(resources);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {

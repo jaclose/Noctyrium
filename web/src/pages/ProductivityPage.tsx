@@ -71,7 +71,7 @@ export function ProductivityPage() {
           sub={isActive ? "Logging to today's study day" : `Viewing ${viewKey}`}
           action={!isActive ? <GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton> : undefined} />
         <Ring minutes={totals.minutes} cards={totals.cards} />
-        <div className="quick-grid" style={{ marginTop: 18, opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
+        <div className={`quick-grid ${isActive ? "" : "is-locked"}`}>
           {QUICK.map((q) => (
             <GButton key={q.label} onClick={() => s.logStudy({ type: q.type, minutes: q.minutes, cards: q.cards })}>
               {q.type === "Anki" ? <Layers size={14} /> : q.type === "Deep Study" ? <Zap size={14} /> : <Clock size={14} />}
@@ -79,30 +79,34 @@ export function ProductivityPage() {
             </GButton>
           ))}
         </div>
-        <div className="log-presets" style={{ opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
-          <span className="preset-label">Minutes</span>
-          {[10, 25, 50, 90].map((m) => (
-            <button key={m} type="button" className="preset-chip" onClick={() => setManualMinutes(String(m))}>{m}m</button>
-          ))}
-          <span className="preset-label">Cards</span>
-          {[10, 25, 50, 100].map((c) => (
-            <button key={c} type="button" className="preset-chip" onClick={() => setManualCards(String(c))}>{c}</button>
-          ))}
-        </div>
-        <div className="manual-log" style={{ opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
-          <input className="field" placeholder="Type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
-          <div className="stepper" title="Minutes (±10)">
-            <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={13} /></button>
-            <input className="field" type="number" placeholder="Min" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />
-            <button type="button" className="step-btn" aria-label="Plus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, 10))}><Plus size={13} /></button>
+
+        <div className={`manual-logger ${isActive ? "" : "is-locked"}`}>
+          <div className="manual-logger-head"><span>Manual Activity Logger</span></div>
+          <div className="manual-log">
+            <input className="field manual-type" placeholder="Type (e.g. Lecture)" value={manualType} onChange={(e) => setManualType(e.target.value)} />
+            <div className="stepper" title="Minutes (±10)">
+              <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={14} /></button>
+              <input className="field" type="number" placeholder="Min" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />
+              <button type="button" className="step-btn" aria-label="Plus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, 10))}><Plus size={14} /></button>
+            </div>
+            <div className="stepper" title="Anki cards (±10)">
+              <button type="button" className="step-btn" aria-label="Minus 10 cards" onClick={() => setManualCards(stepVal(manualCards, -10))}><Minus size={14} /></button>
+              <input className="field" type="number" placeholder="Cards" value={manualCards} onChange={(e) => setManualCards(e.target.value)} />
+              <button type="button" className="step-btn" aria-label="Plus 10 cards" onClick={() => setManualCards(stepVal(manualCards, 10))}><Plus size={14} /></button>
+            </div>
+            <input className="field manual-note" placeholder="Note (optional)" value={manualNote} onChange={(e) => setManualNote(e.target.value)} />
+            <GButton variant="primary" onClick={logManual}><Plus size={14} /> Log</GButton>
           </div>
-          <div className="stepper" title="Anki cards (±10)">
-            <button type="button" className="step-btn" aria-label="Minus 10 cards" onClick={() => setManualCards(stepVal(manualCards, -10))}><Minus size={13} /></button>
-            <input className="field" type="number" placeholder="Cards" value={manualCards} onChange={(e) => setManualCards(e.target.value)} />
-            <button type="button" className="step-btn" aria-label="Plus 10 cards" onClick={() => setManualCards(stepVal(manualCards, 10))}><Plus size={13} /></button>
+          <div className="log-presets">
+            <span className="preset-label">Minutes</span>
+            {[10, 20, 25, 50, 90].map((m) => (
+              <button key={m} type="button" className="preset-chip" onClick={() => setManualMinutes(String(m))}>{m}m</button>
+            ))}
+            <span className="preset-label">Cards</span>
+            {[10, 20, 25, 50, 100].map((c) => (
+              <button key={c} type="button" className="preset-chip" onClick={() => setManualCards(String(c))}>{c}</button>
+            ))}
           </div>
-          <input className="field grow" placeholder="Note (optional)" value={manualNote} onChange={(e) => setManualNote(e.target.value)} />
-          <GButton variant="primary" onClick={logManual}><Plus size={14} /> Log</GButton>
         </div>
       </GlassCard>
 

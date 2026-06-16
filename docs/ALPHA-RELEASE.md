@@ -97,6 +97,40 @@ Alpha 1 release assets remain the static web zip and lightweight macOS wrapper.
 - Always **Export a JSON backup** (Settings → Backup) before switching devices,
   domains, or package types.
 
+## Environment variables (optional services)
+
+| Variable | Used by | If unset |
+|---|---|---|
+| `DATABASE_URL` | cloud sync, admin account list | App stays fully local-first; cloud features off |
+| `RESEND_API_KEY` | `/api/feedback` email send | Feedback form falls back to "copy + email jdabbagh@sgu.edu" |
+| `FEEDBACK_TO` / `FEEDBACK_FROM` | `/api/feedback` | Defaults to `jdabbagh@sgu.edu` / Resend sandbox sender |
+| `ADMIN_VIEW_KEY` | admin account visibility | Admin view is disabled (no broken UI shown) |
+
+Never expose these client-side. All live only in Vercel project env.
+
+## Admin account visibility (host)
+
+To list registered Alpha cloud profiles (account name, user ID, created/last-synced,
+device label, backup count), the deployment must have **both** `DATABASE_URL` and
+`ADMIN_VIEW_KEY` set. Until those are configured this is intentionally **not built into the
+client** (no admin button is shown to normal users, and no data is faked).
+
+> **TODO (admin visibility):** Admin account visibility requires `DATABASE_URL` and an
+> `ADMIN_VIEW_KEY`. With both set, add a protected `GET /api/admin/accounts` route that
+> checks the key header before returning account records — do not expose it publicly.
+
+## Manual QA — persistence (run before each release)
+
+Local-first data must survive updates. Verify:
+
+1. Create a profile (name + icon).  2. Add a task.  3. Add a productivity log.
+4. Add a Course Tracker item.  5. Add a journal entry.
+6. **Refresh** the page → all present.  7. `npm run build` and reload the local build → all present.
+8. Redeploy (or bump schema) → all present; only additive migrations run, never a reset.
+
+Data lives separately from app code (browser Local Vault / JSON backups), so replacing the
+app bundle never overwrites user data.
+
 ## Remaining blockers before the GitHub Release
 
 - Push the release branch and annotated tag to `jaclose/Noctyrium`.

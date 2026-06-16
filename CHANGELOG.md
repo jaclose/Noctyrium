@@ -1,5 +1,26 @@
 # Noctyrium Changelog
 
+## 0.1.0-alpha.1 — 2026-06-16 (final polish)
+
+Pre-release polish patch: consumer-facing wording, resource corrections, Help, and Anki guide.
+
+- **Guided tour + Promise** shipped to production (web auto-deploy) and added **Vercel Analytics**.
+- **Resource Hub corrected**: 11 exact curated drives with proper names/URLs/categories/ratings/tooltips
+  (fixes the Claudfather↔My Drive mislabel; adds Mehlman + White Coat; My Drive pinned first;
+  MADCOW + Claudfather 10/10). Schema-17 migration corrects existing installs without wiping data.
+- **Help** is now its own sidebar section (out of Hub Folders): replay tour, master guide, an
+  **Anki import guide with real screenshots**, the **optimized no-FSRS Anki settings** (+ linked PDF),
+  **recommended add-ons**, and an in-app **feedback form** (posts to `/api/feedback`; clean
+  copy-and-email fallback when email isn't configured).
+- **Productivity**: fixed the clipped ± buttons; quick-add presets (10/20/25/50/90 min · 10/20/25/50/100
+  cards) now sit under a dedicated **Manual Activity Logger**.
+- **Dashboard**: removed the stray Term-Map underline; restyled the top-left name with a premium gradient.
+- **Settings**: consumer-friendly **Backup & Restore** copy (no IndexedDB/SQLite/Tauri jargon);
+  **View / re-sign your Promise** from the Profile tab; build label remains read-only; tagline preserved.
+- **Integrations** marked Under Construction (masking-tape treatment), no broken clickable features.
+- Local-first persistence preserved across refresh/rebuild/redeploy (schema-versioned migrations only
+  add/upgrade; never reset). Admin account visibility documented as a configuration TODO.
+
 ## 0.1.0-alpha.1 — 2026-06-15
 
 Public Alpha 1 release candidate: packaging, release flow, and beta-feedback polish.

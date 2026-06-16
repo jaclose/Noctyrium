@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
-  BookText, Share2, Library, Folder, Link, Wand2,
+  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy,
 } from "lucide-react";
 
 export interface NavItem {
@@ -26,4 +26,5 @@ export const NAV: NavItem[] = [
   { id: "integrations", label: "Integrations", subtitle: "Connect Anki, calendar, drives, and more", icon: Share2 },
   { id: "prompts", label: "Prompt Library", subtitle: "Reusable AI prompts for study workflows", icon: Library },
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
+  { id: "help", label: "Help", subtitle: "Guided tour, master guide, Anki import, and feedback", icon: LifeBuoy },
 ];

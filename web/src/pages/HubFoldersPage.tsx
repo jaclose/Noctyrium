@@ -1,101 +1,11 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import {
-  Plus, Trash2, Pencil, ExternalLink, Sparkles, Bug, PlayCircle,
-  Sunrise, Timer, BadgeCheck, Layers, Link2, Brain,
-} from "lucide-react";
+import { Plus, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { useStore } from "../lib/store";
-import { GlassCard, GButton, GhostButton, PanelHeader, EmptyState } from "../components/ui/primitives";
-import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
+import { GlassCard, GButton, GhostButton, EmptyState } from "../components/ui/primitives";
+import { Modal, Field, SelectField } from "../components/ui/Modal";
 import { Icon, ICON_NAMES } from "../lib/icons";
 import type { HubFolder } from "../lib/types";
-
-const BUG_EMAIL = "jdabbagh@sgu.edu";
-
-const GUIDE = [
-  { icon: Sunrise, title: "Win the day", body: "Set one intention each morning; close it at night." },
-  { icon: Timer, title: "Log effort", body: "Minutes + Anki cards. Use −/+10 to fine-tune." },
-  { icon: BadgeCheck, title: "Passes", body: "Tap 1→4 as you study. Green = mature, dark = mastered." },
-  { icon: Layers, title: "Anki", body: "Cycle Anki rounds; draft cards in Anki Lab." },
-  { icon: Link2, title: "Resources", body: "Saved links + the curated SGU drives, rated." },
-  { icon: Brain, title: "Boards", body: "Use broad Step, Shelf, MCAT, or CBSE blueprint logging without crowding the course tree." },
-];
-
-function HelpGuide() {
-  const s = useStore();
-  return (
-    <GlassCard pad className="help-card">
-      <PanelHeader title="Help & Guide" sub="The basics, the tour, and a direct line for bugs + ideas"
-        action={
-          <div className="row gap8">
-            <GButton size="sm" onClick={() => { s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
-              <PlayCircle size={15} /> Replay guided tour
-            </GButton>
-          </div>} />
-      <div className="master-guide">
-        {GUIDE.map((g) => {
-          const I = g.icon;
-          return (
-            <div className="guide-tile" key={g.title}>
-              <span className="guide-tile-icon"><I size={18} /></span>
-              <div><b>{g.title}</b><span>{g.body}</span></div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="help-foot">
-        <Sparkles size={14} /> Replaying the tour ends with the promise again. Feedback goes straight to {BUG_EMAIL}.
-      </div>
-      <FeedbackForm versionLabel={s.profile.versionLabel} />
-    </GlassCard>
-  );
-}
-
-function FeedbackForm({ versionLabel }: { versionLabel: string }) {
-  const [type, setType] = useState("Bug");
-  const [page, setPage] = useState("");
-  const [message, setMessage] = useState("");
-  const [contact, setContact] = useState("");
-  const body = [
-    `Type: ${type}`,
-    `Page/feature: ${page || "(not specified)"}`,
-    `Contact: ${contact || "(optional / not provided)"}`,
-    `Version: ${versionLabel}`,
-    "",
-    "Message:",
-    message,
-    "",
-    "Screenshot: attach manually if helpful.",
-  ].join("\n");
-  const mailto = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(`Noctyrium ${type} — ${page || "Alpha feedback"}`)}&body=${encodeURIComponent(body)}`;
-  return (
-    <div className="feedback-box">
-      <div className="guide-tile" style={{ alignItems: "flex-start" }}>
-        <span className="guide-tile-icon"><Bug size={18} /></span>
-        <div className="grow">
-          <b>Suggest Feature / Report Bug</b>
-          <span>Alpha 1 uses your email app. Backend email routing is not configured yet.</span>
-        </div>
-      </div>
-      <div className="grid grid-2" style={{ marginTop: 12 }}>
-        <SelectField label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-          <option>Bug</option>
-          <option>Feature</option>
-          <option>Confusion</option>
-          <option>Praise</option>
-        </SelectField>
-        <Field label="Page / feature" placeholder="Course Tracker, Anki Lab, Settings..." value={page} onChange={(e) => setPage(e.target.value)} />
-      </div>
-      <TextAreaField label="Message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)}
-        placeholder="What happened? What did you expect? What would make this faster?" />
-      <Field label="Optional contact email" placeholder="you@example.com" value={contact} onChange={(e) => setContact(e.target.value)} />
-      <a className={`gbtn sm primary ${message.trim() ? "" : "disabled-link"}`} href={message.trim() ? mailto : undefined}
-        onClick={(e) => { if (!message.trim()) e.preventDefault(); }}>
-        <Bug size={15} /> Open email draft
-      </a>
-    </div>
-  );
-}
 
 export function HubFoldersPage() {
   const s = useStore();
@@ -137,8 +47,6 @@ export function HubFoldersPage() {
           <Plus size={16} /> Add folder
         </div>
       </div>
-
-      <HelpGuide />
 
       {editing && <FolderEditor folder={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </>

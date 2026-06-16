@@ -1,15 +1,16 @@
 import { useRef, useState } from "react";
 import {
-  Cloud, Database, Download, FileJson, ImagePlus, RotateCcw, ShieldCheck,
-  SlidersHorizontal, Sparkles, Upload, UserCircle2, Check,
+  Cloud, Download, FileJson, ImagePlus, RotateCcw, ShieldCheck,
+  SlidersHorizontal, Sparkles, Upload, UserCircle2, Check, ScrollText,
 } from "lucide-react";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
 import { exportState, parseImport } from "../../lib/backup";
 import { AccountSyncPanel } from "./AccountSyncPanel";
+import { PromiseCutscene } from "./PromiseCutscene";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
-import { isNativeSqliteAvailable, saveNativeSnapshot } from "../../services/nativeSqlite";
+import { prettyDate } from "../../lib/scoring";
 import type { ExperienceFocusId } from "../../lib/types";
 
 export type SettingsTab = "general" | "personalization" | "backup" | "account";
@@ -21,18 +22,21 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   const avatarRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
   const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const [resigning, setResigning] = useState(false);
+  const [viewingPromise, setViewingPromise] = useState(false);
+  const promise = profile.promise;
 
   function doImport(file: File) {
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const next = parseImport(String(reader.result));
-        if (!confirm("Import this Noctyrium backup? It will replace the current Local Vault in this browser. Download a JSON backup first if you want a safety copy.")) {
-          setMsg("Import cancelled. No data changed.");
+        if (!confirm("Restore this backup? It replaces the current data on this device. Download a backup first if you want to keep both.")) {
+          setMsg("Restore cancelled. No data changed.");
           return;
         }
         store.replaceAll(next);
-        setMsg(`Imported ${file.name}. Local Vault replaced.`);
+        setMsg(`Restored from ${file.name}. Your data is back.`);
       } catch (e) {
         setMsg((e as Error).message);
       }
@@ -43,12 +47,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
   function exportBackup() {
     exportState(store);
-    setMsg("Downloaded a portable Noctyrium JSON backup.");
-  }
-
-  async function saveNativeBackup() {
-    const result = await saveNativeSnapshot(store, `Manual native snapshot ${new Date().toLocaleString()}`);
-    setMsg(result.ok ? "Saved a native SQLite snapshot." : "Native SQLite is only available inside the Tauri desktop shell.");
+    setMsg("Downloaded your backup file.");
   }
 
   function setAvatar(file: File) {
@@ -107,6 +106,21 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               onChange={(e) => store.updateProfile({ dailyMinuteTarget: Number(e.target.value) || 0 })} />
           </div>
           <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
+
+          <div className="backup-actions-panel" style={{ marginTop: 14 }}>
+            <div>
+              <div className="sync-title"><ScrollText size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Your promise</div>
+              <div className="sub">{promise?.signedName
+                ? `Signed by ${promise.signedName} on ${prettyDate(promise.signedAt)}.`
+                : "You haven't signed your promise yet."}</div>
+            </div>
+            <div className="row wrap gap8">
+              {promise?.signedName && <GButton size="sm" onClick={() => setViewingPromise(true)}><ScrollText size={15} /> View signed promise</GButton>}
+              <GButton size="sm" variant="primary" onClick={() => setResigning(true)}>
+                <ScrollText size={15} /> {promise?.signedName ? "Re-sign promise" : "Sign your promise"}
+              </GButton>
+            </div>
+          </div>
         </>
       )}
 
@@ -114,66 +128,59 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
       {tab === "backup" && (
         <div className="backup-center">
+          <div className="sub" style={{ marginBottom: 4 }}>
+            Noctyrium saves your work on this device automatically. Backups give you an extra copy you can keep, move, or restore later.
+          </div>
           <div className="backup-explainer">
             <div className="backup-explainer-card">
-              <Database size={17} />
+              <ShieldCheck size={17} />
               <div>
-                <b>Local Vault</b>
-                <span>Every edit autosaves in this browser through IndexedDB with localStorage fallback. You do not need to press save for local use.</span>
+                <b>Automatic saving</b>
+                <span>Your progress is saved on this device while you work.</span>
               </div>
             </div>
             <div className="backup-explainer-card">
-              <FileJson size={17} />
+              <Download size={17} />
               <div>
-                <b>JSON backup</b>
-                <span>Downloads one portable file containing profile, courses, tracker, Step prep, tasks, logs, journal, folders, prompts, and settings.</span>
+                <b>Download backup</b>
+                <span>Save a personal backup file with your profile, courses, tasks, logs, journal, resources, and settings.</span>
+              </div>
+            </div>
+            <div className="backup-explainer-card">
+              <Upload size={17} />
+              <div>
+                <b>Restore backup</b>
+                <span>Bring your Noctyrium data back from a saved backup file.</span>
               </div>
             </div>
             <div className="backup-explainer-card">
               <Cloud size={17} />
               <div>
-                <b>Cloud sync is optional</b>
-                <span>Use Account & Sync for name-based cloud progress. JSON import/export still works without a backend.</span>
-              </div>
-            </div>
-            <div className="backup-explainer-card">
-              <Database size={17} />
-              <div>
-                <b>Native SQLite</b>
-                <span>{isNativeSqliteAvailable() ? "Tauri desktop runtime detected. SQLite snapshots are available." : "Desktop SQLite scaffold is wired for Tauri; browser/Vercel mode stays on Local Vault."}</span>
+                <b>Cloud copy</b>
+                <span>Optional Alpha cloud saving lets you move progress between devices when enabled.</span>
               </div>
             </div>
           </div>
 
           <div className="backup-actions-panel">
             <div>
-              <div className="sync-title">Portable backup file</div>
-              <div className="sub">Use this before changing domains, browsers, devices, packages, or deployments.</div>
+              <div className="sync-title">Your backup file</div>
+              <div className="sub">Download a backup before switching devices, browsers, or domains.</div>
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" variant="primary" onClick={exportBackup}>
-                <Download size={15} /> Download JSON backup
+                <Download size={15} /> Download backup
               </GButton>
               <GButton size="sm" onClick={() => fileRef.current?.click()}>
-                <Upload size={15} /> Import JSON backup
+                <Upload size={15} /> Restore backup
               </GButton>
               <input ref={fileRef} type="file" accept="application/json,.json" hidden
                 onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])} />
             </div>
             <div className="backup-note">
               <ShieldCheck size={15} />
-              <span>Import replaces the current Local Vault in this browser. Download a safety backup first when in doubt.</span>
+              <span>Restoring replaces the current data on this device. Download a backup first if you want to keep both.</span>
             </div>
-          </div>
-
-          <div className="backup-actions-panel">
-            <div>
-              <div className="sync-title">Native desktop snapshot</div>
-              <div className="sub">Experimental Tauri SQLite save rail. Local Vault remains the active source of truth in Alpha 1.</div>
-            </div>
-            <GButton size="sm" onClick={saveNativeBackup} disabled={!isNativeSqliteAvailable()}>
-              <Database size={15} /> Save SQLite snapshot
-            </GButton>
           </div>
 
           <div className="backup-actions-panel danger-zone">
@@ -197,7 +204,49 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       )}
 
       {tab === "account" && <AccountSyncPanel />}
+
+      {resigning && <PromiseCutscene onDone={() => setResigning(false)} />}
+      {viewingPromise && promise && <PromiseSheet onClose={() => setViewingPromise(false)} />}
     </Modal>
+  );
+}
+
+const PROMISE_LINES = [
+  "This is only a tool.",
+  "It will not save you.",
+  "It will not study for you.",
+  "It will not become disciplined on your behalf.",
+  "But if you return to it honestly,",
+  "if you record the work,",
+  "if you confront the missed days,",
+  "if you build again after falling behind,",
+  "then this becomes more than software.",
+  "It becomes a witness.",
+];
+
+// Read-only view of the already-signed promise, in the contract styling.
+function PromiseSheet({ onClose }: { onClose: () => void }) {
+  const { profile } = useStore();
+  const p = profile.promise;
+  return (
+    <div className="promise-scrim" onMouseDown={onClose}>
+      <div className="promise-orbs"><i /><i /><i /></div>
+      <div className="promise-paper open" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="promise-seal-mark">N</div>
+        <div className="promise-heading">Promise of Use</div>
+        <div className="promise-lines">
+          {PROMISE_LINES.map((line, i) => (
+            <p key={line} className={`promise-line in ${i === PROMISE_LINES.length - 1 ? "accent" : ""}`}>{line}</p>
+          ))}
+        </div>
+        <div className="promise-signed-row">
+          <div><span>Signed</span><b className="promise-sig">{p?.signedName}</b></div>
+          <div className="right"><span>Date</span><b>{p?.signedAt ? prettyDate(p.signedAt) : "—"}</b></div>
+        </div>
+        <div className="sub" style={{ marginTop: 8, color: "#8a7f63" }}>Promise text {p?.promiseTextVersion ?? "v1"}</div>
+        <button type="button" className="promise-btn" style={{ marginTop: 14 }} onClick={onClose}>Close</button>
+      </div>
+    </div>
   );
 }
 

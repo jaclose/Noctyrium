@@ -20,6 +20,7 @@ import { JournalPage } from "./pages/JournalPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { PromptLibraryPage } from "./pages/PromptLibraryPage";
 import { HubFoldersPage } from "./pages/HubFoldersPage";
+import { HelpPage } from "./pages/HelpPage";
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -35,6 +36,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   integrations: IntegrationsPage,
   prompts: PromptLibraryPage,
   folders: HubFoldersPage,
+  help: HelpPage,
 };
 
 export default function App() {

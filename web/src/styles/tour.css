@@ -116,6 +116,12 @@
 }
 .promise-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
 .promise-btn:disabled { opacity: 0.4; cursor: default; }
+.promise-signed-row { display: flex; gap: 14px; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(26,39,66,0.14); text-align: left; }
+.promise-signed-row > div { flex: 1; }
+.promise-signed-row span { display: block; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #8a7f63; }
+.promise-signed-row b { font-size: 16px; color: #14110a; }
+.promise-signed-row .right { text-align: right; }
+.promise-sig { font-family: "Segoe Script", "Brush Script MT", cursive; font-size: 26px !important; }
 .promise-defer { border: none; background: transparent; color: #8a7f63; font-size: 12.5px; cursor: pointer; }
 .promise-defer:hover { color: #5a5340; }
 

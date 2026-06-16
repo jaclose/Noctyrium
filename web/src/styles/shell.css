@@ -27,7 +27,12 @@
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-mono { font-weight: 800; font-size: 17px; color: #fff; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-name { font-size: 19px; font-weight: 800; letter-spacing: 0; }
+.brand-name {
+  font-size: 19px; font-weight: 800; letter-spacing: -0.01em;
+  background: linear-gradient(120deg, #f4f8ff, #cfe9ff 55%, #c7b9ff);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: 0 1px 10px rgba(120, 180, 255, 0.12);
+}
 .brand-ver { font-size: 10px; font-weight: 600; color: var(--text-45); }
 
 .nav-label {
