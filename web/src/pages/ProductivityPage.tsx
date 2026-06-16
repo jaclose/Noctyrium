@@ -79,6 +79,16 @@ export function ProductivityPage() {
             </GButton>
           ))}
         </div>
+        <div className="log-presets" style={{ opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
+          <span className="preset-label">Minutes</span>
+          {[10, 25, 50, 90].map((m) => (
+            <button key={m} type="button" className="preset-chip" onClick={() => setManualMinutes(String(m))}>{m}m</button>
+          ))}
+          <span className="preset-label">Cards</span>
+          {[10, 25, 50, 100].map((c) => (
+            <button key={c} type="button" className="preset-chip" onClick={() => setManualCards(String(c))}>{c}</button>
+          ))}
+        </div>
         <div className="manual-log" style={{ opacity: isActive ? 1 : 0.5, pointerEvents: isActive ? "auto" : "none" }}>
           <input className="field" placeholder="Type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
           <div className="stepper" title="Minutes (±10)">

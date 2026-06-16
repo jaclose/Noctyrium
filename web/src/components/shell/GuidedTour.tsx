@@ -13,17 +13,17 @@ interface TourStep {
 // The basics, in order. Each step navigates to its page, spotlights a real
 // element, and explains it. The final step hands off to the promise cutscene.
 const STEPS: TourStep[] = [
-  { route: "dashboard", title: "Welcome to the cockpit", body: "A 60-second tour of the basics. I'll spotlight each piece, then end with one thing only you can do.", cta: "Show me" },
-  { route: "dashboard", target: "intention", title: "Win the day", body: "Start every morning here: set one intention — what would make today a win? It's your daily standup, and you'll close it out tonight." },
-  { route: "dashboard", target: "schedule", title: "Your schedule", body: "This calendar is your study rhythm. Tap it any time to jump into Productivity — let's head there now." },
-  { route: "productivity", target: "log", title: "Log your effort", body: "Log minutes and Anki cards. Use the −/+ buttons to nudge by 10 for an accurate count, then press Log. Quick buttons above cover common blocks." },
-  { route: "productivity", target: "insights", title: "It reads your effort back", body: "Noctyrium turns your logs into weekly + monthly intelligence — strong days, fragile days, and exactly what to shore up." },
-  { route: "reports", target: "reports-top", title: "Everything rolls up", body: "Reports is your traceable record: study time, mastery, tasks, and standups in one place." },
-  { route: "tracker", target: "import", title: "Build your tracker", body: "Add courses and import your lectures by name. The destination autocompletes existing folders, so you never spawn duplicates." },
-  { route: "tracker", target: "tracker-help", title: "Passes, Anki & yield", body: "Tap a pass box (1→4) as you study, cycle Anki rounds, and set each item's yield. The Help button explains the colors any time — try it on the example items." },
-  { route: "resources", target: "resources", title: "Resources & drives", body: "Your saved links live here, plus the curated SGU drives — rated by personal usefulness, sorted best-first." },
-  { route: "step", target: "step", title: "When boards come", body: "Use broad Step, Shelf, MCAT, or CBSE blueprint logging first. Add detail only when the big domains reveal what needs work." },
-  { route: "tasks", target: "tasks", title: "Capture the work", body: "Tasks hold what needs doing. Finish one and it archives itself. Now — one last thing, and it's the most important." },
+  { route: "dashboard", title: "Welcome to Noctyrium.", body: "This is not another planner. It is a system for remembering what you said mattered.", cta: "Begin the tour" },
+  { route: "dashboard", target: "intention", title: "Intention", body: "Your dashboard is the command center — the day, the work, and the signal beneath the noise. Start with one honest intention." },
+  { route: "dashboard", target: "schedule", title: "The day, mapped", body: "This is your rhythm across the month. Effort here is evidence, not mythology. Let's see where it gets recorded." },
+  { route: "productivity", target: "log", title: "Record effort", body: "Effort counts when it is recorded. Log minutes and Anki cards — use −/+ or a preset to land an accurate number, then Log." },
+  { route: "productivity", target: "insights", title: "See the pattern", body: "Reports turn scattered effort into evidence. When you forget how much you've done, this remembers." },
+  { route: "reports", target: "reports-top", title: "Reports", body: "Today, the week, course distribution, and trend — the traceable record of the work." },
+  { route: "tracker", target: "import", title: "Map the schoolwork", body: "Course Tracker is where lectures stop floating in chaos and become a map. Import a list, or add a course manually." },
+  { route: "tracker", target: "tracker-help", title: "Keep the spine clean", body: "Tap a pass (1→4), cycle Anki rounds, set each item's yield. The ? button explains the colors. This is the spine of the system." },
+  { route: "resources", target: "resources", title: "Your armory", body: "Resources are external knowledge — ranked, named, kept close. The best tools, within reach." },
+  { route: "step", target: "step", title: "The long war room", body: "Step 1 is the long game. Build slowly. Review honestly. Return often." },
+  { route: "tasks", target: "tasks", title: "Promises with handles", body: "Tasks are not wishes. Capture one and it exists outside your head. Now — the first journal entry is different." },
 ];
 
 const PAD = 8;
@@ -101,7 +101,7 @@ export function GuidedTour({ onExit }: { onExit: () => void }) {
         <div className="tour-tip-actions">
           {i > 0 ? <button type="button" className="gbtn sm" onClick={back}><ArrowLeft size={14} /> Back</button> : <span />}
           <button type="button" className="gbtn sm primary" onClick={next}>
-            {i === total - 1 ? "The last step" : step.cta ?? "Next"} <ArrowRight size={14} />
+            {i === total - 1 ? "Make the promise" : step.cta ?? "Next"} <ArrowRight size={14} />
           </button>
         </div>
         <div className="tour-progress"><span style={{ width: `${((i + 1) / total) * 100}%` }} /></div>
