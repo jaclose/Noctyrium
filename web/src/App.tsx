@@ -68,6 +68,14 @@ export default function App() {
     setRoute(id);
   }
 
+  // The guided tour navigates through React state directly (deterministic, same
+  // render cycle) and updates the URL with replaceState so it never creates
+  // Back-button history traps or depends on the async hashchange event.
+  function navigateTour(id: string) {
+    setRoute(id);
+    try { window.history.replaceState(null, "", `#${id}`); } catch { location.hash = id; }
+  }
+
   function refresh() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 650);
@@ -123,7 +131,7 @@ export default function App() {
       </div>
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
-      {showTour && <GuidedTour onExit={endTour} />}
+      {showTour && <GuidedTour onExit={endTour} onNavigate={navigateTour} currentRoute={route} />}
     </div>
   );
 }

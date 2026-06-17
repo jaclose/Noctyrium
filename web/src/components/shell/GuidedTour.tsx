@@ -28,7 +28,13 @@ const STEPS: TourStep[] = [
 
 const PAD = 8;
 
-export function GuidedTour({ onExit }: { onExit: () => void }) {
+export function GuidedTour({
+  onExit, onNavigate, currentRoute,
+}: {
+  onExit: () => void;
+  onNavigate: (route: string) => void;
+  currentRoute: string;
+}) {
   const [i, setI] = useState(0);
   const [phase, setPhase] = useState<"tour" | "promise">("tour");
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -41,7 +47,8 @@ export function GuidedTour({ onExit }: { onExit: () => void }) {
   // step — the Next button stays reachable the whole time.
   useEffect(() => {
     if (phase !== "tour") return;
-    if (location.hash.replace("#", "") !== step.route) location.hash = step.route;
+    // Switch pages through React state directly (no hash mutation / history push).
+    if (currentRoute !== step.route) onNavigate(step.route);
 
     setReady(false);
     setRect(null);
