@@ -10,6 +10,7 @@ import type { Grade } from "../lib/scoring";
 import type { Course, Term, TrackerItem } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
+import { gotoTrackerItem } from "../lib/uiStore";
 import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/seed";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
@@ -128,16 +129,21 @@ export function DashboardPage() {
         <GlassCard pad>
           <PanelHeader title="Suggested next moves" sub="Reactive to your current state" />
           <div className="stack gap8">
-            {suggestions.map((sg, i) => (
-              <div className="sugg" key={i}>
-                <span className="sugg-dot" style={{ background: sg.color }} />
-                <div className="grow">
-                  <div className="sugg-title">{sg.title}</div>
-                  <div className="sugg-reason">{sg.reason}</div>
+            {suggestions.map((sg, i) => {
+              const clickable = !!(sg.itemId || sg.route);
+              const go = () => { if (sg.itemId) gotoTrackerItem(sg.itemId); else if (sg.route) location.hash = sg.route; };
+              const interactive = clickable ? { role: "button" as const, tabIndex: 0, onClick: go } : {};
+              return (
+                <div className={`sugg ${clickable ? "clickable" : ""}`} key={i} {...interactive}>
+                  <span className="sugg-dot" style={{ background: sg.color }} />
+                  <div className="grow">
+                    <div className="sugg-title">{sg.title}</div>
+                    <div className="sugg-reason">{sg.reason}</div>
+                  </div>
+                  {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Sparkles size={15} style={{ color: "var(--cyan)" }} />}
                 </div>
-                <Sparkles size={15} style={{ color: "var(--cyan)" }} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </GlassCard>
       </div>
@@ -586,16 +592,18 @@ function ProgressBar({
   );
 }
 
-function buildSuggestions(s: ReturnType<typeof useStore.getState>) {
-  const out: { title: string; reason: string; color: string }[] = [];
+interface DashSuggestion { title: string; reason: string; color: string; itemId?: string; route?: string }
 
-  out.push(...suggestMoves(s.tracker, 3).map((sg) => ({ title: sg.title, reason: sg.reason, color: sg.color })));
+function buildSuggestions(s: ReturnType<typeof useStore.getState>): DashSuggestion[] {
+  const out: DashSuggestion[] = [];
+
+  out.push(...suggestMoves(s.tracker, 3).map((sg) => ({ title: sg.title, reason: sg.reason, color: sg.color, itemId: sg.itemId })));
 
   const open = s.tasks.filter((t) => !t.done);
-  if (open.length) out.push({ title: `Clear ${open.length} open task${open.length > 1 ? "s" : ""}`, reason: open[0].title, color: "var(--orange)" });
+  if (open.length) out.push({ title: `Clear ${open.length} open task${open.length > 1 ? "s" : ""}`, reason: open[0].title, color: "var(--orange)", route: "tasks" });
 
   const young = s.tracker.filter((t) => t.passes > 0 && t.passes < 3);
-  if (young.length) out.push({ title: `Push ${young.length} young/red item${young.length > 1 ? "s" : ""} to mature`, reason: "One focused pass can stabilize the weak middle.", color: "var(--cyan)" });
+  if (young.length) out.push({ title: `Push ${young.length} young/red item${young.length > 1 ? "s" : ""} to mature`, reason: "One focused pass can stabilize the weak middle.", color: "var(--cyan)", route: "tracker" });
 
   if (!out.length) out.push({ title: "You're on track", reason: "Nothing urgent — keep the streak going", color: "var(--green)" });
   return out.slice(0, 4);

@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { useUi } from "../lib/uiStore";
 import {
   Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil,
 } from "lucide-react";
@@ -36,6 +37,35 @@ export function CourseTrackerPage() {
   const [deleteScope, setDeleteScope] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("All");
   const [salt, setSalt] = useState(0);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const focusItemId = useUi((u) => u.focusItemId);
+  const clearFocus = useUi((u) => u.clearFocus);
+
+  // Bring a specific item into view: select its scope, expand the tree, scroll
+  // to it, and pulse a highlight briefly. Used by clickable suggested moves.
+  function focusItem(id: string) {
+    const it = s.tracker.find((t) => t.id === id);
+    if (!it) return;
+    setTab("All");
+    setScope(it.path);
+    setOpenNodes((prev) => {
+      const next = new Set(prev);
+      let acc = "";
+      for (const p of it.path.split("/")) { acc = acc ? `${acc}/${p}` : p; next.add(acc); }
+      return next;
+    });
+    setHighlightId(id);
+    window.setTimeout(() => {
+      document.querySelector(`[data-item-id="${id}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 90);
+    window.setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 2200);
+  }
+
+  // Consume a focus request handed over from a Dashboard suggested-move click.
+  useEffect(() => {
+    if (focusItemId) { focusItem(focusItemId); clearFocus(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusItemId]);
 
   const courseScopes = useMemo(() => collectCourseScopes(s.terms, s.courses), [s.terms, s.courses]);
   const tree = useMemo(() => buildTree(s.tracker, courseScopes), [s.tracker, courseScopes]);
@@ -114,7 +144,8 @@ export function CourseTrackerPage() {
           {guideOpen && <TrackerGuide />}
           <div className="stack gap8">
             {suggestions.map((sg, i) => (
-              <div className="sugg" key={i} onClick={() => sg.itemId && setScope(scope)}>
+              <div className={`sugg ${sg.itemId ? "clickable" : ""}`} key={i}
+                onClick={() => sg.itemId && focusItem(sg.itemId)}>
                 <span className="sugg-dot" style={{ background: sg.color }} />
                 <div className="grow">
                   <div className="sugg-title">{sg.title}</div>
@@ -174,7 +205,7 @@ export function CourseTrackerPage() {
             ))}
           </div>
           {items.length === 0 && <EmptyState title="No items here" hint="Pick another scope, switch tabs, or import." />}
-          {items.map((it) => <ItemRow key={it.id} item={it} />)}
+          {items.map((it) => <ItemRow key={it.id} item={it} highlight={it.id === highlightId} />)}
         </GlassCard>
       </div>
 
@@ -186,11 +217,11 @@ export function CourseTrackerPage() {
   );
 }
 
-function ItemRow({ item }: { item: TrackerItem }) {
+function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }) {
   const s = useStore();
   const isPQ = item.kind === "PQ";
   return (
-    <div className={`dense-row tracker-item-row ${isPQ ? "pq-row" : ""}`}>
+    <div className={`dense-row tracker-item-row ${isPQ ? "pq-row" : ""} ${highlight ? "row-highlight" : ""}`} data-item-id={item.id}>
       {!isPQ && <MasteryShard item={item} />}
       <div className="grow">
         <div className="dr-label">{item.label}</div>

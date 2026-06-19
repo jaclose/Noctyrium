@@ -205,6 +205,9 @@ export interface Profile {
   // Anti-overload targets: a "good enough" day, not a maximum to grind past.
   dailyCardTarget: number;
   dailyMinuteTarget: number;
+  // Sidebar customization: hidden (unsubscribed) nav ids + collapsed Tools folder
+  hiddenNav?: string[];
+  toolsCollapsed?: boolean;
   // First-launch onboarding
   onboarded: boolean;
   tourDone?: boolean; // guided tour + promise cutscene completed
