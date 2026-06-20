@@ -14,6 +14,7 @@ interface TourStep {
 // element, and explains it. The final step hands off to the promise cutscene.
 const STEPS: TourStep[] = [
   { route: "dashboard", title: "Welcome to Noctyrium.", body: "This is not another planner. It is a system for remembering what you said mattered.", cta: "Begin the tour" },
+  { route: "dashboard", target: "control-surface-menu", title: "Customize the control surface", body: "Use Customize to subscribe or unsubscribe sections. Keep the tools for your current rotation visible, hide the rest, and bring them back when the workflow changes." },
   { route: "dashboard", target: "intention", title: "Intention", body: "Your dashboard is the command center — the day, the work, and the signal beneath the noise. Start with one honest intention." },
   { route: "dashboard", target: "schedule", title: "The day, mapped", body: "This is your rhythm across the month. Effort here is evidence, not mythology. Let's see where it gets recorded." },
   { route: "productivity", target: "log", title: "Record effort", body: "Effort counts when it is recorded. Log minutes and Anki cards — use −/+ or a preset to land an accurate number, then Log." },

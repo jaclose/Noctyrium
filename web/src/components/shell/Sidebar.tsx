@@ -72,12 +72,21 @@ export function Sidebar({
           </span>
         </button>
 
-        <div className="nav-label-row">
+        <div className="nav-label-row" data-tour="control-surface-menu">
           <span className="nav-label">{manage ? "CUSTOMIZE SIDEBAR" : "CONTROL SURFACE"}</span>
-          <button type="button" className={`nav-manage-btn ${manage ? "on" : ""}`} onClick={() => setManage((m) => !m)}
-            title={manage ? "Done" : "Customize sidebar"}>
-            {manage ? <Check size={13} /> : <SlidersHorizontal size={13} />}
+          <button
+            type="button"
+            className={`nav-manage-btn ${manage ? "on" : ""}`}
+            onClick={() => setManage((m) => !m)}
+            aria-pressed={manage}
+            title={manage ? "Done customizing" : "Subscribe or unsubscribe sections"}
+          >
+            {manage ? <Check size={15} /> : <SlidersHorizontal size={15} />}
+            <span>{manage ? "Done" : "Customize"}</span>
           </button>
+        </div>
+        <div className="nav-manage-hint">
+          {manage ? "Tap sections to subscribe or hide them." : "Subscribe to the sections you use; hide the rest."}
         </div>
 
         <nav className="nav">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   PlayCircle, Sparkles, BookOpen, FileText, ExternalLink, Check, Copy,
   Sunrise, NotebookPen, Timer, LineChart, BadgeCheck, Link2, Brain, ListChecks, Database, Layers,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader } from "../components/ui/primitives";
@@ -10,11 +11,13 @@ const BUG_EMAIL = "jdabbagh@sgu.edu";
 
 const MASTER_GUIDE = [
   { icon: Sunrise, title: "Dashboard", body: "Where the day starts — set one intention, see the signal." },
+  { icon: SlidersHorizontal, title: "Control Surface", body: "Subscribe to active sections, hide what is not in this rotation." },
   { icon: NotebookPen, title: "Standup", body: "State the truth: what now, what's blocking, what's next." },
   { icon: Timer, title: "Productivity", body: "Record effort — minutes and Anki cards, presets or ±10." },
   { icon: LineChart, title: "Reports", body: "See the pattern across today, the week, and the month." },
   { icon: BadgeCheck, title: "Course Tracker", body: "Map schoolwork: passes 1→4, Anki rounds, yield." },
   { icon: Link2, title: "Resources", body: "Your armory — ranked drives, references, and tools." },
+  { icon: Layers, title: "Anki Lab", body: "Turn lectures, slides, and DLAs into card-building workflows." },
   { icon: Brain, title: "Boards", body: "Long-term review: install a big-picture Step blueprint." },
   { icon: ListChecks, title: "Tasks", body: "Capture obligations so they exist outside your head." },
   { icon: BookOpen, title: "Journal", body: "Reflect and reset — it began with your promise." },

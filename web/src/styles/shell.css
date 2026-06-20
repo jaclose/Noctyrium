@@ -35,19 +35,43 @@
 }
 .brand-ver { font-size: 10px; font-weight: 600; color: var(--text-45); }
 
-.nav-label-row { display: flex; align-items: center; justify-content: space-between; margin: 16px 8px 8px; }
+.nav-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 8px 6px; }
 .nav-label {
   font-size: 10px; font-weight: 800; letter-spacing: 0;
   color: var(--text-30);
 }
 .nav-manage-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 7px;
-  color: var(--text-45); background: transparent; border: 1px solid transparent;
-  transition: all .12s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 102px; min-height: 34px; padding: 0 11px; border-radius: 11px;
+  color: var(--text-80);
+  background:
+    linear-gradient(135deg, rgba(90,215,239,0.15), rgba(155,123,255,0.08)),
+    rgba(255,255,255,0.055);
+  border: 1px solid rgba(90,215,239,0.28);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
+  font-size: 11.5px; font-weight: 800;
+  transition: color .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease, transform .12s ease;
 }
-.nav-manage-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-.nav-manage-btn.on { color: var(--cyan); background: rgba(90,215,239,0.14); border-color: rgba(90,215,239,0.3); }
+.nav-manage-btn:hover {
+  color: #fff;
+  border-color: rgba(90,215,239,0.48);
+  background:
+    linear-gradient(135deg, rgba(90,215,239,0.22), rgba(155,123,255,0.12)),
+    rgba(255,255,255,0.08);
+  box-shadow: 0 0 18px rgba(90,215,239,0.18), 0 10px 22px rgba(0,0,0,0.28);
+  transform: translateY(-1px);
+}
+.nav-manage-btn.on {
+  color: #04131d;
+  background: linear-gradient(135deg, var(--cyan), #b9a7ff);
+  border-color: rgba(255,255,255,0.28);
+}
+.nav-manage-hint {
+  margin: 0 8px 10px;
+  color: var(--text-45);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
 
 .nav { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
 
@@ -138,4 +162,5 @@
   }
   .surface-scroll { padding: 18px 16px 36px; }
   .topbar { padding: 16px 16px 2px; }
+  .nav-manage-btn { min-height: 40px; }
 }
