@@ -25,6 +25,24 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   const [resigning, setResigning] = useState(false);
   const [viewingPromise, setViewingPromise] = useState(false);
   const promise = profile.promise;
+  const tabIntro: Record<SettingsTab, { title: string; body: string }> = {
+    general: {
+      title: "Profile & daily targets",
+      body: "Set the identity, avatar, and good-enough daily targets that shape the rest of Noctyrium on this device.",
+    },
+    personalization: {
+      title: "Personalization",
+      body: "Choose the academic lanes you want Noctyrium to prioritize in the dashboard, suggestions, and sidebar.",
+    },
+    backup: {
+      title: "Backup & restore",
+      body: "Your work autosaves locally. Backups are your portable safety copy before browsers, devices, or domains change.",
+    },
+    account: {
+      title: "Account vault preview",
+      body: "A friendlier account system is being designed around local-first storage, profile initialization, and recoverable cloud snapshots.",
+    },
+  };
 
   function doImport(file: File) {
     const reader = new FileReader();
@@ -58,7 +76,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
   return (
     <Modal
-      title="Settings & Backup"
+      title="Your Noctyrium Setup"
       onClose={onClose}
       footer={<GButton variant="primary" onClick={onClose}>Done</GButton>}
     >
@@ -77,17 +95,28 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
         </button>
       </div>
 
+      <div className="settings-intro">
+        <b>{tabIntro[tab].title}</b>
+        <span>{tabIntro[tab].body}</span>
+      </div>
+
       {tab === "general" && (
         <>
-          <div className="row gap12" style={{ alignItems: "center" }}>
+          <div className="settings-profile-card">
             <span className="avatar" style={{ width: 52, height: 52 }}>
               {profile.avatarDataUrl
                 ? <img src={profile.avatarDataUrl} alt="" />
                 : <span className="avatar-mono">{(profile.name || "N").slice(0, 1)}</span>}
             </span>
-            <GButton size="sm" onClick={() => avatarRef.current?.click()}>
-              <ImagePlus size={15} /> Change avatar
-            </GButton>
+            <div className="grow">
+              <div className="sync-title">{profile.name || "Noctyrium"}</div>
+              <div className="sub">Local profile · {profile.userId}</div>
+            </div>
+            <div className="row wrap gap8">
+              <GButton size="sm" onClick={() => avatarRef.current?.click()}>
+                <ImagePlus size={15} /> Change avatar
+              </GButton>
+            </div>
             <input ref={avatarRef} type="file" accept="image/*" hidden
               onChange={(e) => e.target.files?.[0] && setAvatar(e.target.files[0])} />
           </div>
@@ -99,7 +128,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
           <Field label="Tagline" value={profile.tagline}
             onChange={(e) => store.updateProfile({ tagline: e.target.value })} />
 
-          <div className="row gap12">
+          <div className="settings-target-grid">
             <Field label="Daily card target" type="number" value={String(profile.dailyCardTarget ?? 120)}
               onChange={(e) => store.updateProfile({ dailyCardTarget: Number(e.target.value) || 0 })} />
             <Field label="Daily minute target" type="number" value={String(profile.dailyMinuteTarget ?? 240)}

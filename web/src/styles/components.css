@@ -184,6 +184,39 @@ select.field, .scope-select {
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
 
+.settings-intro {
+  display: grid;
+  gap: 4px;
+  padding: 12px 13px;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(90,215,239,0.1), transparent 38%),
+    rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,226,255,0.1);
+}
+.settings-intro b {
+  font-size: 13.5px;
+}
+.settings-intro span {
+  color: var(--text-60);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.settings-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,226,255,0.09);
+}
+.settings-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 /* Account sync controls inside Settings */
 .sync-panel {
   display: flex;
@@ -196,6 +229,121 @@ select.field, .scope-select {
     radial-gradient(circle at 8% 0%, rgba(90,215,239,0.14), transparent 34%),
     linear-gradient(145deg, rgba(255,255,255,0.082), rgba(255,255,255,0.026) 46%, rgba(6,15,28,0.72));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 38px rgba(0,0,0,0.22);
+}
+.account-lounge {
+  gap: 14px;
+  padding: 16px;
+}
+.account-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.account-avatar {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  border-radius: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #06121f;
+  background: linear-gradient(135deg, var(--cyan), #b9a7ff);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.3), 0 0 20px rgba(90,215,239,0.18);
+  font-size: 24px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.account-kicker {
+  color: var(--cyan);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.account-title {
+  margin-top: 2px;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.account-copy {
+  margin-top: 4px;
+  color: var(--text-60);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.account-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.account-status-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--text-60);
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(180,226,255,0.09);
+  font-size: 11px;
+  font-weight: 800;
+}
+.account-status-row svg { color: var(--cyan); }
+.account-roadmap {
+  min-height: 180px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(90,215,239,0.12), transparent 36%),
+    radial-gradient(circle at 100% 20%, rgba(155,123,255,0.1), transparent 34%),
+    rgba(255,255,255,0.035);
+}
+.account-roadmap-inner {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 42px 12px 22px;
+}
+.account-roadmap-inner > div,
+.account-card {
+  border-radius: 15px;
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(180,226,255,0.09);
+}
+.account-roadmap-inner > div {
+  display: grid;
+  gap: 5px;
+  padding: 11px;
+}
+.account-roadmap-inner svg {
+  color: var(--cyan);
+}
+.account-roadmap-inner b {
+  font-size: 12.5px;
+}
+.account-roadmap-inner span {
+  color: var(--text-45);
+  font-size: 11px;
+  line-height: 1.38;
+}
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 13px;
+}
+.account-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.account-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .sync-title { font-size: 13px; font-weight: 800; }
 .sync-pill {
@@ -252,6 +400,13 @@ select.field, .scope-select {
   font-weight: 700;
 }
 .sync-toggle input { accent-color: var(--cyan); }
+.sync-toggle small {
+  margin-left: 6px;
+  color: var(--text-30);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 .sync-meta-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -411,8 +566,21 @@ select.field, .scope-select {
   .sync-grid,
   .sync-flow,
   .sync-meta-grid,
-  .sync-backup-create {
+  .sync-backup-create,
+  .account-roadmap-inner,
+  .account-primary-actions,
+  .settings-target-grid {
     grid-template-columns: 1fr;
+  }
+  .account-hero {
+    align-items: flex-start;
+  }
+  .settings-profile-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .account-roadmap {
+    min-height: 360px;
   }
   .backup-explainer {
     grid-template-columns: 1fr;

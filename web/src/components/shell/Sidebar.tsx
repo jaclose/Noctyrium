@@ -72,8 +72,10 @@ export function Sidebar({
           </span>
         </button>
 
-        <div className="nav-label-row" data-tour="control-surface-menu">
+        <div className="nav-label-row">
           <span className="nav-label">{manage ? "CUSTOMIZE SIDEBAR" : "CONTROL SURFACE"}</span>
+        </div>
+        <div className="nav-manage-zone" data-tour="control-surface-menu">
           <button
             type="button"
             className={`nav-manage-btn ${manage ? "on" : ""}`}
@@ -84,9 +86,9 @@ export function Sidebar({
             {manage ? <Check size={15} /> : <SlidersHorizontal size={15} />}
             <span>{manage ? "Done" : "Customize"}</span>
           </button>
-        </div>
-        <div className="nav-manage-hint">
-          {manage ? "Tap sections to subscribe or hide them." : "Subscribe to the sections you use; hide the rest."}
+          <div className="nav-manage-hint">
+            {manage ? "Tap sections to subscribe or hide them." : "Subscribe to sections you use; hide the rest."}
+          </div>
         </div>
 
         <nav className="nav">
@@ -113,15 +115,15 @@ export function Sidebar({
 
         <div className="sidebar-foot">
           {help && HelpIcon && (
-            <button type="button" className={`nav-item ${active === "help" ? "on" : ""}`}
+            <button type="button" className={`nav-item footer-action ${active === "help" ? "on" : ""}`}
               onClick={() => { onSelect("help"); onClose(); }}>
               <HelpIcon size={17} /><span>Help</span>
             </button>
           )}
-          <button type="button" className="nav-item" onClick={() => onOpenSettings("general")}>
+          <button type="button" className="nav-item footer-action" onClick={() => onOpenSettings("general")}>
             <Settings size={17} /><span>Settings</span>
           </button>
-          <button type="button" className="nav-item" onClick={() => onOpenSettings("account")}>
+          <button type="button" className="nav-item footer-action" onClick={() => onOpenSettings("account")}>
             <UserCircle2 size={17} /><span>Account &amp; Sync</span>
           </button>
           <div className="brand-lockup">

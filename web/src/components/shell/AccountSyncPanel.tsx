@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Cloud, CloudDownload, CloudUpload, Database, RefreshCw, ShieldAlert } from "lucide-react";
+import {
+  CheckCircle2, Cloud, CloudDownload, CloudUpload, Database, Fingerprint,
+  HardDrive, KeyRound, RefreshCw, ShieldAlert, Sparkles, UserPlus,
+} from "lucide-react";
 import { GButton } from "../ui/primitives";
 import { CloudBackupPanel } from "./CloudBackupPanel";
 import { useStore } from "../../lib/store";
@@ -234,6 +237,21 @@ export function AccountSyncPanel() {
     persistMeta({ ...metaRef.current, deviceLabel });
   }
 
+  function handleInitializeProfile() {
+    const name = accountName.trim();
+    if (!name) {
+      setStatus("Enter a name to initialize this local profile.");
+      return;
+    }
+    store.updateProfile({ name });
+    persistMeta({
+      ...metaRef.current,
+      deviceLabel: metaRef.current.deviceLabel || defaultDeviceLabel(),
+      lastLocalFingerprint: fingerprintState(useStore.getState()),
+    });
+    setStatus("Local profile initialized. This browser vault is still saved on this device.");
+  }
+
   useEffect(() => {
     metaRef.current = meta;
   }, [meta]);
@@ -304,73 +322,126 @@ export function AccountSyncPanel() {
   }, [meta.autoSync, meta.user?.id]);
 
   return (
-    <div className="sync-panel">
-      <div className="spread">
-        <div className="row gap8">
-          <Cloud size={18} />
-          <div>
-            <div className="sync-title">Simple Account & Cloud Progress</div>
-            <div className="sub">Local autosave stays on. Cloud sync is optional and uses a name-only Alpha account.</div>
+    <div className="sync-panel account-lounge">
+      <div className="account-hero">
+        <div className="account-avatar">{accountName.trim().slice(0, 1) || store.profile.name.slice(0, 1) || "N"}</div>
+        <div className="grow">
+          <div className="account-kicker">Account &amp; Sync</div>
+          <div className="account-title">Your Noctyrium Vault</div>
+          <div className="account-copy">
+            Your work is saved locally in this browser today. The account vault is the planned path for creating a profile once, preserving that local vault, and restoring it on another device.
           </div>
         </div>
-        <span className={`sync-pill ${meta.user ? "on" : ""}`}>{meta.user ? "Linked" : "Local"}</span>
+        <span className={`sync-pill ${meta.user ? "on" : ""}`}>{meta.user ? "Linked" : "Local first"}</span>
       </div>
 
-      <div className="sync-flow">
-        <div><b>1 · Link</b><span>Creates or finds your cloud profile by name.</span></div>
-        <div><b>2 · Save</b><span>Uploads this browser's current Noctyrium state.</span></div>
-        <div><b>3 · Load</b><span>Downloads cloud state into this browser after confirmation.</span></div>
-        <div><b>4 · Backup</b><span>Creates restore points before risky replaces.</span></div>
+      <div className="account-status-row">
+        <span><HardDrive size={14} /> Local autosave on</span>
+        <span><Fingerprint size={14} /> Profile ID: {store.profile.userId}</span>
+        <span><Cloud size={14} /> {backendStatus}</span>
       </div>
 
-      <div className="sync-grid">
-        <label className="stack gap6">
-          <span className="field-label">Account name</span>
-          <input className="field" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Jafar" />
-        </label>
-        <label className="stack gap6">
-          <span className="field-label">Device label</span>
-          <input className="field" value={meta.deviceLabel || ""} onChange={(e) => setDeviceLabel(e.target.value)} placeholder={defaultDeviceLabel()} />
-        </label>
+      <div className="account-roadmap under-construction">
+        <span className="uc-tape t1">Under Construction</span>
+        <span className="uc-tape t2">Account Vault</span>
+        <span className="uc-badge"><KeyRound size={15} /> Backend account flow in progress</span>
+        <div className="uc-inner account-roadmap-inner">
+          <div><UserPlus size={17} /><b>Create account</b><span>Name, email, or passkey creates the account shell.</span></div>
+          <div><Sparkles size={17} /><b>Initialize profile</b><span>Your name, targets, promise, and preferences become the account profile.</span></div>
+          <div><HardDrive size={17} /><b>Preserve local vault</b><span>The current browser data becomes the first recoverable snapshot.</span></div>
+          <div><CloudDownload size={17} /><b>Restore anywhere</b><span>A new device can load the saved Noctyrium state after confirmation.</span></div>
+        </div>
       </div>
 
-      <div className="row wrap gap8">
-        <GButton size="sm" variant="primary" onClick={handleLogin} disabled={isBusy || !accountName.trim()}>
-          <Database size={14} /> {meta.user ? "Refresh link" : "Link name"}
-        </GButton>
-        <GButton size="sm" onClick={handleSave} disabled={isBusy || !accountName.trim()}>
-          <CloudUpload size={14} /> Save this browser
-        </GButton>
-        <GButton size="sm" onClick={handleLoad} disabled={isBusy || !accountName.trim()}>
-          <CloudDownload size={14} /> Load cloud copy
-        </GButton>
-        <GButton size="sm" onClick={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} disabled={isBusy || !meta.user}>
-          <RefreshCw size={14} className={busy === "auto" ? "spin" : ""} /> Refresh
-        </GButton>
-      </div>
+      <section className="account-card">
+        <div className="account-section-head">
+          <div>
+            <div className="sync-title">Set up this browser</div>
+            <div className="sub">Start here. This does not replace or upload anything.</div>
+          </div>
+          <span className="sync-pill">Safe</span>
+        </div>
+
+        <div className="sync-grid">
+          <label className="stack gap6">
+            <span className="field-label">Account name</span>
+            <input className="field" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Your name" />
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">This device</span>
+            <input className="field" value={meta.deviceLabel || ""} onChange={(e) => setDeviceLabel(e.target.value)} placeholder={defaultDeviceLabel()} />
+          </label>
+        </div>
+
+        <div className="account-primary-actions">
+          <GButton variant="primary" onClick={handleInitializeProfile} disabled={!accountName.trim()}>
+            <CheckCircle2 size={15} /> Initialize local profile
+          </GButton>
+          <GButton onClick={handleLogin} disabled={isBusy || !accountName.trim()}>
+            <Database size={15} /> {meta.user ? "Refresh account link" : "Try alpha account link"}
+          </GButton>
+        </div>
+      </section>
+
+      <section className="account-card">
+        <div className="account-section-head">
+          <div>
+            <div className="sync-title">Cloud copy controls</div>
+            <div className="sub">Manual controls for Alpha testing. Confirm before replacing local data.</div>
+          </div>
+        </div>
+
+        <div className="sync-flow">
+          <div><b>1 · Local</b><span>This browser remains the source of truth until you choose otherwise.</span></div>
+          <div><b>2 · Save</b><span>Uploads this browser's current Noctyrium state.</span></div>
+          <div><b>3 · Load</b><span>Downloads cloud state into this browser after confirmation.</span></div>
+          <div><b>4 · Backup</b><span>Creates restore points before risky replaces.</span></div>
+        </div>
+
+        <div className="row wrap gap8">
+          <GButton size="sm" onClick={handleSave} disabled={isBusy || !accountName.trim()}>
+            <CloudUpload size={14} /> Save this browser
+          </GButton>
+          <GButton size="sm" onClick={handleLoad} disabled={isBusy || !accountName.trim()}>
+            <CloudDownload size={14} /> Load cloud copy
+          </GButton>
+          <GButton size="sm" onClick={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} disabled={isBusy || !meta.user}>
+            <RefreshCw size={14} className={busy === "auto" ? "spin" : ""} /> Refresh cloud status
+          </GButton>
+        </div>
+      </section>
 
       <label className="sync-toggle">
         <input type="checkbox" checked={meta.autoSync} disabled={!meta.user || isBusy} onChange={(e) => setAutoSync(e.target.checked)} />
-        <span>Auto-sync after local edits</span>
+        <span>Auto-sync after local edits <small>Alpha only</small></span>
       </label>
 
       <div className="sync-meta-grid">
-        <Meta label="User ID" value={meta.user?.id || "Not linked"} />
+        <Meta label="Cloud account" value={meta.user?.displayName || "Not linked"} />
         <Meta label="Last synced" value={meta.lastSyncedAt ? formatDate(meta.lastSyncedAt) : "Never"} />
         <Meta label="Backend" value={backendStatus} />
         <Meta label="Status" value={busy === "idle" ? status : `${labelBusy(busy)}...`} />
       </div>
 
-      <div className="sync-backup-create">
-        <input className="field" value={backupLabel} onChange={(e) => setBackupLabel(e.target.value)} placeholder="Backup label, optional" />
-        <GButton size="sm" onClick={handleBackup} disabled={isBusy || !meta.user}>Create cloud backup</GButton>
-      </div>
+      <section className="account-card">
+        <div className="account-section-head">
+          <div>
+            <div className="sync-title">Cloud restore points</div>
+            <div className="sub">Create a checkpoint before loading, resetting, or changing devices.</div>
+          </div>
+        </div>
 
-      <CloudBackupPanel backups={backups} busy={isBusy} onRefresh={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} onRestore={handleRestore} />
+        <div className="sync-backup-create">
+          <input className="field" value={backupLabel} onChange={(e) => setBackupLabel(e.target.value)} placeholder="Backup label, optional" />
+          <GButton size="sm" onClick={handleBackup} disabled={isBusy || !meta.user}>Create cloud backup</GButton>
+        </div>
+
+        <CloudBackupPanel backups={backups} busy={isBusy} onRefresh={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} onRestore={handleRestore} />
+      </section>
 
       <div className="sync-warning">
         <ShieldAlert size={15} />
-        <span>This is lightweight identity, not secure authentication. For production multi-user use, migrate to email magic links, OAuth, or passkeys.</span>
+        <span>This account vault is not production authentication yet. Treat it as a design preview until email magic links, OAuth, or passkeys are wired in.</span>
       </div>
     </div>
   );
