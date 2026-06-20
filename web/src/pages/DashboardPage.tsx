@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Inbox, ArrowDownToLine, Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
+  ArrowDownToLine, Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
 } from "lucide-react";
@@ -24,7 +24,6 @@ export function DashboardPage() {
   const grade = todayGrade(today.minutes, today.cards);
   const openTasks = s.tasks.filter((t) => !t.done).length;
   const doneToday = s.tasks.filter((t) => t.done && t.completedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
-  const inboxFolder = s.folders.find((f) => /inbox/i.test(f.name));
   const matureItems = s.tracker.filter((t) => t.passes >= 3).length;
   const masteredItems = s.tracker.filter((t) => t.passes >= 4).length;
   const trackerReady = scopeMastery(s.tracker);
@@ -51,8 +50,6 @@ export function DashboardPage() {
       />
 
       <div className="grid grid-stats">
-        <StatCard title="Inbox" value={`${inboxFolder ? 1 : 0}`} note="folders to sort" icon={<Inbox size={18} />}
-          trend={s.folders.length > 3 ? "Heavy" : "Clean"} trendTone={s.folders.length > 3 ? "orange" : "green"} />
         <StatCard title="Courses" value={`${s.courses.length}`} note={`${s.terms.length} terms`} icon={<ArrowDownToLine size={18} />}
           trend="Mapped" trendTone="cyan" />
         <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
