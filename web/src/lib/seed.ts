@@ -9,7 +9,7 @@ import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -39,6 +39,8 @@ export function makeSeed(): NoctyriumState {
       dailyCardTarget: 120,
       dailyMinuteTarget: 240,
       onboarded: false,
+      educationTrack: "sgu",
+      showSguResources: true,
       activeFocusId: "term1",
       focusSubscriptions: DEFAULT_FOCUS_IDS,
     },

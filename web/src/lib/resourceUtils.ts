@@ -84,3 +84,32 @@ export function resourceSortScore(resource: Resource): number {
   if (resourceAudience(resource) === "Personal") return -150;
   return -(resource.rating ?? 0);
 }
+
+// Which drives are personal (always shown), SGU-specific (hidden when the SGU
+// toggle is off), or universally useful (board/step packs, shown to everyone).
+const PERSONAL_DRIVE_TITLES = new Set(["my drive", "claudfather", "madcow"]);
+const SGU_DRIVE_TITLES = new Set([
+  "sgu materials",
+  "sgu silly goose wiki",
+  "last ditch pq's and review",
+  "nana's practice questions",
+  "schedules & anki",
+]);
+
+export type DriveScope = "personal" | "sgu" | "universal";
+
+export function driveScope(resource: Pick<Resource, "title" | "tags">): DriveScope {
+  const title = resource.title.trim().toLowerCase();
+  if (PERSONAL_DRIVE_TITLES.has(title)) return "personal";
+  const tags = (resource.tags ?? []).map((t) => t.toLowerCase());
+  if (SGU_DRIVE_TITLES.has(title) || /\bsgu\b/.test(title) || tags.includes("sgu")) return "sgu";
+  return "universal";
+}
+
+/** A drive is visible when it isn't SGU-scoped, or the SGU toggle is on. */
+export function isDriveVisibleForTrack(
+  resource: Pick<Resource, "title" | "tags">,
+  showSgu: boolean,
+): boolean {
+  return showSgu || driveScope(resource) !== "sgu";
+}

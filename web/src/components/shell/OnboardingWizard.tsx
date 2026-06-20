@@ -3,62 +3,63 @@ import type { LucideIcon } from "lucide-react";
 import {
   Sparkles, GraduationCap, Stethoscope, BookOpen, Brain, Activity, Compass,
   ArrowRight, ArrowLeft, Check, Wand2, LineChart, Layers, ShieldCheck,
+  HeartPulse, Syringe, HardDrive,
 } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { Field } from "../ui/Modal";
-import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
-import type { ExperienceFocusId } from "../../lib/types";
+import { FOCUS_OPTIONS, focusOption } from "../../lib/experience";
+import { groupedTracks, resolveTrack } from "../../lib/tracks";
+import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
 
-const STEP_TITLES = ["Welcome", "Focus", "Targets", "AI tools", "Ready"];
+const STEP_TITLES = ["Welcome", "Program", "Focus", "Targets", "AI tools", "Ready"];
+
+const TRACK_ICONS: Record<string, LucideIcon> = {
+  GraduationCap, Stethoscope, Compass, Brain, BookOpen, HeartPulse, Syringe,
+};
 
 const GROUP_ICONS: Record<string, LucideIcon> = {
-  "SGU Terms": BookOpen,
-  Boards: GraduationCap,
-  "Pre-Med": Compass,
+  "Medical School": Stethoscope,
+  "Pre-Health": Compass,
+  "Other Health Professions": HeartPulse,
 };
 
 const FOCUS_ICONS: Partial<Record<ExperienceFocusId, LucideIcon>> = {
-  term1: BookOpen,
-  term2: BookOpen,
-  term3: BookOpen,
-  term4: Stethoscope,
-  term5: Layers,
-  cbse: Brain,
-  step1: GraduationCap,
-  step2: Activity,
-  step3: Stethoscope,
-  shelf: Stethoscope,
-  mcat: Brain,
-  premed: Compass,
+  term1: BookOpen, term2: BookOpen, term3: BookOpen, term4: Stethoscope, term5: Layers,
+  cbse: Brain, step1: GraduationCap, step2: Activity, step3: Stethoscope, shelf: Stethoscope,
+  mcat: Brain, premed: Compass,
 };
 
 export function OnboardingWizard() {
   const store = useStore();
-  const savedSubscriptions = normalizedFocusIds(store.profile.focusSubscriptions);
-  const savedActive = store.profile.activeFocusId && savedSubscriptions.includes(store.profile.activeFocusId)
-    ? store.profile.activeFocusId
-    : savedSubscriptions[0];
-  const initialFocus = focusOption(savedActive) ?? FOCUS_OPTIONS[0];
+  const wasOnboarded = useMemo(() => store.profile.onboarded, []); // re-run vs first run
+  const initialTrack = resolveTrack(store.profile.educationTrack);
+  const initialFocus = focusOption(store.profile.activeFocusId) ?? focusOption(initialTrack.defaultFocusId)!;
+
   const [step, setStep] = useState(0);
   const [name, setName] = useState(store.profile.name === "Noctyrium" ? "" : store.profile.name);
+  const [trackId, setTrackId] = useState<EducationTrackId>(initialTrack.id);
   const [activeFocusId, setActiveFocusId] = useState<ExperienceFocusId>(initialFocus.id);
-  const [subscriptions, setSubscriptions] = useState<Set<ExperienceFocusId>>(() => new Set(savedSubscriptions));
+  const [subscriptions, setSubscriptions] = useState<Set<ExperienceFocusId>>(() => new Set(initialTrack.focusIds));
+  const [showSgu, setShowSgu] = useState(initialTrack.showsSguResources);
   const [cardTarget, setCardTarget] = useState(store.profile.dailyCardTarget || initialFocus.cardTarget);
   const [minuteTarget, setMinuteTarget] = useState(store.profile.dailyMinuteTarget || initialFocus.minuteTarget);
 
+  const track = resolveTrack(trackId);
   const activeFocus = focusOption(activeFocusId) ?? initialFocus;
+  // Only the lanes this program cares about are offered.
+  const laneOptions = FOCUS_OPTIONS.filter((o) => track.focusIds.includes(o.id));
   const last = STEP_TITLES.length - 1;
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, typeof FOCUS_OPTIONS>();
-    for (const option of FOCUS_OPTIONS) {
-      const items = map.get(option.group) ?? [];
-      items.push(option);
-      map.set(option.group, items);
-    }
-    return [...map.entries()];
-  }, []);
+  function chooseTrack(id: EducationTrackId) {
+    const next = resolveTrack(id);
+    setTrackId(id);
+    setShowSgu(next.showsSguResources);
+    setSubscriptions(new Set(next.focusIds));
+    setActiveFocusId(next.defaultFocusId);
+    const focus = focusOption(next.defaultFocusId);
+    if (focus) { setCardTarget(focus.cardTarget); setMinuteTarget(focus.minuteTarget); }
+  }
 
   function choosePrimary(id: ExperienceFocusId) {
     const option = focusOption(id);
@@ -82,13 +83,18 @@ export function OnboardingWizard() {
     const nextSubscriptions = [...new Set([activeFocusId, ...subscriptions])];
     store.updateProfile({
       name: name.trim() || "Noctyrium",
-      phase: activeFocus.phase,
-      activeFocusId,
-      focusSubscriptions: nextSubscriptions,
       tagline: activeFocus.tagline,
-      dailyCardTarget: cardTarget,
-      dailyMinuteTarget: minuteTarget,
       onboarded: true,
+    });
+    store.applyEducationTrack(trackId, {
+      focusSubscriptions: nextSubscriptions,
+      activeFocusId,
+      showSguResources: showSgu,
+      cardTarget,
+      minuteTarget,
+      // Only install the starter structure on a genuine first run, so re-running
+      // setup later never overwrites courses the user has built.
+      seedStructure: !wasOnboarded,
     });
   }
 
@@ -109,9 +115,9 @@ export function OnboardingWizard() {
             <div className="onboarding-mark"><Sparkles size={26} /></div>
             <h2>Personalize Noctyrium</h2>
             <p className="onboarding-lede">
-              Choose the academic lanes you want visible: SGU terms, CBSE, board prep, shelf exams,
-              MCAT, or pre-med. This only shapes the dashboard and suggestions. It never erases
-              imported courses, tracker rows, logs, folders, or backups.
+              Next you'll pick your program — SGU, US MD/DO, pre-med, MCAT, undergrad, nursing, or PA.
+              That choice tailors your starter courses, the resources you see, and the study lanes on
+              your dashboard. It never erases anything you import later.
             </p>
             <Field label="What should we call you?" placeholder="Your name" value={name}
               onChange={(e) => setName(e.target.value)} autoFocus />
@@ -126,42 +132,33 @@ export function OnboardingWizard() {
 
         {step === 1 && (
           <div className="onboarding-body">
-            <h2>Choose your focus stack</h2>
+            <h2>Choose your program</h2>
             <p className="onboarding-lede">
-              Select every lane you want Noctyrium to track, then mark one as your current primary
-              focus. The app uses this for targets, command-center copy, and AI context.
+              This is the big one. It decides your starter structure: <b>SGU</b> loads Terms 1–5 and the
+              SGU drives; <b>US MD/DO</b> load a generic systems spine; <b>pre-med</b> turns prerequisites
+              into real courses. Nursing, PA, and general undergrad are lighter for now.
             </p>
             <div className="focus-group-stack">
-              {grouped.map(([group, options]) => {
+              {groupedTracks().map(([group, tracks]) => {
                 const GroupIcon = GROUP_ICONS[group] ?? Sparkles;
                 return (
                   <div className="focus-group" key={group}>
                     <div className="focus-group-title"><GroupIcon size={15} /> {group}</div>
                     <div className="focus-card-grid">
-                      {options.map((option) => {
-                        const Icon = FOCUS_ICONS[option.id] ?? Sparkles;
-                        const subscribed = subscriptions.has(option.id);
-                        const primary = activeFocusId === option.id;
+                      {tracks.map((t) => {
+                        const Icon = TRACK_ICONS[t.icon] ?? Sparkles;
+                        const chosen = trackId === t.id;
                         return (
-                          <button
-                            key={option.id}
-                            className={`focus-card ${subscribed ? "subscribed" : ""} ${primary ? "primary" : ""}`}
-                            onClick={() => choosePrimary(option.id)}
-                            type="button"
-                          >
+                          <button key={t.id} className={`focus-card ${chosen ? "primary" : ""}`}
+                            onClick={() => chooseTrack(t.id)} type="button">
                             <span className="focus-card-icon"><Icon size={18} /></span>
                             <span className="focus-card-copy">
-                              <b>{option.label}</b>
-                              <small>{option.blurb}</small>
+                              <b>{t.short}</b>
+                              <small>{t.blurb}</small>
                             </span>
-                            <span
-                              className={`focus-check ${subscribed ? "on" : ""}`}
-                              onClick={(e) => { e.stopPropagation(); toggleSubscription(option.id); }}
-                              title={subscribed ? "Subscribed" : "Subscribe"}
-                            >
-                              {subscribed && <Check size={12} />}
-                            </span>
-                            {primary && <Tag tone="cyan">Primary</Tag>}
+                            {t.status === "planned"
+                              ? <Tag tone="orange">Lighter</Tag>
+                              : chosen && <Tag tone="cyan">Selected</Tag>}
                           </button>
                         );
                       })}
@@ -170,16 +167,69 @@ export function OnboardingWizard() {
                 );
               })}
             </div>
+            <div className="onboarding-track-note">
+              <ShieldCheck size={15} />
+              <span>{track.progress.summary}</span>
+            </div>
             <div className="onboarding-actions">
               <GhostButton onClick={() => setStep(0)}><ArrowLeft size={15} /> Back</GhostButton>
-              <GButton variant="primary" onClick={() => setStep(2)}>
-                Continue <ArrowRight size={15} />
-              </GButton>
+              <GButton variant="primary" onClick={() => setStep(2)}>Continue <ArrowRight size={15} /></GButton>
             </div>
           </div>
         )}
 
         {step === 2 && (
+          <div className="onboarding-body">
+            <h2>Choose your focus lanes</h2>
+            <p className="onboarding-lede">
+              These are the {track.short} lanes Noctyrium will track. Subscribe to the ones you want
+              visible, then mark one as your current primary focus for targets and AI context.
+            </p>
+            <div className="focus-card-grid">
+              {laneOptions.map((option) => {
+                const Icon = FOCUS_ICONS[option.id] ?? Sparkles;
+                const subscribed = subscriptions.has(option.id);
+                const primary = activeFocusId === option.id;
+                return (
+                  <button key={option.id}
+                    className={`focus-card ${subscribed ? "subscribed" : ""} ${primary ? "primary" : ""}`}
+                    onClick={() => choosePrimary(option.id)} type="button">
+                    <span className="focus-card-icon"><Icon size={18} /></span>
+                    <span className="focus-card-copy">
+                      <b>{option.label}</b>
+                      <small>{option.blurb}</small>
+                    </span>
+                    <span className={`focus-check ${subscribed ? "on" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); toggleSubscription(option.id); }}
+                      title={subscribed ? "Subscribed" : "Subscribe"}>
+                      {subscribed && <Check size={12} />}
+                    </span>
+                    {primary && <Tag tone="cyan">Primary</Tag>}
+                  </button>
+                );
+              })}
+            </div>
+            {(track.id === "sgu" || track.showsSguResources) && (
+              <div className="onboarding-toggle-row">
+                <span className="onboarding-toggle-copy">
+                  <HardDrive size={15} />
+                  <span><b>Show SGU shared drives</b><small>SGU Materials, Silly Goose Wiki, term review packs. Your personal drive always stays.</small></span>
+                </span>
+                <button type="button" className={`onboarding-switch ${showSgu ? "on" : ""}`}
+                  onClick={() => setShowSgu((v) => !v)}
+                  aria-label="Show SGU shared drives" title={showSgu ? "SGU drives shown" : "SGU drives hidden"}>
+                  <span />
+                </button>
+              </div>
+            )}
+            <div className="onboarding-actions">
+              <GhostButton onClick={() => setStep(1)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GButton variant="primary" onClick={() => setStep(3)}>Continue <ArrowRight size={15} /></GButton>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="onboarding-body">
             <h2>Set your daily floor</h2>
             <p className="onboarding-lede">
@@ -193,31 +243,22 @@ export function OnboardingWizard() {
                 onChange={(e) => setMinuteTarget(Number(e.target.value) || 0)} />
             </div>
             <div className="onboarding-presets">
-              {FOCUS_OPTIONS.filter((option) => subscriptions.has(option.id)).map((option) => (
-                <button
-                  key={option.id}
-                  className={`onboarding-preset ${option.id === activeFocusId ? "on" : ""}`}
-                  onClick={() => {
-                    choosePrimary(option.id);
-                    setCardTarget(option.cardTarget);
-                    setMinuteTarget(option.minuteTarget);
-                  }}
-                  type="button"
-                >
+              {laneOptions.filter((option) => subscriptions.has(option.id)).map((option) => (
+                <button key={option.id} className={`onboarding-preset ${option.id === activeFocusId ? "on" : ""}`}
+                  onClick={() => { choosePrimary(option.id); setCardTarget(option.cardTarget); setMinuteTarget(option.minuteTarget); }}
+                  type="button">
                   {option.label}: {option.cardTarget} cards / {option.minuteTarget}m
                 </button>
               ))}
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(1)}><ArrowLeft size={15} /> Back</GhostButton>
-              <GButton variant="primary" onClick={() => setStep(3)}>
-                Continue <ArrowRight size={15} />
-              </GButton>
+              <GhostButton onClick={() => setStep(2)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GButton variant="primary" onClick={() => setStep(4)}>Continue <ArrowRight size={15} /></GButton>
             </div>
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="onboarding-body">
             <h2>AI strategy layer</h2>
             <p className="onboarding-lede">
@@ -236,10 +277,8 @@ export function OnboardingWizard() {
               <span>Local-first remains the source of truth. Cloud sync and AI providers are optional upgrades.</span>
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(2)}><ArrowLeft size={15} /> Back</GhostButton>
-              <GButton variant="primary" onClick={() => setStep(4)}>
-                Continue <ArrowRight size={15} />
-              </GButton>
+              <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GButton variant="primary" onClick={() => setStep(5)}>Continue <ArrowRight size={15} /></GButton>
             </div>
           </div>
         )}
@@ -249,19 +288,23 @@ export function OnboardingWizard() {
             <div className="onboarding-mark good"><Check size={26} /></div>
             <h2>Ready, {name.trim() || "there"}.</h2>
             <p className="onboarding-lede">
-              Noctyrium is configured around <b>{activeFocus.label}</b> with {subscriptions.size} subscribed lane{subscriptions.size === 1 ? "" : "s"}.
+              Noctyrium is set up for <b>{track.label}</b>, focused on <b>{activeFocus.label}</b>.
+              {!wasOnboarded && track.seedsStructure ? ` Your ${track.progress.unit} structure is loading now.` : ""}
             </p>
             <div className="onboarding-summary">
+              <div><span>Program</span><b>{track.label}</b></div>
               <div><span>Primary focus</span><b>{activeFocus.label}</b></div>
               <div><span>Visible lanes</span><b>{[...subscriptions].map((id) => focusOption(id)?.label ?? id).join(", ")}</b></div>
-              <div><span>Daily Anki floor</span><b>{cardTarget} cards</b></div>
-              <div><span>Daily study floor</span><b>{minuteTarget} minutes</b></div>
+              <div><span>SGU drives</span><b>{showSgu ? "Shown" : "Hidden"}</b></div>
+              <div><span>Daily floor</span><b>{cardTarget} cards · {minuteTarget} min</b></div>
+            </div>
+            <div className="onboarding-track-note">
+              <ShieldCheck size={15} />
+              <span><b>How progress works here:</b> {track.progress.passMeaning} {track.progress.doneMeaning}</span>
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>
-              <GButton variant="primary" onClick={finish}>
-                Enter dashboard <ArrowRight size={15} />
-              </GButton>
+              <GhostButton onClick={() => setStep(4)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GButton variant="primary" onClick={finish}>Enter dashboard <ArrowRight size={15} /></GButton>
             </div>
           </div>
         )}

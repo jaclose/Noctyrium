@@ -10,8 +10,10 @@ import { exportState, parseImport } from "../../lib/backup";
 import { AccountSyncPanel } from "./AccountSyncPanel";
 import { PromiseCutscene } from "./PromiseCutscene";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
+import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
 import { prettyDate } from "../../lib/scoring";
-import type { ExperienceFocusId } from "../../lib/types";
+import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
+import { HardDrive } from "lucide-react";
 
 export type SettingsTab = "general" | "personalization" | "backup" | "account";
 
@@ -287,6 +289,25 @@ function PersonalizationPanel() {
     ? profile.activeFocusId
     : subscriptions[0];
   const activeFocus = focusOption(activeFocusId);
+  const track = resolveTrack(profile.educationTrack);
+  const showSgu = profile.showSguResources ?? track.showsSguResources;
+  // Lanes relevant to the current program, then anything else the user still
+  // subscribes to (so switching programs never silently hides their picks).
+  const laneOptions = FOCUS_OPTIONS.filter(
+    (o) => track.focusIds.includes(o.id) || subscriptions.includes(o.id),
+  );
+
+  function chooseTrack(id: EducationTrackId) {
+    if (id === profile.educationTrack) return;
+    store.applyEducationTrack(id); // prefs only — never wipes existing data
+  }
+
+  function loadStarter() {
+    if (!confirm(
+      `Load the ${track.label} starter structure? This replaces the example term/course shells with ${track.short}'s, and keeps everything you've added. Export a backup first if unsure.`,
+    )) return;
+    store.applyEducationTrack(track.id, { seedStructure: true });
+  }
 
   function toggleFocus(id: ExperienceFocusId) {
     const set = new Set(subscriptions);
@@ -312,9 +333,10 @@ function PersonalizationPanel() {
     <div className="backup-center">
       <div className="backup-actions-panel premium-panel">
         <div>
-          <div className="sync-title">Experience profile</div>
+          <div className="sync-title">Program: {track.label}</div>
           <div className="sub">
-            Current focus: <b>{activeFocus?.label ?? "Custom"}</b>. These switches control what Noctyrium emphasizes; they do not delete existing courses, imports, tracker rows, or logs.
+            Current focus: <b>{activeFocus?.label ?? "Custom"}</b>. Your program controls starter courses,
+            visible resources, and study lanes. Switching it never deletes existing data.
           </div>
         </div>
         <GButton size="sm" variant="primary" onClick={() => store.updateProfile({ onboarded: false })}>
@@ -322,13 +344,49 @@ function PersonalizationPanel() {
         </GButton>
       </div>
 
+      <div className="track-settings-grid">
+        {EDUCATION_TRACKS.map((t) => {
+          const current = t.id === track.id;
+          return (
+            <button key={t.id} type="button" className={`track-setting-card ${current ? "on" : ""}`}
+              onClick={() => chooseTrack(t.id)}>
+              <div className="spread">
+                <b>{t.short}</b>
+                {current ? <Tag tone="cyan">Current</Tag> : t.status === "planned" ? <Tag tone="orange">Lighter</Tag> : null}
+              </div>
+              <small>{t.program}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="backup-actions-panel">
+        <div>
+          <div className="sync-title"><HardDrive size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> SGU shared drives</div>
+          <div className="sub">Show SGU-specific drives on the Resources page. Your personal drive and universal board packs always stay.</div>
+        </div>
+        <button type="button" className={`onboarding-switch ${showSgu ? "on" : ""}`}
+          onClick={() => store.updateProfile({ showSguResources: !showSgu })}
+          aria-label="Show SGU shared drives" title={showSgu ? "SGU drives shown" : "SGU drives hidden"}>
+          <span />
+        </button>
+      </div>
+
+      <div className="backup-actions-panel">
+        <div>
+          <div className="sync-title">Starter structure</div>
+          <div className="sub">{track.progress.summary}</div>
+        </div>
+        <GButton size="sm" onClick={loadStarter}><Sparkles size={15} /> Load {track.short} structure</GButton>
+      </div>
+
       <div className="focus-settings-grid">
-        {FOCUS_OPTIONS.map((option) => {
+        {laneOptions.map((option) => {
           const subscribed = subscriptions.includes(option.id);
           const primary = activeFocusId === option.id;
           return (
             <div key={option.id} className={`focus-setting-row ${primary ? "primary" : ""}`}>
-              <button className={`focus-check ${subscribed ? "on" : ""}`} onClick={() => toggleFocus(option.id)} title="Toggle subscription">
+              <button type="button" className={`focus-check ${subscribed ? "on" : ""}`} onClick={() => toggleFocus(option.id)} title="Toggle subscription">
                 {subscribed && <Check size={12} />}
               </button>
               <div className="grow">

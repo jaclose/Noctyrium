@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Star, ExternalLink, Search, ListPlus, Link as LinkIcon, HardDrive } from "lucide-react";
+import { Plus, Trash2, Pencil, Star, ExternalLink, Search, ListPlus, Link as LinkIcon, HardDrive, EyeOff } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import type { Resource } from "../lib/types";
+import { resolveTrack } from "../lib/tracks";
 import {
-  RESOURCE_GROUPS, SOURCE_TYPES, hostOfResource, normalizeResourceUrl, resourceAudience,
-  resourceGroup, resourceSortScore, resourceSourceType, usableResourceHref,
+  RESOURCE_GROUPS, SOURCE_TYPES, hostOfResource, isDriveVisibleForTrack,
+  normalizeResourceUrl, resourceAudience, resourceGroup, resourceSortScore,
+  resourceSourceType, usableResourceHref,
 } from "../lib/resourceUtils";
 
 const CATEGORIES = ["Drives", ...RESOURCE_GROUPS];
@@ -22,8 +24,14 @@ export function ResourcesPage() {
   const [sort, setSort] = useState("Curated");
   const [q, setQ] = useState("");
 
-  const drives = s.resources
-    .filter((r) => r.category === "Drives")
+  const track = resolveTrack(s.profile.educationTrack);
+  const showSgu = s.profile.showSguResources ?? track.showsSguResources;
+
+  const allDrives = s.resources.filter((r) => r.category === "Drives");
+  // SGU-scoped drives hide when the toggle is off; personal + universal stay.
+  const hiddenSguCount = allDrives.filter((r) => !isDriveVisibleForTrack(r, showSgu)).length;
+  const drives = allDrives
+    .filter((r) => isDriveVisibleForTrack(r, showSgu))
     .filter((r) => passesResourceFilters(r, { cat, source, audience, q, includeDrives: true }))
     .sort(compareResources(sort));
 
@@ -77,8 +85,22 @@ export function ResourcesPage() {
       {/* Shared Drives — curated, mostly SGU. Always visible. */}
       {(cat === "All" || cat === "Drives" || drives.length > 0) && (
         <GlassCard pad className="drives-band" data-tour="resources">
-          <PanelHeader title="Curated Drives" sub="Personal core first, then SGU, community wikis, and external archives. Edit labels/ratings as your own map gets sharper."
-            action={<GButton size="sm" onClick={() => setAddDrive(true)}><Plus size={15} /> Add drive</GButton>} />
+          <PanelHeader title="Curated Drives"
+            sub={`Tailored to ${track.short}. Your personal drive and universal board packs always stay; SGU-only drives follow the toggle.`}
+            action={
+              <div className="row gap8">
+                <button type="button" className={`filter-pill drive-sgu-toggle ${showSgu ? "on" : ""}`}
+                  onClick={() => s.updateProfile({ showSguResources: !showSgu })}
+                  title={showSgu ? "Hide SGU-specific drives" : "Show SGU-specific drives"}>
+                  {showSgu ? <HardDrive size={13} /> : <EyeOff size={13} />} SGU drives {showSgu ? "on" : "off"}
+                </button>
+                <GButton size="sm" onClick={() => setAddDrive(true)}><Plus size={15} /> Add drive</GButton>
+              </div>} />
+          {hiddenSguCount > 0 && !showSgu && (
+            <div className="drives-hidden-note">
+              <EyeOff size={14} /> {hiddenSguCount} SGU-specific drive{hiddenSguCount === 1 ? "" : "s"} hidden for your program — toggle them on any time.
+            </div>
+          )}
           {drives.length === 0 ? (
             <EmptyState icon={<HardDrive size={24} />} title="No drives yet"
               hint="Paste an SGU shared-drive / Google Drive link — it stays here permanently." />

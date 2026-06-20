@@ -196,6 +196,22 @@ export type ExperienceFocusId =
   | "mcat"
   | "premed";
 
+/**
+ * Top-level program a user belongs to, chosen first during onboarding. It sits
+ * above ExperienceFocusId (the individual study lanes) and decides which course
+ * structure is auto-seeded, which resources show, and which focus lanes appear.
+ */
+export type EducationTrackId =
+  | "sgu" // St. George's University (Caribbean MD)
+  | "usmd" // US allopathic MD
+  | "do" // US osteopathic DO
+  | "img" // Other international medical school
+  | "premed" // Pre-med / pre-health undergraduate
+  | "mcat" // MCAT-focused prep
+  | "undergrad" // General undergraduate
+  | "nursing" // Nursing school
+  | "pa"; // Physician Assistant school
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -218,6 +234,10 @@ export interface Profile {
     journalEntryId?: string;
   }; // the signed "promise to yourself"
   phase?: AcademicPhase;
+  // The program chosen during onboarding (drives structure, resources, lanes).
+  educationTrack?: EducationTrackId;
+  // Whether SGU-specific shared drives are shown on the Resources page.
+  showSguResources?: boolean;
   activeFocusId?: ExperienceFocusId;
   focusSubscriptions: ExperienceFocusId[];
 }

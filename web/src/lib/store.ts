@@ -7,13 +7,26 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
-  Prompt, Resource, Task, TrackerItem, Profile, StudyLog,
+  Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog,
 } from "./types";
 import { APP_VERSION_LABEL, driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
+import { inferTrackFromFocus, resolveTrack } from "./tracks";
+import type { EducationTrack } from "./tracks";
+import type { EducationTrackId, ExperienceFocusId } from "./types";
+
+interface ApplyTrackOptions {
+  focusSubscriptions?: ExperienceFocusId[];
+  activeFocusId?: ExperienceFocusId;
+  showSguResources?: boolean;
+  cardTarget?: number;
+  minuteTarget?: number;
+  /** Install the track's term/course/tracker blueprint (replaces seed shells). */
+  seedStructure?: boolean;
+}
 import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
 import { normalizeResourceUrl } from "./resourceUtils";
 
@@ -23,6 +36,9 @@ const now = () => new Date().toISOString();
 interface Actions {
   // profile
   updateProfile: (patch: Partial<Profile>) => void;
+  // education track (program) — sets prefs, and optionally installs its
+  // term/course/tracker blueprint (used by onboarding + "load starter structure")
+  applyEducationTrack: (trackId: EducationTrackId, opts?: ApplyTrackOptions) => void;
 
   // terms
   addTerm: (name: string) => void;
@@ -108,6 +124,41 @@ export const useStore = create<Store>()(
         if ("name" in patch || !profile.userId) profile.userId = userIdFromName(profile.name);
         return { profile };
       }),
+
+      applyEducationTrack: (trackId, opts = {}) =>
+        set((s) => {
+          const track = resolveTrack(trackId);
+          const focusSubscriptions = opts.focusSubscriptions
+            ? normalizedFocusIds(opts.focusSubscriptions)
+            : s.profile.focusSubscriptions;
+          const activeFocusId = opts.activeFocusId
+            && focusSubscriptions.includes(opts.activeFocusId)
+            ? opts.activeFocusId
+            : s.profile.activeFocusId;
+          const focus = focusOption(activeFocusId);
+          const profile: Profile = {
+            ...s.profile,
+            educationTrack: trackId,
+            showSguResources: opts.showSguResources ?? track.showsSguResources,
+            focusSubscriptions,
+            activeFocusId,
+            phase: focus?.phase ?? s.profile.phase,
+            ...(opts.cardTarget != null ? { dailyCardTarget: opts.cardTarget } : {}),
+            ...(opts.minuteTarget != null ? { dailyMinuteTarget: opts.minuteTarget } : {}),
+          };
+          if (!opts.seedStructure) return { profile };
+
+          const built = buildTrackStructure(track);
+          // First-run / explicit reseed: swap in the track's term/course shells
+          // and keep any tracker rows the user added (drop only seed examples).
+          const keptTracker = s.tracker.filter((t) => !/^example[:\s]/i.test(t.label));
+          return {
+            profile,
+            terms: built.terms,
+            courses: built.courses,
+            tracker: [...keptTracker, ...built.tracker],
+          };
+        }),
 
       addTerm: (name) => set((s) => ({ terms: [...s.terms, { id: uid(), name }] })),
       renameTerm: (id, name) =>
@@ -514,6 +565,20 @@ export const useStore = create<Store>()(
           }
           s.resources = dedupeResourceRecords(resources);
         }
+        if (fromVersion < 18) {
+          // Introduce the education-track layer. Existing installs have been
+          // SGU-centric, so infer their track from focus and keep SGU drives on.
+          const profile = isRecord(s.profile) ? s.profile : {};
+          if (typeof profile.educationTrack !== "string") {
+            profile.educationTrack = inferTrackFromFocus(
+              Array.isArray(profile.focusSubscriptions) ? profile.focusSubscriptions.map(String) : [],
+            );
+          }
+          if (typeof profile.showSguResources !== "boolean") {
+            profile.showSguResources = profile.educationTrack === "sgu";
+          }
+          s.profile = normalizeProfile(profile);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -533,7 +598,42 @@ export const useStore = create<Store>()(
 
 type AnyRecord = Record<string, unknown>;
 
+/** Convert a track's blueprint into live Term/Course/TrackerItem arrays. */
+function buildTrackStructure(track: EducationTrack): { terms: Term[]; courses: Course[]; tracker: TrackerItem[] } {
+  const terms: Term[] = track.terms.map((t) => ({ id: uid(), name: t.name }));
+  const courses: Course[] = [];
+  track.terms.forEach((termDef, index) => {
+    const termId = terms[index].id;
+    for (const course of termDef.courses) {
+      courses.push({
+        id: uid(),
+        termId,
+        code: course.code,
+        name: course.name,
+        files: 0,
+        modules: course.modules.map((name) => ({ id: uid(), name })),
+      });
+    }
+  });
+  const tracker: TrackerItem[] = track.trackerRows.map((row) => ({
+    id: uid(),
+    path: normalizeTrackerPath(row.path),
+    label: row.label,
+    kind: row.kind,
+    passes: 0,
+    ankiPasses: 0,
+    yield: row.yield,
+    note: row.note,
+    updated: now(),
+  }));
+  return { terms, courses, tracker };
+}
+
 function normalizeAcademicMap(state: AnyRecord) {
+  // Only the SGU template owns the canonical Term 1–5 / BPM-PPM course map.
+  // Other tracks manage their own structure, so don't force-inject SGU courses.
+  const track = isRecord(state.profile) ? state.profile.educationTrack : undefined;
+  if (track && track !== "sgu") return;
   const terms = arrayOfRecords(state.terms);
   const courses = arrayOfRecords(state.courses);
   const termIds = new Map<string, string>();
@@ -594,6 +694,9 @@ function normalizeProfile(value: unknown): Profile {
     ? profile.activeFocusId as Profile["activeFocusId"]
     : focusSubscriptions[0];
   const focus = focusOption(activeFocus);
+  const educationTrack = resolveTrack(
+    typeof profile.educationTrack === "string" ? profile.educationTrack : undefined,
+  ).id;
   return {
     name,
     userId: typeof profile.userId === "string" && profile.userId.trim()
@@ -608,6 +711,10 @@ function normalizeProfile(value: unknown): Profile {
     tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
     promise: normalizePromise(profile.promise),
     phase: phase ?? focus?.phase,
+    educationTrack,
+    showSguResources: typeof profile.showSguResources === "boolean"
+      ? profile.showSguResources
+      : educationTrack === "sgu",
     activeFocusId: activeFocus,
     focusSubscriptions,
   };

@@ -7,7 +7,19 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { dayKey } from "../lib/scoring";
+import { normalizeResourceUrl } from "../lib/resourceUtils";
 import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, TrackerItem, Yield } from "../lib/types";
+
+// What "one pass" and "done" mean for each blueprint, in that exam's vocabulary.
+// This is the answer to "I added a prerequisite — what's a pass, when am I done?"
+const EXAM_PROGRESS: Record<BoardExamId, { pass: string; done: string }> = {
+  step1: { pass: "One focused review cycle of a domain — questions, then explanation review.", done: "Mastered = 4 cycles with stable accuracy; anchor weak facts in Anki." },
+  step2: { pass: "One clinical-reasoning cycle: a question block plus management review.", done: "Mastered = 4 cycles; rotate domains so none goes stale." },
+  step3: { pass: "One management/CCS cycle: orders, monitoring, reassessment.", done: "Mastered = 4 cycles; safe-management patterns feel automatic." },
+  shelf: { pass: "One rotation-shelf cycle: questions + algorithm review for that subject.", done: "Mastered = 4 cycles before the shelf date." },
+  mcat: { pass: "One section cycle: content, passages, then an error log.", done: "Mastered = 4 cycles with stable accuracy; full-lengths are separate milestones." },
+  premed: { pass: "Prerequisites are courses, not study reps — track them on the Courses page and mark them done when you pass.", done: "Experiences (clinical, research, service) and application pieces are milestones: done = goal met or piece submitted, not 4 passes." },
+};
 
 // ---------------------------------------------------------------------------
 // STEP / boards = a *simple, big-picture* blueprint. Installing a blueprint
@@ -204,7 +216,9 @@ export function StepPage() {
   const readiness = prep.blueprintLogs.length ? logReadiness : scopeMastery(examItems);
   const installedNames = new Set(examItems.map((t) => t.label));
   const installedCount = exam.domains.filter((d) => installedNames.has(d.name)).length;
-  const officialInstalled = resources.every((res) => s.resources.some((r) => r.url === res.url));
+  const savedUrls = useMemo(() => new Set(s.resources.map((r) => normalizeResourceUrl(r.url))), [s.resources]);
+  const savedCount = resources.filter((r) => savedUrls.has(normalizeResourceUrl(r.url))).length;
+  const officialInstalled = savedCount === resources.length;
   const suggestions = suggestMoves(examItems, 3);
 
   function announce(msg: string, href: string) {
@@ -241,17 +255,21 @@ export function StepPage() {
     if (next.length) s.bulkAddTrackerItems(next);
     announce(next.length ? `Installed ${next.length} big domains into the Course Tracker.` : "All big domains are already in your tracker.", "#tracker");
   }
-  function installResources() {
-    const existing = new Set(s.resources.map((r) => r.url));
-    const next = resources.filter((r) => !existing.has(r.url)).map((r) => ({
+  function resourcePayload(r: PrepResource) {
+    return {
       title: r.title, url: r.url, category: exam.label, tags: r.tags, note: r.why,
       favorite: r.kind === "Official" || r.kind === "Assessment",
-    }));
-    if (next.length) s.bulkAddResources(next);
-    announce(next.length ? `Activated ${next.length} resources on the Resources page.` : "These resources are already saved.", "#resources");
+    };
   }
-  function toggleResource(id: string) {
-    patchPrep({ resourcesDone: prep.resourcesDone.includes(id) ? prep.resourcesDone.filter((x) => x !== id) : [...prep.resourcesDone, id] });
+  function installResources() {
+    const next = resources.filter((r) => !savedUrls.has(normalizeResourceUrl(r.url))).map(resourcePayload);
+    if (next.length) s.bulkAddResources(next);
+    announce(next.length ? `Added ${next.length} resource${next.length === 1 ? "" : "s"} to your Resources library.` : "All of these are already in your library.", "#resources");
+  }
+  function addOneResource(r: PrepResource) {
+    if (savedUrls.has(normalizeResourceUrl(r.url))) return;
+    s.addResource(resourcePayload(r));
+    announce(`Added “${r.title}” to your Resources library.`, "#resources");
   }
 
   return (
@@ -283,7 +301,7 @@ export function StepPage() {
 
         <div className="step-actions">
           <GButton variant="primary" onClick={installAll}><ListPlus size={14} /> Install blueprint ({installedCount}/{exam.domains.length})</GButton>
-          <GButton onClick={installResources} disabled={officialInstalled}><Database size={14} /> Activate resources</GButton>
+          <GButton onClick={installResources} disabled={officialInstalled}><Database size={14} /> Add all resources ({savedCount}/{resources.length})</GButton>
           <a className="gbtn" href="#tracker"><ListChecks size={14} /> Open in Course Tracker</a>
           <a className="gbtn" href={exam.officialOutline} target="_blank" rel="noreferrer noopener">Official outline <ExternalLink size={14} /></a>
         </div>
@@ -293,6 +311,17 @@ export function StepPage() {
           Generated locally from the official {exam.shortLabel} outline — superficial big-picture domains only. Add lectures, DLAs, and PQs under any domain in the Course Tracker.
         </div>
       </GlassCard>
+
+      <div className="prep-progress-explainer">
+        <div className="ppe-item">
+          <span className="ppe-dot" style={{ background: PASS_COLOR.red }} />
+          <div><b>What one pass means</b><span>{EXAM_PROGRESS[examId].pass}</span></div>
+        </div>
+        <div className="ppe-item">
+          <span className="ppe-dot" style={{ background: PASS_COLOR.mastered }} />
+          <div><b>When it's done</b><span>{EXAM_PROGRESS[examId].done}</span></div>
+        </div>
+      </div>
 
       <GlassCard pad>
         <PanelHeader title="Big-picture domains" sub="One row per major domain — install all, or add them individually" />
@@ -325,8 +354,11 @@ export function StepPage() {
       </GlassCard>
 
       <div className="step-overview-grid">
-        <GlassCard pad>
-          <PanelHeader title={`Customize ${exam.shortLabel}`} sub="Saved locally under your profile" />
+        <GlassCard pad className="under-construction">
+          <span className="uc-tape t1">Under Construction</span>
+          <span className="uc-badge"><Sparkles size={15} /> Detailed prep tuning — coming soon</span>
+          <div className="uc-inner">
+          <PanelHeader title={`Customize ${exam.shortLabel}`} sub="Med-year, content status, target date & hours — real adaptive-plan logic is being built next" />
           <div className="step-form-grid">
             <label className="stack gap6">
               <span className="field-label">Med-school year</span>
@@ -367,17 +399,35 @@ export function StepPage() {
             <span className="field-label">Other resources / constraints</span>
             <input className="field" placeholder="Pathoma, Sketchy, UWorld, mentor plan…" value={prep.otherResources} onChange={(e) => patchPrep({ otherResources: e.target.value })} />
           </label>
+          </div>
         </GlassCard>
 
         <GlassCard pad>
-          <PanelHeader title="Resource activation" sub="Check what you already use" />
-          <div className="resource-checks">
-            {resources.map((res) => (
-              <button key={res.id} className={`resource-check ${prep.resourcesDone.includes(res.id) ? "on" : ""}`} onClick={() => toggleResource(res.id)}>
-                <CheckCircle2 size={16} />
-                <div><b>{res.title}</b><span>{res.kind} — {res.why}</span></div>
-              </button>
-            ))}
+          <PanelHeader title={`${exam.shortLabel} resource library`}
+            sub={`${savedCount}/${resources.length} saved to your Resources page`}
+            action={<GButton size="sm" onClick={installResources} disabled={officialInstalled}><Plus size={14} /> Add all</GButton>} />
+          <div className="prep-resource-list">
+            {resources.map((res) => {
+              const saved = savedUrls.has(normalizeResourceUrl(res.url));
+              return (
+                <div className={`prep-resource-row ${saved ? "saved" : ""}`} key={res.id}>
+                  <span className="prep-resource-mark">{saved ? <CheckCircle2 size={16} /> : <Database size={16} />}</span>
+                  <div className="grow">
+                    <b>{res.title}</b>
+                    <span><Tag tone="neutral">{res.kind}</Tag> {res.why}</span>
+                  </div>
+                  <a className="gbtn sm" href={res.url} target="_blank" rel="noreferrer noopener" title="Open in a new tab">
+                    Open <ExternalLink size={13} />
+                  </a>
+                  {saved
+                    ? <Tag tone="green"><CheckCircle2 size={12} /> In library</Tag>
+                    : <GButton size="sm" variant="primary" onClick={() => addOneResource(res)}><Plus size={13} /> Add</GButton>}
+                </div>
+              );
+            })}
+          </div>
+          <div className="sub" style={{ marginTop: 10 }}>
+            “Add” saves a resource to your Resources page so it’s one click away everywhere. Already-saved items show as <b>In library</b>.
           </div>
         </GlassCard>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../../lib/store";
 
 const PROMISE_TEXT_VERSION = "promise-of-use-v1";
@@ -25,6 +25,16 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   const [shown, setShown] = useState(0);
   const [name, setName] = useState(store.profile.name && store.profile.name !== "Noctyrium" ? store.profile.name : "");
   const [agreed, setAgreed] = useState(false);
+  const scrimRef = useRef<HTMLDivElement>(null);
+
+  // After signing, the signing panel leaves the user scrolled to the bottom of
+  // the contract. Pull the view back to the top so the sealed confirmation is
+  // actually visible instead of off-screen below the fold.
+  useEffect(() => {
+    if (stage !== "sealed") return;
+    scrimRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [stage]);
 
   // reveal lines, then show the signing panel
   useEffect(() => {
@@ -60,7 +70,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="promise-scrim">
+    <div className="promise-scrim" ref={scrimRef}>
       <div className="promise-orbs"><i /><i /><i /></div>
 
       {stage !== "sealed" ? (

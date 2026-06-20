@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowDownToLine, Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
+  Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
 } from "lucide-react";
@@ -12,6 +12,7 @@ import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { gotoTrackerItem } from "../lib/uiStore";
 import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/seed";
+import { resolveTrack } from "../lib/tracks";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { runAi } from "../services/aiClient";
@@ -20,6 +21,7 @@ const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.a
 
 export function DashboardPage() {
   const s = useStore();
+  const track = resolveTrack(s.profile.educationTrack);
   const today = dayTotals(s.logs, s.activeDayKey);
   const grade = todayGrade(today.minutes, today.cards);
   const openTasks = s.tasks.filter((t) => !t.done).length;
@@ -50,8 +52,6 @@ export function DashboardPage() {
       />
 
       <div className="grid grid-stats">
-        <StatCard title="Courses" value={`${s.courses.length}`} note={`${s.terms.length} terms`} icon={<ArrowDownToLine size={18} />}
-          trend="Mapped" trendTone="cyan" />
         <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
           trend="🃏" trendTone="neutral" />
         <StatCard title="Study" value={`${today.minutes}m`} note="logged today" icon={<Clock size={18} />}
@@ -194,7 +194,7 @@ export function DashboardPage() {
       </GlassCard>
 
       <GlassCard pad className="term-map-card">
-        <PanelHeader title="Term Map" sub="SGU academic runway: course shells, modules, tracker maturity, and review pressure"
+        <PanelHeader title="Term Map" sub={`${track.short} runway: course shells, modules, tracker maturity, and review pressure`}
           action={<div className="term-map-actions"><Tag tone={termMap.ready >= 70 ? "green" : termMap.ready >= 35 ? "orange" : "neutral"}>{termMap.ready}% overall</Tag><a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a></div>} />
         <div className="term-map-overview">
           <div><b>{termMap.entries.length}</b><span>terms mapped</span></div>
@@ -202,7 +202,7 @@ export function DashboardPage() {
           <div><b>{termMap.modules}</b><span>modules</span></div>
           <div><b>{termMap.review}</b><span>review signals</span></div>
         </div>
-        <div className="term-sequence" aria-label="SGU term sequence">
+        <div className="term-sequence" aria-label="Term sequence">
           {termMap.entries.map(({ term, courses, stats }, index) => {
             const current = index === termMap.focusIndex;
             return (
