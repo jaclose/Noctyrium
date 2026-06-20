@@ -1,0 +1,123 @@
+/* ===========================================================================
+   Mobile adaptation layer.
+   Keep phone/tablet overrides here so the Android/iPhone surface can evolve
+   without burying device-specific rules in every feature stylesheet.
+   =========================================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@supports (height: 100dvh) {
+  .app-root,
+  .backdrop,
+  .modal-scrim,
+  .onboarding-scrim,
+  .promise-scrim,
+  .tour-overlay {
+    min-height: 100dvh;
+  }
+}
+
+@media (max-width: 880px) {
+  .topbar {
+    padding:
+      calc(14px + env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      2px
+      max(14px, env(safe-area-inset-left));
+  }
+
+  .surface-scroll {
+    padding:
+      16px
+      max(14px, env(safe-area-inset-right))
+      calc(36px + env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
+  }
+
+  .page {
+    max-width: none;
+  }
+
+  .sidebar {
+    width: min(86vw, var(--sidebar-w));
+    padding:
+      calc(16px + env(safe-area-inset-top))
+      12px
+      calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .modal-scrim,
+  .onboarding-scrim {
+    align-items: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding:
+      max(14px, env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      max(14px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
+  }
+
+  .modal,
+  .onboarding-card {
+    margin-block: auto;
+    max-height: none;
+  }
+
+  .gbtn,
+  .field,
+  .scope-select,
+  .menu-btn {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 560px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    gap: 10px;
+  }
+
+  .topbar .tb-title {
+    font-size: 22px;
+  }
+
+  .topbar .tb-sub {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .topbar .tb-actions {
+    gap: 8px;
+  }
+
+  .panel-head,
+  .spread {
+    flex-wrap: wrap;
+  }
+
+  .modal {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .modal .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal .modal-actions .gbtn {
+    flex: 1 1 auto;
+  }
+
+  .heatmap {
+    gap: 4px;
+  }
+}
