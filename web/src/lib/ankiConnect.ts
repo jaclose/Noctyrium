@@ -36,17 +36,28 @@ export class AnkiError extends Error {
   }
 }
 
+interface LocalFetchInit extends RequestInit {
+  // Chrome Local Network Access hint. It is not in TypeScript's DOM lib yet.
+  targetAddressSpace?: "loopback" | "local";
+}
+
 async function invoke<T>(action: string, params: Record<string, unknown>, endpoint: string): Promise<T> {
   let res: Response;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
-    res = await fetch(endpoint, {
+    const init: LocalFetchInit = {
       method: "POST",
+      mode: "cors",
+      cache: "no-store",
+      credentials: "omit",
+      referrerPolicy: "origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, version: 6, params }),
       signal: controller.signal,
-    });
+      targetAddressSpace: targetAddressSpace(endpoint),
+    };
+    res = await fetch(endpoint, init);
   } catch (err) {
     // Network/CORS/mixed-content failures all surface here as a TypeError.
     const origin = typeof window !== "undefined" ? window.location.origin : "this site";
@@ -68,6 +79,23 @@ async function invoke<T>(action: string, params: Record<string, unknown>, endpoi
   return data.result as T;
 }
 
+function targetAddressSpace(endpoint: string): "loopback" | "local" {
+  try {
+    const host = new URL(endpoint).hostname.toLowerCase();
+    if (host === "localhost" || host === "::1" || host.startsWith("127.")) return "loopback";
+  } catch {
+    // Fall through to the broader local-network hint.
+  }
+  return "local";
+}
+
+export interface AnkiPermission {
+  permission: "granted" | "denied";
+  requireApiKey?: boolean;
+  version?: number;
+}
+
+export const requestAnkiPermission = (endpoint: string) => invoke<AnkiPermission>("requestPermission", {}, endpoint);
 export const ankiVersion = (endpoint: string) => invoke<number>("version", {}, endpoint);
 export const reviewsToday = (endpoint: string) => invoke<number>("getNumCardsReviewedToday", {}, endpoint);
 export const reviewsByDay = (endpoint: string) => invoke<[string, number][]>("getNumCardsReviewedByDay", {}, endpoint);
@@ -97,7 +125,11 @@ export interface AnkiSnapshot {
 }
 
 export async function fetchAnkiSnapshot(endpoint: string): Promise<AnkiSnapshot> {
-  const version = await ankiVersion(endpoint); // also the connection test
+  const permission = await requestAnkiPermission(endpoint);
+  if (permission.permission !== "granted") {
+    throw new AnkiError("AnkiConnect denied this site. Remove the origin from ignoreOriginList if it was denied earlier, add this exact site to webCorsOriginList, then restart Anki.", "anki");
+  }
+  const version = permission.version ?? await ankiVersion(endpoint); // also the connection test
   const [today, decks, byDay] = await Promise.all([
     reviewsToday(endpoint),
     deckStats(endpoint),

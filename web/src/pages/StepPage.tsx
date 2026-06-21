@@ -46,7 +46,7 @@ const yieldTone: Record<YieldLevel, "green" | "orange" | "neutral"> = {
 
 const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
 
-const EXAMS: Record<BoardExamId, ExamConfig> = {
+export const EXAMS: Record<BoardExamId, ExamConfig> = {
   step1: {
     label: "USMLE Step 1 Blueprint",
     shortLabel: "Step 1",
