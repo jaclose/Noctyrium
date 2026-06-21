@@ -9,17 +9,27 @@ import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from ".
 import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import {
   passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
-  suggestMoves, scopeMastery,
+  suggestMoves, scopeMastery, isCompletionKind, isQuestionKind,
 } from "../lib/tracker";
 import { canonicalTrackerPath, normalizeTrackerPath, trackerItemKey, trackerPathKey } from "../lib/pathUtils";
 import type { Course, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
-const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading"];
-const TABS = ["All", "Lecture", "DLA", "PQ", "Extra"] as const;
+const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
+const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
 type Tab = (typeof TABS)[number];
 
 const kindTone: Record<TrackerKind, "cyan" | "purple" | "orange" | "green" | "neutral"> = {
-  Lecture: "cyan", DLA: "purple", PQ: "orange", Lab: "green", Reading: "neutral",
+  Lecture: "cyan",
+  DLA: "purple",
+  PQ: "orange",
+  Lab: "green",
+  Reading: "neutral",
+  Requirement: "green",
+  Milestone: "cyan",
+  Evidence: "purple",
+  "Question Block": "orange",
+  Assessment: "orange",
+  "Review Loop": "cyan",
 };
 const YIELDS: Yield[] = ["none", "high", "review", "low"];
 const yieldTone: Record<Yield, "cyan" | "green" | "orange" | "neutral"> = {
@@ -219,13 +229,15 @@ export function CourseTrackerPage() {
 
 function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }) {
   const s = useStore();
-  const isPQ = item.kind === "PQ";
+  const questionStyle = isQuestionKind(item.kind);
+  const completionStyle = isCompletionKind(item.kind);
   return (
-    <div className={`dense-row tracker-item-row ${isPQ ? "pq-row" : ""} ${highlight ? "row-highlight" : ""}`} data-item-id={item.id}>
-      {!isPQ && <MasteryShard item={item} />}
+    <div className={`dense-row tracker-item-row ${questionStyle ? "pq-row" : ""} ${completionStyle ? "milestone-row" : ""} ${highlight ? "row-highlight" : ""}`} data-item-id={item.id}>
+      {!questionStyle && !completionStyle && <MasteryShard item={item} />}
       <div className="grow">
         <div className="dr-label">{item.label}</div>
         <div className="dr-type">{item.path}</div>
+        {item.note && <div className="dr-note">{item.note}</div>}
       </div>
 
       <button className={`yield-badge y-${item.yield}`} onClick={() => s.cycleYield(item.id)} title="Cycle yield">
@@ -233,7 +245,7 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
       </button>
       <Tag tone={kindTone[item.kind]}>{item.kind}</Tag>
 
-      {isPQ ? <PQCompleteBlocks item={item} /> : <>
+      {completionStyle ? <CompletionBlock item={item} /> : questionStyle ? <PQCompleteBlocks item={item} /> : <>
         <PassBlocks item={item} />
         <AnkiBlocks item={item} />
       </>}
@@ -255,7 +267,7 @@ function PQCompleteBlocks({ item }: { item: TrackerItem }) {
   const clamped = Math.min(item.passes, 3);
   return (
     <div className="pq-complete" aria-label="Practice question completion mastery">
-      <span className="pq-label">Completed</span>
+      <span className="pq-label">{item.kind === "PQ" ? "Completed" : item.kind}</span>
       {[1, 2, 3].map((n) => {
         const active = clamped >= n;
         const stage = n === 1 ? "red" : n === 2 ? "young" : "mastered";
@@ -274,6 +286,17 @@ function PQCompleteBlocks({ item }: { item: TrackerItem }) {
         {clamped}/3
       </span>
     </div>
+  );
+}
+
+function CompletionBlock({ item }: { item: TrackerItem }) {
+  const s = useStore();
+  const complete = item.passes > 0;
+  return (
+    <button className={`complete-ctl ${complete ? "done" : ""}`} onClick={() => s.setPasses(item.id, 1)}
+      title={complete ? "Click to clear completion" : "Mark this requirement or milestone done"}>
+      {complete ? "Done" : "Mark done"}
+    </button>
   );
 }
 
@@ -450,6 +473,7 @@ function mergeScopes(a: string[], b: string[]) {
 function tabMatch(tab: Tab, kind: TrackerKind): boolean {
   if (tab === "All") return true;
   if (tab === "Extra") return kind === "Lab" || kind === "Reading";
+  if (tab === "Blueprint") return isCompletionKind(kind) || kind === "Question Block" || kind === "Assessment" || kind === "Review Loop";
   return tab === kind;
 }
 
@@ -587,7 +611,7 @@ function TreeNode({
 function TrackerEditor({ defaultPath, onClose }: { defaultPath: string; onClose: () => void }) {
   const s = useStore();
   const scopeSuggestions = useMemo(() => mergeScopes(collectScopes(s.tracker), collectCourseScopes(s.terms, s.courses)), [s.tracker, s.terms, s.courses]);
-  const [path, setPath] = useState(defaultPath || "T1/General/Lectures");
+  const [path, setPath] = useState(defaultPath || "Term 1/General/Lectures");
   const [label, setLabel] = useState("");
   const [kind, setKind] = useState<TrackerKind>("Lecture");
   const canonicalPath = canonicalTrackerPath(path, scopeSuggestions);
@@ -610,7 +634,7 @@ function TrackerEditor({ defaultPath, onClose }: { defaultPath: string; onClose:
 
 function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClose: () => void }) {
   const s = useStore();
-  const [path, setPath] = useState(defaultPath || "T2/NB3/Lectures");
+  const [path, setPath] = useState(defaultPath || "Term 2/NB3/Lectures");
   const [kind, setKind] = useState<TrackerKind>("Lecture");
   const [defaultYield, setDefaultYield] = useState<Yield>("none");
   const [text, setText] = useState("");
@@ -654,7 +678,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
         label: r.label,
         kind: r.kind,
         passes: r.passes,
-        ankiPasses: r.kind === "PQ" ? 0 : r.ankiPasses,
+        ankiPasses: isQuestionKind(r.kind) || isCompletionKind(r.kind) ? 0 : r.ankiPasses,
         yield: r.yield,
         note: r.note,
       })),
@@ -677,7 +701,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
         </GButton>
       </>}>
       <ol className="import-steps">
-        <li>Pick the <b>destination</b>, default <b>kind</b>, and default <b>yield</b>. Inline tags like <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[high]</span>, <span className="mono">[review]</span>, <span className="mono">[passes=2]</span>, or <span className="mono">[anki=1]</span> override a single line.</li>
+        <li>Pick the <b>destination</b>, default <b>kind</b>, and default <b>yield</b>. Inline tags like <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[Requirement]</span>, <span className="mono">[high]</span>, <span className="mono">[review]</span>, <span className="mono">[passes=2]</span>, or <span className="mono">[anki=1]</span> override a single line.</li>
         <li>Paste one item per line, or upload CSV with headers: <span className="mono">label, kind, path, yield, passes, anki, note</span>. A plain line ending in “:” becomes a sub-folder for the lines beneath it.</li>
         <li>Preview duplicates, yield flags, and starting mastery before importing. Duplicate rows are skipped by default.</li>
       </ol>
@@ -766,7 +790,7 @@ interface ImportRow {
   duplicate: boolean;
 }
 
-const KIND_TAG_RE = /\[(lecture|dla|pq|lab|reading)\]/i;
+const KIND_TAG_RE = /\[(lecture|dla|pq|lab|reading|requirement|milestone|evidence|question[-\s]?block|assessment|review[-\s]?loop)\]/i;
 const YIELD_TAG_RE = /\[(high(?:[-\s]?yield)?|needs[-\s]?review|review|low(?:[-\s]?yield)?)\]/i;
 const PASS_TAG_RE = /\[(?:passes?|p)=(\d+)\]/i;
 const ANKI_TAG_RE = /\[(?:anki|a)=(\d+)\]/i;
@@ -823,7 +847,7 @@ function parseImportRows(
         kind = maybeKind;
         itemYield = maybeYield;
         line = first;
-        if (cells[4]) passes = clampInt(Number(cells[4]), 0, kind === "PQ" ? 3 : 12);
+        if (cells[4]) passes = clampInt(Number(cells[4]), 0, maxPassesForKind(kind));
         if (cells[5]) ankiPasses = clampInt(Number(cells[5]), 0, 3);
         const fullPath = maybePath || (subPath ? `${basePath}/${subPath}` : basePath);
         rows.push(makeImportRow(fullPath, line, kind, itemYield, passes, ankiPasses, cells[6], existing));
@@ -860,8 +884,8 @@ function rowFromCsv(
   const rawPath = get("path", "scope", "destination");
   const module = get("module");
   const path = rawPath ? canonicalTrackerPath(rawPath, scopeSuggestions) : (module ? `${basePath}/${module}` : basePath);
-  const passes = clampInt(Number(get("passes", "pass")), 0, kind === "PQ" ? 3 : 12);
-  const ankiPasses = kind === "PQ" ? 0 : clampInt(Number(get("anki", "ankipasses")), 0, 3);
+  const passes = clampInt(Number(get("passes", "pass")), 0, maxPassesForKind(kind));
+  const ankiPasses = isQuestionKind(kind) || isCompletionKind(kind) ? 0 : clampInt(Number(get("anki", "ankipasses")), 0, 3);
   return [makeImportRow(path, label, kind, itemYield, passes, ankiPasses, get("note", "notes"), existing)];
 }
 
@@ -882,8 +906,8 @@ function makeImportRow(
     label: cleanLabel,
     kind,
     yield: y,
-    passes: clampInt(passes, 0, kind === "PQ" ? 3 : 12),
-    ankiPasses: kind === "PQ" ? 0 : clampInt(ankiPasses, 0, 3),
+    passes: clampInt(passes, 0, maxPassesForKind(kind)),
+    ankiPasses: isQuestionKind(kind) || isCompletionKind(kind) ? 0 : clampInt(ankiPasses, 0, 3),
     note: note?.trim() || undefined,
     duplicate: existing.has(trackerItemKey(cleanPath, cleanLabel)),
   };
@@ -902,7 +926,7 @@ function extractInlineMetadata(raw: string, defaultKind: TrackerKind, defaultYie
     label = label.replace(KIND_TAG_RE, "").trim();
   }
 
-  const prefixMatch = label.match(/^(lecture|dla|pq|lab|reading)\s*[:|-]\s*/i);
+  const prefixMatch = label.match(/^(lecture|dla|pq|lab|reading|requirement|milestone|evidence|question[-\s]?block|assessment|review[-\s]?loop)\s*[:|-]\s*/i);
   if (prefixMatch) {
     kind = parseKind(prefixMatch[1], kind);
     label = label.replace(prefixMatch[0], "").trim();
@@ -916,7 +940,7 @@ function extractInlineMetadata(raw: string, defaultKind: TrackerKind, defaultYie
 
   const passMatch = label.match(PASS_TAG_RE);
   if (passMatch) {
-    passes = clampInt(Number(passMatch[1]), 0, kind === "PQ" ? 3 : 12);
+    passes = clampInt(Number(passMatch[1]), 0, maxPassesForKind(kind));
     label = label.replace(PASS_TAG_RE, "").trim();
   }
 
@@ -930,8 +954,14 @@ function extractInlineMetadata(raw: string, defaultKind: TrackerKind, defaultYie
 }
 
 function parseKind(value: unknown, fallback: TrackerKind): TrackerKind {
-  const clean = String(value ?? "").trim().toLowerCase();
-  return KINDS.find((k) => k.toLowerCase() === clean) ?? fallback;
+  const clean = String(value ?? "").trim().toLowerCase().replace(/[-_\s]+/g, "");
+  return KINDS.find((k) => k.toLowerCase().replace(/[-_\s]+/g, "") === clean) ?? fallback;
+}
+
+function maxPassesForKind(kind: TrackerKind): number {
+  if (isCompletionKind(kind)) return 1;
+  if (isQuestionKind(kind)) return 3;
+  return 12;
 }
 
 function parseYield(value: unknown, fallback: Yield): Yield {

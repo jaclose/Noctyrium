@@ -2,9 +2,10 @@
 // JSON export / import. The portable backup story for the browser-stored data.
 // ===========================================================================
 import type { NoctyriumState } from "./types";
-import { APP_VERSION_LABEL, SCHEMA_VERSION } from "./seed";
+import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
 import { userIdFromName } from "./userIdentity";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
+import { resolveTrack } from "./tracks";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
@@ -50,6 +51,7 @@ export function parseImport(text: string): NoctyriumState {
     ? profile.activeFocusId as NoctyriumState["profile"]["activeFocusId"]
     : focusSubscriptions[0] ?? DEFAULT_FOCUS_IDS[0];
   const activeFocus = focusOption(activeFocusId);
+  const educationTrack = resolveTrack(typeof profile.educationTrack === "string" ? profile.educationTrack : undefined).id;
 
   return {
     schemaVersion: data.schemaVersion ?? SCHEMA_VERSION,
@@ -65,8 +67,15 @@ export function parseImport(text: string): NoctyriumState {
       tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
       promise: normalizePromise(profile.promise),
       phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : activeFocus?.phase,
+      educationTrack,
+      showSguResources: typeof profile.showSguResources === "boolean"
+        ? profile.showSguResources
+        : educationTrack === "sgu",
       activeFocusId,
       focusSubscriptions,
+      dashboardWidgetOrder: normalizeDashboardWidgetOrder(profile.dashboardWidgetOrder),
+      hiddenDashboardWidgets: normalizeDashboardWidgetList(profile.hiddenDashboardWidgets),
+      journalReviewTime: normalizeJournalReviewTime(profile.journalReviewTime),
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],
@@ -90,6 +99,27 @@ export function parseImport(text: string): NoctyriumState {
     dayPlans: data.dayPlans ?? [],
     activeDayKey: data.activeDayKey,
   } as NoctyriumState;
+}
+
+function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumState["profile"]["dashboardWidgetOrder"]> {
+  if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
+  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const incoming = value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
+    typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
+  );
+  return [...new Set([...incoming, ...DEFAULT_DASHBOARD_WIDGETS])];
+}
+
+function normalizeDashboardWidgetList(value: unknown): NonNullable<NoctyriumState["profile"]["hiddenDashboardWidgets"]> {
+  if (!Array.isArray(value)) return [];
+  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
+    typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
+  ))];
+}
+
+function normalizeJournalReviewTime(value: unknown) {
+  return typeof value === "string" && /^\d{2}:\d{2}$/.test(value) ? value : "20:00";
 }
 
 function normalizePromise(value: unknown): NoctyriumState["profile"]["promise"] {

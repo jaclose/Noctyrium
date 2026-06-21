@@ -36,8 +36,19 @@ export type TrackerStatus = "anki" | "working" | "mature" | "reset";
  * A row in the Course Tracker mastery tree. `path` is a slash-delimited
  * grouping (e.g. "T2/NB3/Lectures") so the tree is fully data-driven.
  */
-/** Lecture/DLA/PQ etc. — first-class so the tracker can filter by kind. */
-export type TrackerKind = "Lecture" | "DLA" | "PQ" | "Lab" | "Reading";
+/** First-class work kinds so the tracker can describe more than lectures. */
+export type TrackerKind =
+  | "Lecture"
+  | "DLA"
+  | "PQ"
+  | "Lab"
+  | "Reading"
+  | "Requirement"
+  | "Milestone"
+  | "Evidence"
+  | "Question Block"
+  | "Assessment"
+  | "Review Loop";
 
 /** High-yield / low-yield / needs-review — feeds the suggestion engine. */
 export type Yield = "high" | "low" | "review" | "none";
@@ -212,6 +223,17 @@ export type EducationTrackId =
   | "nursing" // Nursing school
   | "pa"; // Physician Assistant school
 
+export type DashboardWidgetId =
+  | "winDay"
+  | "todayScore"
+  | "weekly"
+  | "suggested"
+  | "aiActions"
+  | "schedule"
+  | "termMap"
+  | "localData"
+  | "latestStandup";
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -240,6 +262,9 @@ export interface Profile {
   showSguResources?: boolean;
   activeFocusId?: ExperienceFocusId;
   focusSubscriptions: ExperienceFocusId[];
+  dashboardWidgetOrder?: DashboardWidgetId[];
+  hiddenDashboardWidgets?: DashboardWidgetId[];
+  journalReviewTime?: string; // "20:00" local time
 }
 
 export interface NoctyriumState {

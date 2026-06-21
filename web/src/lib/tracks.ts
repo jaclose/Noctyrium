@@ -238,12 +238,12 @@ export const EDUCATION_TRACKS: EducationTrack[] = [
       },
     ],
     trackerRows: [
-      { path: "Experiences/Clinical", label: "Clinical hours (shadowing, scribe, EMT…)", kind: "Lab", yield: "high", note: "Milestone: log hours; 'done' is your target hour goal, not 4 passes." },
-      { path: "Experiences/Research", label: "Research / project involvement", kind: "Lab", yield: "high", note: "Milestone: ongoing — mark a pass per major deliverable." },
-      { path: "Experiences/Service", label: "Volunteering & community service", kind: "Lab", yield: "review", note: "Milestone: log non-clinical service hours." },
-      { path: "Application/Materials", label: "Personal statement draft", kind: "Reading", yield: "high", note: "Milestone: done when a final draft exists." },
-      { path: "Application/Materials", label: "Letters of recommendation secured", kind: "Reading", yield: "review", note: "Milestone: done when committed letters are in hand." },
-      { path: "Application/Materials", label: "School list + AMCAS/AACOMAS primary", kind: "Reading", yield: "high", note: "Milestone: done when the primary is submitted." },
+      { path: "Experiences/Clinical", label: "Clinical hours (shadowing, scribe, EMT…)", kind: "Evidence", yield: "high", note: "Done = evidence logged toward your target hours, not 4 lecture passes." },
+      { path: "Experiences/Research", label: "Research / project involvement", kind: "Evidence", yield: "high", note: "Done = a meaningful artifact or update exists." },
+      { path: "Experiences/Service", label: "Volunteering & community service", kind: "Evidence", yield: "review", note: "Done = non-clinical service evidence logged." },
+      { path: "Application/Materials", label: "Personal statement draft", kind: "Milestone", yield: "high", note: "Done when a review-ready draft exists." },
+      { path: "Application/Materials", label: "Letters of recommendation secured", kind: "Milestone", yield: "review", note: "Done when committed letters are in hand." },
+      { path: "Application/Materials", label: "School list + AMCAS/AACOMAS primary", kind: "Milestone", yield: "high", note: "Done when the primary is submitted." },
     ],
   },
   {
@@ -278,8 +278,8 @@ export const EDUCATION_TRACKS: EducationTrack[] = [
       },
     ],
     trackerRows: [
-      { path: "MCAT Sections/CARS/Daily passages", label: "CARS daily passage set", kind: "PQ", yield: "high", note: "Repair loop: do passages, review every miss, repeat." },
-      { path: "Full-Lengths/AAMC", label: "AAMC full-length #1", kind: "PQ", yield: "review", note: "Milestone: take it, then build an error log from it." },
+      { path: "MCAT Sections/CARS/Daily passages", label: "CARS daily passage set", kind: "Question Block", yield: "high", note: "Repair loop: do passages, review every miss, repeat." },
+      { path: "Full-Lengths/AAMC", label: "AAMC full-length #1", kind: "Assessment", yield: "review", note: "Milestone: take it, then build an error log from it." },
     ],
   },
   {

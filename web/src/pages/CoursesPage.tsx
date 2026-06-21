@@ -39,7 +39,11 @@ export function CoursesPage() {
                   <div className="card-hover-tools">
                     <GhostButton title="Edit" onClick={() => setEditing(c)}><Pencil size={14} /></GhostButton>
                     <GhostButton className="danger" title="Delete"
-                      onClick={() => confirm(`Delete ${c.code}?`) && s.removeCourse(c.id)}><Trash2 size={14} /></GhostButton>
+                      onClick={() => {
+                        if (!confirm(`Delete ${c.code}? This removes the course shell. You can also clear its tracker rows in the next prompt.`)) return;
+                        if (confirm(`Also delete tracker rows under ${term.name}/${c.code}?`)) s.removeTrackerScope(`${term.name}/${c.code}`);
+                        s.removeCourse(c.id);
+                      }}><Trash2 size={14} /></GhostButton>
                   </div>
                   <Tag>{term.name}</Tag>
                   <div className="cc-code">{c.code}</div>
@@ -102,7 +106,13 @@ export function CoursesPage() {
                           }}>
                           <Pencil size={12} />
                         </button>
-                        <button className="chip-x" onClick={() => s.removeModule(c.id, m.id)}><X size={12} /></button>
+                        <button className="chip-x" onClick={() => {
+                          if (!confirm(`Delete module "${m.name}" from ${c.code}?`)) return;
+                          if (confirm(`Also delete tracker rows under ${courseTermName}/${c.code}/${m.name}?`)) {
+                            s.removeTrackerScope(`${courseTermName}/${c.code}/${m.name}`);
+                          }
+                          s.removeModule(c.id, m.id);
+                        }}><X size={12} /></button>
                       </span>
                     ))}
                     <button className="chip" style={{ borderStyle: "dashed", color: "var(--cyan)" }}

@@ -3,24 +3,40 @@ import {
   Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
+  SlidersHorizontal, EyeOff, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
 import type { Grade } from "../lib/scoring";
 import type { Course, Term, TrackerItem } from "../lib/types";
+import type { DashboardWidgetId } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { gotoTrackerItem } from "../lib/uiStore";
-import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION } from "../lib/seed";
+import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
+import { analyzePerformance } from "../lib/performance";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { runAi } from "../services/aiClient";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
+const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string }> = [
+  { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out." },
+  { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor." },
+  { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days." },
+  { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps." },
+  { id: "aiActions", label: "AI actions", note: "Local/provider next-action queue." },
+  { id: "schedule", label: "Schedule", note: "Month activity map." },
+  { id: "termMap", label: "Term map", note: "Your current course structure." },
+  { id: "localData", label: "Local data", note: "Backup and package status." },
+  { id: "latestStandup", label: "Latest standup", note: "Most recent journal entry." },
+];
+
 export function DashboardPage() {
   const s = useStore();
+  const [editDashboard, setEditDashboard] = useState(false);
   const track = resolveTrack(s.profile.educationTrack);
   const today = dayTotals(s.logs, s.activeDayKey);
   const grade = todayGrade(today.minutes, today.cards);
@@ -42,14 +58,61 @@ export function DashboardPage() {
   const suggestions = buildSuggestions(s);
   const schedule = buildDashboardSchedule(s.logs, s.tasks);
   const termMap = buildTermSequence(s.terms, s.courses, s.tracker);
+  const performance = analyzePerformance({
+    logs: s.logs,
+    journal: s.journal,
+    tasks: s.tasks,
+    tracker: s.tracker,
+    dayPlans: s.dayPlans,
+    activeDayKey: s.activeDayKey,
+    minuteTarget: minTarget,
+    cardTarget,
+    range: 14,
+  });
+  const widgetOrder = normalizeWidgetOrder(s.profile.dashboardWidgetOrder);
+  const hiddenWidgets = new Set(s.profile.hiddenDashboardWidgets ?? []);
+  const showWidget = (id: DashboardWidgetId) => !hiddenWidgets.has(id);
+  const renderWidget = (widgetId: DashboardWidgetId) => {
+    if (!showWidget(widgetId)) return null;
+    if (widgetId === "winDay") return <WinTheDay key={widgetId} />;
+    if (widgetId === "todayScore") {
+      return (
+        <TodayScoreWidget key={widgetId}
+          today={today} grade={grade} streak={streak}
+          cardTarget={cardTarget} minTarget={minTarget}
+          cardPct={cardPct} minPct={minPct}
+          targetsMet={targetsMet} activeDayKey={s.activeDayKey} />
+      );
+    }
+    if (widgetId === "weekly") return <WeeklyWidget key={widgetId} week={week} />;
+    if (widgetId === "suggested") return <SuggestedMovesWidget key={widgetId} suggestions={suggestions} />;
+    if (widgetId === "aiActions") return <AiSuggestedActions key={widgetId} />;
+    if (widgetId === "schedule") return <ScheduleWidget key={widgetId} schedule={schedule} />;
+    if (widgetId === "termMap") return <TermMapWidget key={widgetId} termMap={termMap} trackShort={track.short} tracker={s.tracker} />;
+    if (widgetId === "localData") return <LocalDataWidget key={widgetId} state={s} />;
+    if (widgetId === "latestStandup") return <LatestStandupWidget key={widgetId} />;
+    return null;
+  };
 
   return (
     <>
       <AlphaBuildBanner
         activeDayKey={s.activeDayKey}
-        courseCount={s.courses.length}
         termCount={s.terms.length}
       />
+
+      <GlassCard pad className="dashboard-control-card">
+        <div className="spread">
+          <div>
+            <div className="panel-title">Personalized dashboard</div>
+            <div className="panel-sub">Tailored to {track.short} · {performance.performanceLabel} · Energy {performance.energyScore}/100</div>
+          </div>
+          <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
+            <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
+          </GButton>
+        </div>
+        {editDashboard && <DashboardWidgetEditor order={widgetOrder} hidden={hiddenWidgets} />}
+      </GlassCard>
 
       <div className="grid grid-stats">
         <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
@@ -62,257 +125,16 @@ export function DashboardPage() {
           trend="Reflect" trendTone="purple" />
         <StatCard title="Tracker" value={`${trackerReady}%`} note={`${matureItems} mature · ${reviewItems} need attention`} icon={<BadgeDot />}
           trend={`${masteredItems} mastered`} trendTone="green" />
+        <StatCard title="Energy" value={`${performance.energyScore}`} note={performance.journalSignal} icon={<Sunrise size={18} />}
+          trend={performance.energyLabel} trendTone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"} />
       </div>
 
-      <WinTheDay />
-
-      <div className="dashboard-prime">
-        <GlassCard pad>
-          <div className="panel-head">
-            <div>
-              <div className="panel-title">Today's score</div>
-              <div className="panel-sub">A “good enough” day, not a maximum to grind past</div>
-            </div>
-            <span className="streak-badge" title="Consecutive study days">
-              <Flame size={14} /> {streak} day{streak === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="ring-wrap">
-            <div className="ring">
-              <svg width="116" height="116" viewBox="0 0 116 116">
-                <circle cx="58" cy="58" r="51" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="14" />
-                <circle cx="58" cy="58" r="51" fill="none" stroke={gradeColor(grade)} strokeWidth="14" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 51} strokeDashoffset={2 * Math.PI * 51 * (1 - Math.min(today.minutes / 480, 1))}
-                  transform="rotate(-90 58 58)" style={{ transition: "stroke-dashoffset .5s ease" }} />
-              </svg>
-              <div className="ring-label" style={{ color: gradeColor(grade) }}>{gradeLabel(grade).replace("👑 ", "")}</div>
-            </div>
-            <div className="stack gap8 grow">
-              <ProgressBar label="Cards" value={today.cards} target={cardTarget} pct={cardPct} color="var(--grade-green)" />
-              <ProgressBar label="Minutes" value={today.minutes} target={minTarget} pct={minPct} color="var(--cyan)" />
-              <div className="dim" style={{ fontSize: 11.5 }}>Study day {s.activeDayKey}</div>
-            </div>
-          </div>
-          {targetsMet && (
-            <div className="enough-note">✓ You've hit today's target. Stopping here is a win — protect the streak, not the maximum.</div>
-          )}
-        </GlassCard>
-
-        <GlassCard pad className="weekly-card">
-          <PanelHeader title="Weekly Overview" sub="Last 7 calendar days from your local study log"
-            action={<Tag tone={week.activeDays >= 5 ? "green" : week.activeDays >= 3 ? "orange" : "neutral"}>{week.activeDays}/7 active</Tag>} />
-          <div className="weekly-hero">
-            <div>
-              <div className="week-total">{Math.round(week.minutes / 60)}h</div>
-              <div className="sub">{week.minutes} minutes · {week.cards} cards · {week.tasksDone} tasks done</div>
-            </div>
-            <div className="weekly-score">
-              <span style={{ color: gradeColor(week.grade) }}>{gradeLabel(week.grade).replace("👑 ", "")}</span>
-              <small>week result</small>
-            </div>
-          </div>
-          <div className="week-bars">
-            {week.days.map((d) => (
-              <div className="week-day" key={d.key} title={`${d.key}: ${d.minutes}m, ${d.cards} cards`}>
-                <div className="week-bar-shell">
-                  <div className="week-bar-fill" style={{ height: `${Math.max(8, d.intensity)}%`, background: gradeColor(d.grade) }} />
-                </div>
-                <span>{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-
-        <GlassCard pad>
-          <PanelHeader title="Suggested next moves" sub="Reactive to your current state" />
-          <div className="stack gap8">
-            {suggestions.map((sg, i) => {
-              const clickable = !!(sg.itemId || sg.route);
-              const go = () => { if (sg.itemId) gotoTrackerItem(sg.itemId); else if (sg.route) location.hash = sg.route; };
-              const interactive = clickable ? { role: "button" as const, tabIndex: 0, onClick: go } : {};
-              return (
-                <div className={`sugg ${clickable ? "clickable" : ""}`} key={i} {...interactive}>
-                  <span className="sugg-dot" style={{ background: sg.color }} />
-                  <div className="grow">
-                    <div className="sugg-title">{sg.title}</div>
-                    <div className="sugg-reason">{sg.reason}</div>
-                  </div>
-                  {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Sparkles size={15} style={{ color: "var(--cyan)" }} />}
-                </div>
-              );
-            })}
-          </div>
-        </GlassCard>
-      </div>
-
-      <AiSuggestedActions />
-
-      <GlassCard pad className="dashboard-schedule-card" data-tour="schedule">
-        <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
-          action={<Tag tone={schedule.weekActive >= 5 ? "green" : schedule.weekActive >= 3 ? "orange" : "neutral"}>{schedule.weekActive}/7 this week</Tag>} />
-        <div className="dashboard-schedule">
-          <div className="schedule-calendar">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
-            {schedule.cells.map((cell, i) => cell
-              ? <button key={cell.key}
-                  className={`cal-day schedule-day ${cell.key === schedule.todayKey ? "today" : ""} ${cell.active ? "worked" : ""}`}
-                  style={{ borderColor: cell.active ? gradeColor(cell.grade) : undefined }}
-                  title={`${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
-                  onClick={() => (location.hash = "productivity")}>
-                  <span>{cell.date.getDate()}</span>
-                  <i style={{ background: cell.active ? gradeColor(cell.grade) : "rgba(255,255,255,0.08)" }} />
-                </button>
-              : <span className="cal-day blank" key={`blank-${i}`} />)}
-          </div>
-          <div className="schedule-side">
-            <div className="schedule-stat">
-              <CalendarDays size={15} />
-              <div><b>{schedule.weekMinutes}m</b><span>this week · {schedule.weekCards} cards</span></div>
-            </div>
-            <div className="schedule-stat">
-              <Clock size={15} />
-              <div><b>{schedule.monthMinutes}m</b><span>this month · {schedule.monthActive}/{schedule.days.length} active</span></div>
-            </div>
-            <div className="schedule-note">
-              <b>{schedule.noteTitle}</b>
-              <span>{schedule.noteBody}</span>
-            </div>
-          </div>
-        </div>
-        <div className="heat-legend">
-          <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red: logged, below baseline</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
-          <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> Blue: excellent day</span>
-        </div>
-        <div className="pass-legend">
-          <span><i style={{ background: PASS_COLOR.red }} />1 pass: red</span>
-          <span><i style={{ background: PASS_COLOR.young }} />2 passes: young</span>
-          <span><i style={{ background: PASS_COLOR.mature }} />3 passes: mature</span>
-          <span><i style={{ background: PASS_COLOR.mastered }} />4+: mastered</span>
-        </div>
-      </GlassCard>
-
-      <GlassCard pad className="term-map-card">
-        <PanelHeader title="Term Map" sub={`${track.short} runway: course shells, modules, tracker maturity, and review pressure`}
-          action={<div className="term-map-actions"><Tag tone={termMap.ready >= 70 ? "green" : termMap.ready >= 35 ? "orange" : "neutral"}>{termMap.ready}% overall</Tag><a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a></div>} />
-        <div className="term-map-overview">
-          <div><b>{termMap.entries.length}</b><span>terms mapped</span></div>
-          <div><b>{termMap.courseCount}</b><span>course shells</span></div>
-          <div><b>{termMap.modules}</b><span>modules</span></div>
-          <div><b>{termMap.review}</b><span>review signals</span></div>
-        </div>
-        <div className="term-sequence" aria-label="Term sequence">
-          {termMap.entries.map(({ term, courses, stats }, index) => {
-            const current = index === termMap.focusIndex;
-            return (
-              <section className={`term-node-card ${current ? "current" : ""}`} key={term.id}>
-                <div className="term-node-cap">
-                  <span className="term-index">T{index + 1}</span>
-                  <div>
-                    <b>{term.name}</b>
-                    <span>{stats.primaryCode || "Course shell"} · {stats.modules} module{stats.modules === 1 ? "" : "s"}</span>
-                  </div>
-                  <Tag tone={current ? "cyan" : stats.ready >= 70 ? "green" : stats.ready >= 35 ? "orange" : "neutral"}>{current ? "focus" : `${stats.ready}%`}</Tag>
-                </div>
-                <div className="term-course-lane">
-                  {courses.map((course) => {
-                    const courseStats = summarizeCourse(course, s.tracker);
-                    return (
-                      <button className="term-course-pill" key={course.id} onClick={() => (location.hash = "courses")}>
-                        <div className="spread">
-                          <b>{course.code}</b>
-                          <span>{courseStats.items ? `${courseStats.ready}%` : "shell"}</span>
-                        </div>
-                        <em>{course.name || "Course shell"}</em>
-                        <small>{course.modules.length} modules · {courseStats.items || 0} tracker rows{courseStats.review ? ` · ${courseStats.review} review` : ""}</small>
-                      </button>
-                    );
-                  })}
-                  {!courses.length && <div className="term-empty">Add a course shell for this term.</div>}
-                </div>
-                <div className="term-node-meter">
-                  <div className="spread"><span>Readiness</span><b>{stats.ready}%</b></div>
-                  <div className="track">
-                    <div className="track-fill" style={{ width: `${stats.ready}%`, background: stats.ready >= 70 ? PASS_COLOR.mastered : stats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.34)" }} />
-                  </div>
-                </div>
-                <div className="term-node-signals">
-                  <span>{stats.items} tracked</span>
-                  <span>{stats.review} review</span>
-                  <span>{stats.highYield} high-yield</span>
-                </div>
-                <div className="term-module-row">
-                  {stats.moduleNames.slice(0, 5).map((module) => <span key={module}>{module}</span>)}
-                  {stats.moduleNames.length > 5 && <span>+{stats.moduleNames.length - 5}</span>}
-                  {!stats.moduleNames.length && <span>Modules ready to add</span>}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      </GlassCard>
-
-      <GlassCard pad className="local-data-card">
-        <PanelHeader title="Local Data & Package" sub="Your online edits persist in this browser; exported backups move between installs"
-          action={<GButton size="sm" onClick={() => exportState(s)}><Download size={14} /> Export backup</GButton>} />
-        <div className="alpha-notice">
-          <span className="alpha-pill">ALPHA</span>
-          <span>Alpha build: the web version updates automatically; the downloadable Mac app requires downloading the latest release.</span>
-        </div>
-        <div className="local-data-grid">
-          <div className="local-data-item">
-            <Database size={17} />
-            <div>
-              <b>Local Vault</b>
-              <span>IndexedDB with localStorage fallback. Seed updates will not overwrite your saved profile.</span>
-            </div>
-          </div>
-          <div className="local-data-item">
-            <ShieldCheck size={17} />
-            <div>
-              <b>Private by default</b>
-              <span>No account server is required. Data stays on the current browser/device unless exported.</span>
-            </div>
-          </div>
-          <div className="local-data-item">
-            <PackageCheck size={17} />
-            <div>
-              <b>Download package</b>
-              <span>The package runs from the built static app, not the dev localhost server.</span>
-            </div>
-          </div>
-          <a className="local-data-item" href={HOSTED_ALPHA_URL} target="_blank" rel="noreferrer">
-            <ExternalLink size={17} />
-            <div>
-              <b>Hosted Alpha</b>
-              <span>Open the Vercel instance for website embedding, API routes, and cloud-sync testing.</span>
-            </div>
-          </a>
-        </div>
-      </GlassCard>
-
-      <GlassCard pad>
-        <PanelHeader title="Latest standup" sub="From your Journal" />
-        {s.journal[0] ? (
-          <div className="journal-card">
-            <div className="jc-date">{prettyDate(s.journal[0].date)}</div>
-            <div className="jc-line"><b>Today:</b> {s.journal[0].today}</div>
-            <div className="jc-line dim"><b>Tomorrow:</b> {s.journal[0].tomorrow}</div>
-          </div>
-        ) : <div className="dim">No journal entries yet.</div>}
-      </GlassCard>
+      {widgetOrder.map(renderWidget)}
     </>
   );
 }
 
-function AlphaBuildBanner({
-  activeDayKey, courseCount, termCount,
-}: {
-  activeDayKey: string;
-  courseCount: number;
-  termCount: number;
-}) {
+function AlphaBuildBanner({ activeDayKey, termCount }: { activeDayKey: string; termCount: number }) {
   return (
     <GlassCard pad className="alpha-build-banner">
       <div className="alpha-build-mark">
@@ -327,7 +149,7 @@ function AlphaBuildBanner({
         <span><ShieldCheck size={13} /> Version v{APP_RELEASE_VERSION}</span>
         <span><Database size={13} /> Schema {SCHEMA_VERSION}</span>
         <span><CalendarDays size={13} /> Study day {activeDayKey}</span>
-        <span>{termCount} terms · {courseCount} courses</span>
+        <span>{termCount} active map nodes</span>
       </div>
     </GlassCard>
   );
@@ -335,6 +157,348 @@ function AlphaBuildBanner({
 
 function BadgeDot() {
   return <span className="badge-dot-icon" aria-hidden="true" />;
+}
+
+function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
+  const updateProfile = useStore((state) => state.updateProfile);
+
+  function setOrder(next: DashboardWidgetId[]) {
+    updateProfile({ dashboardWidgetOrder: normalizeWidgetOrder(next) });
+  }
+
+  function toggle(id: DashboardWidgetId) {
+    const next = new Set(hidden);
+    next.has(id) ? next.delete(id) : next.add(id);
+    updateProfile({ hiddenDashboardWidgets: [...next] });
+  }
+
+  function move(id: DashboardWidgetId, delta: -1 | 1) {
+    const current = normalizeWidgetOrder(order);
+    const from = current.indexOf(id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= current.length) return;
+    const next = [...current];
+    [next[from], next[to]] = [next[to], next[from]];
+    setOrder(next);
+  }
+
+  return (
+    <div className="dashboard-widget-editor">
+      {order.map((id, index) => {
+        const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
+        if (!meta) return null;
+        const off = hidden.has(id);
+        return (
+          <div className={`widget-library-row ${off ? "off" : ""}`} key={id}>
+            <button className="ghost-btn" title={off ? "Show widget" : "Hide widget"} onClick={() => toggle(id)}>
+              {off ? <EyeOff size={14} /> : <Check size={14} />}
+            </button>
+            <div className="grow">
+              <b>{meta.label}</b>
+              <span>{meta.note}</span>
+            </div>
+            <div className="row gap6">
+              <button className="ghost-btn" title="Move up" disabled={index === 0} onClick={() => move(id, -1)}><ArrowUp size={14} /></button>
+              <button className="ghost-btn" title="Move down" disabled={index === order.length - 1} onClick={() => move(id, 1)}><ArrowDown size={14} /></button>
+            </div>
+          </div>
+        );
+      })}
+      <div className="row">
+        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: [] })}>
+          Reset dashboard
+        </GButton>
+        <span className="sub">This is saved locally with your profile.</span>
+      </div>
+    </div>
+  );
+}
+
+function normalizeWidgetOrder(value: unknown): DashboardWidgetId[] {
+  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const incoming = Array.isArray(value)
+    ? value.filter((item): item is DashboardWidgetId => typeof item === "string" && valid.has(item as DashboardWidgetId))
+    : [];
+  return [...new Set([...incoming, ...DEFAULT_DASHBOARD_WIDGETS])];
+}
+
+function TodayScoreWidget({
+  today, grade, streak, cardTarget, minTarget, cardPct, minPct, targetsMet, activeDayKey,
+}: {
+  today: { minutes: number; cards: number };
+  grade: Grade;
+  streak: number;
+  cardTarget: number;
+  minTarget: number;
+  cardPct: number;
+  minPct: number;
+  targetsMet: boolean;
+  activeDayKey: string;
+}) {
+  return (
+    <GlassCard pad>
+      <div className="panel-head">
+        <div>
+          <div className="panel-title">Today's score</div>
+          <div className="panel-sub">A “good enough” day, not a maximum to grind past</div>
+        </div>
+        <span className="streak-badge" title="Consecutive study days">
+          <Flame size={14} /> {streak} day{streak === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="ring-wrap">
+        <div className="ring">
+          <svg width="116" height="116" viewBox="0 0 116 116">
+            <circle cx="58" cy="58" r="51" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="14" />
+            <circle cx="58" cy="58" r="51" fill="none" stroke={gradeColor(grade)} strokeWidth="14" strokeLinecap="round"
+              strokeDasharray={2 * Math.PI * 51} strokeDashoffset={2 * Math.PI * 51 * (1 - Math.min(today.minutes / 480, 1))}
+              transform="rotate(-90 58 58)" style={{ transition: "stroke-dashoffset .5s ease" }} />
+          </svg>
+          <div className="ring-label" style={{ color: gradeColor(grade) }}>{gradeLabel(grade).replace("👑 ", "")}</div>
+        </div>
+        <div className="stack gap8 grow">
+          <ProgressBar label="Cards" value={today.cards} target={cardTarget} pct={cardPct} color="var(--grade-green)" />
+          <ProgressBar label="Minutes" value={today.minutes} target={minTarget} pct={minPct} color="var(--cyan)" />
+          <div className="dim" style={{ fontSize: 11.5 }}>Study day {activeDayKey}</div>
+        </div>
+      </div>
+      {targetsMet && (
+        <div className="enough-note">✓ You've hit today's target. Stopping here is a win — protect the streak, not the maximum.</div>
+      )}
+    </GlassCard>
+  );
+}
+
+function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
+  return (
+    <GlassCard pad className="weekly-card">
+      <PanelHeader title="Weekly Overview" sub="Last 7 calendar days from your local study log"
+        action={<Tag tone={week.activeDays >= 5 ? "green" : week.activeDays >= 3 ? "orange" : "neutral"}>{week.activeDays}/7 active</Tag>} />
+      <div className="weekly-hero">
+        <div>
+          <div className="week-total">{Math.round(week.minutes / 60)}h</div>
+          <div className="sub">{week.minutes} minutes · {week.cards} cards · {week.tasksDone} tasks done</div>
+        </div>
+        <div className="weekly-score">
+          <span style={{ color: gradeColor(week.grade) }}>{gradeLabel(week.grade).replace("👑 ", "")}</span>
+          <small>week result</small>
+        </div>
+      </div>
+      <div className="week-bars">
+        {week.days.map((d) => (
+          <div className="week-day" key={d.key} title={`${d.key}: ${d.minutes}m, ${d.cards} cards`}>
+            <div className="week-bar-shell">
+              <div className="week-bar-fill" style={{ height: `${Math.max(8, d.intensity)}%`, background: gradeColor(d.grade) }} />
+            </div>
+            <span>{d.label}</span>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+function SuggestedMovesWidget({ suggestions }: { suggestions: DashSuggestion[] }) {
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Suggested next moves" sub="Reactive to your current state" />
+      <div className="stack gap8">
+        {suggestions.map((sg, i) => {
+          const clickable = !!(sg.itemId || sg.route);
+          const go = () => { if (sg.itemId) gotoTrackerItem(sg.itemId); else if (sg.route) location.hash = sg.route; };
+          const interactive = clickable ? { role: "button" as const, tabIndex: 0, onClick: go } : {};
+          return (
+            <div className={`sugg ${clickable ? "clickable" : ""}`} key={i} {...interactive}>
+              <span className="sugg-dot" style={{ background: sg.color }} />
+              <div className="grow">
+                <div className="sugg-title">{sg.title}</div>
+                <div className="sugg-reason">{sg.reason}</div>
+              </div>
+              {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Sparkles size={15} style={{ color: "var(--cyan)" }} />}
+            </div>
+          );
+        })}
+      </div>
+    </GlassCard>
+  );
+}
+
+function ScheduleWidget({ schedule }: { schedule: ReturnType<typeof buildDashboardSchedule> }) {
+  return (
+    <GlassCard pad className="dashboard-schedule-card" data-tour="schedule">
+      <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
+        action={<Tag tone={schedule.weekActive >= 5 ? "green" : schedule.weekActive >= 3 ? "orange" : "neutral"}>{schedule.weekActive}/7 this week</Tag>} />
+      <div className="dashboard-schedule">
+        <div className="schedule-calendar">
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
+          {schedule.cells.map((cell, i) => cell
+            ? <button key={cell.key}
+                className={`cal-day schedule-day ${cell.key === schedule.todayKey ? "today" : ""} ${cell.active ? "worked" : ""}`}
+                style={{ borderColor: cell.active ? gradeColor(cell.grade) : undefined }}
+                title={`${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
+                onClick={() => (location.hash = "productivity")}>
+                <span>{cell.date.getDate()}</span>
+                <i style={{ background: cell.active ? gradeColor(cell.grade) : "rgba(255,255,255,0.08)" }} />
+              </button>
+            : <span className="cal-day blank" key={`blank-${i}`} />)}
+        </div>
+        <div className="schedule-side">
+          <div className="schedule-stat">
+            <CalendarDays size={15} />
+            <div><b>{schedule.weekMinutes}m</b><span>this week · {schedule.weekCards} cards</span></div>
+          </div>
+          <div className="schedule-stat">
+            <Clock size={15} />
+            <div><b>{schedule.monthMinutes}m</b><span>this month · {schedule.monthActive}/{schedule.days.length} active</span></div>
+          </div>
+          <div className="schedule-note">
+            <b>{schedule.noteTitle}</b>
+            <span>{schedule.noteBody}</span>
+          </div>
+        </div>
+      </div>
+      <div className="heat-legend">
+        <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red: logged, below baseline</span>
+        <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
+        <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
+        <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> Blue: excellent day</span>
+      </div>
+      <div className="pass-legend">
+        <span><i style={{ background: PASS_COLOR.red }} />1 pass: red</span>
+        <span><i style={{ background: PASS_COLOR.young }} />2 passes: young</span>
+        <span><i style={{ background: PASS_COLOR.mature }} />3 passes: mature</span>
+        <span><i style={{ background: PASS_COLOR.mastered }} />4+: mastered</span>
+      </div>
+    </GlassCard>
+  );
+}
+
+function TermMapWidget({
+  termMap, trackShort, tracker,
+}: {
+  termMap: ReturnType<typeof buildTermSequence>;
+  trackShort: string;
+  tracker: TrackerItem[];
+}) {
+  return (
+    <GlassCard pad className="term-map-card">
+      <PanelHeader title="Term Map" sub={`${trackShort} runway: user-created course shells, modules, tracker maturity, and review pressure`}
+        action={<div className="term-map-actions"><Tag tone={termMap.ready >= 70 ? "green" : termMap.ready >= 35 ? "orange" : "neutral"}>{termMap.ready}% overall</Tag><a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a></div>} />
+      <div className="term-map-overview">
+        <div><b>{termMap.entries.length}</b><span>active nodes</span></div>
+        <div><b>{termMap.modules}</b><span>modules</span></div>
+        <div><b>{termMap.review}</b><span>review signals</span></div>
+      </div>
+      <div className="term-sequence" aria-label="Term sequence">
+        {termMap.entries.map(({ term, courses, stats }, index) => {
+          const current = index === termMap.focusIndex;
+          return (
+            <section className={`term-node-card ${current ? "current" : ""}`} key={term.id}>
+              <div className="term-node-cap">
+                <span className="term-index">T{index + 1}</span>
+                <div>
+                  <b>{term.name}</b>
+                  <span>{stats.primaryCode || "Course shell"} · {stats.modules} module{stats.modules === 1 ? "" : "s"}</span>
+                </div>
+                <Tag tone={current ? "cyan" : stats.ready >= 70 ? "green" : stats.ready >= 35 ? "orange" : "neutral"}>{current ? "focus" : `${stats.ready}%`}</Tag>
+              </div>
+              <div className="term-course-lane">
+                {courses.map((course) => {
+                  const courseStats = summarizeCourse(course, tracker);
+                  return (
+                    <button className="term-course-pill" key={course.id} onClick={() => (location.hash = "courses")}>
+                      <div className="spread">
+                        <b>{course.code}</b>
+                        <span>{courseStats.items ? `${courseStats.ready}%` : "shell"}</span>
+                      </div>
+                      <em>{course.name || "Course shell"}</em>
+                      <small>{course.modules.length} modules · {courseStats.items || 0} tracker rows{courseStats.review ? ` · ${courseStats.review} review` : ""}</small>
+                    </button>
+                  );
+                })}
+                {!courses.length && <div className="term-empty">Add a course shell for this term.</div>}
+              </div>
+              <div className="term-node-meter">
+                <div className="spread"><span>Readiness</span><b>{stats.ready}%</b></div>
+                <div className="track">
+                  <div className="track-fill" style={{ width: `${stats.ready}%`, background: stats.ready >= 70 ? PASS_COLOR.mastered : stats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.34)" }} />
+                </div>
+              </div>
+              <div className="term-node-signals">
+                <span>{stats.items} tracked</span>
+                <span>{stats.review} review</span>
+                <span>{stats.highYield} high-yield</span>
+              </div>
+              <div className="term-module-row">
+                {stats.moduleNames.slice(0, 5).map((module) => <span key={module}>{module}</span>)}
+                {stats.moduleNames.length > 5 && <span>+{stats.moduleNames.length - 5}</span>}
+                {!stats.moduleNames.length && <span>Modules ready to add</span>}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </GlassCard>
+  );
+}
+
+function LocalDataWidget({ state }: { state: ReturnType<typeof useStore.getState> }) {
+  return (
+    <GlassCard pad className="local-data-card">
+      <PanelHeader title="Local Data & Package" sub="Your online edits persist in this browser; exported backups move between installs"
+        action={<GButton size="sm" onClick={() => exportState(state)}><Download size={14} /> Export backup</GButton>} />
+      <div className="alpha-notice">
+        <span className="alpha-pill">ALPHA</span>
+        <span>Web redeployments keep this browser vault intact. Export backups before switching devices, browsers, or domains.</span>
+      </div>
+      <div className="local-data-grid">
+        <div className="local-data-item">
+          <Database size={17} />
+          <div>
+            <b>Local Vault</b>
+            <span>IndexedDB with localStorage fallback. Seed updates will not overwrite your saved profile.</span>
+          </div>
+        </div>
+        <div className="local-data-item">
+          <ShieldCheck size={17} />
+          <div>
+            <b>Private by default</b>
+            <span>No account server is required. Data stays on the current browser/device unless exported.</span>
+          </div>
+        </div>
+        <div className="local-data-item">
+          <PackageCheck size={17} />
+          <div>
+            <b>Future login path</b>
+            <span>Settings → Account & Sync can initialize a profile, save cloud snapshots, and restore backups.</span>
+          </div>
+        </div>
+        <a className="local-data-item" href={HOSTED_ALPHA_URL} target="_blank" rel="noreferrer">
+          <ExternalLink size={17} />
+          <div>
+            <b>Hosted Alpha</b>
+            <span>Open the Vercel instance for website embedding, API routes, and cloud-sync testing.</span>
+          </div>
+        </a>
+      </div>
+    </GlassCard>
+  );
+}
+
+function LatestStandupWidget() {
+  const entry = useStore((state) => state.journal[0]);
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Latest standup" sub="From your Journal" />
+      {entry ? (
+        <div className="journal-card">
+          <div className="jc-date">{prettyDate(entry.date)}</div>
+          <div className="jc-line"><b>Today:</b> {entry.today}</div>
+          <div className="jc-line dim"><b>Tomorrow:</b> {entry.tomorrow}</div>
+        </div>
+      ) : <div className="dim">No journal entries yet.</div>}
+    </GlassCard>
+  );
 }
 
 const OUTCOMES: { key: "won" | "partial" | "missed"; label: string; tone: "green" | "orange" | "red" }[] = [
@@ -358,6 +522,7 @@ function WinTheDay() {
   const [note, setNote] = useState("");
 
   const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 5);
+  const reviewDue = isAfterLocalTime(s.profile.journalReviewTime ?? "20:00");
 
   function save() {
     if (!intention.trim()) return;
@@ -437,6 +602,13 @@ function WinTheDay() {
               ))}
             </div>
           )}
+          {!todayPlan.outcome && reviewDue && (
+            <div className="journal-follow-nudge">
+              <BookText size={15} />
+              <span>It is past your journal follow-up time. Review today’s intention, then write the standup.</span>
+              <a className="gbtn tiny" href="#journal">Open Journal</a>
+            </div>
+          )}
           {todayPlan.outcome && (
             <div className="row gap8" style={{ marginTop: 10 }}>
               <GhostButton onClick={() => s.reviewDayPlan(today, undefined)} title="Re-open review"><ArrowRight size={14} /></GhostButton>
@@ -449,7 +621,7 @@ function WinTheDay() {
   );
 }
 
-interface AiMove { title: string; why: string; mode: string; effortMinutes: number }
+interface AiMove { title: string; why: string; mode: string; effortMinutes: number; itemId?: string; route?: string }
 
 // AI-backed "what should I do right now" queue. Builds context from the live
 // tracker/tasks/board-prep state so the mock (or configured) provider can react
@@ -517,16 +689,21 @@ function AiSuggestedActions() {
 
       {!error && (
         <div className="stack gap8">
-          {(queue ?? []).map((move, i) => (
-            <div className="sugg" key={i}>
+          {(queue ?? []).map((move, i) => {
+            const clickable = Boolean(move.itemId || move.route);
+            const go = () => { if (move.itemId) gotoTrackerItem(move.itemId); else if (move.route) location.hash = move.route; };
+            return (
+            <div className={`sugg ${clickable ? "clickable" : ""}`} key={i}
+              role={clickable ? "button" : undefined} tabIndex={clickable ? 0 : undefined}
+              onClick={clickable ? go : undefined}>
               <span className="sugg-dot" style={{ background: i === 0 ? "var(--cyan)" : "var(--purple)" }} />
               <div className="grow">
                 <div className="sugg-title">{move.title}</div>
                 <div className="sugg-reason">{move.why} · {move.mode} · ~{move.effortMinutes}m</div>
               </div>
-              <Bot size={15} style={{ color: "var(--cyan)" }} />
+              {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Bot size={15} style={{ color: "var(--cyan)" }} />}
             </div>
-          ))}
+          );})}
           {!loading && queue && queue.length === 0 && (
             <div className="dim">No AI suggestions yet — keep logging study activity and check back.</div>
           )}
@@ -549,6 +726,7 @@ function buildLocalAiQueue(s: ReturnType<typeof useStore.getState>): { queue: Ai
     why: move.reason,
     mode: index === 0 ? "active recall" : "targeted repair",
     effortMinutes: index === 0 ? 35 : 25,
+    itemId: move.itemId,
   }));
 
   if (openTasks.length) {
@@ -557,6 +735,7 @@ function buildLocalAiQueue(s: ReturnType<typeof useStore.getState>): { queue: Ai
       why: `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"} are competing with study execution.`,
       mode: "task closure",
       effortMinutes: 15,
+      route: "tasks",
     });
   }
 
@@ -566,6 +745,7 @@ function buildLocalAiQueue(s: ReturnType<typeof useStore.getState>): { queue: Ai
       why: dueReviews ? `${dueReviews} review signals need fresh evidence.` : "No urgent signal yet; generate signal with retrieval or questions.",
       mode: "signal generation",
       effortMinutes: phase.includes("step") ? 45 : 30,
+      route: phase.includes("step") ? "step" : "productivity",
     });
   }
 
@@ -771,4 +951,14 @@ function startOfWeek(date: Date): Date {
   start.setDate(date.getDate() - date.getDay());
   start.setHours(0, 0, 0, 0);
   return start;
+}
+
+function isAfterLocalTime(value: string): boolean {
+  const match = value.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return false;
+  const [, hh, mm] = match;
+  const now = new Date();
+  const target = new Date();
+  target.setHours(Number(hh), Number(mm), 0, 0);
+  return now >= target;
 }

@@ -135,6 +135,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               onChange={(e) => store.updateProfile({ dailyCardTarget: Number(e.target.value) || 0 })} />
             <Field label="Daily minute target" type="number" value={String(profile.dailyMinuteTarget ?? 240)}
               onChange={(e) => store.updateProfile({ dailyMinuteTarget: Number(e.target.value) || 0 })} />
+            <Field label="Journal follow-up time" type="time" value={profile.journalReviewTime ?? "20:00"}
+              onChange={(e) => store.updateProfile({ journalReviewTime: e.target.value || "20:00" })} />
           </div>
           <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
 

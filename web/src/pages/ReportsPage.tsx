@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
-import { Flame, Target, Activity, CalendarCheck, Layers, ListChecks, Download } from "lucide-react";
+import { Flame, Target, Activity, CalendarCheck, Layers, ListChecks, Download, BatteryCharging, Gauge, AlertTriangle, CalendarDays } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { dayTotals, todayGrade, gradeColor, gradeLabel, lastNDays, isoDate, studyStreak, prettyDate } from "../lib/scoring";
 import { PASS_COLOR, PASS_LABEL, YIELD_LABEL, YIELD_TONE, passStage, scopeMastery } from "../lib/tracker";
 import { resolveTrack } from "../lib/tracks";
 import { exportState } from "../lib/backup";
+import { analyzePerformance } from "../lib/performance";
 import type { PassStage } from "../lib/tracker";
 import type { TrackerKind, Yield } from "../lib/types";
 
 const RANGES = [14, 30] as const;
 const STAGES: PassStage[] = ["untouched", "red", "young", "mature", "mastered"];
 const YIELDS: Yield[] = ["high", "review", "low", "none"];
-const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading"];
+const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 
 export function ReportsPage() {
   const s = useStore();
@@ -20,6 +21,17 @@ export function ReportsPage() {
   const track = resolveTrack(s.profile.educationTrack);
   const minTarget = s.profile.dailyMinuteTarget || 240;
   const cardTarget = s.profile.dailyCardTarget || 120;
+  const performance = analyzePerformance({
+    logs: s.logs,
+    journal: s.journal,
+    tasks: s.tasks,
+    tracker: s.tracker,
+    dayPlans: s.dayPlans,
+    activeDayKey: s.activeDayKey,
+    minuteTarget: minTarget,
+    cardTarget,
+    range,
+  });
 
   const days = useMemo(() => lastNDays(range).map((d) => {
     const key = isoDate(d);
@@ -72,9 +84,36 @@ export function ReportsPage() {
         <ReportStat icon={<Flame size={17} />} label="Current streak" value={`${streak}`} note={`${streak === 1 ? "day" : "days"} in a row`} tone="orange" />
         <ReportStat icon={<CalendarCheck size={17} />} label="Consistency" value={`${consistency}%`} note={`${activeDays.length}/${range} active days`} tone={consistency >= 70 ? "green" : consistency >= 40 ? "orange" : "red"} />
         <ReportStat icon={<Target size={17} />} label="Hit the floor" value={`${adherence}%`} note={`${onFloorDays}/${range} days at target`} tone={adherence >= 60 ? "green" : adherence >= 30 ? "orange" : "red"} />
+        <ReportStat icon={<BatteryCharging size={17} />} label="Energy rating" value={`${performance.energyScore}`} note={`${performance.energyLabel} · ${performance.journalSignal}`} tone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"} />
+        <ReportStat icon={<Gauge size={17} />} label="Performance" value={`${performance.performanceScore}`} note={performance.performanceLabel} tone={performance.performanceScore >= 62 ? "green" : performance.performanceScore >= 38 ? "orange" : "red"} />
         <ReportStat icon={<Layers size={17} />} label="Tracker mastery" value={`${mastery}%`} note={`${s.tracker.length} items · ${ankiAnchored} in Anki`} tone={mastery >= 60 ? "green" : mastery >= 30 ? "orange" : "neutral"} />
         <ReportStat icon={<ListChecks size={17} />} label="Tasks done" value={`${completedTasks.length}`} note={`${openTasks.length} still open`} />
       </div>
+
+      <GlassCard pad className="report-performance-card">
+        <PanelHeader title="Energy & performance readout" sub="From study logs, tasks, tracker progress, today’s intention, and recent journal language"
+          action={<Tag tone={performance.preliminary ? "orange" : "green"}>{performance.preliminary ? "Preliminary" : "Enough signal"}</Tag>} />
+        {performance.preliminary && (
+          <div className="report-prelim">
+            <AlertTriangle size={15} />
+            <span>Here are preliminary statistics. Noctyrium needs about 5 days of use before the energy/performance rating becomes meaningfully personalized.</span>
+          </div>
+        )}
+        <div className="report-insight-grid">
+          <div>
+            <b>Recommendation</b>
+            <span>{performance.recommendation}</span>
+          </div>
+          <div>
+            <b>Positive signals</b>
+            <span>{performance.positives.length ? performance.positives.join(", ") : "No strong positive language yet."}</span>
+          </div>
+          <div>
+            <b>Roadblocks</b>
+            <span>{performance.risks.length ? performance.risks.join(", ") : "No major language risk detected."}</span>
+          </div>
+        </div>
+      </GlassCard>
 
       <GlassCard pad data-tour="reports-top">
         <PanelHeader title="Effort trend" sub={`Minutes logged per day over the last ${range} days`}
@@ -90,6 +129,21 @@ export function ReportsPage() {
           ))}
         </div>
         <div className="report-target-line"><span>Daily floor: {minTarget} min · {cardTarget} cards</span></div>
+      </GlassCard>
+
+      <GlassCard pad className="week-planner-lab under-construction">
+        <span className="uc-tape t1">Under Construction</span>
+        <span className="uc-badge"><CalendarDays size={15} /> Week planner lab</span>
+        <PanelHeader title="Hourly week map" sub="Future calendar: map each hour, note what happened, score the block, and feed energy/performance logic." />
+        <div className="week-planner-grid">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+            <div className="week-planner-day" key={day}>
+              <b>{day}</b>
+              {["6a", "9a", "12p", "3p", "6p", "9p"].map((slot) => <span key={slot}>{slot}</span>)}
+            </div>
+          ))}
+        </div>
+        <div className="sub">This will factor roadblocks, illness/injury, praise-worthy moments, addictions, sleep, exercise, and goal-relative performance into recommendations.</div>
       </GlassCard>
 
       <div className="grid grid-2">

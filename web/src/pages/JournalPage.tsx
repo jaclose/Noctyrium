@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, ListChecks, Plus, Trash2, Pencil } from "lucide-r
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, TextAreaField, SelectField } from "../components/ui/Modal";
-import { prettyDate } from "../lib/scoring";
+import { dayKey, prettyDate } from "../lib/scoring";
 import type { JournalEntry } from "../lib/types";
 
 const energyTone = { Low: "red", Medium: "orange", High: "green", "": "neutral" } as const;
@@ -11,9 +11,34 @@ const energyTone = { Low: "red", Medium: "orange", High: "green", "": "neutral" 
 export function JournalPage() {
   const s = useStore();
   const [editing, setEditing] = useState<JournalEntry | "new" | null>(null);
+  const [draft, setDraft] = useState<Partial<JournalEntry> | null>(null);
+  const todayPlan = s.dayPlans.find((plan) => plan.dayKey === dayKey());
+  const reviewTime = s.profile.journalReviewTime ?? "20:00";
 
   return (
     <>
+      {todayPlan && (
+        <GlassCard pad className="journal-followup-card">
+          <PanelHeader title="Today’s intention follow-up"
+            sub={`Set for ${todayPlan.dayKey}. Your dashboard starts nudging around ${reviewTime} local time.`}
+            action={<GButton size="sm" variant="primary" onClick={() => {
+              setDraft({
+                today: `Follow-up on intention: ${todayPlan.intention}`,
+                tomorrow: todayPlan.wins.length ? `Carry forward: ${todayPlan.wins.join("; ")}` : "",
+                blockers: todayPlan.reviewNote ?? "",
+                energy: "Medium",
+                rating: todayPlan.outcome ? `Outcome: ${todayPlan.outcome}` : "Daily review",
+              });
+              setEditing("new");
+            }}>
+              <Plus size={15} /> Write follow-up
+            </GButton>} />
+          <div className="jc-line"><b>Intention:</b> {todayPlan.intention}</div>
+          {todayPlan.wins.length > 0 && <div className="jc-line dim"><b>Win conditions:</b> {todayPlan.wins.join(" · ")}</div>}
+          {todayPlan.outcome && <Tag tone={todayPlan.outcome === "won" ? "green" : todayPlan.outcome === "partial" ? "orange" : "red"}>{todayPlan.outcome}</Tag>}
+        </GlassCard>
+      )}
+
       <GlassCard pad>
         <PanelHeader title="Journal Archive" sub="Daily standups, review, blockers, and tomorrow's plan"
           action={<GButton variant="primary" size="sm" onClick={() => setEditing("new")}><Plus size={15} /> New standup</GButton>} />
@@ -37,18 +62,19 @@ export function JournalPage() {
         </GlassCard>
       ))}
 
-      {editing && <JournalEditor entry={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && <JournalEditor entry={editing === "new" ? null : editing} draft={draft ?? undefined}
+        onClose={() => { setEditing(null); setDraft(null); }} />}
     </>
   );
 }
 
-function JournalEditor({ entry, onClose }: { entry: JournalEntry | null; onClose: () => void }) {
+function JournalEditor({ entry, draft, onClose }: { entry: JournalEntry | null; draft?: Partial<JournalEntry>; onClose: () => void }) {
   const s = useStore();
-  const [today, setToday] = useState(entry?.today ?? "");
-  const [tomorrow, setTomorrow] = useState(entry?.tomorrow ?? "");
-  const [blockers, setBlockers] = useState(entry?.blockers ?? "");
-  const [energy, setEnergy] = useState<JournalEntry["energy"]>(entry?.energy ?? "Medium");
-  const [rating, setRating] = useState(entry?.rating ?? "Useful");
+  const [today, setToday] = useState(entry?.today ?? draft?.today ?? "");
+  const [tomorrow, setTomorrow] = useState(entry?.tomorrow ?? draft?.tomorrow ?? "");
+  const [blockers, setBlockers] = useState(entry?.blockers ?? draft?.blockers ?? "");
+  const [energy, setEnergy] = useState<JournalEntry["energy"]>(entry?.energy ?? draft?.energy ?? "Medium");
+  const [rating, setRating] = useState(entry?.rating ?? draft?.rating ?? "Useful");
   const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 6);
 
   function save() {

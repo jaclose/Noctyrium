@@ -4,7 +4,10 @@ export const RESOURCE_GROUPS = [
   "Personal Core",
   "Medical School / SGU",
   "Anki / Boards",
+  "MCAT",
+  "Pre-Med",
   "Step 1",
+  "Step 2 / Clinical",
   "Community Wikis",
   "Automation / AI Tools",
   "External Archives",
@@ -67,6 +70,9 @@ export function resourceGroup(resource: Pick<Resource, "category" | "tags" | "ti
     if (first && !["sgu", "shared", "drive"].includes(first.toLowerCase())) return first;
     return "Medical School / SGU";
   }
+  if (/mcat/i.test(resource.category)) return "MCAT";
+  if (/pre[-\s]?med|amcas|aacom/i.test(resource.category)) return "Pre-Med";
+  if (/step\s*2|shelf|clinical/i.test(resource.category)) return "Step 2 / Clinical";
   if (/step\s*1|usmle/i.test(resource.category)) return "Step 1";
   if (/anki|board|step\s*2/i.test(resource.category)) return "Anki / Boards";
   if (/tool|ai|automation/i.test(resource.category)) return "Automation / AI Tools";

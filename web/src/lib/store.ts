@@ -9,7 +9,7 @@ import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog,
 } from "./types";
-import { APP_VERSION_LABEL, driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
+import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
@@ -579,6 +579,9 @@ export const useStore = create<Store>()(
           }
           s.profile = normalizeProfile(profile);
         }
+        if (fromVersion < 19) {
+          s.profile = normalizeProfile(s.profile);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -697,6 +700,11 @@ function normalizeProfile(value: unknown): Profile {
   const educationTrack = resolveTrack(
     typeof profile.educationTrack === "string" ? profile.educationTrack : undefined,
   ).id;
+  const dashboardWidgetOrder = normalizeDashboardWidgetOrder(profile.dashboardWidgetOrder);
+  const hiddenDashboardWidgets = normalizeDashboardWidgetList(profile.hiddenDashboardWidgets);
+  const journalReviewTime = typeof profile.journalReviewTime === "string" && /^\d{2}:\d{2}$/.test(profile.journalReviewTime)
+    ? profile.journalReviewTime
+    : "20:00";
   return {
     name,
     userId: typeof profile.userId === "string" && profile.userId.trim()
@@ -717,7 +725,27 @@ function normalizeProfile(value: unknown): Profile {
       : educationTrack === "sgu",
     activeFocusId: activeFocus,
     focusSubscriptions,
+    dashboardWidgetOrder,
+    hiddenDashboardWidgets,
+    journalReviewTime,
   };
+}
+
+function normalizeDashboardWidgetOrder(value: unknown): Profile["dashboardWidgetOrder"] {
+  if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
+  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const incoming = value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
+    typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
+  );
+  return [...new Set([...incoming, ...DEFAULT_DASHBOARD_WIDGETS])];
+}
+
+function normalizeDashboardWidgetList(value: unknown): Profile["hiddenDashboardWidgets"] {
+  if (!Array.isArray(value)) return [];
+  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
+    typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
+  ))];
 }
 
 function normalizePromise(value: unknown): Profile["promise"] {

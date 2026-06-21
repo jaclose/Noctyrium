@@ -3,16 +3,27 @@
 // personal workload: canonical SGU terms/courses, a few sample tracker rows,
 // official board resources, and empty logs/journal.
 // ===========================================================================
-import type { BoardPrepProfile, NoctyriumState, TrackerItem, TrackerKind, Yield } from "./types";
+import type { BoardPrepProfile, DashboardWidgetId, NoctyriumState, TrackerItem, TrackerKind, Yield } from "./types";
 import { dayKey, isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
+export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
+  "winDay",
+  "todayScore",
+  "weekly",
+  "suggested",
+  "aiActions",
+  "schedule",
+  "termMap",
+  "localData",
+  "latestStandup",
+];
 
 const now = () => new Date().toISOString();
 
@@ -43,6 +54,9 @@ export function makeSeed(): NoctyriumState {
       showSguResources: true,
       activeFocusId: "term1",
       focusSubscriptions: DEFAULT_FOCUS_IDS,
+      dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
+      hiddenDashboardWidgets: [],
+      journalReviewTime: "20:00",
     },
     terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),
     courses: ACADEMIC_TEMPLATE_COURSES.map(({ aliases: _aliases, modules, ...course }) => ({

@@ -243,7 +243,7 @@ export function StepPage() {
   }
 
   function domainRow(d: Domain): Omit<TrackerItem, "id" | "updated"> {
-    return { path: exam.prefix, label: d.name, kind: "Lecture", passes: 0, ankiPasses: 0, yield: weightYield[d.weight], note: d.focus };
+    return { path: exam.prefix, label: d.name, kind: "Review Loop", passes: 0, ankiPasses: 0, yield: weightYield[d.weight], note: d.focus };
   }
   function installDomain(d: Domain) {
     if (installedNames.has(d.name)) return;

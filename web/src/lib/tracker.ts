@@ -3,7 +3,7 @@
 // Passes drive everything: 0 untouched · 1 red · 2 young · 3 mature · 4+ mastered.
 // Anki rounds are a parallel track: 0 off · 1 orange · 2 yellow · 3 purple.
 // ===========================================================================
-import type { TrackerItem, Yield } from "./types";
+import type { TrackerItem, TrackerKind, Yield } from "./types";
 
 export type PassStage = "untouched" | "red" | "young" | "mature" | "mastered";
 
@@ -63,23 +63,39 @@ export interface Suggestion {
  *   in-progress (1–2 passes)    → push toward mature, high-yield first
  *   mastered (4+)               → never suggested
  */
-function targetPasses(it: TrackerItem): number {
-  if (it.kind === "PQ") return 3;
+const COMPLETION_KINDS = new Set<TrackerKind>(["Requirement", "Milestone", "Evidence"]);
+const QUESTION_KINDS = new Set<TrackerKind>(["PQ", "Question Block", "Assessment"]);
+
+export function isCompletionKind(kind: TrackerKind): boolean {
+  return COMPLETION_KINDS.has(kind);
+}
+
+export function isQuestionKind(kind: TrackerKind): boolean {
+  return QUESTION_KINDS.has(kind);
+}
+
+export function targetPassesForItem(it: Pick<TrackerItem, "kind" | "yield">): number {
+  if (isCompletionKind(it.kind)) return 1;
+  if (isQuestionKind(it.kind)) return 3;
   if (it.yield === "low") return 2;
   if (it.yield === "high" || it.yield === "review") return 4;
   return 3;
 }
 
 function kindWeight(it: TrackerItem): number {
-  if (it.kind === "PQ") return 12;
+  if (isQuestionKind(it.kind)) return 12;
   if (it.kind === "Lecture") return 9;
   if (it.kind === "DLA") return 7;
+  if (it.kind === "Review Loop") return 10;
+  if (it.kind === "Requirement") return 8;
+  if (it.kind === "Milestone") return 8;
+  if (it.kind === "Evidence") return 6;
   if (it.kind === "Lab") return 4;
   return 3;
 }
 
 function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): number {
-  const target = targetPasses(it);
+  const target = targetPassesForItem(it);
   if (it.passes >= target) return -1; // mastered for this item type
   const deficit = Math.max(target - it.passes, 0);
   let s = deficit * 28 + kindWeight(it);
@@ -90,9 +106,9 @@ function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): 
   if (it.passes === 0) s += 38 + Math.min(scopeSize, 40) * 0.4;
   if (it.passes === 1) s += 30; // red — fragile, push it
   if (it.passes === 2) s += 18; // young — near mature
-  if (it.kind === "PQ" && it.passes === 0 && (it.yield === "high" || it.yield === "review")) s += 22;
-  if (it.kind !== "PQ" && it.ankiPasses === 0 && it.passes >= 1 && it.yield !== "low") s += 16;
-  if (it.kind !== "PQ" && it.ankiPasses < 3 && it.passes >= 3 && it.yield === "high") s += 12;
+  if (isQuestionKind(it.kind) && it.passes === 0 && (it.yield === "high" || it.yield === "review")) s += 22;
+  if (!isQuestionKind(it.kind) && !isCompletionKind(it.kind) && it.ankiPasses === 0 && it.passes >= 1 && it.yield !== "low") s += 16;
+  if (!isQuestionKind(it.kind) && !isCompletionKind(it.kind) && it.ankiPasses < 3 && it.passes >= 3 && it.yield === "high") s += 12;
   s += untouchedRatio * 16;
   return s;
 }
@@ -105,7 +121,7 @@ export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[
   if (!items.length) {
     return [{ title: "Import the first tracker items", reason: "Add lectures, DLAs, PQs, or a CSV so Noctyrium can rank the next move.", color: PASS_COLOR.untouched }];
   }
-  const live = items.filter((it) => it.passes < targetPasses(it));
+  const live = items.filter((it) => it.passes < targetPassesForItem(it));
   if (!live.length) {
     return [{ title: "This scope is mastered", reason: "Every item here is at 4+ passes. Pick another scope or protect recovery.", color: PASS_COLOR.mastered }];
   }
@@ -141,19 +157,21 @@ export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[
 }
 
 function moveTitle(it: TrackerItem): string {
+  if (isCompletionKind(it.kind)) return `${it.passes ? "Verify" : "Complete"}: ${it.label}`;
   if (it.passes === 0) return `Start: ${it.label}`;
-  if (it.kind === "PQ") return `PQ completed #${Math.min(it.passes + 1, 3)}: ${it.label}`;
+  if (isQuestionKind(it.kind)) return `${it.kind} #${Math.min(it.passes + 1, 3)}: ${it.label}`;
   if (it.passes < 3) return `Pass #${it.passes + 1}: ${it.label}`;
   if (it.ankiPasses < 3) return `Anki round #${it.ankiPasses + 1}: ${it.label}`;
   return `Mastery check: ${it.label}`;
 }
 
 function moveReason(it: TrackerItem, untouched: number, red: number, review: number, live: number): string {
+  if (isCompletionKind(it.kind)) return "This is a completion/evidence item. Done means the requirement is satisfied or the artifact exists.";
   if (it.yield === "review") return `Flagged for review — repair this before expanding. ${review} review item${review === 1 ? "" : "s"} in scope.`;
   if (it.passes === 0) return it.yield === "high"
     ? `High-yield and untouched — best ROI while ${untouched}/${live} active items are still untouched.`
     : `Untouched (${untouched}/${live} active items left). Start here, then log recall quality.`;
-  if (it.kind === "PQ") return "Practice questions use 1-2-3 completed sets; review explanations before increasing mastery.";
+  if (isQuestionKind(it.kind)) return "Question/assessment rows use 1-2-3 completed sets; review explanations before increasing mastery.";
   if (it.passes === 1) return `Only 1 pass (red) — fragile. ${red} red item${red === 1 ? "" : "s"} should be lifted toward young.`;
   if (it.passes === 2) return "Young — one focused pass reaches mature and makes PQ/Anki work more productive.";
   if (it.ankiPasses === 0) return "Mature in lecture tracker but not anchored in Anki yet.";
@@ -165,7 +183,7 @@ function moveReason(it: TrackerItem, untouched: number, red: number, review: num
 export function scopeMastery(items: TrackerItem[]): number {
   if (!items.length) return 0;
   const score = items.reduce((a, i) => {
-    const target = i.kind === "PQ" ? 3 : 4;
+    const target = targetPassesForItem(i);
     return a + Math.min(i.passes, target) / target;
   }, 0);
   return Math.round((score / items.length) * 100);
