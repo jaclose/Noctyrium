@@ -1,19 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
   SlidersHorizontal, GripVertical, PlusCircle, X, Link as LinkIcon, Brain,
+  AlertTriangle, CalendarClock,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
+import { dayKey, dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
+import { missedStandupDays, planForDay, standupStatusToday } from "../lib/journal";
 import type { Grade } from "../lib/scoring";
 import type { Course, Term, TrackerItem } from "../lib/types";
 import type { DashboardWidgetId } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
-import { gotoTrackerItem } from "../lib/uiStore";
+import { gotoTrackerItem, gotoJournalDay } from "../lib/uiStore";
 import { useInView } from "../lib/useInView";
+import { canAutoFocus } from "../lib/device";
 import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
@@ -56,6 +59,7 @@ export function DashboardPage() {
   const reviewItems = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
 
   const streak = studyStreak(s.logs);
+  const missedSet = useMemo(() => new Set(missedStandupDays(s)), [s.journal, s.logs, s.dayPlans]);
   const week = weeklySummary(s.logs);
   const cardTarget = s.profile.dailyCardTarget || 120;
   const minTarget = s.profile.dailyMinuteTarget || 240;
@@ -98,7 +102,7 @@ export function DashboardPage() {
     if (widgetId === "weekly") return <WeeklyWidget key={widgetId} week={week} />;
     if (widgetId === "suggested") return <SuggestedMovesWidget key={widgetId} suggestions={suggestions} />;
     if (widgetId === "aiActions") return <AiSuggestedActions key={widgetId} />;
-    if (widgetId === "schedule") return <ScheduleWidget key={widgetId} schedule={schedule} />;
+    if (widgetId === "schedule") return <ScheduleWidget key={widgetId} schedule={schedule} missedSet={missedSet} />;
     if (widgetId === "termMap") return <TermMapWidget key={widgetId} termMap={termMap} trackShort={track.short} tracker={s.tracker} />;
     if (widgetId === "localData") return <LocalDataWidget key={widgetId} state={s} />;
     if (widgetId === "latestStandup") return <LatestStandupWidget key={widgetId} />;
@@ -119,11 +123,20 @@ export function DashboardPage() {
         energyScore={performance.energyScore}
       />
 
+      <StandupPrompt />
+
       <GlassCard pad className="dashboard-control-card">
         <div className="spread">
           <div className="dashboard-control-copy">
             <div className="dashboard-control-kicker">Personal command surface</div>
-            <div className="dashboard-control-title">Tailored to {track.short}</div>
+            <div className="dashboard-control-titlerow">
+              <div className="dashboard-control-title">Tailored to {track.short}</div>
+              <span className={`streak-chip ${streak > 0 ? "lit" : ""}`} title="Consecutive days with logged study">
+                <Flame size={15} />
+                <b>{streak}</b>
+                <span>day{streak === 1 ? "" : "s"}</span>
+              </span>
+            </div>
             <div className="dashboard-control-meta">
               <span>{performance.performanceLabel}</span>
               <span>Energy {performance.energyScore}/100</span>
@@ -556,7 +569,7 @@ function SuggestedMovesWidget({ suggestions }: { suggestions: DashSuggestion[] }
   );
 }
 
-function ScheduleWidget({ schedule }: { schedule: ReturnType<typeof buildDashboardSchedule> }) {
+function ScheduleWidget({ schedule, missedSet }: { schedule: ReturnType<typeof buildDashboardSchedule>; missedSet: Set<string> }) {
   return (
     <GlassCard pad className="dashboard-schedule-card" data-tour="schedule">
       <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
@@ -566,10 +579,10 @@ function ScheduleWidget({ schedule }: { schedule: ReturnType<typeof buildDashboa
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
           {schedule.cells.map((cell, i) => cell
             ? <button key={cell.key}
-                className={`cal-day schedule-day ${cell.key === schedule.todayKey ? "today" : ""} ${cell.active ? "worked" : ""}`}
-                style={{ borderColor: cell.active ? gradeColor(cell.grade) : undefined }}
-                title={`${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
-                onClick={() => (location.hash = "productivity")}>
+                className={`cal-day schedule-day ${cell.key === schedule.todayKey ? "today" : ""} ${cell.active ? "worked" : ""} ${missedSet.has(cell.key) ? "remediable" : ""}`}
+                style={{ borderColor: !missedSet.has(cell.key) && cell.active ? gradeColor(cell.grade) : undefined }}
+                title={missedSet.has(cell.key) ? `${prettyDate(cell.key)}: missed standup — click to remediate` : `${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
+                onClick={() => (missedSet.has(cell.key) ? gotoJournalDay(cell.key) : (location.hash = "productivity"))}>
                 <span>{cell.date.getDate()}</span>
                 <i style={{ background: cell.active ? gradeColor(cell.grade) : "rgba(255,255,255,0.08)" }} />
               </button>
@@ -810,16 +823,20 @@ function BoardBlueprintWidget() {
   const prep = s.boardPrep[exam];
   const logs = prep?.blueprintLogs ?? [];
   const minutes = logs.slice(0, 7).reduce((sum, log) => sum + log.minutes, 0);
+  const installedAreas = (prep?.installedBlueprintAreas ?? []).length;
+  const completedItems = (prep?.completedBlueprintItems ?? []).length;
   return (
     <GlassCard pad>
       <PanelHeader title="Blueprint Pulse" sub="Current prep lane status"
         action={<a className="gbtn sm" href={exam === "premed" || exam === "mcat" ? "#premed" : "#step"}><Brain size={14} /> Open</a>} />
       <div className="trend-widget">
         <div><b>{exam.toUpperCase()}</b><span>lane</span></div>
-        <div><b>{logs.length}</b><span>logs</span></div>
-        <div><b>{minutes}m</b><span>recent</span></div>
+        <div><b>{installedAreas}</b><span>areas</span></div>
+        <div><b>{completedItems}</b><span>items done</span></div>
       </div>
-      <div className="trend-comment">{logs.length ? "Keep turning blueprint logs into tracker rows and question repair." : "Install a blueprint or log one focused block to generate signal."}</div>
+      <div className="trend-comment">{installedAreas
+        ? `${completedItems} blueprint item${completedItems === 1 ? "" : "s"} complete · ${logs.length} log${logs.length === 1 ? "" : "s"} · ${minutes}m recent. Macro or detailed — keep the evidence honest.`
+        : "Install a blueprint (macro or detailed) or log one focused block to generate signal."}</div>
     </GlassCard>
   );
 }
@@ -829,6 +846,55 @@ const OUTCOMES: { key: "won" | "partial" | "missed"; label: string; tone: "green
   { key: "partial", label: "Partial", tone: "orange" },
   { key: "missed", label: "Missed", tone: "red" },
 ];
+
+// Conditional dashboard banner: shows the standup prompt inside the review
+// window, or a "you missed your standup" remediation strip once it lapses. It
+// disappears entirely when there's nothing to do.
+function StandupPrompt() {
+  const s = useStore();
+  const missed = useMemo(() => missedStandupDays(s), [s.journal, s.logs, s.dayPlans]);
+  const status = standupStatusToday(s);
+  if (!missed.length && status !== "due") return null;
+
+  if (missed.length) {
+    return (
+      <GlassCard pad className="standup-prompt-card missed">
+        <div className="standup-prompt-head">
+          <span className="standup-prompt-mark warn"><AlertTriangle size={18} /></span>
+          <div className="grow">
+            <b>Oh no — you missed {missed.length} standup{missed.length === 1 ? "" : "s"}</b>
+            <span>Remediate while the day is still fresh. Flagged days pulse here and on Productivity.</span>
+          </div>
+        </div>
+        <div className="standup-prompt-days">
+          {missed.map((key) => {
+            const plan = planForDay(s.dayPlans, key);
+            return (
+              <button key={key} type="button" className="standup-day-chip remediable" onClick={() => gotoJournalDay(key)}>
+                <CalendarClock size={13} />
+                <span>{prettyDate(`${key}T12:00:00`)}</span>
+                {plan && <em>“{plan.intention.length > 26 ? `${plan.intention.slice(0, 26)}…` : plan.intention}”</em>}
+              </button>
+            );
+          })}
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard pad className="standup-prompt-card due">
+      <div className="standup-prompt-head">
+        <span className="standup-prompt-mark"><BookText size={18} /></span>
+        <div className="grow">
+          <b>Standup time</b>
+          <span>It’s past your {s.profile.journalReviewTime ?? "20:00"} review time. Close out today before the window passes.</span>
+        </div>
+        <GButton size="sm" variant="primary" onClick={() => gotoJournalDay(dayKey())}><ArrowRight size={14} /> Write standup</GButton>
+      </div>
+    </GlassCard>
+  );
+}
 
 // "Win the day": a morning intention, an end-of-day review, and a gentle
 // carry-over nudge if a past day was planned but never closed out.
@@ -892,7 +958,7 @@ function WinTheDay() {
           <PanelHeader title="Win the day" sub="Set one intention before you start — how would today be a win?" />
           <div className="stack gap8">
             <input className="field" placeholder="e.g. Finish NB3 lectures + 100 cards, no doomscrolling"
-              value={intention} onChange={(e) => setIntention(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />
+              value={intention} onChange={(e) => setIntention(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} autoFocus={canAutoFocus()} />
             <textarea className="field" rows={2} placeholder="Win conditions (one per line, optional)"
               value={wins} onChange={(e) => setWins(e.target.value)} />
             <div className="row">

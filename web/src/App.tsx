@@ -4,6 +4,9 @@ import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
 import { OnboardingWizard } from "./components/shell/OnboardingWizard";
 import { GuidedTour } from "./components/shell/GuidedTour";
+import { Toaster } from "./components/shell/Toaster";
+import { StandupWatcher } from "./components/shell/StandupWatcher";
+import { PomodoroFx } from "./components/productivity/PomodoroFx";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
 
@@ -145,6 +148,9 @@ export default function App() {
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
       {showTour && <GuidedTour onExit={endTour} onNavigate={navigateTour} currentRoute={route} />}
+      <PomodoroFx />
+      <StandupWatcher />
+      <Toaster />
     </div>
   );
 }

@@ -62,21 +62,15 @@ export function Sidebar({
   return (
     <>
       <div className={`sidebar ${collapsed ? "open" : ""}`}>
-        <button className="brand" onClick={() => onOpenSettings("general")} title="Profile & settings">
-          <span className="avatar">
-            {profile.avatarDataUrl
-              ? <img src={profile.avatarDataUrl} alt="" />
-              : <span className="avatar-mono">{(profile.name || "N").slice(0, 1)}</span>}
+        <button type="button" className="server-header" onClick={() => onOpenSettings("general")} title="Profile & settings">
+          <span className="server-logo"><img src="./icon-192.png" alt="" /></span>
+          <span className="server-meta">
+            <span className="server-name">Noctyrium</span>
+            <span className="server-ver mono">{profile.versionLabel}</span>
           </span>
-          <span className="brand-text">
-            <span className="brand-name">{profile.name || "Noctyrium"}</span>
-            <span className="brand-ver mono">{profile.versionLabel}</span>
-          </span>
+          <ChevronDown size={16} className="server-caret" />
         </button>
 
-        <div className="nav-label-row">
-          <span className="nav-label">{manage ? "CUSTOMIZE SIDEBAR" : "CONTROL SURFACE"}</span>
-        </div>
         <div className="nav-manage-zone" data-tour="control-surface-menu">
           <button
             type="button"
@@ -94,6 +88,7 @@ export function Sidebar({
         </div>
 
         <nav className="nav">
+          <div className="nav-cat"><span>{manage ? "Customize sidebar" : "Control surface"}</span></div>
           {SIDEBAR_TOP.map((id) => <Item key={id} id={id} />)}
 
           {(prepItems.length > 0 || manage) && (
@@ -138,17 +133,28 @@ export function Sidebar({
               <HelpIcon size={17} /><span>Help</span>
             </button>
           )}
-          <button type="button" className="nav-item footer-action" onClick={() => onOpenSettings("general")}>
-            <Settings size={17} /><span>Settings</span>
-          </button>
-          <button type="button" className="nav-item footer-action" onClick={() => onOpenSettings("account")}>
-            <UserCircle2 size={17} /><span>Account &amp; Sync</span>
-          </button>
-          <div className="brand-lockup">
-            <img src="./icon-192.png" alt="" className="brand-logo" width={22} height={22} />
-            <span className="brand-wordmark">Noctyrium</span>
+          <div className="user-panel">
+            <button type="button" className="user-id" onClick={() => onOpenSettings("general")} title="Profile & settings">
+              <span className="avatar sm">
+                {profile.avatarDataUrl
+                  ? <img src={profile.avatarDataUrl} alt="" />
+                  : <span className="avatar-mono">{(profile.name || "N").slice(0, 1)}</span>}
+                <span className="user-online" />
+              </span>
+              <span className="user-meta">
+                <span className="user-name">{profile.name || "You"}</span>
+                <span className="user-status">{manage ? "Tap sections to subscribe / hide" : profile.tagline}</span>
+              </span>
+            </button>
+            <div className="user-actions">
+              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("account")} title="Account & Sync">
+                <UserCircle2 size={17} />
+              </button>
+              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("general")} title="Settings">
+                <Settings size={17} />
+              </button>
+            </div>
           </div>
-          <div className="tagline">{manage ? "Tap to subscribe / hide. Dashboard stays." : profile.tagline}</div>
         </div>
       </div>
       {collapsed && <div className="drawer-scrim" onClick={onClose} />}

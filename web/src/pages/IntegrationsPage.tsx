@@ -2,6 +2,7 @@ import { Wrench } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
 import { Icon } from "../lib/icons";
+import { AnkiConnectPanel } from "../components/integrations/AnkiConnectPanel";
 import type { Integration } from "../lib/types";
 
 const statusTone: Record<Integration["status"], "green" | "cyan" | "neutral"> = {
@@ -13,16 +14,19 @@ const statusLabel: Record<Integration["status"], string> = {
 
 export function IntegrationsPage() {
   const s = useStore();
+  const otherIntegrations = s.integrations.filter((i) => !/anki/i.test(i.name));
   return (
     <>
+      <AnkiConnectPanel />
+
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
         <span className="uc-tape t2">Coming Soon</span>
-        <span className="uc-badge"><Wrench size={15} /> Integrations are under construction</span>
+        <span className="uc-badge"><Wrench size={15} /> More integrations are under construction</span>
         <div className="uc-inner">
-          <PanelHeader title="Integrations" sub="Planned for a future release." />
+          <PanelHeader title="Other integrations" sub="Planned for a future release." />
           <div className="stack gap8">
-            {s.integrations.map((i) => (
+            {otherIntegrations.map((i) => (
               <div className="int-row" key={i.id}>
                 <span className="folder-icon"><Icon name={i.icon} size={18} /></span>
                 <div className="grow">

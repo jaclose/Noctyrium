@@ -169,6 +169,7 @@
 }
 @keyframes seal-pop { 0% { transform: scale(0) rotate(-20deg); } 60% { transform: scale(1.12) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
 .promise-sealed-ring span { font-size: 40px; font-weight: 900; background: linear-gradient(120deg, #fff, #bfe9ff, #b9a7ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.promise-sealed-ring img { width: 60px; height: 60px; border-radius: 16px; object-fit: contain; filter: drop-shadow(0 4px 14px rgba(90,215,239,0.45)); }
 .promise-sealed-title {
   font-family: Georgia, "Cormorant Garamond", serif; font-size: 44px; font-weight: 700; letter-spacing: -0.01em;
   background: linear-gradient(120deg, #ffffff, #cdecff 55%, #c3b4ff);

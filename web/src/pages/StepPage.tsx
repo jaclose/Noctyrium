@@ -310,6 +310,19 @@ function pct(done: number, total: number) {
   return total ? Math.round((done / total) * 100) : 0;
 }
 
+type BlueprintDepth = "macro" | "detailed";
+const DEPTH_KEY = "noctyrium-blueprint-depth";
+function readDepth(): BlueprintDepth {
+  try { return localStorage.getItem(DEPTH_KEY) === "detailed" ? "detailed" : "macro"; } catch { return "macro"; }
+}
+function writeDepth(depth: BlueprintDepth) {
+  try { localStorage.setItem(DEPTH_KEY, depth); } catch { /* storage unavailable */ }
+}
+
+function folderLeafIds(area: PrepArea, folder: PrepFolder) {
+  return folder.leaves.map((leaf) => leafId(area.id, leaf.id));
+}
+
 function boardReadiness(logs: BoardBlueprintLog[], completion: number): number {
   const confidenceScore: Record<BoardBlueprintLog["confidence"], number> = { red: 18, orange: 45, green: 72, blue: 92 };
   const recent = logs.slice(0, 20);
@@ -325,6 +338,7 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
   const s = useStore();
   const [examId, setExamId] = useState<BoardExamId>(initialExam);
   const [openArea, setOpenArea] = useState<string>(EXAMS[initialExam].areas[0]?.id ?? "");
+  const [depth, setDepth] = useState<BlueprintDepth>(readDepth);
   const [flash, setFlash] = useState<string | null>(null);
   const [logArea, setLogArea] = useState(EXAMS[initialExam].areas[0]?.title ?? "");
   const [logMode, setLogMode] = useState<BoardBlueprintLog["mode"]>("Questions");
@@ -381,6 +395,21 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
   function toggleLeaf(id: string) {
     const next = new Set(prep.completedBlueprintItems ?? []);
     next.has(id) ? next.delete(id) : next.add(id);
+    patchPrep({ completedBlueprintItems: [...next] });
+  }
+
+  function changeDepth(next: BlueprintDepth) {
+    setDepth(next);
+    writeDepth(next);
+  }
+
+  // Macro controls toggle a whole folder (or area) at once — same underlying
+  // per-leaf completion set, just coarser when you only want the big picture.
+  function toggleIds(ids: string[]) {
+    if (!ids.length) return;
+    const next = new Set(prep.completedBlueprintItems ?? []);
+    const allDone = ids.every((id) => next.has(id));
+    for (const id of ids) allDone ? next.delete(id) : next.add(id);
     patchPrep({ completedBlueprintItems: [...next] });
   }
 
@@ -467,7 +496,16 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
 
       <div className="step-overview-grid blueprint-main-grid">
         <GlassCard pad>
-          <PanelHeader title="Blueprint Library" sub="Install areas, open folders, then complete final items with evidence." />
+          <PanelHeader title="Blueprint Library"
+            sub={depth === "macro"
+              ? "Macro: install areas and check off whole folders for a fast big-picture pass."
+              : "Detailed: open every folder and complete each final item with its own evidence."}
+            action={
+              <div className="depth-toggle" title="Choose how deep the blueprint goes">
+                <button type="button" className={`depth-pill ${depth === "macro" ? "on" : ""}`} onClick={() => changeDepth("macro")}>Macro</button>
+                <button type="button" className={`depth-pill ${depth === "detailed" ? "on" : ""}`} onClick={() => changeDepth("detailed")}>Detailed</button>
+              </div>
+            } />
           <div className="blueprint-tree-grid">
             {config.areas.map((area) => {
               const ids = areaLeafIds(area);
@@ -494,25 +532,48 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
                           {isInstalled ? <CheckCircle2 size={14} /> : <Plus size={14} />} {isInstalled ? "Subscribed" : "Subscribe area"}
                         </GButton>
                         <Tag tone="neutral">weight {area.weight.toFixed(1)}x</Tag>
+                        {depth === "macro" && isInstalled && (
+                          <GButton size="sm" onClick={() => toggleIds(ids)}>
+                            {areaPct === 100 ? "Clear area" : "Mark area done"}
+                          </GButton>
+                        )}
                       </div>
-                      {area.folders.map((folder) => (
-                        <details className="prep-folder" key={folder.title} open={isInstalled}>
-                          <summary><BookOpen size={15} /><b>{folder.title}</b><ChevronDown size={14} /></summary>
-                          <div className="prep-leaf-grid">
-                            {folder.leaves.map((leaf) => {
-                              const id = leafId(area.id, leaf.id);
-                              const done = completed.has(id);
-                              return (
-                                <button key={id} type="button" className={`prep-leaf ${done ? "done" : ""}`} onClick={() => toggleLeaf(id)} disabled={!isInstalled}>
-                                  <span>{done ? <CheckCircle2 size={14} /> : <CircleDot />}</span>
-                                  <b>{leaf.title}</b>
-                                  <small>{leaf.action}</small>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </details>
-                      ))}
+                      {area.folders.map((folder) => {
+                        const fids = folderLeafIds(area, folder);
+                        const fdone = fids.filter((id) => completed.has(id)).length;
+                        const allDone = fids.length > 0 && fdone === fids.length;
+                        if (depth === "macro") {
+                          return (
+                            <button key={folder.title} type="button" className={`prep-macro-folder ${allDone ? "done" : ""}`}
+                              onClick={() => toggleIds(fids)} disabled={!isInstalled}>
+                              <span className="pmf-check">{allDone ? <CheckCircle2 size={16} /> : <CircleDot />}</span>
+                              <span className="grow">
+                                <b>{folder.title}</b>
+                                <small>{folder.leaves.slice(0, 3).map((leaf) => leaf.title).join(" · ")}{folder.leaves.length > 3 ? ` · +${folder.leaves.length - 3} more` : ""}</small>
+                              </span>
+                              <span className="pmf-count">{fdone}/{fids.length}</span>
+                            </button>
+                          );
+                        }
+                        return (
+                          <details className="prep-folder" key={folder.title} open={isInstalled}>
+                            <summary><BookOpen size={15} /><b>{folder.title}</b><span className="prep-folder-count">{fdone}/{fids.length}</span><ChevronDown size={14} /></summary>
+                            <div className="prep-leaf-grid">
+                              {folder.leaves.map((leaf) => {
+                                const id = leafId(area.id, leaf.id);
+                                const done = completed.has(id);
+                                return (
+                                  <button key={id} type="button" className={`prep-leaf ${done ? "done" : ""}`} onClick={() => toggleLeaf(id)} disabled={!isInstalled}>
+                                    <span>{done ? <CheckCircle2 size={14} /> : <CircleDot />}</span>
+                                    <b>{leaf.title}</b>
+                                    <small>{leaf.action}</small>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </details>
+                        );
+                      })}
                       {area.tips?.length ? (
                         <div className="prep-tip-list">
                           {area.tips.map((tip) => <span key={tip}><Sparkles size={13} /> {tip}</span>)}

@@ -33,6 +33,10 @@ interface PomodoroState {
   anchorDay: string;
   sessionsToday: number;
   loggedMinutesToday: number;
+  // FX signal — bumped each time a focus sprint completes so the app root can
+  // fire the page glow + completion toast (kept here so it works on any page).
+  completedAt: string | null;
+  completedMinutes: number;
   // actions
   start: () => void;
   pause: () => void;
@@ -109,6 +113,8 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         running: natural,
         sessionsToday: natural ? s.sessionsToday + 1 : s.sessionsToday,
         loggedMinutesToday: natural && autoLog ? s.loggedMinutesToday + preset.focus : s.loggedMinutesToday,
+        completedAt: natural ? new Date().toISOString() : s.completedAt,
+        completedMinutes: natural && autoLog ? preset.focus : 0,
       }));
       if (natural) startInterval(() => get()._tick());
     } else {
@@ -126,10 +132,17 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     anchorDay: dayKey(),
     sessionsToday: 0,
     loggedMinutesToday: 0,
+    completedAt: null,
+    completedMinutes: 0,
 
     start: () => {
       if (get().running) return;
       syncDay();
+      // Ask once (within this user gesture) so we can fire an OS notification
+      // when a sprint finishes while the tab is in the background.
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => { /* ignore */ });
+      }
       set({ running: true });
       startInterval(() => get()._tick());
     },

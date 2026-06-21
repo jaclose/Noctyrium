@@ -108,7 +108,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
         </div>
       ) : (
         <div className="promise-sealed">
-          <div className="promise-sealed-ring"><span>N</span></div>
+          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="Noctyrium" /></div>
           <div className="promise-sealed-title">Promise made.</div>
           <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
           <div className="promise-sealed-sub">Begin.</div>
