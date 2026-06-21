@@ -29,6 +29,7 @@ export function AnkiConnectPanel() {
   const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(endpoint);
   const mixedContentRisk = isHttps && localEndpoint && endpoint.startsWith("http://");
   const corsListPatch = JSON.stringify(["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin], null, 2);
+  const localAppUrl = "http://127.0.0.1:5173/#integrations";
 
   async function copyText(text: string, label: string) {
     try {
@@ -121,7 +122,18 @@ export function AnkiConnectPanel() {
       {mixedContentRisk && (
         <div className="anki-warn">
           <AlertTriangle size={15} />
-          <span>This hosted app is calling your local Anki at <b>{endpoint}</b>. If the local check opens but Connect fails, the usual cause is an exact-origin mismatch in <b>webCorsOriginList</b>.</span>
+          <span>
+            This hosted app is calling local Anki at <b>{endpoint}</b>. If the local check opens but Connect fails,
+            Chrome is likely blocking <b>Local Network / Apps on device</b> access for this site.
+          </span>
+        </div>
+      )}
+
+      {mixedContentRisk && (
+        <div className="anki-local-fix">
+          <b>Fast fixes</b>
+          <span>Chrome: click the sliders/tune icon beside the URL, open Site settings, allow Local Network or Apps on device, then reload.</span>
+          <span>Most reliable: run Noctyrium locally and connect from <a href={localAppUrl}>127.0.0.1:5173</a>.</span>
         </div>
       )}
 
@@ -133,6 +145,7 @@ export function AnkiConnectPanel() {
             <li>Open the Anki desktop app and keep it running.</li>
             <li>Install the <b>AnkiConnect</b> add-on (Tools → Add-ons → Get Add-ons → code <span className="mono">2055492159</span>), then restart Anki.</li>
             <li>Allow this site: AnkiConnect config → add <span className="mono">{origin}</span> to <span className="mono">webCorsOriginList</span>.</li>
+            <li>If this is a Chrome-hosted Vercel page, allow <b>Local Network</b> / <b>Apps on device</b> for this site or use the local app URL.</li>
             <li>Use the local endpoint above (default <span className="mono">{DEFAULT_ANKI_ENDPOINT}</span>). You will not find an HTTPS URL inside Anki.</li>
           </ol>
           <a className="gbtn sm" href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer noopener">AnkiConnect add-on <ExternalLink size={13} /></a>

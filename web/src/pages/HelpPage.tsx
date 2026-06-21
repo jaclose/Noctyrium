@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   PlayCircle, Sparkles, BookOpen, FileText, ExternalLink, Check, Copy,
   Sunrise, NotebookPen, Timer, LineChart, BadgeCheck, Link2, Brain, ListChecks, Database, Layers,
@@ -8,7 +8,6 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader } from "../components/ui/primitives";
 
 const BUG_EMAIL = "jdabbagh@sgu.edu";
-const JD_WEBSITE = "https://www.jafardabbagh.com/";
 
 const MASTER_GUIDE = [
   { icon: Sunrise, title: "Dashboard", body: "Where the day starts — set one intention, see the signal." },
@@ -84,9 +83,9 @@ export function HelpPage() {
       <GlassCard pad>
         <PanelHeader title="Importing Noctyrium cards into Anki" sub="Eight steps, from your generated CSV to graded reviews"
           action={<a className="gbtn sm" href="https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp?usp=sharing" target="_blank" rel="noreferrer noopener"><Layers size={14} /> JD Anki Builds</a>} />
-        <div className="anki-steps">
+        <div className="anki-guide-steps">
           {ANKI_STEPS.map((step, i) => (
-            <div className="anki-step" key={step.title}>
+            <div className="anki-guide-step" key={step.title}>
               <div className="anki-step-head"><span className="anki-step-n">{i + 1}</span> <b>{step.title}</b></div>
               {step.img && <img className="anki-shot" src={`./anki-guide/${step.img}`} alt={step.title} loading="lazy" />}
               <div className="anki-step-body">{step.body}</div>
@@ -119,30 +118,8 @@ export function HelpPage() {
         </div>
       </GlassCard>
 
-      <WebsitePreview />
-
       <FeedbackForm />
     </>
-  );
-}
-
-function WebsitePreview() {
-  const [refreshKey, setRefreshKey] = useState(0);
-  useEffect(() => {
-    const timer = window.setInterval(() => setRefreshKey((key) => key + 1), 30 * 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  return (
-    <GlassCard pad className="website-preview-card">
-      <PanelHeader title="JD’s website" sub="Live preview refreshes every 30 minutes"
-        action={<a className="gbtn sm" href={JD_WEBSITE} target="_blank" rel="noreferrer noopener">
-          Open site <ExternalLink size={13} />
-        </a>} />
-      <div className="website-frame-shell">
-        <iframe key={refreshKey} title="Jafar Dabbagh website" src={JD_WEBSITE} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-      </div>
-      <div className="sub" style={{ marginTop: 8 }}>If the browser blocks embedding, use Open site; the refresh timer still keeps the iframe attempt current.</div>
-    </GlassCard>
   );
 }
 

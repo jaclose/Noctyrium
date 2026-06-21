@@ -51,10 +51,13 @@ async function invoke<T>(action: string, params: Record<string, unknown>, endpoi
     // Network/CORS/mixed-content failures all surface here as a TypeError.
     const origin = typeof window !== "undefined" ? window.location.origin : "this site";
     const timedOut = err instanceof DOMException && err.name === "AbortError";
+    const hostedLocal = typeof window !== "undefined" && window.location.protocol === "https:" && /^http:\/\/(127\.0\.0\.1|localhost)/i.test(endpoint);
     throw new AnkiError(
       timedOut
         ? `AnkiConnect did not answer within 8 seconds. Confirm Anki is open and ${endpoint} opens in a browser.`
-        : `Could not reach AnkiConnect. Anki must be open, the add-on must be installed, and this exact origin must be allow-listed: ${origin}`,
+        : hostedLocal
+          ? `The browser blocked this hosted page from reaching local AnkiConnect. Allow Local Network / Apps on device for ${origin}, or open Noctyrium locally from http://127.0.0.1:5173.`
+          : `Could not reach AnkiConnect. Anki must be open, the add-on must be installed, and this exact origin must be allow-listed: ${origin}`,
       "network",
     );
   } finally {

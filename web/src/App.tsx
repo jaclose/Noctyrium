@@ -24,6 +24,7 @@ import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { PromptLibraryPage } from "./pages/PromptLibraryPage";
 import { HubFoldersPage } from "./pages/HubFoldersPage";
 import { HelpPage } from "./pages/HelpPage";
+import { AboutPage } from "./pages/AboutPage";
 import { ApplicationCheckerPage } from "./pages/ApplicationCheckerPage";
 import { LeaderboardsPage } from "./pages/LeaderboardsPage";
 
@@ -42,6 +43,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   integrations: IntegrationsPage,
   prompts: PromptLibraryPage,
   folders: HubFoldersPage,
+  about: AboutPage,
   help: HelpPage,
   appchecker: ApplicationCheckerPage,
   leaderboards: LeaderboardsPage,

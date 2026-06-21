@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
-  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass,
+  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info,
 } from "lucide-react";
 
 export interface NavItem {
@@ -32,6 +32,7 @@ export const NAV: NavItem[] = [
   { id: "integrations", label: "Integrations", subtitle: "Connect Anki, calendar, drives, and more", icon: Share2 },
   { id: "leaderboards", label: "Leaderboards", subtitle: "Opt-in, friendly accountability (coming soon)", icon: Trophy },
   // After Tools
+  { id: "about", label: "About", subtitle: "What Noctyrium is, where it is headed, and the live project preview", icon: Info },
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
   // Footer (Help is a page; Settings + Account open the modal)
   { id: "help", label: "Help", subtitle: "Guided tour, master guide, Anki import, and feedback", icon: LifeBuoy },
@@ -45,6 +46,6 @@ export const SIDEBAR_TOP = [
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
-export const SIDEBAR_BOTTOM = ["folders"];
+export const SIDEBAR_BOTTOM = ["about", "folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);
