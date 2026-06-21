@@ -816,27 +816,24 @@ function ResourceFocusWidget() {
 }
 
 function BoardBlueprintWidget() {
-  const s = useStore();
-  const active = s.profile.activeFocusId ?? "step1";
-  const exam: "step1" | "step2" | "step3" | "shelf" | "mcat" | "premed" =
-    active === "step2" || active === "step3" || active === "shelf" || active === "mcat" || active === "premed" ? active : "step1";
-  const prep = s.boardPrep[exam];
-  const logs = prep?.blueprintLogs ?? [];
-  const minutes = logs.slice(0, 7).reduce((sum, log) => sum + log.minutes, 0);
-  const installedAreas = (prep?.installedBlueprintAreas ?? []).length;
-  const completedItems = (prep?.completedBlueprintItems ?? []).length;
+  const installs = useStore((s) => s.blueprintInstalls);
+  const nodes = installs.flatMap((i) => i.nodes);
+  const total = nodes.length;
+  const mastered = nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
+  const pct = total ? Math.round(nodes.reduce((sum, n) => sum + n.mastery, 0) / total) : 0;
+  const usmle = installs.some((i) => ["step1", "step2", "dedicated", "shelf", "step3"].includes(i.laneId));
   return (
     <GlassCard pad>
-      <PanelHeader title="Blueprint Pulse" sub="Current prep lane status"
-        action={<a className="gbtn sm" href={exam === "premed" || exam === "mcat" ? "#premed" : "#step"}><Brain size={14} /> Open</a>} />
+      <PanelHeader title="Blueprint Pulse" sub="Installed operating-system containers"
+        action={<a className="gbtn sm" href={usmle ? "#step" : "#premed"}><Brain size={14} /> Open</a>} />
       <div className="trend-widget">
-        <div><b>{exam.toUpperCase()}</b><span>lane</span></div>
-        <div><b>{installedAreas}</b><span>areas</span></div>
-        <div><b>{completedItems}</b><span>items done</span></div>
+        <div><b>{installs.length}</b><span>installed</span></div>
+        <div><b>{mastered}</b><span>mastered</span></div>
+        <div><b>{pct}%</b><span>overall</span></div>
       </div>
-      <div className="trend-comment">{installedAreas
-        ? `${completedItems} blueprint item${completedItems === 1 ? "" : "s"} complete · ${logs.length} log${logs.length === 1 ? "" : "s"} · ${minutes}m recent. Macro or detailed — keep the evidence honest.`
-        : "Install a blueprint (macro or detailed) or log one focused block to generate signal."}</div>
+      <div className="trend-comment">{installs.length
+        ? `${mastered}/${total} mastery objects complete across ${installs.length} container${installs.length === 1 ? "" : "s"}. Macro or detailed — keep the evidence honest.`
+        : "Install a source-backed blueprint from the USMLE or Pre-Health lane to spin up a container."}</div>
     </GlassCard>
   );
 }

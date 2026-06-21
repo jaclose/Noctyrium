@@ -256,6 +256,92 @@ export type DashboardWidgetId =
   | "resourceFocus"
   | "boardBlueprint";
 
+// ===========================================================================
+// Blueprint Prep — an installable operating-system model (god-file architecture).
+// A catalog defines lanes → blueprints → categories → nodes; installing a
+// blueprint instantiates a rich, per-user container of mastery objects rather
+// than flattening everything into lecture "passes".
+// ===========================================================================
+
+/** Top-level pathway. The active bar only shows the current mode's lanes. */
+export type BlueprintMode = "usmle" | "prehealth";
+
+export type BlueprintLaneId =
+  // USMLE mode
+  | "step1" | "step2" | "dedicated" | "shelf" | "step3"
+  // Pre-Health mode
+  | "premed" | "mcat" | "dat" | "casper";
+
+/** A node is not always a checkbox — it can be content, a task, a tracker, etc. */
+export type BlueprintNodeType =
+  | "content" | "task" | "tracker" | "queue" | "assessment" | "evidence" | "metric" | "planner";
+
+export type BlueprintNodeStatus = "not-started" | "in-progress" | "blocked" | "mastered" | "done";
+export type BlueprintPriority = "high" | "medium" | "low";
+
+export type SourceType = "official" | "tool" | "internal";
+export type VerificationStatus = "verified" | "needs-review" | "unverified";
+export type SourceConfidence = "high" | "medium" | "low";
+
+/** Source governance — official sources govern; tools are labeled as tools. */
+export interface BlueprintSource {
+  type: SourceType;
+  name: string;
+  url?: string;
+  lastVerified?: string; // ISO date
+  verification: VerificationStatus;
+  confidence: SourceConfidence;
+}
+
+export interface BlueprintResourceLink {
+  label: string;
+  url: string;
+  kind: SourceType;
+}
+
+/** A user-owned mastery object inside an installed blueprint container. */
+export interface InstalledBlueprintNode {
+  id: string;            // unique per install
+  catalogNodeId: string; // links back to the catalog template
+  category: string;
+  subCategory?: string;
+  objective: string;
+  detail?: string;
+  taskType: BlueprintNodeType;
+  priority: BlueprintPriority;
+  status: BlueprintNodeStatus;
+  mastery: number;       // 0–100
+  tags: string[];
+  sourceType?: SourceType;
+  sourceUrl?: string;
+  lastVerified?: string;
+  resourceLinks: BlueprintResourceLink[];
+  linkedQuestions: number;
+  linkedAnki: number;
+  linkedErrorLog: number;
+  linkedAssessments: number;
+  dueDate?: string;
+  estimatedMinutes?: number;
+  evidenceOfCompletion?: string;
+  notes?: string;
+  order: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One installed blueprint = a named, collapsible container under the tracker. */
+export interface InstalledBlueprint {
+  id: string;            // containerId
+  blueprintId: string;
+  laneId: BlueprintLaneId;
+  title: string;         // container name (duplicates get a version suffix)
+  catalogVersion: number;
+  installedAt: string;
+  updatedAt: string;
+  nodes: InstalledBlueprintNode[];
+}
+
 export interface Profile {
   name: string;
   userId: string; // local backend owner key derived from display name
@@ -288,6 +374,7 @@ export interface Profile {
   dashboardWidgetOrder?: DashboardWidgetId[];
   hiddenDashboardWidgets?: DashboardWidgetId[];
   journalReviewTime?: string; // "20:00" local time
+  blueprintMode?: BlueprintMode; // which lane bar (USMLE vs Pre-Health) is active
 }
 
 export interface NoctyriumState {
@@ -305,6 +392,7 @@ export interface NoctyriumState {
   integrations: Integration[];
   boardPrep: Record<BoardExamId, BoardPrepProfile>;
   dayPlans: DayPlan[];
+  blueprintInstalls: InstalledBlueprint[];
   activeDayKey: string; // current study day
   schemaVersion: number;
 }

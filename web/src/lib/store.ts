@@ -7,8 +7,10 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
-  PremedExperienceEntry, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog,
+  PremedExperienceEntry, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode,
 } from "./types";
+import { blueprintById } from "./blueprintCatalog";
+import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
 import {
   APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
   driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES,
@@ -114,6 +116,13 @@ interface Actions {
   setDayPlan: (dayKey: string, intention: string, wins: string[]) => void;
   reviewDayPlan: (dayKey: string, outcome: DayPlan["outcome"], reviewNote?: string) => void;
 
+  // blueprint prep (installable operating-system containers)
+  installBlueprint: (blueprintId: string, opts?: { duplicate?: boolean }) => string | null;
+  duplicateBlueprintInstall: (installId: string) => string | null;
+  removeBlueprintInstall: (installId: string) => void;
+  updateBlueprintNode: (installId: string, nodeId: string, patch: Partial<InstalledBlueprintNode>) => void;
+  reconcileBlueprintInstall: (installId: string) => void;
+
   // data management
   replaceAll: (state: NoctyriumState) => void;
   resetToSeed: () => void;
@@ -124,7 +133,7 @@ export type Store = NoctyriumState & Actions;
 
 export const useStore = create<Store>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...makeSeed(),
 
       updateProfile: (patch) => set((s) => {
@@ -432,6 +441,46 @@ export const useStore = create<Store>()(
               : p),
         })),
 
+      installBlueprint: (blueprintId, opts = {}): string | null => {
+        const entry = blueprintById(blueprintId);
+        if (!entry) return null;
+        const existing = get().blueprintInstalls.filter((i) => i.blueprintId === blueprintId);
+        // Duplicate prevention: the UI decides; default install returns the existing one.
+        if (existing.length && !opts.duplicate) return existing[0].id;
+        const title = opts.duplicate ? `${entry.title} (v${existing.length + 1})` : entry.title;
+        const install = instantiateBlueprint(entry, title);
+        set((s) => ({ blueprintInstalls: [...s.blueprintInstalls, install] }));
+        return install.id;
+      },
+      duplicateBlueprintInstall: (installId): string | null => {
+        const source = get().blueprintInstalls.find((i) => i.id === installId);
+        if (!source) return null;
+        const entry = blueprintById(source.blueprintId);
+        const count = get().blueprintInstalls.filter((i) => i.blueprintId === source.blueprintId).length;
+        const title = `${entry?.title ?? source.title} (v${count + 1})`;
+        const copy = duplicateInstall(source, title);
+        set((s) => ({ blueprintInstalls: [...s.blueprintInstalls, copy] }));
+        return copy.id;
+      },
+      removeBlueprintInstall: (installId) =>
+        set((s) => ({ blueprintInstalls: s.blueprintInstalls.filter((i) => i.id !== installId) })),
+      updateBlueprintNode: (installId, nodeId, patch) =>
+        set((s) => ({
+          blueprintInstalls: s.blueprintInstalls.map((install) =>
+            install.id !== installId ? install : {
+              ...install,
+              updatedAt: now(),
+              nodes: install.nodes.map((node) => (node.id === nodeId ? { ...node, ...patch, updatedAt: now() } : node)),
+            }),
+        })),
+      reconcileBlueprintInstall: (installId) =>
+        set((s) => {
+          const install = s.blueprintInstalls.find((i) => i.id === installId);
+          const entry = install && blueprintById(install.blueprintId);
+          if (!install || !entry || install.catalogVersion >= entry.version) return {};
+          return { blueprintInstalls: s.blueprintInstalls.map((i) => (i.id === installId ? reconcileBlueprint(i, entry) : i)) };
+        }),
+
       replaceAll: (state) => set(() => ({ ...state })),
       resetToSeed: () => set(() => ({ ...makeSeed() })),
       startFresh: () =>
@@ -440,6 +489,7 @@ export const useStore = create<Store>()(
           // keep the curated shared drives even on a fresh start
           resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
+          blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: dayKey(),
           // keep the user's profile + integrations catalog
@@ -629,17 +679,21 @@ export const useStore = create<Store>()(
           profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
           s.profile = normalizeProfile(profile);
         }
+        if (fromVersion < 22) {
+          // Introduce installable blueprint containers; existing data is untouched.
+          s.blueprintInstalls = Array.isArray(s.blueprintInstalls) ? s.blueprintInstalls : [];
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
         // persist data only — strip the action functions
         const {
           profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
-          folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
+          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
-          folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
+          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey, schemaVersion,
         } as NoctyriumState;
       },
     },

@@ -58,6 +58,8 @@ export function Sidebar({
   const prepItems = (manage ? SIDEBAR_PREP : SIDEBAR_PREP.filter((id) => !hidden.has(id)));
   const help = navById("help");
   const HelpIcon = help?.icon;
+  const about = navById("about");
+  const AboutIcon = about?.icon;
 
   return (
     <>
@@ -127,6 +129,12 @@ export function Sidebar({
         </nav>
 
         <div className="sidebar-foot">
+          {about && AboutIcon && (
+            <button type="button" className={`nav-item footer-action ${active === "about" ? "on" : ""}`}
+              onClick={() => { onSelect("about"); onClose(); }}>
+              <AboutIcon size={17} /><span>About</span>
+            </button>
+          )}
           {help && HelpIcon && (
             <button type="button" className={`nav-item footer-action ${active === "help" ? "on" : ""}`}
               onClick={() => { onSelect("help"); onClose(); }}>

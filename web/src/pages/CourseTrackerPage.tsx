@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import type { CSSProperties } from "react";
 import { useUi } from "../lib/uiStore";
 import {
   Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil, Brain,
@@ -12,8 +12,7 @@ import {
   suggestMoves, scopeMastery, isCompletionKind, isQuestionKind,
 } from "../lib/tracker";
 import { canonicalTrackerPath, normalizeTrackerPath, trackerItemKey, trackerPathKey } from "../lib/pathUtils";
-import { EXAMS } from "./StepPage";
-import type { BoardExamId, BoardPrepProfile, Course, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
+import type { Course, InstalledBlueprint, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
@@ -33,7 +32,6 @@ const kindTone: Record<TrackerKind, "cyan" | "purple" | "orange" | "green" | "ne
   "Review Loop": "cyan",
 };
 const YIELDS: Yield[] = ["none", "high", "review", "low"];
-const BOARD_SPINE_EXAMS: BoardExamId[] = ["step1", "step2", "step3", "shelf", "mcat", "premed"];
 const yieldTone: Record<Yield, "cyan" | "green" | "orange" | "neutral"> = {
   none: "neutral", high: "green", review: "orange", low: "neutral",
 };
@@ -80,9 +78,8 @@ export function CourseTrackerPage() {
   }, [focusItemId]);
 
   const courseScopes = useMemo(() => collectCourseScopes(s.terms, s.courses), [s.terms, s.courses]);
-  const boardScopes = useMemo(() => collectBoardBlueprintScopes(), []);
-  const tree = useMemo(() => buildTree(s.tracker, [...courseScopes, ...boardScopes]), [s.tracker, courseScopes, boardScopes]);
-  const scopeOptions = useMemo(() => mergeScopes(collectScopes(s.tracker), [...courseScopes, ...boardScopes]), [s.tracker, courseScopes, boardScopes]);
+  const tree = useMemo(() => buildTree(s.tracker, courseScopes), [s.tracker, courseScopes]);
+  const scopeOptions = useMemo(() => mergeScopes(collectScopes(s.tracker), courseScopes), [s.tracker, courseScopes]);
 
   const inScope = scope ? s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")) : s.tracker;
   const items = inScope.filter((t) => tabMatch(tab, t.kind));
@@ -125,14 +122,7 @@ export function CourseTrackerPage() {
           <div className={`tree-node ${scope === "" ? "on" : ""}`} onClick={() => setScope("")}>
             <span style={{ width: 14 }} /><span>Everything</span><span className="tree-count">{s.tracker.length}</span>
           </div>
-          <BlueprintSpine
-            activeScope={scope}
-            boardPrep={s.boardPrep}
-            onSelect={(nextScope) => {
-              setScope(nextScope);
-              expandAncestors(nextScope, setOpenNodes);
-            }}
-          />
+          <BlueprintSpine installs={s.blueprintInstalls} />
           {tree.map((node) => (
             <TreeNode key={node.path} node={node} depth={0}
               openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
@@ -425,41 +415,38 @@ function PassPlus({ id }: { id: string }) {
   );
 }
 
-function BlueprintSpine({
-  activeScope,
-  boardPrep,
-  onSelect,
-}: {
-  activeScope: string;
-  boardPrep: Record<BoardExamId, BoardPrepProfile>;
-  onSelect: (scope: string) => void;
-}) {
+// Installed blueprint containers, surfaced as collapsible nodes under the
+// mastery tree. Each links to its lane in Blueprint Prep (the rich workbench).
+const USMLE_LANES = new Set(["step1", "step2", "dedicated", "shelf", "step3"]);
+
+function BlueprintSpine({ installs }: { installs: InstalledBlueprint[] }) {
+  if (installs.length === 0) {
+    return (
+      <div className="tracker-blueprint-spine empty" aria-label="Installed blueprints">
+        <div className="tracker-blueprint-spine-head"><Brain size={13} /> Installed Blueprints</div>
+        <a className="tracker-blueprint-empty" href="#step">Install a blueprint to spin up a container here <ChevronRight size={13} /></a>
+      </div>
+    );
+  }
   return (
-    <div className="tracker-blueprint-spine" aria-label="Board blueprint spine">
-      <div className="tracker-blueprint-spine-head"><Brain size={13} /> Blueprint spine</div>
-      {BOARD_SPINE_EXAMS.map((exam) => {
-        const config = EXAMS[exam];
-        const prep = boardPrep[exam];
-        const scope = blueprintExamScope(exam);
-        const installed = new Set(prep?.installedBlueprintAreas ?? []);
-        const completed = new Set(prep?.completedBlueprintItems ?? []);
-        const installedAreas = config.areas.filter((area) => installed.has(area.id)).length;
-        const leafIds = config.areas.flatMap((area) => area.folders.flatMap((folder) => folder.leaves.map((leaf) => `${area.id}/${leaf.id}`)));
-        const completion = pct(Array.from(completed).filter((id) => leafIds.includes(id)).length, leafIds.length);
-        const active = activeScope === scope || activeScope.startsWith(`${scope}/`);
-        const hasInstalled = installedAreas > 0;
+    <div className="tracker-blueprint-spine" aria-label="Installed blueprints">
+      <div className="tracker-blueprint-spine-head"><Brain size={13} /> Installed Blueprints</div>
+      {installs.map((install) => {
+        const total = install.nodes.length;
+        const mastered = install.nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
+        const overall = total ? Math.round(install.nodes.reduce((sum, n) => sum + n.mastery, 0) / total) : 0;
+        const href = USMLE_LANES.has(install.laneId) ? "#step" : "#premed";
+        const categories = new Set(install.nodes.map((n) => n.category)).size;
         return (
-          <button key={exam} type="button"
-            className={`tracker-blueprint-row ${active ? "on" : ""} ${hasInstalled ? "installed" : ""}`}
-            onClick={() => onSelect(scope)}
-            title={`${config.shortLabel}: ${installedAreas}/${config.areas.length} areas installed`}>
+          <a key={install.id} className="tracker-blueprint-row installed" href={href}
+            title={`${install.title}: ${mastered}/${total} mastered`}>
             <span className="tracker-blueprint-dot" />
             <span className="grow">
-              <b>{config.shortLabel}</b>
-              <small>{installedAreas}/{config.areas.length} areas · {completion}% item evidence</small>
+              <b>{install.title}</b>
+              <small>{categories} categories · {mastered}/{total} mastered · {overall}% overall</small>
             </span>
-            <span>{hasInstalled ? "live" : "ready"}</span>
-          </button>
+            <span>open</span>
+          </a>
         );
       })}
     </div>
@@ -518,44 +505,6 @@ function collectCourseScopes(terms: Term[], courses: Course[]): string[] {
   return scopes;
 }
 
-function collectBoardBlueprintScopes(): string[] {
-  const scopes: string[] = ["Blueprints"];
-  for (const exam of BOARD_SPINE_EXAMS) {
-    const config = EXAMS[exam];
-    const examScope = blueprintExamScope(exam);
-    scopes.push(examScope);
-    for (const area of config.areas) {
-      const areaScope = `${examScope}/${safeScopePart(area.title)}`;
-      scopes.push(areaScope);
-      for (const folder of area.folders) scopes.push(`${areaScope}/${safeScopePart(folder.title)}`);
-    }
-  }
-  return scopes;
-}
-
-function blueprintExamScope(exam: BoardExamId) {
-  return `Blueprints/${safeScopePart(EXAMS[exam].shortLabel)}`;
-}
-
-function safeScopePart(value: string) {
-  return value.replace(/\//g, " & ").replace(/\s+/g, " ").trim();
-}
-
-function pct(done: number, total: number) {
-  return total ? Math.round((done / total) * 100) : 0;
-}
-
-function expandAncestors(path: string, setOpenNodes: Dispatch<SetStateAction<Set<string>>>) {
-  setOpenNodes((prev) => {
-    const next = new Set(prev);
-    let acc = "";
-    for (const part of path.split("/").filter(Boolean)) {
-      acc = acc ? `${acc}/${part}` : part;
-      next.add(acc);
-    }
-    return next;
-  });
-}
 
 function mergeScopes(a: string[], b: string[]) {
   return [...new Set([...a, ...b])].sort((x, y) => x.localeCompare(y));

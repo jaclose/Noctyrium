@@ -46,6 +46,6 @@ export const SIDEBAR_TOP = [
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
-export const SIDEBAR_BOTTOM = ["about", "folders"];
+export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);
