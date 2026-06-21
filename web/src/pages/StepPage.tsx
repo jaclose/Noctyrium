@@ -1,552 +1,663 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Brain, CheckCircle2, ClipboardCheck, Database, ExternalLink, FlaskConical,
-  ListChecks, ListPlus, Plus, Sparkles, WandSparkles,
+  BookOpen, Brain, CalendarDays, CheckCircle2, ChevronDown,
+  Database, ExternalLink, FlaskConical, Layers, ListChecks, Plus,
+  ShieldCheck, Sparkles, Target,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Field, SelectField, TextAreaField } from "../components/ui/Modal";
-import { BlueprintCommand } from "../components/blueprints/BlueprintCommand";
-import { BLUEPRINTS, blueprintsForTrack } from "../lib/blueprints";
-import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { dayKey } from "../lib/scoring";
 import { normalizeResourceUrl } from "../lib/resourceUtils";
-import { resolveTrack } from "../lib/tracks";
-import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, PremedExperienceKind, TrackerItem, Yield } from "../lib/types";
+import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, PremedExperienceKind } from "../lib/types";
 
-// What "one pass" and "done" mean for each blueprint, in that exam's vocabulary.
-// This is the answer to "I added a prerequisite — what's a pass, when am I done?"
-const EXAM_PROGRESS: Record<BoardExamId, { pass: string; done: string }> = {
-  step1: { pass: "One focused review cycle of a domain — questions, then explanation review.", done: "Mastered = 4 cycles with stable accuracy; anchor weak facts in Anki." },
-  step2: { pass: "One clinical-reasoning cycle: a question block plus management review.", done: "Mastered = 4 cycles; rotate domains so none goes stale." },
-  step3: { pass: "One management/CCS cycle: orders, monitoring, reassessment.", done: "Mastered = 4 cycles; safe-management patterns feel automatic." },
-  shelf: { pass: "One rotation-shelf cycle: questions + algorithm review for that subject.", done: "Mastered = 4 cycles before the shelf date." },
-  mcat: { pass: "One section cycle: content, passages, then an error log.", done: "Mastered = 4 cycles with stable accuracy; full-lengths are separate milestones." },
-  premed: { pass: "Prerequisites are courses, not study reps — track them on the Courses page and mark them done when you pass.", done: "Experiences (clinical, research, service) and application pieces are milestones: done = goal met or piece submitted, not 4 passes." },
+type YieldLevel = "high" | "medium" | "low";
+type PrepLeaf = { id: string; title: string; why: string; action: string };
+type PrepFolder = { title: string; leaves: PrepLeaf[] };
+type PrepArea = {
+  id: string;
+  title: string;
+  yield: YieldLevel;
+  weight: number;
+  summary: string;
+  folders: PrepFolder[];
+  tips?: string[];
 };
-
-// ---------------------------------------------------------------------------
-// STEP / boards = a *simple, big-picture* blueprint. Installing a blueprint
-// drops one editable Course-Tracker row per major domain (no first-pass /
-// missed-fact granularity). You add detail later; everything is modular.
-// ---------------------------------------------------------------------------
-
-interface Domain {
-  name: string;
-  weight: "high" | "medium" | "low";
-  focus: string;
-}
-
-interface ExamConfig {
+type PrepResource = { id: string; title: string; kind: string; url: string; why: string; tags: string[] };
+type ExamConfig = {
   label: string;
   shortLabel: string;
-  prefix: string; // tracker path root, e.g. "STEP 1"
+  sourceLabel: string;
+  sourceUrl: string;
   structure: string;
-  officialOutline: string;
-  practiceMaterials: string;
-  domains: Domain[];
-}
+  passMeaning: string;
+  doneMeaning: string;
+  installCopy: string;
+  areas: PrepArea[];
+  resources: PrepResource[];
+  rhythm: { title: string; body: string; chips: string[] }[];
+};
 
-interface PrepResource { id: string; title: string; kind: string; url: string; why: string; tags: string[]; }
+const yieldTone: Record<YieldLevel, "green" | "orange" | "neutral"> = {
+  high: "green",
+  medium: "orange",
+  low: "neutral",
+};
+
+const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
 
 const EXAMS: Record<BoardExamId, ExamConfig> = {
   step1: {
-    label: "STEP 1", shortLabel: "Step 1", prefix: "STEP 1",
-    structure: "Big-picture USMLE Step 1 domains. Install once, then add detail under any domain as you go.",
-    officialOutline: "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications",
-    practiceMaterials: "https://www.usmle.org/exam-resources/step-1-materials/step-1-sample-test-questions",
-    domains: [
-      { name: "Cardiovascular", weight: "high", focus: "hemodynamics, heart & vessel pathology, cardio pharm" },
-      { name: "Respiratory", weight: "high", focus: "gas exchange, pulmonary pathology, acid–base" },
-      { name: "Renal", weight: "high", focus: "filtration, electrolytes, fluids, acid–base, renal path" },
-      { name: "Gastrointestinal", weight: "high", focus: "GI/liver/pancreas, metabolism, nutrition links" },
-      { name: "Reproductive & Endocrine", weight: "high", focus: "hormones, diabetes, repro, pregnancy basics" },
-      { name: "Neuro, Behavioral & Senses", weight: "high", focus: "neuroanatomy, psych, behavior, sleep, special senses" },
-      { name: "MSK, Skin & Connective", weight: "medium", focus: "derm, rheum, bone, muscle, connective tissue" },
-      { name: "Blood & Immune", weight: "medium", focus: "heme, immune mechanisms, inflammation, neoplasia" },
-      { name: "Multisystem (Micro/Pharm/Path)", weight: "high", focus: "microbiology, pharmacology, pathology patterns, sepsis" },
-      { name: "Biostats, Ethics & Comm.", weight: "medium", focus: "biostats, epidemiology, ethics, communication" },
+    label: "USMLE Step 1 Blueprint",
+    shortLabel: "Step 1",
+    sourceLabel: "USMLE Content Outline 2026 + local Blueprint God file",
+    sourceUrl: "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications",
+    structure: "Basic-science blueprint folders by system, discipline, and competency. Install the map, then complete final items as evidence accumulates.",
+    passMeaning: "A pass is a board-work cycle: questions or review, explanation repair, and a logged weak-area decision.",
+    doneMeaning: "Done means the final item has evidence: stable questions, repaired misses, or a retested weak point. It is not a lecture pass.",
+    installCopy: "Install Step 1 blueprint",
+    areas: [
+      area("step1-foundations", "Foundations and general principles", "high", 1.1, "Mechanisms that travel across every organ system.", [
+        folder("Biochemistry and molecular biology", ["Amino acids and protein structure", "Enzymes and kinetics", "Metabolism checkpoints", "Genetics and gene expression"]),
+        folder("Micro, immune, pharm, path", ["Host defense map", "Microbiology classification", "Drug mechanisms and toxicities", "Inflammation and neoplasia principles"]),
+        folder("Biostats, ethics, communication", ["Study design and bias", "Screening math", "Patient safety and ethics", "Communication frameworks"]),
+      ], ["Start broad, then let missed questions choose the next subfolder.", "Biostats grows fastest when every missed method is rewritten in your own words."]),
+      area("step1-cardiopulmrenal", "Cardio, pulmonary, renal", "high", 1.2, "Physiology-heavy systems where equations, graphs, and compensation logic matter.", [
+        folder("Cardiovascular", ["Pressure-volume loops", "Murmurs and hemodynamics", "Cardio pharm", "Shock and heart failure"]),
+        folder("Respiratory", ["Ventilation and perfusion", "Obstructive vs restrictive disease", "Pulmonary vascular disease", "Respiratory acid-base"]),
+        folder("Renal", ["Nephron transport", "Acid-base disorders", "Electrolytes and fluids", "Renal pathology and pharm"]),
+      ], ["Draw the graph before reading answer choices when a question is physiology-first."]),
+      area("step1-body-systems", "GI, endocrine, reproductive, neuro, MSK", "high", 1.0, "Large system folders for disease scripts, pathways, and pharmacology tie-ins.", [
+        folder("GI and nutrition", ["Hepatobiliary disease", "Pancreas and digestion", "Malabsorption and vitamins", "GI neoplasia"]),
+        folder("Endocrine and reproductive", ["Diabetes and thyroid", "Adrenal and pituitary", "Pregnancy physiology", "Male/female/transgender repro"]),
+        folder("Neuro, behavior, MSK, skin", ["Neuro localization", "Psych and sleep", "Derm/rheum patterns", "Bone, muscle, connective tissue"]),
+      ]),
+      area("step1-readiness", "Assessments and error repair", "medium", 0.9, "NBME-style checkpoints, sample items, and error-log cleanup.", [
+        folder("Assessment loop", ["Official sample questions", "NBME/CBSSA review", "Two-pass error log", "Retest repeat misses"]),
+        folder("Recall artifacts", ["Anki for repeat misses", "One-page weak-area repair", "Formula/scheme sheet", "48-hour retest queue"]),
+      ]),
+    ],
+    resources: [
+      res("usmle-step1-outline", "USMLE Step 1 Content Outline", "Official", "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications", "Official Step 1 content and specifications.", ["official", "blueprint"]),
+      res("usmle-step1-samples", "USMLE Step 1 Sample Questions", "Official", "https://www.usmle.org/exam-resources/step-1-materials/step-1-sample-test-questions", "Official item format and testing experience.", ["official", "practice"]),
+      res("nbme-cbssa", "NBME CBSSA", "Assessment", "https://www.nbme.org/examinees/self-assessments/comprehensive-basic-science-self-assessment", "Comprehensive Basic Science readiness check.", ["nbme", "assessment"]),
+      res("anking-step", "AnKing Step Deck", "Anki", "https://www.ankihub.net/step-deck", "Spaced retrieval for missed facts.", ["anki", "retrieval"]),
+    ],
+    rhythm: [
+      rhythm("Daily board loop", "Questions first, explanation review second, recall artifact third.", ["40-80 questions", "missed-fact repair", "48h retest"]),
+      rhythm("Weekly checkpoint", "One mixed block or NBME-style review day to expose cross-system drift.", ["mixed systems", "biostats touch", "weak-area queue"]),
     ],
   },
   step2: {
-    label: "STEP 2 CK", shortLabel: "Step 2", prefix: "STEP 2 CK",
-    structure: "Big-picture clinical domains for Step 2 CK. Diagnosis and management across the systems.",
-    officialOutline: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications",
-    practiceMaterials: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-sample-test-questions",
-    domains: [
-      { name: "Medicine", weight: "high", focus: "cardio, pulm, renal, endo, GI, heme/onc, ID" },
-      { name: "Surgery & Emergency", weight: "medium", focus: "acute abdomen, trauma, perioperative, unstable patients" },
-      { name: "Pediatrics", weight: "medium", focus: "development, prevention, pediatric disease, emergencies" },
-      { name: "OB/GYN", weight: "medium", focus: "pregnancy, postpartum, gynecology, repro endocrine" },
-      { name: "Psychiatry", weight: "medium", focus: "diagnosis, risk, therapy, substance use" },
-      { name: "Ethics, Safety & Biostats", weight: "medium", focus: "capacity, consent, QI, screening, literature" },
+    label: "USMLE Step 2 CK Blueprint",
+    shortLabel: "Step 2",
+    sourceLabel: "USMLE Step 2 CK outline + clinical task framework",
+    sourceUrl: "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications",
+    structure: "Clinical reasoning folders for diagnosis, management, screening, and patient safety.",
+    passMeaning: "A pass is a clinical-reasoning cycle: questions, management algorithm review, and a logged decision error.",
+    doneMeaning: "Done means diagnosis/next-step errors have been retested and shelf/Step 2 evidence is improving.",
+    installCopy: "Install Step 2 blueprint",
+    areas: [
+      area("step2-medicine", "Medicine and emergency reasoning", "high", 1.2, "Adult systems, unstable patients, and next-best-step logic.", [
+        folder("Adult systems", ["Cardio/pulm/renal", "GI/endocrine/heme", "Infectious disease", "Rheum/derm/neuro"]),
+        folder("Acute care", ["Initial stabilization", "Diagnostic next step", "Disposition", "Medication safety"]),
+      ]),
+      area("step2-rotations", "Core clerkships", "high", 1.0, "Shelf domains carried forward into Step 2.", [
+        folder("Surgery, peds, OB/GYN", ["Acute abdomen/trauma", "Pediatric milestones", "Pregnancy and postpartum", "Gynecology"]),
+        folder("Psych, family, ambulatory", ["Risk and safety", "Screening and prevention", "Substance use", "Longitudinal care"]),
+      ]),
+      area("step2-quality", "Ethics, safety, biostats", "medium", 0.8, "The questions that punish vague reasoning.", [
+        folder("Systems and evidence", ["Quality improvement", "Patient safety", "Abstract interpretation", "Consent/capacity/confidentiality"]),
+      ]),
+    ],
+    resources: [
+      res("usmle-step2-outline", "USMLE Step 2 CK Content Outline", "Official", "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications", "Official Step 2 CK specifications.", ["official", "blueprint"]),
+      res("usmle-step2-samples", "USMLE Step 2 CK Sample Questions", "Official", "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-sample-test-questions", "Official sample item style.", ["official", "practice"]),
+      res("nbme-clinical-self", "NBME Clinical Science Self-Assessments", "Assessment", "https://www.nbme.org/examinees/self-assessments/clinical-science-subject-exams", "Shelf and clinical readiness checks.", ["nbme", "assessment"]),
+    ],
+    rhythm: [
+      rhythm("Rotation weekday", "Questions plus one algorithm repair tied to the patients you saw.", ["20-60 questions", "one algorithm", "patient tie-in"]),
+      rhythm("Shelf carry-forward", "Shelf misses become Step 2 tags instead of disappearing after the rotation.", ["missed themes", "management errors", "retest"]),
     ],
   },
   step3: {
-    label: "STEP 3", shortLabel: "Step 3", prefix: "STEP 3",
-    structure: "Big-picture management-focused domains for Step 3 and CCS-style care.",
-    officialOutline: "https://www.usmle.org/exam-resources/step-3-materials/step-3-content-outline-and-specifications",
-    practiceMaterials: "https://www.usmle.org/exam-resources/step-3-materials/step-3-sample-test-questions",
-    domains: [
-      { name: "Ambulatory Medicine", weight: "high", focus: "outpatient diagnosis, chronic disease, prevention" },
-      { name: "Emergency & Inpatient", weight: "high", focus: "triage, disposition, acute management" },
-      { name: "CCS Case Management", weight: "high", focus: "orders, monitoring, timing, reassessment, safety" },
-      { name: "Biostats, Ethics & Systems", weight: "medium", focus: "abstracts, quality, safety, legal/ethical" },
+    label: "USMLE Step 3 Blueprint",
+    shortLabel: "Step 3",
+    sourceLabel: "USMLE Step 3 outline",
+    sourceUrl: "https://www.usmle.org/exam-resources/step-3-materials/step-3-content-outline-and-specifications",
+    structure: "Management, prognosis, ambulatory care, inpatient care, and CCS-style decision timing.",
+    passMeaning: "A pass is a management/CCS cycle: orders, monitoring, reassessment, and safety check.",
+    doneMeaning: "Done means safe management patterns are consistent and CCS timing errors are repaired.",
+    installCopy: "Install Step 3 blueprint",
+    areas: [
+      area("step3-ambulatory", "Ambulatory and chronic care", "high", 1.0, "Outpatient diagnosis, follow-up, prevention, and chronic disease control.", [
+        folder("Longitudinal care", ["Hypertension/diabetes", "Preventive visits", "Medication monitoring", "Follow-up timing"]),
+      ]),
+      area("step3-inpatient", "Emergency, inpatient, CCS", "high", 1.2, "Triage, orders, monitoring, and reassessment.", [
+        folder("Acute management", ["Initial orders", "Diagnostic sequencing", "Monitoring", "Disposition"]),
+        folder("CCS cases", ["Clock management", "Consults and procedures", "Complication prevention", "Case closure"]),
+      ]),
+      area("step3-systems", "Biostats, ethics, systems", "medium", 0.8, "Abstracts, systems-based practice, patient safety, and professionalism.", [
+        folder("Systems reasoning", ["Drug ads/abstracts", "Quality and safety", "Ethics/legal", "Population health"]),
+      ]),
     ],
+    resources: [
+      res("usmle-step3-outline", "USMLE Step 3 Content Outline", "Official", "https://www.usmle.org/exam-resources/step-3-materials/step-3-content-outline-and-specifications", "Official Step 3 specifications.", ["official", "blueprint"]),
+      res("usmle-step3-samples", "USMLE Step 3 Sample Questions", "Official", "https://www.usmle.org/exam-resources/step-3-materials/step-3-sample-test-questions", "Official practice materials.", ["official", "practice"]),
+    ],
+    rhythm: [rhythm("Management day", "Mix MCQs with CCS so content and timing improve together.", ["MCQs", "CCS case", "safety review"])],
   },
   shelf: {
-    label: "Shelf Exams", shortLabel: "Shelf", prefix: "SHELF",
-    structure: "Big-picture rotation shelves. Add the rotation you're on, then expand it.",
-    officialOutline: "https://www.nbme.org/subject-exams/clinical-science",
-    practiceMaterials: "https://www.nbme.org/examinees/self-assessments/clinical-science-subject-exams",
-    domains: [
-      { name: "Medicine", weight: "high", focus: "adult systems, diagnosis, management, prevention" },
-      { name: "Surgery", weight: "medium", focus: "acute abdomen, trauma, perioperative, emergencies" },
-      { name: "Pediatrics", weight: "medium", focus: "development, prevention, pediatric presentations" },
-      { name: "OB/GYN", weight: "medium", focus: "pregnancy, gynecology, postpartum, emergencies" },
-      { name: "Psychiatry", weight: "medium", focus: "diagnosis, risk, therapy, substance use" },
-      { name: "Family Medicine", weight: "medium", focus: "screening, prevention, ambulatory care" },
+    label: "Shelf Exams Blueprint",
+    shortLabel: "Shelf",
+    sourceLabel: "NBME Clinical Science Subject Exams",
+    sourceUrl: "https://www.nbme.org/educators/assess-learn/subject-exams/clinical-science",
+    structure: "Rotation-specific shelf folders with patient encounter evidence and NBME-style review.",
+    passMeaning: "A pass is one rotation cycle: patient/task exposure, questions, explanation review, and algorithm repair.",
+    doneMeaning: "Done means the shelf domain was retested and the clinical behavior or algorithm is clearer.",
+    installCopy: "Install shelf blueprint",
+    areas: [
+      area("shelf-core", "Core clinical shelves", "high", 1.1, "Medicine, surgery, pediatrics, OB/GYN, psychiatry, family medicine.", [
+        folder("Clinical science subjects", ["Medicine", "Surgery", "Pediatrics", "OB/GYN", "Psychiatry", "Family medicine"]),
+      ]),
+      area("shelf-patient-evidence", "Patient encounter evidence", "medium", 0.9, "Turn real clinical exposure into exam and feedback signal.", [
+        folder("Encounter loop", ["Diagnosis seen", "Management decision", "Feedback received", "One behavior to test next shift"]),
+      ]),
     ],
+    resources: [
+      res("nbme-clinical", "NBME Clinical Science Subject Exams", "Official", "https://www.nbme.org/educators/assess-learn/subject-exams/clinical-science", "Content outlines and sample items by shelf.", ["official", "nbme"]),
+      res("nbme-subject-exams", "NBME Subject Exams", "Official", "https://www.nbme.org/examinees/subject-exams", "Subject exam information for examinees.", ["official", "nbme"]),
+    ],
+    rhythm: [rhythm("Rotation week", "Tie qbank misses to one patient, one algorithm, and one feedback experiment.", ["patients", "questions", "feedback"])],
   },
   mcat: {
-    label: "MCAT", shortLabel: "MCAT", prefix: "MCAT",
-    structure: "Big-picture AAMC sections. Expand each into subjects later.",
-    officialOutline: "https://students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam",
-    practiceMaterials: "https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam",
-    domains: [
-      { name: "Chem/Phys", weight: "high", focus: "gen chem, organic, physics, biochem, passages" },
-      { name: "CARS", weight: "high", focus: "passage reasoning, main idea, tone, inference, timing" },
-      { name: "Bio/Biochem", weight: "high", focus: "biology, biochemistry, experimental reasoning" },
-      { name: "Psych/Soc", weight: "high", focus: "behavior, sociology, psychology, study interpretation" },
+    label: "MCAT Blueprint",
+    shortLabel: "MCAT",
+    sourceLabel: "AAMC MCAT outline + local MCAT topic file + Blueprint God file",
+    sourceUrl: "https://students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline",
+    structure: "AAMC-style section folders with daily CARS, content/passages, full-length review, equations, and pathways.",
+    passMeaning: "A pass is a section cycle: content, passages, error log, and next-day review. CARS is a daily habit, not an occasional topic.",
+    doneMeaning: "Done means the final item has practice evidence, and full-length review confirms the weakness is not recurring.",
+    installCopy: "Install MCAT blueprint",
+    areas: [
+      area("mcat-cp", "Chemical and Physical Foundations", "high", 1.05, "General chemistry, organic chemistry, physics, biochemistry, and lab reasoning.", [
+        folder("Physics equations", ["Kinematics and forces", "Work/energy/power", "Fluids", "Circuits", "Optics and waves", "Radioactive decay"]),
+        folder("Chemistry", ["Stoichiometry and equilibrium", "Acid/base and buffers", "Thermodynamics", "Electrochemistry", "Organic reactions and lab techniques"]),
+      ], ["Pick two equations weekly and work them until units and assumptions are automatic."]),
+      area("mcat-cars", "CARS daily reasoning", "high", 1.2, "Passage reasoning, author profile, tone, inference, and review.", [
+        folder("Daily passage loop", ["Timed passage", "Main idea in one sentence", "Author profile", "Wrong-answer autopsy"]),
+        folder("Reading practice", ["10 pages non-fiction/fiction", "Paragraph gist notes", "End summary", "Timing audit"]),
+      ], ["Think inside the passage boundaries.", "Build a mental profile of the author before answering tone/inference.", "If CARS is stubborn, protect daily contact without letting it eat the entire day."]),
+      area("mcat-bb", "Biological and Biochemical Foundations", "high", 1.1, "Biology, biochemistry, pathways, proteins, genetics, and experimental design.", [
+        folder("Biochemistry", ["Amino acids", "Protein structure", "Enzyme kinetics", "Metabolic pathways"]),
+        folder("Biology", ["Cell biology", "Genetics", "Organ systems", "Experimental reasoning"]),
+      ], ["Pathways should be toggled as systems, enzymes, regulation, and disease links - not memorized as a poster."]),
+      area("mcat-ps", "Psych/Soc and full-length loop", "medium", 0.9, "Psychology, sociology, research methods, diagnostics, and full-length evidence.", [
+        folder("Psych/Soc", ["Learning and memory", "Development and behavior", "Social structure", "Research methods"]),
+        folder("Full-length review", ["Diagnostic", "Full-length score log", "Every miss/guess reviewed", "Weak category retest"]),
+      ]),
+    ],
+    resources: [
+      res("aamc-mcat-outline", "AAMC What's on the MCAT Exam? PDF Outline", "Official", "https://students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline", "Official content outline and competencies.", ["official", "blueprint"]),
+      res("aamc-mcat-study-plan", "AAMC Creating Your MCAT Study Plan", "Official", "https://students-residents.aamc.org/prepare-mcat-exam/creating-your-mcat-exam-study-plan", "Official study-plan guidance.", ["official", "planning"]),
+      res("aamc-mcat-prep", "AAMC Prepare for the MCAT", "Official", "https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam", "Official practice and prep hub.", ["official", "practice"]),
+      res("jack-westin-cars", "Jack Westin CARS", "CARS", "https://jackwestin.com/mcat-question-of-the-day", "Useful daily CARS habit builder.", ["cars", "daily"]),
+      res("khan-mcat", "Khan Academy MCAT", "Content", "https://www.khanacademy.org/test-prep/mcat", "Free content review aligned to MCAT prep.", ["free", "content"]),
+    ],
+    rhythm: [
+      rhythm("Normal MCAT day", "Anki or warm-up, CARS, one main topic, questions, then next-day review of yesterday's misses.", ["Anki", "CARS", "topic block", "error log"]),
+      rhythm("Sunday accessory day", "CARS, equations, pathways, mobility/rest, and weekly schedule reset.", ["CARS", "2 equations", "pathways", "reset"]),
     ],
   },
   premed: {
-    label: "Pre-Med", shortLabel: "Pre-Med", prefix: "PRE-MED",
-    structure: "Big-picture pre-med tracks: coursework, experiences, application, and the MCAT runway.",
-    officialOutline: "https://students-residents.aamc.org/applying-medical-school-amcas/applying-medical-school-amcas",
-    practiceMaterials: "https://students-residents.aamc.org/prepare-mcat-exam/prepare-mcat-exam",
-    domains: [
-      { name: "Prerequisites", weight: "high", focus: "bio, chem, physics, math, writing, GPA protection" },
-      { name: "Clinical & Service", weight: "medium", focus: "clinical exposure, volunteering, reflection" },
-      { name: "Research & Leadership", weight: "medium", focus: "research, presentations, leadership" },
-      { name: "Application Materials", weight: "medium", focus: "personal statement, activities, school list, letters" },
-      { name: "MCAT Runway", weight: "medium", focus: "content map, diagnostic, schedule, practice" },
+    label: "Pre-Med Operating System",
+    shortLabel: "Pre-Med",
+    sourceLabel: "Blueprint God file + AAMC competencies + AMCAS/AACOMAS guidance",
+    sourceUrl: "https://students-residents.aamc.org/real-stories-demonstrating-premed-competencies/premed-competencies-entering-medical-students",
+    structure: "Prerequisites, competencies, experience evidence, application cycle, school fit, and narrative vault.",
+    passMeaning: "Pre-med items are requirements and evidence. A prerequisite is not a lecture pass; an experience is useful when hours and reflection are both captured.",
+    doneMeaning: "Done means completed course/verified evidence/submitted artifact, with uncertainty labeled instead of invented.",
+    installCopy: "Install Pre-Med operating system",
+    areas: [
+      area("premed-academic", "Academic map and prerequisites", "high", 1.2, "Degree audit, transcript, GPA trend, prerequisites, MCAT-relevant coursework.", [
+        folder("Academic record", ["Transcript/DARS entered", "AP/IB/transfer noted", "Science GPA trend", "Repeated/withdrawn courses flagged"]),
+        folder("Prerequisite map", ["Bio sequence", "Chem/organic/biochem", "Physics/math/stats", "Writing/psych/soc", "Target-school unknowns labeled"]),
+      ]),
+      area("premed-experiences", "Experiences and competencies", "high", 1.1, "Clinical exposure, service, research, shadowing, leadership, employment, and reflections.", [
+        folder("Evidence vault", ["Clinical hours", "Non-clinical service", "Research/scholarly work", "Shadowing", "Leadership/teaching/employment"]),
+        folder("Competency signal", ["Professional competency note", "Thinking/reasoning example", "Science competency evidence", "Meaningful story captured"]),
+      ]),
+      area("premed-application", "Application cycle and school fit", "medium", 1.0, "AMCAS/AACOMAS/TMDSAS, letters, personal statement, secondaries, interview prep.", [
+        folder("Application build", ["Letters tracked", "Personal statement draft", "Activities descriptions", "School list fit logic"]),
+        folder("Cycle execution", ["Primary application", "Secondaries", "Interviews", "Financial planning", "Waitlist/reapplication plan"]),
+      ]),
+      area("premed-mcat", "MCAT runway", "high", 1.0, "Diagnostic, section plan, daily CARS, content schedule, full-length review.", [
+        folder("MCAT readiness", ["Diagnostic score", "Content map", "CARS routine", "Full-length schedule", "Error log"]),
+      ]),
+    ],
+    resources: [
+      res("aamc-competencies", "AAMC Premed Competencies", "Official", "https://students-residents.aamc.org/real-stories-demonstrating-premed-competencies/premed-competencies-entering-medical-students", "17 competencies for entering medical students.", ["official", "competencies"]),
+      res("amcas-guide", "AAMC AMCAS Applicant Guide", "Official", "https://students-residents.aamc.org/applying-medical-school-amcas/publication/2027-amcas-applicant-guide", "Current AMCAS application process and policies.", ["official", "amcas"]),
+      res("aacom-apply", "AACOMAS Apply to Medical School", "Official", "https://www.aacom.org/become-a-doctor/apply-to-medical-school", "DO application pathway.", ["official", "do"]),
+      res("msar", "AAMC MSAR", "Official", "https://students-residents.aamc.org/medical-school-admission-requirements/medical-school-admission-requirements-msar-applicants", "School requirements and fit research.", ["official", "school-list"]),
+    ],
+    rhythm: [
+      rhythm("Weekly pre-med audit", "One small audit: hours, GPA/prereqs, MCAT readiness, or application artifact.", ["hours", "grades", "MCAT", "artifact"]),
+      rhythm("Evidence capture", "After meaningful experiences, log hours and reflection before the details fade.", ["what happened", "who verified", "why it matters"]),
     ],
   },
 };
 
-const RESOURCE_CATALOG: Record<BoardExamId, PrepResource[]> = {
-  step1: [
-    { id: "usmle-outline", title: "USMLE Step 1 Content Outline", kind: "Official", url: EXAMS.step1.officialOutline, why: "The blueprint these domains come from.", tags: ["official", "blueprint"] },
-    { id: "usmle-samples", title: "USMLE Step 1 Sample Questions", kind: "Official", url: EXAMS.step1.practiceMaterials, why: "Official item style and format.", tags: ["official", "practice"] },
-    { id: "nbme-cbssa", title: "NBME CBSSA", kind: "Assessment", url: "https://www.nbme.org/examinees/self-assessments/comprehensive-basic-science-self-assessment", why: "Readiness checks.", tags: ["nbme", "assessment"] },
-    { id: "qbank", title: "Question bank (AMBOSS/UWorld)", kind: "Qbank", url: "https://www.amboss.com/us", why: "Daily retrieval + explanation review.", tags: ["qbank"] },
-    { id: "anking", title: "AnKing Step Deck", kind: "Anki", url: "https://www.ankihub.net/step-deck", why: "Spaced retrieval for missed facts.", tags: ["anki"] },
-    { id: "mehlman", title: "Mehlman Medical HY PDFs", kind: "Review", url: "https://mehlmanmedical.com/free-stuff/", why: "Targeted high-yield review.", tags: ["hy"] },
-  ],
-  step2: [
-    { id: "usmle-outline", title: "USMLE Step 2 CK Content Outline", kind: "Official", url: EXAMS.step2.officialOutline, why: "Blueprint anchor.", tags: ["official"] },
-    { id: "qbank", title: "UWorld Step 2 CK", kind: "Qbank", url: "https://www.uworld.com/", why: "Primary clinical qbank.", tags: ["qbank"] },
-    { id: "nbme", title: "NBME CCSSA", kind: "Assessment", url: "https://www.nbme.org/examinees/self-assessments", why: "Readiness checks.", tags: ["nbme"] },
-  ],
-  step3: [
-    { id: "usmle-outline", title: "USMLE Step 3 Content Outline", kind: "Official", url: EXAMS.step3.officialOutline, why: "Blueprint anchor.", tags: ["official"] },
-    { id: "ccs", title: "CCS case practice", kind: "Practice", url: "https://www.usmle.org/exam-resources/step-3-materials", why: "Order/monitor/reassess practice.", tags: ["ccs"] },
-  ],
-  shelf: [
-    { id: "nbme-clinical", title: "NBME Clinical Science Subject Exams", kind: "Official", url: EXAMS.shelf.officialOutline, why: "Rotation anchor.", tags: ["official"] },
-    { id: "qbank", title: "Rotation qbank blocks", kind: "Qbank", url: "https://www.amboss.com/us", why: "Daily shelf reasoning.", tags: ["qbank"] },
-  ],
-  mcat: [
-    { id: "aamc-overview", title: "AAMC MCAT Overview", kind: "Official", url: EXAMS.mcat.officialOutline, why: "Official section structure.", tags: ["official"] },
-    { id: "aamc-prep", title: "AAMC MCAT Prep Hub", kind: "Official", url: EXAMS.mcat.practiceMaterials, why: "Official practice + full-lengths.", tags: ["practice"] },
-  ],
-  premed: [
-    { id: "amcas", title: "AAMC AMCAS Hub", kind: "Official", url: EXAMS.premed.officialOutline, why: "Application timeline + materials.", tags: ["application"] },
-    { id: "mcat-prep", title: "AAMC MCAT Prep Hub", kind: "Official", url: EXAMS.premed.practiceMaterials, why: "MCAT runway.", tags: ["mcat"] },
-  ],
-};
+function area(id: string, title: string, y: YieldLevel, weight: number, summary: string, folders: PrepFolder[], tips?: string[]): PrepArea {
+  return { id, title, yield: y, weight, summary, folders, tips };
+}
 
-const EVIDENCE = [
-  { title: "Start broad", body: "A big-picture blueprint beats an exhaustive checklist on day one. Add detail where questions reveal weak areas.", source: "USMLE specifications", url: EXAMS.step1.officialOutline },
-  { title: "Practice testing", body: "Questions are learning events: explanation review, error log, then a retest.", source: "Dunlosky et al., 2013", url: "https://pubmed.ncbi.nlm.nih.gov/26173288/" },
-  { title: "Distributed practice", body: "Space review across days. Noctyrium turns weak domains into repeat tracker passes.", source: "Dunlosky et al., 2013", url: "https://pubmed.ncbi.nlm.nih.gov/26173288/" },
-];
-
-const weightTone: Record<Domain["weight"], "green" | "cyan" | "neutral"> = { high: "green", medium: "cyan", low: "neutral" };
-const weightYield: Record<Domain["weight"], Yield> = { high: "high", medium: "none", low: "low" };
-const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
-
-function defaultPrep(exam: BoardExamId): BoardPrepProfile {
+function folder(title: string, leaves: string[]): PrepFolder {
+  const base = slug(title);
   return {
-    medYear: exam === "step1" ? "MS2" : exam === "premed" ? "Pre-Med" : "MS3",
-    contentStarted: exam === "step1" ? "light" : "not-started",
-    weeklyHours: exam === "step1" ? 18 : 12,
-    questionTarget: 40, resourcesDone: [], otherResources: "", confidence: "medium",
-    blueprintLogs: [], updated: new Date().toISOString(),
+    title,
+    leaves: leaves.map((title, index) => ({
+      id: `${base}-${index}`,
+      title,
+      why: "Final actionable item inside this blueprint folder.",
+      action: "Toggle when you have evidence from questions, review, a verified requirement, or a submitted artifact.",
+    })),
   };
 }
 
-function boardReadiness(logs: BoardBlueprintLog[]): number {
-  if (!logs.length) return 0;
-  const confidenceScore: Record<BoardBlueprintLog["confidence"], number> = { red: 20, orange: 45, green: 72, blue: 92 };
+function res(id: string, title: string, kind: string, url: string, why: string, tags: string[]): PrepResource {
+  return { id, title, kind, url, why, tags };
+}
+
+function rhythm(title: string, body: string, chips: string[]) {
+  return { title, body, chips };
+}
+
+function slug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function defaultPrep(exam: BoardExamId): BoardPrepProfile {
+  return {
+    medYear: exam === "premed" || exam === "mcat" ? "Pre-Med" : exam === "step2" || exam === "shelf" ? "MS3" : "MS2",
+    contentStarted: exam === "step1" || exam === "mcat" || exam === "shelf" ? "light" : "not-started",
+    weeklyHours: exam === "step1" ? 18 : exam === "step2" ? 14 : exam === "mcat" ? 12 : 10,
+    questionTarget: exam === "premed" ? 15 : exam === "shelf" ? 25 : exam === "step3" ? 30 : 40,
+    resourcesDone: [],
+    installedBlueprintAreas: [],
+    completedBlueprintItems: [],
+    otherResources: "",
+    confidence: "medium",
+    blueprintLogs: [],
+    aiStrategy: "",
+    updated: new Date().toISOString(),
+  };
+}
+
+function allLeafIds(config: ExamConfig) {
+  return config.areas.flatMap((area) => area.folders.flatMap((folder) => folder.leaves.map((leaf) => leafId(area.id, leaf.id))));
+}
+
+function leafId(areaId: string, id: string) {
+  return `${areaId}/${id}`;
+}
+
+function areaLeafIds(area: PrepArea) {
+  return area.folders.flatMap((folder) => folder.leaves.map((leaf) => leafId(area.id, leaf.id)));
+}
+
+function pct(done: number, total: number) {
+  return total ? Math.round((done / total) * 100) : 0;
+}
+
+function boardReadiness(logs: BoardBlueprintLog[], completion: number): number {
+  const confidenceScore: Record<BoardBlueprintLog["confidence"], number> = { red: 18, orange: 45, green: 72, blue: 92 };
   const recent = logs.slice(0, 20);
-  const confidence = recent.reduce((sum, log) => sum + confidenceScore[log.confidence], 0) / recent.length;
+  const confidence = recent.length ? recent.reduce((sum, log) => sum + confidenceScore[log.confidence], 0) / recent.length : 0;
   const withQuestions = recent.filter((log) => log.questions > 0);
   const accuracy = withQuestions.length
     ? withQuestions.reduce((sum, log) => sum + (log.correct / Math.max(1, log.questions)) * 100, 0) / withQuestions.length
-    : confidence;
-  const coverage = Math.min(100, new Set(logs.map((log) => log.area)).size * 10);
-  return Math.round(confidence * 0.4 + accuracy * 0.4 + coverage * 0.2);
+    : 0;
+  return Math.round(completion * 0.42 + confidence * 0.28 + accuracy * 0.3);
 }
 
 export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId }) {
   const s = useStore();
   const [examId, setExamId] = useState<BoardExamId>(initialExam);
-  const [flash, setFlash] = useState<{ msg: string; href: string } | null>(null);
-  const [logArea, setLogArea] = useState(EXAMS.step1.domains[0].name);
+  const [openArea, setOpenArea] = useState<string>(EXAMS[initialExam].areas[0]?.id ?? "");
+  const [flash, setFlash] = useState<string | null>(null);
+  const [logArea, setLogArea] = useState(EXAMS[initialExam].areas[0]?.title ?? "");
   const [logMode, setLogMode] = useState<BoardBlueprintLog["mode"]>("Questions");
   const [logMinutes, setLogMinutes] = useState("45");
   const [logQuestions, setLogQuestions] = useState("20");
   const [logCorrect, setLogCorrect] = useState("0");
   const [logConfidence, setLogConfidence] = useState<BoardBlueprintLog["confidence"]>("orange");
   const [logNotes, setLogNotes] = useState("");
-  const exam = EXAMS[examId];
-  const track = resolveTrack(s.profile.educationTrack);
-  const tailoredBlueprints = useMemo(
-    () => blueprintsForTrack(track.id, s.profile.focusSubscriptions),
-    [track.id, s.profile.focusSubscriptions],
-  );
-  const prep = s.boardPrep?.[examId] ?? defaultPrep(examId);
-  const resources = RESOURCE_CATALOG[examId];
-  const activeLogArea = exam.domains.some((d) => d.name === logArea) ? logArea : exam.domains[0]?.name ?? exam.label;
 
-  const examItems = useMemo(() => s.tracker.filter((t) => t.path === exam.prefix || t.path.startsWith(exam.prefix + "/")), [s.tracker, exam.prefix]);
-  const logReadiness = boardReadiness(prep.blueprintLogs);
-  const readiness = prep.blueprintLogs.length ? logReadiness : scopeMastery(examItems);
-  const installedNames = new Set(examItems.map((t) => t.label));
-  const installedCount = exam.domains.filter((d) => installedNames.has(d.name)).length;
-  const savedUrls = useMemo(() => new Set(s.resources.map((r) => normalizeResourceUrl(r.url))), [s.resources]);
-  const savedCount = resources.filter((r) => savedUrls.has(normalizeResourceUrl(r.url))).length;
-  const officialInstalled = savedCount === resources.length;
-  const suggestions = suggestMoves(examItems, 3);
-  const blueprintFirst = initialExam !== "premed";
+  const config = EXAMS[examId];
+  const prep = s.boardPrep?.[examId] ?? defaultPrep(examId);
+  const installed = new Set(prep.installedBlueprintAreas ?? []);
+  const completed = new Set(prep.completedBlueprintItems ?? []);
+  const resourceUrls = useMemo(() => new Set(s.resources.map((r) => normalizeResourceUrl(r.url))), [s.resources]);
+  const installedAreaIds = config.areas.filter((area) => installed.has(area.id)).map((area) => area.id);
+  const installedLeaves = config.areas.filter((area) => installed.has(area.id)).flatMap(areaLeafIds);
+  const completion = pct(installedLeaves.filter((id) => completed.has(id)).length, installedLeaves.length || allLeafIds(config).length);
+  const readiness = boardReadiness(prep.blueprintLogs, completion);
+  const savedResources = config.resources.filter((r) => resourceUrls.has(normalizeResourceUrl(r.url))).length;
 
   useEffect(() => {
-    setLogArea(EXAMS[examId].domains[0]?.name ?? EXAMS[examId].label);
+    const first = EXAMS[examId].areas[0];
+    setOpenArea(first?.id ?? "");
+    setLogArea(first?.title ?? EXAMS[examId].shortLabel);
   }, [examId]);
 
-  function announce(msg: string, href: string) {
-    setFlash({ msg, href });
-    window.setTimeout(() => setFlash(null), 6000);
+  function announce(msg: string) {
+    setFlash(msg);
+    window.setTimeout(() => setFlash(null), 4500);
   }
-  function patchPrep(patch: Partial<BoardPrepProfile>) { s.updateBoardPrep(examId, patch); }
+
+  function patchPrep(patch: Partial<BoardPrepProfile>) {
+    s.updateBoardPrep(examId, patch);
+  }
+
+  function installBlueprint() {
+    patchPrep({ installedBlueprintAreas: [...new Set([...prep.installedBlueprintAreas ?? [], ...config.areas.map((area) => area.id)])] });
+    announce(`${config.shortLabel} blueprint installed as dedicated prep folders.`);
+  }
+
+  function toggleArea(area: PrepArea) {
+    const next = new Set(prep.installedBlueprintAreas ?? []);
+    const completedNext = new Set(prep.completedBlueprintItems ?? []);
+    if (next.has(area.id)) {
+      next.delete(area.id);
+      for (const id of areaLeafIds(area)) completedNext.delete(id);
+    } else {
+      next.add(area.id);
+      setOpenArea(area.id);
+    }
+    patchPrep({ installedBlueprintAreas: [...next], completedBlueprintItems: [...completedNext] });
+  }
+
+  function toggleLeaf(id: string) {
+    const next = new Set(prep.completedBlueprintItems ?? []);
+    next.has(id) ? next.delete(id) : next.add(id);
+    patchPrep({ completedBlueprintItems: [...next] });
+  }
+
+  function saveAllResources() {
+    const next = config.resources
+      .filter((r) => !resourceUrls.has(normalizeResourceUrl(r.url)))
+      .map((r) => ({ title: r.title, url: r.url, category: config.shortLabel, tags: r.tags, note: r.why, favorite: r.kind === "Official" || r.kind === "Assessment" }));
+    if (next.length) s.bulkAddResources(next);
+    announce(next.length ? `Saved ${next.length} resource${next.length === 1 ? "" : "s"} to Resources.` : "All blueprint resources are already saved.");
+  }
+
+  function saveResource(resource: PrepResource) {
+    if (resourceUrls.has(normalizeResourceUrl(resource.url))) return;
+    s.addResource({ title: resource.title, url: resource.url, category: config.shortLabel, tags: resource.tags, note: resource.why, favorite: resource.kind === "Official" || resource.kind === "Assessment" });
+    announce(`Saved ${resource.title} to Resources.`);
+  }
+
   function addBlueprintLog() {
+    const questions = Math.max(0, Number(logQuestions) || 0);
     s.addBoardBlueprintLog(examId, {
       date: dayKey(),
-      dimension: "system",
-      area: activeLogArea,
+      dimension: examId === "shelf" ? "discipline" : examId === "premed" ? "competency" : "system",
+      area: logArea || config.shortLabel,
       mode: logMode,
       minutes: Math.max(0, Number(logMinutes) || 0),
-      questions: Math.max(0, Number(logQuestions) || 0),
-      correct: Math.max(0, Math.min(Number(logCorrect) || 0, Number(logQuestions) || 0)),
+      questions,
+      correct: Math.max(0, Math.min(Number(logCorrect) || 0, questions)),
       confidence: logConfidence,
       notes: logNotes.trim() || undefined,
     });
     setLogNotes("");
-    announce(`Logged ${exam.shortLabel} board work for ${activeLogArea}.`, "#step");
-  }
-
-  function domainRow(d: Domain): Omit<TrackerItem, "id" | "updated"> {
-    return { path: exam.prefix, label: d.name, kind: "Review Loop", passes: 0, ankiPasses: 0, yield: weightYield[d.weight], note: d.focus };
-  }
-  function installDomain(d: Domain) {
-    if (installedNames.has(d.name)) return;
-    s.addTrackerItem(domainRow(d));
-    announce(`Added “${d.name}” to the Course Tracker under ${exam.prefix}.`, "#tracker");
-  }
-  function installAll() {
-    const next = exam.domains.filter((d) => !installedNames.has(d.name)).map(domainRow);
-    if (next.length) s.bulkAddTrackerItems(next);
-    announce(next.length ? `Installed ${next.length} big domains into the Course Tracker.` : "All big domains are already in your tracker.", "#tracker");
-  }
-  function resourcePayload(r: PrepResource) {
-    return {
-      title: r.title, url: r.url, category: exam.label, tags: r.tags, note: r.why,
-      favorite: r.kind === "Official" || r.kind === "Assessment",
-    };
-  }
-  function installResources() {
-    const next = resources.filter((r) => !savedUrls.has(normalizeResourceUrl(r.url))).map(resourcePayload);
-    if (next.length) s.bulkAddResources(next);
-    announce(next.length ? `Added ${next.length} resource${next.length === 1 ? "" : "s"} to your Resources library.` : "All of these are already in your library.", "#resources");
-  }
-  function addOneResource(r: PrepResource) {
-    if (savedUrls.has(normalizeResourceUrl(r.url))) return;
-    s.addResource(resourcePayload(r));
-    announce(`Added “${r.title}” to your Resources library.`, "#resources");
+    announce(`Logged ${config.shortLabel} work for ${logArea}.`);
   }
 
   return (
     <>
-      {blueprintFirst && <BlueprintCommand blueprints={tailoredBlueprints} allBlueprints={BLUEPRINTS} />}
-
-      <GlassCard pad className="step-command" data-tour="step">
-        <div className="tk-hero">
-          <div className="row gap12">
-            <span className="folder-icon" style={{ color: "var(--purple)" }}><Brain size={22} /></span>
-            <div>
-              <div className="step-tabs">
-                {(Object.keys(EXAMS) as BoardExamId[]).map((id) => (
-                  <button key={id} className={`filter-pill ${examId === id ? "on" : ""}`} onClick={() => setExamId(id)}>{EXAMS[id].shortLabel}</button>
-                ))}
-              </div>
-              <div className="step-title">{exam.label} Blueprint</div>
-              <div className="sub">{exam.structure}</div>
+      <GlassCard pad className="step-command prep-command-center" data-tour="step">
+        <div className="prep-hero">
+          <div className="prep-hero-copy">
+            <div className="step-tabs">
+              {(Object.keys(EXAMS) as BoardExamId[]).map((id) => (
+                <button key={id} className={`filter-pill ${examId === id ? "on" : ""}`} onClick={() => setExamId(id)}>{EXAMS[id].shortLabel}</button>
+              ))}
+            </div>
+            <div className="step-title">{config.label}</div>
+            <div className="sub">{config.structure}</div>
+            <div className="prep-source-line">
+              <ShieldCheck size={14} /> Built from {config.sourceLabel}. Yield is guidance, not permission to ignore anything.
             </div>
           </div>
-          <div className="ring" style={{ width: 96, height: 96 }}>
-            <svg width="96" height="96" viewBox="0 0 96 96">
-              <circle cx="48" cy="48" r="41" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" />
-              <circle cx="48" cy="48" r="41" fill="none" stroke="var(--purple)" strokeWidth="12" strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 41} strokeDashoffset={2 * Math.PI * 41 * (1 - readiness / 100)}
-                transform="rotate(-90 48 48)" style={{ transition: "stroke-dashoffset .5s ease" }} />
-            </svg>
-            <div className="ring-label">{readiness}%</div>
+          <div className="prep-readiness">
+            <div className="ring" style={{ width: 104, height: 104 }}>
+              <svg width="104" height="104" viewBox="0 0 104 104">
+                <circle cx="52" cy="52" r="43" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="12" />
+                <circle cx="52" cy="52" r="43" fill="none" stroke="var(--cyan)" strokeWidth="12" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 43} strokeDashoffset={2 * Math.PI * 43 * (1 - readiness / 100)}
+                  transform="rotate(-90 52 52)" />
+              </svg>
+              <div className="ring-label">{readiness}%</div>
+            </div>
+            <span>{installedAreaIds.length}/{config.areas.length} areas installed</span>
           </div>
         </div>
-
         <div className="step-actions">
-          <GButton variant="primary" onClick={installAll}><ListPlus size={14} /> Install blueprint ({installedCount}/{exam.domains.length})</GButton>
-          <GButton onClick={installResources} disabled={officialInstalled}><Database size={14} /> Add all resources ({savedCount}/{resources.length})</GButton>
-          <a className="gbtn" href="#tracker"><ListChecks size={14} /> Open in Course Tracker</a>
-          <a className="gbtn" href={exam.officialOutline} target="_blank" rel="noreferrer noopener">Official outline <ExternalLink size={14} /></a>
+          <GButton variant="primary" onClick={installBlueprint}><ListChecks size={14} /> {config.installCopy}</GButton>
+          <GButton onClick={saveAllResources}><Database size={14} /> Save resources ({savedResources}/{config.resources.length})</GButton>
+          <a className="gbtn" href={config.sourceUrl} target="_blank" rel="noreferrer noopener">Official source <ExternalLink size={14} /></a>
         </div>
-        {flash && <a className="step-flash" href={flash.href}><CheckCircle2 size={15} /> <span>{flash.msg}</span> <span className="step-flash-go">Open →</span></a>}
-        <div className="sub" style={{ marginTop: 10 }}>
-          <WandSparkles size={13} style={{ verticalAlign: -2, marginRight: 4, color: "var(--cyan)" }} />
-          Generated locally from the official {exam.shortLabel} outline — superficial big-picture domains only. Add lectures, DLAs, and PQs under any domain in the Course Tracker.
-        </div>
+        {flash && <div className="step-flash"><CheckCircle2 size={15} /> <span>{flash}</span></div>}
       </GlassCard>
 
       <div className="prep-progress-explainer">
         <div className="ppe-item">
-          <span className="ppe-dot" style={{ background: PASS_COLOR.red }} />
-          <div><b>What one pass means</b><span>{EXAM_PROGRESS[examId].pass}</span></div>
+          <span className="ppe-dot" style={{ background: "var(--cyan)" }} />
+          <div><b>What progress means</b><span>{config.passMeaning}</span></div>
         </div>
         <div className="ppe-item">
-          <span className="ppe-dot" style={{ background: PASS_COLOR.mastered }} />
-          <div><b>When it's done</b><span>{EXAM_PROGRESS[examId].done}</span></div>
+          <span className="ppe-dot" style={{ background: "var(--green)" }} />
+          <div><b>When it is done</b><span>{config.doneMeaning}</span></div>
         </div>
       </div>
 
       {examId === "premed" && <PremedExperiencePanel />}
 
-      {!blueprintFirst && <BlueprintCommand blueprints={tailoredBlueprints} allBlueprints={BLUEPRINTS} />}
-
-      <GlassCard pad>
-        <PanelHeader title="Big-picture domains" sub="One row per major domain — install all, or add them individually" />
-        <div className="stack gap8">
-          {exam.domains.map((d) => {
-            const installed = installedNames.has(d.name);
-            const items = examItems.filter((t) => t.label === d.name || t.path.startsWith(`${exam.prefix}/${d.name}`));
-            const pct = scopeMastery(items);
-            return (
-              <div className="blueprint-row" key={d.name}>
-                <div className="grow">
-                  <div className="spread">
-                    <div className="bp-title">{d.name}</div>
-                    <Tag tone={weightTone[d.weight]}>{d.weight} yield</Tag>
-                  </div>
-                  <div className="bp-focus">{d.focus}</div>
-                  {installed && (
-                    <div className="track" style={{ marginTop: 8 }}>
-                      <div className="track-fill" style={{ width: `${pct}%`, background: pct >= 75 ? PASS_COLOR.mastered : pct >= 50 ? PASS_COLOR.mature : pct > 0 ? PASS_COLOR.red : "rgba(255,255,255,0.12)" }} />
+      <div className="step-overview-grid blueprint-main-grid">
+        <GlassCard pad>
+          <PanelHeader title="Blueprint Library" sub="Install areas, open folders, then complete final items with evidence." />
+          <div className="blueprint-tree-grid">
+            {config.areas.map((area) => {
+              const ids = areaLeafIds(area);
+              const areaPct = pct(ids.filter((id) => completed.has(id)).length, ids.length);
+              const isInstalled = installed.has(area.id);
+              const isOpen = openArea === area.id;
+              return (
+                <div key={area.id} className={`prep-area ${isInstalled ? "installed" : ""} ${isOpen ? "open" : ""}`}>
+                  <button type="button" className="prep-area-head" onClick={() => setOpenArea(isOpen ? "" : area.id)}>
+                    <span className="prep-area-icon"><Brain size={17} /></span>
+                    <span className="grow">
+                      <span className="prep-area-title">{area.title}</span>
+                      <span className="prep-area-summary">{area.summary}</span>
+                    </span>
+                    <Tag tone={yieldTone[area.yield]}>{area.yield} yield</Tag>
+                    <span className="prep-area-score">{areaPct}%</span>
+                    <ChevronDown size={15} />
+                  </button>
+                  <div className="track prep-area-track"><div className="track-fill" style={{ width: `${areaPct}%` }} /></div>
+                  {isOpen && (
+                    <div className="prep-area-body">
+                      <div className="row wrap gap8">
+                        <GButton size="sm" variant={isInstalled ? "default" : "primary"} onClick={() => toggleArea(area)}>
+                          {isInstalled ? <CheckCircle2 size={14} /> : <Plus size={14} />} {isInstalled ? "Subscribed" : "Subscribe area"}
+                        </GButton>
+                        <Tag tone="neutral">weight {area.weight.toFixed(1)}x</Tag>
+                      </div>
+                      {area.folders.map((folder) => (
+                        <details className="prep-folder" key={folder.title} open={isInstalled}>
+                          <summary><BookOpen size={15} /><b>{folder.title}</b><ChevronDown size={14} /></summary>
+                          <div className="prep-leaf-grid">
+                            {folder.leaves.map((leaf) => {
+                              const id = leafId(area.id, leaf.id);
+                              const done = completed.has(id);
+                              return (
+                                <button key={id} type="button" className={`prep-leaf ${done ? "done" : ""}`} onClick={() => toggleLeaf(id)} disabled={!isInstalled}>
+                                  <span>{done ? <CheckCircle2 size={14} /> : <CircleDot />}</span>
+                                  <b>{leaf.title}</b>
+                                  <small>{leaf.action}</small>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      ))}
+                      {area.tips?.length ? (
+                        <div className="prep-tip-list">
+                          {area.tips.map((tip) => <span key={tip}><Sparkles size={13} /> {tip}</span>)}
+                        </div>
+                      ) : null}
                     </div>
                   )}
-                </div>
-                {installed
-                  ? <Tag tone="green"><CheckCircle2 size={12} /> Installed</Tag>
-                  : <GButton size="sm" onClick={() => installDomain(d)}><Plus size={13} /> Add</GButton>}
-              </div>
-            );
-          })}
-        </div>
-      </GlassCard>
-
-      <div className="step-overview-grid">
-        <GlassCard pad className="under-construction">
-          <span className="uc-tape t1">Under Construction</span>
-          <span className="uc-badge"><Sparkles size={15} /> Detailed prep tuning — coming soon</span>
-          <div className="uc-inner">
-          <PanelHeader title={`Customize ${exam.shortLabel}`} sub="Med-year, content status, target date & hours — real adaptive-plan logic is being built next" />
-          <div className="step-form-grid">
-            <label className="stack gap6">
-              <span className="field-label">Med-school year</span>
-              <select className="field" aria-label="Med-school year" value={prep.medYear} onChange={(e) => patchPrep({ medYear: e.target.value })}>
-                {["Pre-Med", "MS1", "MS2", "MS3", "MS4", "Graduate / IMG", "Other"].map((v) => <option key={v}>{v}</option>)}
-              </select>
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Content started</span>
-              <select className="field" aria-label="Content started" value={prep.contentStarted} onChange={(e) => patchPrep({ contentStarted: e.target.value as BoardPrepProfile["contentStarted"] })}>
-                <option value="not-started">Not started</option>
-                <option value="light">Light exposure</option>
-                <option value="half">About half</option>
-                <option value="most">Most covered</option>
-                <option value="dedicated">Dedicated review</option>
-              </select>
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Target date</span>
-              <input className="field" type="date" value={prep.examDate ?? ""} onChange={(e) => patchPrep({ examDate: e.target.value || undefined })} />
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Weekly hours</span>
-              <input className="field" type="number" min={1} max={80} value={prep.weeklyHours} onChange={(e) => patchPrep({ weeklyHours: Number(e.target.value) || 1 })} />
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Daily questions</span>
-              <input className="field" type="number" min={0} max={240} value={prep.questionTarget} onChange={(e) => patchPrep({ questionTarget: Number(e.target.value) || 0 })} />
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Confidence</span>
-              <select className="field" aria-label="Confidence" value={prep.confidence} onChange={(e) => patchPrep({ confidence: e.target.value as BoardPrepProfile["confidence"] })}>
-                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-              </select>
-            </label>
-          </div>
-          <label className="stack gap6" style={{ marginTop: 12 }}>
-            <span className="field-label">Other resources / constraints</span>
-            <input className="field" placeholder="Pathoma, Sketchy, UWorld, mentor plan…" value={prep.otherResources} onChange={(e) => patchPrep({ otherResources: e.target.value })} />
-          </label>
-          </div>
-        </GlassCard>
-
-        <GlassCard pad>
-          <PanelHeader title={`${exam.shortLabel} resource library`}
-            sub={`${savedCount}/${resources.length} saved to your Resources page`}
-            action={<GButton size="sm" onClick={installResources} disabled={officialInstalled}><Plus size={14} /> Add all</GButton>} />
-          <div className="prep-resource-list">
-            {resources.map((res) => {
-              const saved = savedUrls.has(normalizeResourceUrl(res.url));
-              return (
-                <div className={`prep-resource-row ${saved ? "saved" : ""}`} key={res.id}>
-                  <span className="prep-resource-mark">{saved ? <CheckCircle2 size={16} /> : <Database size={16} />}</span>
-                  <div className="grow">
-                    <b>{res.title}</b>
-                    <span><Tag tone="neutral">{res.kind}</Tag> {res.why}</span>
-                  </div>
-                  <a className="gbtn sm" href={res.url} target="_blank" rel="noreferrer noopener" title="Open in a new tab">
-                    Open <ExternalLink size={13} />
-                  </a>
-                  {saved
-                    ? <Tag tone="green"><CheckCircle2 size={12} /> In library</Tag>
-                    : <GButton size="sm" variant="primary" onClick={() => addOneResource(res)}><Plus size={13} /> Add</GButton>}
                 </div>
               );
             })}
           </div>
-          <div className="sub" style={{ marginTop: 10 }}>
-            “Add” saves a resource to your Resources page so it’s one click away everywhere. Already-saved items show as <b>In library</b>.
+        </GlassCard>
+
+        <div className="stack gap16">
+          <GlassCard pad>
+            <PanelHeader title={`${config.shortLabel} resources`} sub={`${savedResources}/${config.resources.length} saved to Resources`}
+              action={<GButton size="sm" onClick={saveAllResources}><Plus size={14} /> Add all</GButton>} />
+            <div className="prep-resource-list">
+              {config.resources.map((resource) => {
+                const saved = resourceUrls.has(normalizeResourceUrl(resource.url));
+                return (
+                  <div className={`prep-resource-row ${saved ? "saved" : ""}`} key={resource.id}>
+                    <span className="prep-resource-mark">{saved ? <CheckCircle2 size={16} /> : <Database size={16} />}</span>
+                    <div className="grow">
+                      <b>{resource.title}</b>
+                      <span><Tag tone="neutral">{resource.kind}</Tag> {resource.why}</span>
+                    </div>
+                    <a className="gbtn sm" href={resource.url} target="_blank" rel="noreferrer noopener">Open <ExternalLink size={13} /></a>
+                    {saved ? <Tag tone="green">In library</Tag> : <GButton size="sm" onClick={() => saveResource(resource)}>Add</GButton>}
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
+
+          <GlassCard pad className="step-schedule-card">
+            <PanelHeader title="Suggested rhythm" sub="A starter operating cadence you can adapt." />
+            <div className="prep-rhythm-list">
+              {config.rhythm.map((item) => (
+                <div className="prep-rhythm" key={item.title}>
+                  <CalendarDays size={15} />
+                  <div>
+                    <b>{item.title}</b>
+                    <span>{item.body}</span>
+                    <div>{item.chips.map((chip) => <Tag key={chip} tone="cyan">{chip}</Tag>)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+      </div>
+
+      <div className="step-overview-grid">
+        <GlassCard pad className="step-log-card">
+          <PanelHeader title={`${config.shortLabel} work log`} sub="Board/prep logging stays separate from lecture, DLA, and PQ course tracking." />
+          <div className="step-form-grid board-log-form">
+            <label className="stack gap6">
+              <span className="field-label">Area</span>
+              <select className="field" value={logArea} onChange={(e) => setLogArea(e.target.value)}>
+                {config.areas.map((area) => <option key={area.id}>{area.title}</option>)}
+              </select>
+            </label>
+            <label className="stack gap6">
+              <span className="field-label">Mode</span>
+              <select className="field" value={logMode} onChange={(e) => setLogMode(e.target.value as BoardBlueprintLog["mode"])}>
+                {["Questions", "Assessment", "Missed facts", "First pass", "Review"].map((mode) => <option key={mode}>{mode}</option>)}
+              </select>
+            </label>
+            <Field label="Minutes" type="number" min="0" value={logMinutes} onChange={(e) => setLogMinutes(e.target.value)} />
+            <Field label="Questions" type="number" min="0" value={logQuestions} onChange={(e) => setLogQuestions(e.target.value)} />
+            <Field label="Correct" type="number" min="0" value={logCorrect} onChange={(e) => setLogCorrect(e.target.value)} />
+            <label className="stack gap6">
+              <span className="field-label">Confidence</span>
+              <select className="field" value={logConfidence} onChange={(e) => setLogConfidence(e.target.value as BoardBlueprintLog["confidence"])}>
+                <option value="red">Red</option>
+                <option value="orange">Orange</option>
+                <option value="green">Green</option>
+                <option value="blue">Blue</option>
+              </select>
+            </label>
           </div>
+          <div className="board-log-note-row">
+            <input className="field" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} placeholder="Missed themes, next repair, resource used..." />
+            <GButton variant="primary" onClick={addBlueprintLog}><Plus size={14} /> Log work</GButton>
+          </div>
+          <div className="board-quick-row">
+            <button onClick={() => { setLogMode("Questions"); setLogMinutes("60"); setLogQuestions("40"); }}>40Q block</button>
+            <button onClick={() => { setLogMode("Missed facts"); setLogMinutes("25"); setLogQuestions("0"); }}>Missed-fact repair</button>
+            <button onClick={() => { setLogMode("Assessment"); setLogMinutes("240"); setLogQuestions("0"); }}>Assessment review</button>
+          </div>
+        </GlassCard>
+
+        <GlassCard pad>
+          <PanelHeader title="Recent evidence" sub={`${prep.blueprintLogs.length} board/prep log${prep.blueprintLogs.length === 1 ? "" : "s"}`} />
+          {prep.blueprintLogs.length ? (
+            <div className="board-log-list">
+              {prep.blueprintLogs.slice(0, 8).map((log) => (
+                <div className="board-log-row" key={log.id}>
+                  <span className="board-log-dot" style={{ color: confidenceColor(log.confidence), background: confidenceColor(log.confidence) }} />
+                  <div className="grow">
+                    <b>{log.area}</b>
+                    <span>{log.date} - {log.mode} - {log.minutes}m{log.questions ? ` - ${log.correct}/${log.questions}` : ""}</span>
+                    {log.notes && <small>{log.notes}</small>}
+                  </div>
+                  <button className="ghost-btn danger" onClick={() => s.removeBoardBlueprintLog(examId, log.id)}>Remove</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">No board/prep logs yet. Install a blueprint, do one small block, then log the evidence.</div>
+          )}
         </GlassCard>
       </div>
 
       <GlassCard pad>
-        <PanelHeader title={`${exam.shortLabel} blueprint log`} sub="Board-style logging: domain, questions, accuracy, confidence — separate from lecture/DLA/PQ passes" />
-        <div className="step-form-grid">
-          <label className="stack gap6">
-            <span className="field-label">Domain</span>
-            <select className="field" value={activeLogArea} onChange={(e) => setLogArea(e.target.value)}>
-              {exam.domains.map((d) => <option key={d.name}>{d.name}</option>)}
-            </select>
-          </label>
-          <label className="stack gap6">
-            <span className="field-label">Mode</span>
-            <select className="field" value={logMode} onChange={(e) => setLogMode(e.target.value as BoardBlueprintLog["mode"])}>
-              {["Questions", "Assessment", "Missed facts", "First pass", "Review"].map((mode) => <option key={mode}>{mode}</option>)}
-            </select>
-          </label>
-          <label className="stack gap6">
-            <span className="field-label">Minutes</span>
-            <input className="field" type="number" min={0} value={logMinutes} onChange={(e) => setLogMinutes(e.target.value)} />
-          </label>
-          <label className="stack gap6">
-            <span className="field-label">Questions</span>
-            <input className="field" type="number" min={0} value={logQuestions} onChange={(e) => setLogQuestions(e.target.value)} />
-          </label>
-          <label className="stack gap6">
-            <span className="field-label">Correct</span>
-            <input className="field" type="number" min={0} max={Number(logQuestions) || undefined} value={logCorrect} onChange={(e) => setLogCorrect(e.target.value)} />
-          </label>
-          <label className="stack gap6">
-            <span className="field-label">Confidence</span>
-            <select className="field" value={logConfidence} onChange={(e) => setLogConfidence(e.target.value as BoardBlueprintLog["confidence"])}>
-              <option value="red">Red</option>
-              <option value="orange">Orange</option>
-              <option value="green">Green</option>
-              <option value="blue">Blue</option>
-            </select>
-          </label>
-        </div>
-        <label className="stack gap6" style={{ marginTop: 12 }}>
-          <span className="field-label">Notes / missed themes</span>
-          <input className="field" value={logNotes} onChange={(e) => setLogNotes(e.target.value)}
-            placeholder="e.g. Renal acid-base misses; redo NBME explanations tomorrow" />
-        </label>
-        <div className="row wrap gap8" style={{ marginTop: 12 }}>
-          <GButton variant="primary" onClick={addBlueprintLog}><Plus size={14} /> Log board work</GButton>
-          <Tag tone="cyan">{prep.blueprintLogs.length} log{prep.blueprintLogs.length === 1 ? "" : "s"}</Tag>
-          <Tag tone="green">{logReadiness}% board readiness</Tag>
-        </div>
-        {prep.blueprintLogs.length > 0 && (
-          <div className="import-preview-list" style={{ marginTop: 12 }}>
-            {prep.blueprintLogs.slice(0, 6).map((log) => (
-              <div key={log.id} className="import-preview-row">
-                <span className="mono">{log.date}</span>
-                <span>{log.area}</span>
-                <Tag tone="purple">{log.mode}</Tag>
-                <Tag tone={log.confidence === "blue" || log.confidence === "green" ? "green" : log.confidence === "orange" ? "orange" : "neutral"}>{log.confidence}</Tag>
-                <span className="sub">{log.questions ? `${log.correct}/${log.questions} correct` : `${log.minutes} min`}</span>
-                <button type="button" className="tiny-link danger" onClick={() => s.removeBoardBlueprintLog(examId, log.id)}>Delete</button>
-              </div>
-            ))}
+        <PanelHeader title="Why this is not the Course Tracker" sub="Course Tracker stays for lectures, DLAs, PQs, and term work. Blueprint Prep tracks exam readiness and application evidence." />
+        <div className="evidence-grid prep-evidence-grid">
+          <a className="evidence-card" href={config.sourceUrl} target="_blank" rel="noreferrer noopener">
+            <span><FlaskConical size={15} /></span>
+            <div><b>Source anchored</b><small>Official exam outlines and your local Blueprint God file define the folder structure.</small><em>{config.sourceLabel}</em></div>
+          </a>
+          <div className="evidence-card">
+            <span><Target size={15} /></span>
+            <div><b>Completion is evidence</b><small>Toggle final items only when you have practice, verification, retest, or application evidence.</small><em>No fake lecture passes</em></div>
           </div>
-        )}
+          <div className="evidence-card">
+            <span><Layers size={15} /></span>
+            <div><b>Modular by design</b><small>Subscribe to only the exam or pathway you need; hidden tracks stay available from customization.</small><em>Calmer mobile experience</em></div>
+          </div>
+        </div>
       </GlassCard>
-
-      <div className="step-overview-grid">
-        <GlassCard pad>
-          <PanelHeader title="Suggested next move" sub="From your installed domains + tracker state" />
-          <div className="stack gap8">
-            {suggestions.map((sg) => (
-              <div className="sugg" key={sg.title}>
-                <span className="sugg-dot" style={{ background: sg.color }} />
-                <div className="grow"><div className="sugg-title">{sg.title}</div><div className="sugg-reason">{sg.reason}</div></div>
-                <Sparkles size={15} style={{ color: "var(--cyan)" }} />
-              </div>
-            ))}
-            <GButton size="sm" onClick={() => { s.addTask(`${exam.shortLabel}: ${prep.questionTarget} reviewed questions`, undefined, exam.label); announce("Added a question-block task to Tasks.", "#tasks"); }}>
-              <ClipboardCheck size={14} /> Add today's question block to Tasks
-            </GButton>
-          </div>
-        </GlassCard>
-
-        <GlassCard pad>
-          <PanelHeader title="Why big-picture first" sub="Evidence behind the approach" />
-          <div className="evidence-grid">
-            {EVIDENCE.map((item) => (
-              <a className="evidence-card" href={item.url} target="_blank" rel="noreferrer noopener" key={item.title}>
-                <span><FlaskConical size={15} /></span>
-                <div><b>{item.title}</b><small>{item.body}</small><em>{item.source}</em></div>
-              </a>
-            ))}
-          </div>
-        </GlassCard>
-      </div>
     </>
   );
+}
+
+function CircleDot() {
+  return <span className="circle-dot" aria-hidden="true" />;
+}
+
+function confidenceColor(confidence: BoardBlueprintLog["confidence"]) {
+  if (confidence === "blue") return "var(--grade-blue)";
+  if (confidence === "green") return "var(--green)";
+  if (confidence === "orange") return "var(--orange)";
+  return "var(--red)";
 }
 
 function PremedExperiencePanel() {
@@ -648,7 +759,7 @@ function PremedExperiencePanel() {
               <Tag tone={entry.verified ? "green" : "neutral"}>{entry.kind}</Tag>
               <div className="grow">
                 <b>{entry.title}</b>
-                <span>{entry.date} · {entry.organization} · {entry.hours}h{entry.verified ? " · verified" : ""}</span>
+                <span>{entry.date} - {entry.organization} - {entry.hours}h{entry.verified ? " - verified" : ""}</span>
               </div>
               <button className="ghost-btn danger" onClick={() => s.removePremedExperience(entry.id)}>Remove</button>
             </div>

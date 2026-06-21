@@ -41,10 +41,10 @@ export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id
 
 // Sidebar order (Alpha 2). Tools is a collapsible folder.
 export const SIDEBAR_TOP = [
-  "dashboard", "courses", "tracker", "productivity", "journal", "reports", "resources",
+  "dashboard", "courses", "tracker", "productivity", "journal", "reports",
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
-export const SIDEBAR_TOOLS = ["tasks", "anki", "prompts", "integrations", "leaderboards"];
+export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);

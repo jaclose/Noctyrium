@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Sparkles, GraduationCap, Stethoscope, BookOpen, Brain, Activity, Compass,
-  ArrowRight, ArrowLeft, Check, Wand2, LineChart, Layers, ShieldCheck,
+  ArrowRight, ArrowLeft, Check, Layers, ShieldCheck,
   HeartPulse, Syringe, HardDrive,
 } from "lucide-react";
 import { useStore } from "../../lib/store";
@@ -12,7 +12,7 @@ import { FOCUS_OPTIONS, focusOption } from "../../lib/experience";
 import { groupedTracks, resolveTrack } from "../../lib/tracks";
 import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
 
-const STEP_TITLES = ["Welcome", "Program", "Focus", "Targets", "AI tools", "Ready"];
+const STEP_TITLES = ["Welcome", "Program", "Focus", "Targets", "Ready"];
 
 const TRACK_ICONS: Record<string, LucideIcon> = {
   GraduationCap, Stethoscope, Compass, Brain, BookOpen, HeartPulse, Syringe,
@@ -258,31 +258,6 @@ export function OnboardingWizard() {
           </div>
         )}
 
-        {step === 4 && (
-          <div className="onboarding-body">
-            <h2>AI strategy layer</h2>
-            <p className="onboarding-lede">
-              Alpha ships with local/mock AI behavior and Vercel-ready endpoints. The app can
-              suggest next moves, draft Anki cards, plan board prep, and summarize daily progress
-              without exposing provider keys in the browser.
-            </p>
-            <div className="onboarding-ai-grid">
-              <div><Brain size={17} /><b>Next move</b><span>Uses tracker rows, due tasks, weak areas, and board prep status.</span></div>
-              <div><Wand2 size={17} /><b>Anki draft</b><span>Turns pasted lectures or objectives into import-friendly cards.</span></div>
-              <div><GraduationCap size={17} /><b>Blueprint planner</b><span>Builds broad Step, Shelf, MCAT, or CBSE schedules first.</span></div>
-              <div><LineChart size={17} /><b>Daily report</b><span>Summarizes logs, tasks, and journal entries into an action readout.</span></div>
-            </div>
-            <div className="backup-note">
-              <ShieldCheck size={15} />
-              <span>Local-first remains the source of truth. Cloud sync and AI providers are optional upgrades.</span>
-            </div>
-            <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>
-              <GButton variant="primary" onClick={() => setStep(5)}>Continue <ArrowRight size={15} /></GButton>
-            </div>
-          </div>
-        )}
-
         {step === last && (
           <div className="onboarding-body">
             <div className="onboarding-mark good"><Check size={26} /></div>
@@ -303,7 +278,7 @@ export function OnboardingWizard() {
               <span><b>How progress works here:</b> {track.progress.passMeaning} {track.progress.doneMeaning}</span>
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => setStep(4)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GhostButton onClick={() => setStep(3)}><ArrowLeft size={15} /> Back</GhostButton>
               <GButton variant="primary" onClick={finish}>Enter dashboard <ArrowRight size={15} /></GButton>
             </div>
           </div>

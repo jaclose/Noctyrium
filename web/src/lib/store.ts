@@ -329,8 +329,23 @@ export const useStore = create<Store>()(
 
       logStudy: ({ type, minutes = 0, cards = 0, note }) =>
         set((s) => {
+          const current = s.logs.reduce((totals, log) => {
+            if (log.dayKey !== s.activeDayKey) return totals;
+            return { minutes: totals.minutes + log.minutes, cards: totals.cards + log.cards };
+          }, { minutes: 0, cards: 0 });
+          let nextMinutes = Number.isFinite(minutes) ? minutes : 0;
+          let nextCards = Number.isFinite(cards) ? cards : 0;
+          if (nextMinutes < 0) nextMinutes = -Math.min(Math.max(0, current.minutes), Math.abs(nextMinutes));
+          if (nextCards < 0) nextCards = -Math.min(Math.max(0, current.cards), Math.abs(nextCards));
+          if (!nextMinutes && !nextCards) return {};
           const entry: StudyLog = {
-            id: uid(), dayKey: s.activeDayKey, ts: now(), type, minutes, cards, note,
+            id: uid(),
+            dayKey: s.activeDayKey,
+            ts: now(),
+            type: type.trim() || "Study",
+            minutes: nextMinutes,
+            cards: nextCards,
+            note,
           };
           return { logs: [entry, ...s.logs] };
         }),
@@ -608,6 +623,12 @@ export const useStore = create<Store>()(
           profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
           s.profile = normalizeProfile(profile);
         }
+        if (fromVersion < 21) {
+          s.boardPrep = normalizeBoardPrep(s.boardPrep);
+          const profile = isRecord(s.profile) ? s.profile : {};
+          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+          s.profile = normalizeProfile(profile);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -791,7 +812,7 @@ function mergeStringLists(value: unknown, defaults: readonly string[]) {
 }
 
 function defaultHiddenNavForTrack(trackId: string): string[] {
-  const base = ["prompts", "integrations", "folders"];
+  const base = ["courses", "prompts", "integrations", "folders"];
   if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
   if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
   return [...base, "premed"];
@@ -799,6 +820,7 @@ function defaultHiddenNavForTrack(trackId: string): string[] {
 
 function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
   const set = new Set(normalizeHiddenNav(current, trackId));
+  set.add("courses");
   set.add("prompts");
   set.add("integrations");
   set.add("folders");
@@ -921,6 +943,8 @@ function defaultBoardPrep(exam: BoardExamId): BoardPrepProfile {
     weeklyHours: exam === "step1" ? 18 : exam === "step2" ? 14 : exam === "mcat" ? 12 : 10,
     questionTarget: exam === "premed" ? 15 : exam === "shelf" ? 25 : exam === "step3" ? 30 : 40,
     resourcesDone: [],
+    installedBlueprintAreas: [],
+    completedBlueprintItems: [],
     otherResources: "",
     confidence: "medium",
     blueprintLogs: [],
@@ -989,6 +1013,8 @@ function normalizeBoardPrepProfile(value: unknown, exam: BoardExamId): BoardPrep
     weeklyHours: typeof profile.weeklyHours === "number" ? profile.weeklyHours : base.weeklyHours,
     questionTarget: typeof profile.questionTarget === "number" ? profile.questionTarget : base.questionTarget,
     resourcesDone: Array.isArray(profile.resourcesDone) ? profile.resourcesDone.filter((x): x is string => typeof x === "string") : [],
+    installedBlueprintAreas: Array.isArray(profile.installedBlueprintAreas) ? profile.installedBlueprintAreas.filter((x): x is string => typeof x === "string") : [],
+    completedBlueprintItems: Array.isArray(profile.completedBlueprintItems) ? profile.completedBlueprintItems.filter((x): x is string => typeof x === "string") : [],
     otherResources: String(profile.otherResources ?? ""),
     confidence,
     blueprintLogs: normalizeBoardBlueprintLogs(profile.blueprintLogs),

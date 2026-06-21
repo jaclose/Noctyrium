@@ -9,7 +9,7 @@ import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -72,7 +72,7 @@ export function makeSeed(): NoctyriumState {
       dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
       hiddenDashboardWidgets: DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
       journalReviewTime: "20:00",
-      hiddenNav: ["prompts", "integrations", "folders", "premed"],
+      hiddenNav: ["courses", "prompts", "integrations", "folders", "premed"],
     },
     terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),
     courses: ACADEMIC_TEMPLATE_COURSES.map(({ aliases: _aliases, modules, ...course }) => ({
@@ -195,6 +195,8 @@ function boardPrepSeed(
     weeklyHours,
     questionTarget,
     resourcesDone: [],
+    installedBlueprintAreas: [],
+    completedBlueprintItems: [],
     otherResources: "",
     confidence: "medium",
     blueprintLogs: [],

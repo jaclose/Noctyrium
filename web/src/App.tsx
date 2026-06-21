@@ -65,11 +65,19 @@ export default function App() {
   useEffect(() => {
     const onHash = () => setRoute(location.hash.replace("#", "") || "dashboard");
     window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
+    window.addEventListener("popstate", onHash);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("popstate", onHash);
+    };
   }, []);
 
   function go(id: string) {
-    location.hash = id;
+    try {
+      window.history.pushState(null, "", `#${id}`);
+    } catch {
+      location.hash = id;
+    }
     setRoute(id);
   }
 

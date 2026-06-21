@@ -126,7 +126,7 @@ function normalizeHiddenNav(value: unknown, trackId: string) {
   if (Array.isArray(value)) {
     return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
   }
-  const base = ["prompts", "integrations", "folders"];
+  const base = ["courses", "prompts", "integrations", "folders"];
   if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
   if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
   return [...base, "premed"];
@@ -157,6 +157,8 @@ function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: 
     weeklyHours,
     questionTarget,
     resourcesDone: [],
+    installedBlueprintAreas: [],
+    completedBlueprintItems: [],
     otherResources: "",
     confidence: "medium",
     blueprintLogs: [],

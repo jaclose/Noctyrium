@@ -7,7 +7,7 @@ import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitive
 import { Ring } from "../components/ui/Ring";
 
 function stepVal(current: string, delta: number): string {
-  return String(Math.max(0, (Number(current) || 0) + delta));
+  return String((Number(current) || 0) + delta);
 }
 
 type QuickLogItem = { label: string; type: string; minutes?: number; cards?: number; icon?: boolean };
@@ -23,7 +23,7 @@ const QUICK_BASE: QuickLogItem[] = [
 export function ProductivityPage() {
   const s = useStore();
   const [pickedDay, setPickedDay] = useState<string | null>(null);
-  const [manualType, setManualType] = useState("Manual");
+  const [manualType, setManualType] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualCards, setManualCards] = useState("");
   const [manualNote, setManualNote] = useState("");
@@ -48,7 +48,8 @@ export function ProductivityPage() {
     const minutes = Number(manualMinutes) || 0;
     const cards = Number(manualCards) || 0;
     if (!minutes && !cards) return;
-    s.logStudy({ type: manualType || "Manual", minutes, cards, note: manualNote || undefined });
+    const type = manualType.trim() || (minutes < 0 || cards < 0 ? "Correction" : "Study");
+    s.logStudy({ type, minutes, cards, note: manualNote || undefined });
     setManualMinutes(""); setManualCards(""); setManualNote("");
   }
 
@@ -62,7 +63,7 @@ export function ProductivityPage() {
             <Sunrise size={15} /> Start New Study Day
           </GButton>
           <GButton onClick={() => s.logStudy({ type: "Anki", cards: 20 })}><Plus size={14} /> 20 Anki Cards</GButton>
-          <GButton onClick={() => s.logStudy({ type: "Manual", minutes: 30 })}><Plus size={14} /> 30 Minutes</GButton>
+          <GButton onClick={() => s.logStudy({ type: "Study", minutes: 30 })}><Plus size={14} /> 30 Minutes</GButton>
           <div className="right sub">Active study day: <span className="mono" style={{ color: "var(--cyan)" }}>{s.activeDayKey}</span></div>
         </div>
         <div className="sub" style={{ marginTop: 10 }}>
@@ -90,7 +91,7 @@ export function ProductivityPage() {
         <div className={`manual-logger ${isActive ? "" : "is-locked"}`}>
           <div className="manual-logger-head"><span>Manual Activity Logger</span></div>
           <div className="manual-log">
-            <input className="field manual-type" placeholder="Type (e.g. Lecture)" value={manualType} onChange={(e) => setManualType(e.target.value)} />
+            <input className="field manual-type" placeholder="Activity type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
             <div className="stepper" title="Minutes (±10)">
               <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={14} /></button>
               <input className="field" type="number" placeholder="Min" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />

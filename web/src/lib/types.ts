@@ -180,6 +180,8 @@ export interface BoardPrepProfile {
   weeklyHours: number;
   questionTarget: number;
   resourcesDone: string[];
+  installedBlueprintAreas?: string[];
+  completedBlueprintItems?: string[];
   otherResources: string;
   confidence: "low" | "medium" | "high";
   blueprintLogs: BoardBlueprintLog[];

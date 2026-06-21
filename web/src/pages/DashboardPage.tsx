@@ -58,6 +58,8 @@ export function DashboardPage() {
   const cardPct = Math.min(100, Math.round((today.cards / cardTarget) * 100));
   const minPct = Math.min(100, Math.round((today.minutes / minTarget) * 100));
   const targetsMet = today.cards >= cardTarget && today.minutes >= minTarget;
+  const floorFill = Math.min(100, Math.round((cardPct + minPct) / 2));
+  const strongDay = grade === "green" || grade === "blue" || floorFill >= 80;
 
   const suggestions = buildSuggestions(s);
   const schedule = buildDashboardSchedule(s.logs, s.tasks);
@@ -114,10 +116,18 @@ export function DashboardPage() {
 
       <GlassCard pad className="dashboard-control-card">
         <div className="spread">
-          <div>
+          <div className="dashboard-control-copy">
             <div className="dashboard-control-kicker">Personal command surface</div>
-            <div className="panel-title">Tailored to {track.short}</div>
-            <div className="panel-sub">{performance.performanceLabel} · Energy {performance.energyScore}/100 · {hiddenWidgets.size} widgets in the library</div>
+            <div className="dashboard-control-title">Tailored to {track.short}</div>
+            <div className="dashboard-control-meta">
+              <span>{performance.performanceLabel}</span>
+              <span>Energy {performance.energyScore}/100</span>
+              <span>{hiddenWidgets.size} widgets in the library</span>
+            </div>
+            <div className={`day-fluid-pill dashboard-mini-fluid ${strongDay ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
+              <span className="day-fluid-fill" style={{ width: `${floorFill}%` }} />
+              <span className="day-fluid-label">{strongDay && <Flame size={13} />} {floorFill}% daily floor</span>
+            </div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
             <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
@@ -131,8 +141,7 @@ export function DashboardPage() {
           trend="🃏" trendTone="neutral" />
         <StatCard title="Study" value={`${today.minutes}m`} note="logged today" icon={<Clock size={18} />}
           trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"} />
-        <StatCard title="Tasks + Journal" value={`${openTasks}/${s.journal.length}`} note={`${doneToday} tasks done · ${s.journal.length} standups`} icon={<ListChecks size={18} />}
-          trend="Execute + reflect" trendTone="cyan" />
+        <TasksJournalStatCard openTasks={openTasks} doneToday={doneToday} journalCount={s.journal.length} />
         <StatCard title="Tracker" value={`${trackerReady}%`} note={`${matureItems} mature · ${reviewItems} need attention`} icon={<BadgeDot />}
           trend={`${masteredItems} mastered`} trendTone="green" />
         <StatCard title="Energy" value={`${performance.energyScore}`} note={performance.journalSignal} icon={<Sunrise size={18} />}
@@ -214,6 +223,35 @@ function wrapUpMessage(key: string) {
 
 function BadgeDot() {
   return <span className="badge-dot-icon" aria-hidden="true" />;
+}
+
+function TasksJournalStatCard({
+  openTasks, doneToday, journalCount,
+}: {
+  openTasks: number;
+  doneToday: number;
+  journalCount: number;
+}) {
+  return (
+    <GlassCard className="stat-card tasks-journal-stat" pad>
+      <div className="stat-top">
+        <span className="stat-icon"><ListChecks size={18} /></span>
+        <Tag tone={openTasks ? "orange" : "green"}>{openTasks ? `${openTasks} open` : "Clear"}</Tag>
+      </div>
+      <div className="tasks-journal-split">
+        <div>
+          <b>{openTasks}</b>
+          <span>open tasks</span>
+        </div>
+        <div>
+          <b>{journalCount}</b>
+          <span>standups</span>
+        </div>
+      </div>
+      <div className="stat-title">Tasks + Journal</div>
+      <div className="stat-note">{doneToday} done today · execute, then reflect</div>
+    </GlassCard>
+  );
 }
 
 function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
@@ -734,7 +772,7 @@ function WinTheDay() {
   const [note, setNote] = useState("");
   const [showWrapPrompt, setShowWrapPrompt] = useState(false);
 
-  const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 5);
+  const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 3);
   const reviewDue = isAfterLocalTime(s.profile.journalReviewTime ?? "20:00");
 
   useEffect(() => {
