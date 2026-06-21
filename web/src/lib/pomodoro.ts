@@ -95,6 +95,23 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     if (get().anchorDay !== today) set({ anchorDay: today, sessionsToday: 0, loggedMinutesToday: 0 });
   };
 
+  const logPartialFocus = (reason: "reset" | "skip") => {
+    syncDay();
+    const { phase, presetId, secondsLeft, autoLog } = get();
+    if (phase !== "focus" || !autoLog) return 0;
+    const preset = presetById(presetId);
+    const elapsedSeconds = Math.max(0, preset.focus * 60 - secondsLeft);
+    const minutes = Math.floor(elapsedSeconds / 60);
+    if (minutes <= 0) return 0;
+    useStore.getState().logStudy({ type: "Pomodoro", minutes, note: `Pomodoro ${reason}: partial focus sprint` });
+    set((s) => ({
+      loggedMinutesToday: s.loggedMinutesToday + minutes,
+      completedAt: new Date().toISOString(),
+      completedMinutes: minutes,
+    }));
+    return minutes;
+  };
+
   // A phase finished — log the focus block (if natural + auto-log on), then
   // advance: focus → break keeps running; break → focus pauses for a fresh start.
   const complete = (natural: boolean) => {
@@ -114,7 +131,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         sessionsToday: natural ? s.sessionsToday + 1 : s.sessionsToday,
         loggedMinutesToday: natural && autoLog ? s.loggedMinutesToday + preset.focus : s.loggedMinutesToday,
         completedAt: natural ? new Date().toISOString() : s.completedAt,
-        completedMinutes: natural && autoLog ? preset.focus : 0,
+        completedMinutes: natural && autoLog ? preset.focus : s.completedMinutes,
       }));
       if (natural) startInterval(() => get()._tick());
     } else {
@@ -153,10 +170,14 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     toggle: () => (get().running ? get().pause() : get().start()),
     reset: () => {
       stopInterval();
+      logPartialFocus("reset");
       const preset = presetById(get().presetId);
       set({ running: false, phase: "focus", secondsLeft: preset.focus * 60 });
     },
-    skip: () => complete(false),
+    skip: () => {
+      logPartialFocus("skip");
+      complete(false);
+    },
     setPreset: (id) => {
       stopInterval();
       const preset = presetById(id);

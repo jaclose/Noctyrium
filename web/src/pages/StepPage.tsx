@@ -57,24 +57,53 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means the final item has evidence: stable questions, repaired misses, or a retested weak point. It is not a lecture pass.",
     installCopy: "Install Step 1 blueprint",
     areas: [
-      area("step1-foundations", "Foundations and general principles", "high", 1.1, "Mechanisms that travel across every organ system.", [
-        folder("Biochemistry and molecular biology", ["Amino acids and protein structure", "Enzymes and kinetics", "Metabolism checkpoints", "Genetics and gene expression"]),
-        folder("Micro, immune, pharm, path", ["Host defense map", "Microbiology classification", "Drug mechanisms and toxicities", "Inflammation and neoplasia principles"]),
-        folder("Biostats, ethics, communication", ["Study design and bias", "Screening math", "Patient safety and ethics", "Communication frameworks"]),
-      ], ["Start broad, then let missed questions choose the next subfolder.", "Biostats grows fastest when every missed method is rewritten in your own words."]),
-      area("step1-cardiopulmrenal", "Cardio, pulmonary, renal", "high", 1.2, "Physiology-heavy systems where equations, graphs, and compensation logic matter.", [
-        folder("Cardiovascular", ["Pressure-volume loops", "Murmurs and hemodynamics", "Cardio pharm", "Shock and heart failure"]),
-        folder("Respiratory", ["Ventilation and perfusion", "Obstructive vs restrictive disease", "Pulmonary vascular disease", "Respiratory acid-base"]),
-        folder("Renal", ["Nephron transport", "Acid-base disorders", "Electrolytes and fluids", "Renal pathology and pharm"]),
-      ], ["Draw the graph before reading answer choices when a question is physiology-first."]),
-      area("step1-body-systems", "GI, endocrine, reproductive, neuro, MSK", "high", 1.0, "Large system folders for disease scripts, pathways, and pharmacology tie-ins.", [
-        folder("GI and nutrition", ["Hepatobiliary disease", "Pancreas and digestion", "Malabsorption and vitamins", "GI neoplasia"]),
-        folder("Endocrine and reproductive", ["Diabetes and thyroid", "Adrenal and pituitary", "Pregnancy physiology", "Male/female/transgender repro"]),
-        folder("Neuro, behavior, MSK, skin", ["Neuro localization", "Psych and sleep", "Derm/rheum patterns", "Bone, muscle, connective tissue"]),
+      area("step1-foundations", "Foundations and scientific principles", "high", 1.18, "Cross-system mechanisms that explain the rest of the exam.", [
+        folder("Biochemistry and molecular biology", ["Amino acids and protein structure", "Enzymes and kinetics", "Metabolism checkpoints", "Vitamins and nutrition links", "Genetics and gene expression", "Lab techniques and molecular tools"]),
+        folder("Cell biology and physiology methods", ["Cell structure and trafficking", "Membranes and transport", "Signal transduction", "Homeostasis feedback loops", "Experimental design"]),
+        folder("Pathology and pharmacology principles", ["Inflammation and wound healing", "Neoplasia principles", "Drug receptors and kinetics", "Autonomic pharmacology", "Toxicities and adverse effects"]),
+      ], ["Start broad, then let missed questions choose the next subfolder.", "Rewrite every missed mechanism as a cause-effect chain, not as a fact list."]),
+      area("step1-micro-immune-heme", "Microbiology, immune, blood", "high", 1.16, "Host defense, pathogens, hematology, coagulation, and malignancy patterns.", [
+        folder("Immune system", ["Innate/adaptive overview", "Immunodeficiencies", "Hypersensitivity reactions", "Autoimmunity", "Transplant and rejection", "Vaccines and immune drugs"]),
+        folder("Microbiology", ["Bacteria classification", "Viruses and replication", "Fungi and parasites", "Antimicrobials", "Opportunistic infections", "Micro lab identification"]),
+        folder("Blood and lymphoreticular", ["Anemia algorithms", "Bleeding and thrombosis", "Leukemia and lymphoma", "Plasma cell disorders", "Transfusion reactions", "Hemostasis drugs"]),
       ]),
-      area("step1-readiness", "Assessments and error repair", "medium", 0.9, "NBME-style checkpoints, sample items, and error-log cleanup.", [
-        folder("Assessment loop", ["Official sample questions", "NBME/CBSSA review", "Two-pass error log", "Retest repeat misses"]),
-        folder("Recall artifacts", ["Anki for repeat misses", "One-page weak-area repair", "Formula/scheme sheet", "48-hour retest queue"]),
+      area("step1-cardio", "Cardiovascular system", "high", 1.12, "Hemodynamics, pathophysiology, embryology, pharmacology, and clinical scripts.", [
+        folder("Physiology and graphs", ["Pressure-volume loops", "Cardiac output determinants", "Murmurs and maneuvers", "Vascular resistance", "Shock states"]),
+        folder("Pathology and pharmacology", ["Ischemic heart disease", "Heart failure", "Valvular disease", "Arrhythmias", "Hypertension drugs", "Congenital heart disease"]),
+      ], ["For graph questions, draw the relationship before reading choices."]),
+      area("step1-pulm-renal-acidbase", "Respiratory, renal, acid-base", "high", 1.12, "Gas exchange, nephron logic, fluids, compensation, and high-frequency equations.", [
+        folder("Respiratory", ["Ventilation/perfusion", "Obstructive vs restrictive disease", "Pulmonary vascular disease", "Oxygen content and delivery", "Respiratory pharmacology"]),
+        folder("Renal and urinary", ["Nephron transport", "Glomerular disease", "Tubular disorders", "Diuretics", "Renal stones and tumors"]),
+        folder("Acid-base and electrolytes", ["Metabolic acidosis", "Metabolic alkalosis", "Respiratory compensation", "Potassium disorders", "Sodium and water disorders"]),
+      ]),
+      area("step1-gi-endocrine-nutrition", "GI, endocrine, nutrition", "high", 1.04, "Metabolism, hormones, digestion, liver, pancreas, and nutrition links.", [
+        folder("Gastrointestinal and hepatobiliary", ["Esophagus and stomach", "Small/large bowel disease", "Hepatitis and cirrhosis", "Gallbladder disease", "Pancreatitis and pancreatic cancer"]),
+        folder("Endocrine", ["Pituitary and hypothalamus", "Thyroid/parathyroid", "Adrenal", "Diabetes and insulin", "Endocrine tumors"]),
+        folder("Nutrition and metabolism", ["Vitamin deficiencies", "Inborn errors", "Lipid metabolism", "Obesity and malnutrition", "Feeding and absorption"]),
+      ]),
+      area("step1-neuro-behavior", "Neuro, behavior, special senses", "high", 1.08, "Localization, neurophysiology, psychiatry, behavior, sleep, and sensory systems.", [
+        folder("Neuroanatomy and localization", ["Spinal cord tracts", "Brainstem lesions", "Cranial nerves", "Basal ganglia/cerebellum", "Vascular territories", "Seizures and headaches"]),
+        folder("Behavioral health", ["Mood disorders", "Psychosis", "Anxiety/trauma", "Substance use", "Personality disorders", "Sleep and cognition"]),
+        folder("Special senses", ["Vision pathways", "Eye pathology", "Auditory/vestibular", "Taste/smell", "Neuro pharmacology"]),
+      ]),
+      area("step1-repro-development", "Human development and reproductive systems", "medium", 0.96, "Development, pregnancy, sex-specific systems, breast, and reproductive pharmacology.", [
+        folder("Human development", ["Embryology landmarks", "Childhood development", "Adolescent care", "Aging and geriatric physiology", "Preventive care by age"]),
+        folder("Pregnancy and childbirth", ["Placenta and fetal circulation", "Maternal physiology", "Pregnancy complications", "Labor/postpartum", "Teratogens"]),
+        folder("Reproductive and breast", ["Female reproductive pathology", "Male reproductive pathology", "Breast disease", "Sex hormones", "Gender-affirming care basics"]),
+      ]),
+      area("step1-msk-skin-connective", "MSK, skin, connective tissue", "medium", 0.86, "Dermatology, rheumatology, bone, muscle, and connective tissue disorders.", [
+        folder("Musculoskeletal", ["Bone remodeling", "Arthritis patterns", "Myopathies", "Trauma and healing", "MSK pharmacology"]),
+        folder("Skin and subcutaneous tissue", ["Primary lesions", "Inflammatory dermatoses", "Infections", "Skin cancers", "Blistering disorders"]),
+        folder("Connective tissue and rheum", ["SLE and vasculitis", "Scleroderma/myositis", "Seronegative disease", "Crystal arthropathies", "Immunomodulator toxicities"]),
+      ]),
+      area("step1-multisystem-biostats-social", "Multisystem, biostats, ethics, social sciences", "high", 1.0, "Evidence interpretation, safety, communication, population health, and multisystem disease.", [
+        folder("Biostats and epidemiology", ["Study design", "Bias and confounding", "Screening math", "Diagnostic test interpretation", "Survival and risk measures", "Medical literature reading"]),
+        folder("Ethics and communication", ["Capacity and consent", "Confidentiality", "Professional boundaries", "End-of-life decisions", "Error disclosure", "Difficult conversations"]),
+        folder("Multisystem and population health", ["Shock and sepsis", "Trauma/burns", "Nutrition and prescription drug use", "Military/veteran health", "Disability care", "Health disparities"]),
+      ], ["Biostats grows fastest when every missed method is rewritten in your own words."]),
+      area("step1-readiness", "Assessments and error repair", "medium", 0.94, "NBME-style checkpoints, sample items, recall artifacts, and retesting loops.", [
+        folder("Assessment loop", ["Official sample questions", "NBME/CBSSA review", "Timed mixed block", "Two-pass error log", "Retest repeat misses"]),
+        folder("Recall artifacts", ["Anki for repeat misses", "One-page weak-area repair", "Formula/scheme sheet", "48-hour retest queue", "Final week compression"]),
       ]),
     ],
     resources: [
@@ -98,16 +127,31 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means diagnosis/next-step errors have been retested and shelf/Step 2 evidence is improving.",
     installCopy: "Install Step 2 blueprint",
     areas: [
-      area("step2-medicine", "Medicine and emergency reasoning", "high", 1.2, "Adult systems, unstable patients, and next-best-step logic.", [
-        folder("Adult systems", ["Cardio/pulm/renal", "GI/endocrine/heme", "Infectious disease", "Rheum/derm/neuro"]),
-        folder("Acute care", ["Initial stabilization", "Diagnostic next step", "Disposition", "Medication safety"]),
+      area("step2-medicine", "Internal medicine decision system", "high", 1.22, "Adult diagnosis, management, risk stratification, and inpatient/ambulatory pivots.", [
+        folder("Core adult systems", ["Cardiology", "Pulmonary", "Renal/electrolytes", "GI/hepatology", "Endocrine", "Heme/onc"]),
+        folder("Complex adult medicine", ["Infectious disease", "Rheumatology", "Dermatology", "Neurology", "Geriatrics", "Multisystem disease"]),
+        folder("Management algorithms", ["Initial stabilization", "Diagnostic next step", "Treatment next step", "Monitoring/follow-up", "Medication safety", "Disposition"]),
+      ], ["Step 2 usually rewards the safest next action, not the most exotic diagnosis."]),
+      area("step2-surgery-emergency", "Surgery, trauma, emergency care", "high", 1.08, "Acute abdomen, trauma, perioperative reasoning, and ED triage.", [
+        folder("Surgery shelf core", ["Acute abdomen", "Trauma and burns", "GI surgery", "Vascular surgery", "Breast/endocrine surgery", "Post-op complications"]),
+        folder("Emergency medicine", ["ABCs and resuscitation", "Chest pain/dyspnea", "Shock/sepsis", "Toxicology", "Procedures and imaging", "Disposition"]),
       ]),
-      area("step2-rotations", "Core clerkships", "high", 1.0, "Shelf domains carried forward into Step 2.", [
-        folder("Surgery, peds, OB/GYN", ["Acute abdomen/trauma", "Pediatric milestones", "Pregnancy and postpartum", "Gynecology"]),
-        folder("Psych, family, ambulatory", ["Risk and safety", "Screening and prevention", "Substance use", "Longitudinal care"]),
+      area("step2-peds-obgyn", "Pediatrics and OB/GYN", "high", 1.04, "Growth, development, pregnancy, postpartum, gynecology, and prevention.", [
+        folder("Pediatrics", ["Newborn care", "Milestones and development", "Pediatric infections", "Congenital disease", "Pediatric emergencies", "Vaccines and screening"]),
+        folder("Obstetrics", ["Prenatal care", "Pregnancy complications", "Labor management", "Postpartum care", "Fetal testing", "Hypertensive disorders"]),
+        folder("Gynecology", ["Abnormal uterine bleeding", "Pelvic pain", "Contraception", "Infertility", "Gynecologic oncology", "Breast health"]),
       ]),
-      area("step2-quality", "Ethics, safety, biostats", "medium", 0.8, "The questions that punish vague reasoning.", [
-        folder("Systems and evidence", ["Quality improvement", "Patient safety", "Abstract interpretation", "Consent/capacity/confidentiality"]),
+      area("step2-psych-family-ambulatory", "Psychiatry, family medicine, ambulatory care", "high", 1.0, "Longitudinal care, prevention, psychiatric safety, and outpatient management.", [
+        folder("Psychiatry", ["Mood disorders", "Psychosis", "Anxiety/trauma", "Substance use", "Suicide/risk safety", "Psychopharmacology"]),
+        folder("Family and ambulatory", ["Preventive screening", "Chronic disease follow-up", "Vaccines", "Sports/occupational medicine", "Adolescent care", "Older adult care"]),
+      ]),
+      area("step2-quality", "Ethics, safety, biostats, systems", "medium", 0.92, "The Step 2 questions that punish vague reasoning and unsafe handoffs.", [
+        folder("Evidence and abstracts", ["Study design", "Biostats interpretation", "Drug ads", "Screening tests", "Risk communication"]),
+        folder("Systems and communication", ["Quality improvement", "Patient safety", "Consent/capacity/confidentiality", "Health equity", "Interprofessional handoff", "Medical error disclosure"]),
+      ]),
+      area("step2-dedicated-engine", "Dedicated Step 2 engine", "medium", 0.92, "NBME/CCSSA calibration, mixed blocks, score trend, and final compression.", [
+        folder("Assessment cadence", ["Baseline NBME/CCSSA", "CMS form by weak shelf", "Timed mixed UWorld block", "Official sample questions", "Final interactive test"]),
+        folder("Error-log analytics", ["Diagnosis miss", "Management miss", "Screening/prevention miss", "Risk stratification miss", "Reading/timing miss", "Retest queue"]),
       ]),
     ],
     resources: [
@@ -130,15 +174,31 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means safe management patterns are consistent and CCS timing errors are repaired.",
     installCopy: "Install Step 3 blueprint",
     areas: [
-      area("step3-ambulatory", "Ambulatory and chronic care", "high", 1.0, "Outpatient diagnosis, follow-up, prevention, and chronic disease control.", [
-        folder("Longitudinal care", ["Hypertension/diabetes", "Preventive visits", "Medication monitoring", "Follow-up timing"]),
+      area("step3-foundations", "Step 3 orientation and exam mechanics", "medium", 0.86, "FIP, ACM, CCS mechanics, timing, and readiness baselines.", [
+        folder("Exam architecture", ["Day 1 FIP map", "Day 2 ACM map", "CCS case flow", "Question timing", "Break strategy", "Permit/test-day checklist"]),
+        folder("Baseline setup", ["Content baseline", "CCS baseline", "Biostats baseline", "Risk domain selection", "Study calendar"]),
       ]),
-      area("step3-inpatient", "Emergency, inpatient, CCS", "high", 1.2, "Triage, orders, monitoring, and reassessment.", [
-        folder("Acute management", ["Initial orders", "Diagnostic sequencing", "Monitoring", "Disposition"]),
-        folder("CCS cases", ["Clock management", "Consults and procedures", "Complication prevention", "Case closure"]),
+      area("step3-ambulatory", "Ambulatory and chronic care", "high", 1.08, "Outpatient diagnosis, follow-up, prevention, and chronic disease control.", [
+        folder("Longitudinal care", ["Hypertension/diabetes", "Asthma/COPD", "Heart failure", "CKD", "Preventive visits", "Medication monitoring"]),
+        folder("Primary care decisions", ["Screening intervals", "Vaccines", "Follow-up timing", "Counseling", "Adherence barriers", "Referral thresholds"]),
       ]),
-      area("step3-systems", "Biostats, ethics, systems", "medium", 0.8, "Abstracts, systems-based practice, patient safety, and professionalism.", [
-        folder("Systems reasoning", ["Drug ads/abstracts", "Quality and safety", "Ethics/legal", "Population health"]),
+      area("step3-emergency-inpatient", "Emergency and inpatient management", "high", 1.18, "Triage, orders, reassessment, complications, and disposition.", [
+        folder("Acute management", ["Initial orders", "Diagnostic sequencing", "Shock/sepsis", "Chest pain/dyspnea", "Altered mental status", "Disposition"]),
+        folder("Inpatient safety", ["Monitoring", "Medication reconciliation", "Complication prevention", "Consult timing", "Handoff", "Discharge planning"]),
+      ]),
+      area("step3-ccs", "CCS case execution", "high", 1.24, "Order timing, interval management, consults, prevention, and case closure.", [
+        folder("CCS orders", ["Initial stabilization orders", "Diagnostic orders", "Therapeutic orders", "Monitoring orders", "Preventive orders", "Patient counseling"]),
+        folder("CCS timing", ["Clock advance", "Reassessment triggers", "Escalation", "Consults and procedures", "Case end conditions", "Post-case error log"]),
+      ], ["Step 3 is management and prioritization. CCS punishes knowing the diagnosis but not acting safely."]),
+      area("step3-special-populations", "Special populations and longitudinal judgment", "medium", 0.94, "Peds, pregnancy, geriatrics, psychiatry, disability care, and population health.", [
+        folder("Population-specific care", ["Pediatrics", "Pregnancy/postpartum", "Geriatrics/polypharmacy", "Veteran health", "Disability care", "Gender-affirming care basics"]),
+        folder("Psych and behavior", ["Substance use", "Mood/anxiety", "Suicide/risk", "Capacity", "Adherence and counseling"]),
+      ]),
+      area("step3-systems", "Biostats, ethics, systems", "medium", 0.9, "Abstracts, drug ads, systems-based practice, safety, and professionalism.", [
+        folder("Evidence and systems", ["Drug ads/abstracts", "Quality and safety", "Ethics/legal", "Population health", "Public health reporting", "Practice-based learning"]),
+      ]),
+      area("step3-assessment", "Assessment and final readiness", "medium", 0.88, "NBME/UWorld-style checkpoints, CCS retests, and final week compression.", [
+        folder("Readiness loop", ["NBME/CCMSA checkpoint", "UWorld block trend", "CCS case trend", "Biostats retest", "Final weak-domain list", "Test-week safety plan"]),
       ]),
     ],
     resources: [
@@ -157,11 +217,28 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means the shelf domain was retested and the clinical behavior or algorithm is clearer.",
     installCopy: "Install shelf blueprint",
     areas: [
-      area("shelf-core", "Core clinical shelves", "high", 1.1, "Medicine, surgery, pediatrics, OB/GYN, psychiatry, family medicine.", [
-        folder("Clinical science subjects", ["Medicine", "Surgery", "Pediatrics", "OB/GYN", "Psychiatry", "Family medicine"]),
+      area("shelf-medicine", "Medicine shelf", "high", 1.18, "Diagnosis and management across adult inpatient and outpatient systems.", [
+        folder("Medicine systems", ["Cardio/pulm/renal", "GI/endocrine", "Heme/onc", "Infectious disease", "Rheum/derm", "Neurology"]),
+        folder("Medicine shelf execution", ["Daily question block", "CMS/NBME checkpoint", "Algorithm repair", "Admission/discharge reasoning", "Weak-system retest"]),
+      ]),
+      area("shelf-surgery", "Surgery shelf", "high", 1.08, "Acute abdomen, trauma, perioperative care, and complications.", [
+        folder("Surgical domains", ["Trauma/burns", "GI surgery", "Vascular", "Breast/endocrine", "Urology", "Ortho/anesthesia basics"]),
+        folder("Surgery decisions", ["Pre-op risk", "Post-op fever", "Fluid/electrolytes", "Imaging choice", "Operate vs observe", "Complication prevention"]),
+      ]),
+      area("shelf-peds-obgyn", "Pediatrics and OB/GYN shelves", "high", 1.02, "Pediatric development and obstetric/gynecologic management.", [
+        folder("Pediatrics shelf", ["Newborn", "Milestones", "Pediatric infections", "Congenital disease", "Vaccines/screening", "Emergencies"]),
+        folder("OB/GYN shelf", ["Prenatal care", "Pregnancy complications", "Labor/postpartum", "AUB/pelvic pain", "Contraception", "Gynecologic oncology"]),
+      ]),
+      area("shelf-psych-family-neuro", "Psych, family, neuro, ambulatory shelves", "medium", 0.98, "Rotation-specific reasoning that also compounds into Step 2.", [
+        folder("Psychiatry shelf", ["Mood/anxiety", "Psychosis", "Substance use", "Child/adolescent psych", "Risk assessment", "Psych meds"]),
+        folder("Family/ambulatory/neuro", ["Screening/prevention", "Chronic care", "MSK/derm", "Headache/seizure/stroke", "Neuro localization", "Follow-up planning"]),
       ]),
       area("shelf-patient-evidence", "Patient encounter evidence", "medium", 0.9, "Turn real clinical exposure into exam and feedback signal.", [
-        folder("Encounter loop", ["Diagnosis seen", "Management decision", "Feedback received", "One behavior to test next shift"]),
+        folder("Encounter loop", ["Diagnosis seen", "Management decision", "Feedback received", "One behavior to test next shift", "Observed skill", "Patient-care reflection"]),
+        folder("Rotation operations", ["Daily patients logged", "Presentation feedback", "Procedure/skill log", "Clerkship objectives", "Shelf date countdown", "End-of-rotation debrief"]),
+      ]),
+      area("shelf-assessment-center", "Shelf assessment center", "medium", 0.88, "CMS forms, NBME-style sample items, weak-area analytics, and carry-forward logic.", [
+        folder("Assessment cadence", ["Baseline topic scan", "CMS form schedule", "Incorrect review", "Timed block trend", "Final week plan", "Carry-forward to Step 2"]),
       ]),
     ],
     resources: [
@@ -180,21 +257,35 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means the final item has practice evidence, and full-length review confirms the weakness is not recurring.",
     installCopy: "Install MCAT blueprint",
     areas: [
-      area("mcat-cp", "Chemical and Physical Foundations", "high", 1.05, "General chemistry, organic chemistry, physics, biochemistry, and lab reasoning.", [
-        folder("Physics equations", ["Kinematics and forces", "Work/energy/power", "Fluids", "Circuits", "Optics and waves", "Radioactive decay"]),
-        folder("Chemistry", ["Stoichiometry and equilibrium", "Acid/base and buffers", "Thermodynamics", "Electrochemistry", "Organic reactions and lab techniques"]),
-      ], ["Pick two equations weekly and work them until units and assumptions are automatic."]),
-      area("mcat-cars", "CARS daily reasoning", "high", 1.2, "Passage reasoning, author profile, tone, inference, and review.", [
-        folder("Daily passage loop", ["Timed passage", "Main idea in one sentence", "Author profile", "Wrong-answer autopsy"]),
-        folder("Reading practice", ["10 pages non-fiction/fiction", "Paragraph gist notes", "End summary", "Timing audit"]),
-      ], ["Think inside the passage boundaries.", "Build a mental profile of the author before answering tone/inference.", "If CARS is stubborn, protect daily contact without letting it eat the entire day."]),
-      area("mcat-bb", "Biological and Biochemical Foundations", "high", 1.1, "Biology, biochemistry, pathways, proteins, genetics, and experimental design.", [
-        folder("Biochemistry", ["Amino acids", "Protein structure", "Enzyme kinetics", "Metabolic pathways"]),
-        folder("Biology", ["Cell biology", "Genetics", "Organ systems", "Experimental reasoning"]),
+      area("mcat-bb", "Biological and Biochemical Foundations", "high", 1.12, "Biology, biochemistry, pathways, proteins, genetics, physiology, and experimental design.", [
+        folder("Proteins and enzymes", ["Amino acids", "Protein structure", "Enzyme kinetics", "Enzyme regulation", "Lab separation methods", "Protein function passages"]),
+        folder("Metabolism and pathways", ["Glycolysis/gluconeogenesis", "TCA/ETC/oxidative phosphorylation", "Fatty acid metabolism", "Amino acid metabolism", "Pentose phosphate pathway", "Hormonal regulation"]),
+        folder("Cell and molecular biology", ["Cell structure", "Membranes and transport", "Genetics and inheritance", "Gene expression", "DNA technology", "Cell cycle/cancer"]),
+        folder("Organ systems", ["Nervous/endocrine", "Cardiovascular/respiratory", "Renal/digestive", "Immune", "Reproduction/development", "Musculoskeletal"]),
       ], ["Pathways should be toggled as systems, enzymes, regulation, and disease links - not memorized as a poster."]),
-      area("mcat-ps", "Psych/Soc and full-length loop", "medium", 0.9, "Psychology, sociology, research methods, diagnostics, and full-length evidence.", [
-        folder("Psych/Soc", ["Learning and memory", "Development and behavior", "Social structure", "Research methods"]),
-        folder("Full-length review", ["Diagnostic", "Full-length score log", "Every miss/guess reviewed", "Weak category retest"]),
+      area("mcat-cp", "Chemical and Physical Foundations", "high", 1.08, "General chemistry, organic chemistry, physics, biochemistry, and lab reasoning.", [
+        folder("Physics equations", ["Kinematics and forces", "Work/energy/power", "Fluids", "Circuits", "Optics and waves", "Radioactive decay", "Thermodynamics", "Electrostatics/magnetism"]),
+        folder("General chemistry", ["Stoichiometry", "Atomic structure", "Bonding", "Equilibrium", "Acid/base and buffers", "Thermodynamics", "Electrochemistry"]),
+        folder("Organic chemistry", ["Structure and stereochemistry", "Substitution/elimination", "Carbonyl chemistry", "Carboxylic acid derivatives", "Redox", "Spectroscopy"]),
+        folder("Lab and passage reasoning", ["Chromatography", "Electrophoresis", "Spectrophotometry", "Experimental controls", "Units/dimensional analysis", "Graph interpretation"]),
+      ], ["Pick two equations weekly and work them until units and assumptions are automatic."]),
+      area("mcat-cars", "CARS daily reasoning", "high", 1.2, "Passage reasoning, author profile, tone, inference, timing, and review.", [
+        folder("Daily passage loop", ["Timed passage", "Main idea in one sentence", "Author profile", "Question stem translation", "Wrong-answer autopsy", "Timing audit"]),
+        folder("Reasoning skills", ["Foundations of comprehension", "Reasoning within the text", "Reasoning beyond the text", "Tone and attitude", "Assumption/inference", "Evidence boundaries"]),
+        folder("Reading practice", ["10 pages non-fiction/fiction", "Paragraph gist notes", "End summary", "Dense passage tolerance", "Author perspective drill"]),
+      ], ["Think only inside the passage boundaries.", "Build a mental profile of the author before answering tone/inference.", "If CARS is stubborn, protect daily contact without letting it eat the entire day."]),
+      area("mcat-ps", "Psychological, Social, and Biological Foundations", "medium", 0.98, "Psychology, sociology, behavior, research methods, and health disparities.", [
+        folder("Psychology", ["Sensation/perception", "Learning and memory", "Cognition", "Emotion and stress", "Development", "Psychological disorders"]),
+        folder("Sociology", ["Social structure", "Demographics", "Social stratification", "Culture", "Social behavior", "Health disparities"]),
+        folder("Research and terminology", ["Study design", "Bias", "Validity/reliability", "Operational definitions", "Statistics basics", "Passage variable mapping"]),
+      ]),
+      area("mcat-full-length-engine", "Full-length and error-log engine", "high", 1.05, "Diagnostics, full-length review, section trends, retests, and schedule decisions.", [
+        folder("Assessment cadence", ["Diagnostic", "Full-length score log", "Section timing", "Break/test-day routine", "AAMC material schedule", "Score plateau response"]),
+        folder("Error log", ["Content miss", "Passage reasoning miss", "Math/units miss", "CARS trap", "Psych/Soc term miss", "Next-day retest"]),
+      ]),
+      area("mcat-weekly-rhythm", "Weekly MCAT operating rhythm", "medium", 0.92, "Daily CARS, Anki, topic blocks, next-day review, and Sunday accessory work.", [
+        folder("Normal day", ["Anki warm-up", "CARS passage", "Main topic block", "Question set", "Error log", "Next-day review"]),
+        folder("Sunday accessory day", ["CARS set", "Two equations", "One pathway", "Full-length review cleanup", "Mobility/rest", "Next week plan"]),
       ]),
     ],
     resources: [
@@ -219,20 +310,56 @@ const EXAMS: Record<BoardExamId, ExamConfig> = {
     doneMeaning: "Done means completed course/verified evidence/submitted artifact, with uncertainty labeled instead of invented.",
     installCopy: "Install Pre-Med operating system",
     areas: [
-      area("premed-academic", "Academic map and prerequisites", "high", 1.2, "Degree audit, transcript, GPA trend, prerequisites, MCAT-relevant coursework.", [
-        folder("Academic record", ["Transcript/DARS entered", "AP/IB/transfer noted", "Science GPA trend", "Repeated/withdrawn courses flagged"]),
-        folder("Prerequisite map", ["Bio sequence", "Chem/organic/biochem", "Physics/math/stats", "Writing/psych/soc", "Target-school unknowns labeled"]),
+      area("premed-mission-control", "Mission Control and profile engine", "high", 1.06, "Academic context, pathway, timeline, risk flags, and next-best-action dashboard.", [
+        folder("Profile setup", ["Preferred/legal name", "Citizenship/residency", "Institution/country", "Major/minor", "Graduation year", "Target application cycle"]),
+        folder("Pathway selection", ["US MD", "US DO", "TMDSAS", "International applicant", "SGU/international pathway", "Nontraditional/gap year"]),
+        folder("Readiness dashboard", ["Gap analysis", "Next-best action", "Deadline alerts", "Evidence freshness", "Source/audit status", "Wellness risk flag"]),
       ]),
-      area("premed-experiences", "Experiences and competencies", "high", 1.1, "Clinical exposure, service, research, shadowing, leadership, employment, and reflections.", [
-        folder("Evidence vault", ["Clinical hours", "Non-clinical service", "Research/scholarly work", "Shadowing", "Leadership/teaching/employment"]),
-        folder("Competency signal", ["Professional competency note", "Thinking/reasoning example", "Science competency evidence", "Meaningful story captured"]),
+      area("premed-academic-map", "Academic map and degree audit", "high", 1.18, "Transcript, DARS/degree audit, GPA trend, graduation requirements, and coursework strategy.", [
+        folder("Academic record", ["Transcript/DARS entered", "AP/IB/A-Level/CAPE noted", "Transfer/community-college credit", "Science GPA trend", "Repeated/withdrawn courses", "Pass/fail coursework"]),
+        folder("Degree planner", ["Major requirements", "General education", "Graduation checkpoints", "Post-bacc/graduate work", "Course sequencing conflicts", "Advisor verification"]),
+        folder("Performance recovery", ["GPA trend explanation", "Academic hardship note", "Retake strategy", "Upper-level science plan", "Risk course watchlist", "Semester load sanity check"]),
       ]),
-      area("premed-application", "Application cycle and school fit", "medium", 1.0, "AMCAS/AACOMAS/TMDSAS, letters, personal statement, secondaries, interview prep.", [
-        folder("Application build", ["Letters tracked", "Personal statement draft", "Activities descriptions", "School list fit logic"]),
-        folder("Cycle execution", ["Primary application", "Secondaries", "Interviews", "Financial planning", "Waitlist/reapplication plan"]),
+      area("premed-prerequisites", "Medical school prerequisites", "high", 1.2, "School-specific prereq audit instead of a generic biology-major checklist.", [
+        folder("Common prerequisite families", ["Biology with lab", "General chemistry with lab", "Organic chemistry with lab", "Biochemistry", "Physics with lab", "Math/statistics"]),
+        folder("Writing and behavioral science", ["English/writing", "Psychology", "Sociology", "Humanities/social science", "Behavioral science MCAT tie-in"]),
+        folder("Policy uncertainty flags", ["AP/IB policy", "Online-course policy", "Community college policy", "International credit policy", "Prereq expiration", "School-specific missing rule"]),
+      ], ["Never invent school-specific requirements. Unknown policies should stay labeled until sourced."]),
+      area("premed-mcat", "MCAT readiness system", "high", 1.08, "Diagnostic, coursework readiness, content map, daily CARS, full-length plan, and score-risk logic.", [
+        folder("Readiness inputs", ["Prereq completion", "Diagnostic score", "Target date", "Weekly hours", "Score goal", "Retake policy/risk"]),
+        folder("MCAT plan", ["AAMC outline map", "Daily CARS", "Content schedule", "Equation/pathway accessory work", "Full-length schedule", "Error-log review"]),
       ]),
-      area("premed-mcat", "MCAT runway", "high", 1.0, "Diagnostic, section plan, daily CARS, content schedule, full-length review.", [
-        folder("MCAT readiness", ["Diagnostic score", "Content map", "CARS routine", "Full-length schedule", "Error log"]),
+      area("premed-experiences", "Experiences and competencies", "high", 1.12, "AAMC competencies plus experiences that can become application evidence.", [
+        folder("Experience vault", ["Clinical hours", "Non-clinical service", "Research/scholarly work", "Shadowing", "Leadership/teaching/employment", "Caregiving/life experience"]),
+        folder("AAMC competency map", ["Service orientation", "Social skills", "Cultural competence", "Teamwork", "Ethical responsibility", "Reliability/dependability"]),
+        folder("Thinking and science competencies", ["Critical thinking", "Quantitative reasoning", "Scientific inquiry", "Written communication", "Living systems", "Human behavior"]),
+      ]),
+      area("premed-clinical-service-research", "Clinical, service, research, shadowing", "high", 1.08, "Separate evidence lanes with hours, verification, supervisor contacts, and reflection quality.", [
+        folder("Clinical exposure", ["Direct patient exposure", "Shadowing", "Healthcare employment", "Verification contact", "Patient-care reflection", "Scope/role clarity"]),
+        folder("Service and advocacy", ["Non-clinical service", "Community need", "Longitudinal commitment", "Leadership in service", "Reflection on impact", "Verification source"]),
+        folder("Research and scholarly work", ["Lab/clinical research", "Poster/publication", "PI contact", "Methods learned", "Intellectual contribution", "Future research angle"]),
+      ]),
+      area("premed-letters-narrative", "Letters and narrative vault", "medium", 1.0, "Evaluator relationships, personal statement, activities, meaningful stories, and hardship context.", [
+        folder("Letters of recommendation", ["Science professor", "Non-science professor", "Clinical/supervisor", "Research PI", "Committee letter", "Submission/waiver status"]),
+        folder("Narrative vault", ["Personal statement thesis", "Most meaningful experiences", "Patient moment", "Leadership moment", "Failure/recovery story", "Why medicine proof"]),
+        folder("Activity writing", ["Role clarity", "Impact evidence", "Reflection", "Competency tags", "Hours/date proof", "No exaggeration audit"]),
+      ]),
+      area("premed-school-fit", "School discovery and fit engine", "medium", 0.96, "Requirements, mission fit, geography, cost, stats, and conservative source labeling.", [
+        folder("School-list logic", ["Mission fit", "Prereq fit", "State/residency fit", "MCAT/GPA range", "Cost/debt", "Clinical/community fit"]),
+        folder("Source audit", ["MSAR checked", "School website checked", "AACOM/ChooseDO checked", "TMDSAS checked", "Last verified date", "Unknown policies flagged"]),
+      ]),
+      area("premed-application-cycle", "Application cycle center", "medium", 1.02, "AMCAS, AACOMAS, TMDSAS, SGU/international pathways, secondaries, interviews, and decisions.", [
+        folder("Primary application", ["AMCAS/AACOMAS/TMDSAS profile", "Transcript request", "Activities entered", "Letters attached", "School list submitted", "Fee/financial plan"]),
+        folder("Secondaries and interviews", ["Secondary prompt bank", "Turnaround tracker", "Interview prep", "MMI scenarios", "Thank-you/follow-up", "Decision/waitlist tracking"]),
+        folder("Gap year/reapplication", ["Gap year plan", "Weakness repair", "Reapplication audit", "New evidence plan", "Financial/mental-health plan", "Matriculation checklist"]),
+      ]),
+      area("premed-sgu-international", "International and SGU pathways", "medium", 0.9, "Caribbean/international and SGU-specific pathway logic without showing it to every user by default.", [
+        folder("International applicant logic", ["Citizenship rules", "Visa/residency flags", "International coursework", "English-language/testing rules", "Credential verification", "Country-specific caution"]),
+        folder("SGU pathway logic", ["SGU term/pathway selection", "Premed/BSc/MD route", "Entry requirements", "Term progression", "Resource drive toggles", "USMLE carry-forward"]),
+      ]),
+      area("premed-wellness-data", "Wellness, safeguards, data sources", "low", 0.82, "Burnout guardrails, audit trail, change log, and conservative source governance.", [
+        folder("Wellness safeguards", ["Burnout risk", "Overloaded semester", "Sleep/exercise signal", "Roadblock/injury/illness note", "Support system", "Recovery plan"]),
+        folder("Data governance", ["Source label", "Version date", "Last verified date", "Confidence level", "School-specific unknowns", "Change log"]),
       ]),
     ],
     resources: [
@@ -339,6 +466,7 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
   const [examId, setExamId] = useState<BoardExamId>(initialExam);
   const [openArea, setOpenArea] = useState<string>(EXAMS[initialExam].areas[0]?.id ?? "");
   const [depth, setDepth] = useState<BlueprintDepth>(readDepth);
+  const [blueprintFilter, setBlueprintFilter] = useState<"all" | "installed" | "high" | "open">("all");
   const [flash, setFlash] = useState<string | null>(null);
   const [logArea, setLogArea] = useState(EXAMS[initialExam].areas[0]?.title ?? "");
   const [logMode, setLogMode] = useState<BoardBlueprintLog["mode"]>("Questions");
@@ -358,6 +486,12 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
   const completion = pct(installedLeaves.filter((id) => completed.has(id)).length, installedLeaves.length || allLeafIds(config).length);
   const readiness = boardReadiness(prep.blueprintLogs, completion);
   const savedResources = config.resources.filter((r) => resourceUrls.has(normalizeResourceUrl(r.url))).length;
+  const visibleAreas = config.areas.filter((area) => {
+    if (blueprintFilter === "installed") return installed.has(area.id);
+    if (blueprintFilter === "high") return area.yield === "high";
+    if (blueprintFilter === "open") return openArea === area.id;
+    return true;
+  });
 
   useEffect(() => {
     const first = EXAMS[examId].areas[0];
@@ -375,6 +509,11 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
   }
 
   function installBlueprint() {
+    const allInstalled = config.areas.every((area) => installed.has(area.id));
+    if (allInstalled) {
+      announce(`${config.shortLabel} blueprint is already installed.`);
+      return;
+    }
     patchPrep({ installedBlueprintAreas: [...new Set([...prep.installedBlueprintAreas ?? [], ...config.areas.map((area) => area.id)])] });
     announce(`${config.shortLabel} blueprint installed as dedicated prep folders.`);
   }
@@ -418,11 +557,14 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
       .filter((r) => !resourceUrls.has(normalizeResourceUrl(r.url)))
       .map((r) => ({ title: r.title, url: r.url, category: config.shortLabel, tags: r.tags, note: r.why, favorite: r.kind === "Official" || r.kind === "Assessment" }));
     if (next.length) s.bulkAddResources(next);
-    announce(next.length ? `Saved ${next.length} resource${next.length === 1 ? "" : "s"} to Resources.` : "All blueprint resources are already saved.");
+    announce(next.length ? `Saved ${next.length} resource${next.length === 1 ? "" : "s"} to Resources.` : "All blueprint resources are already downloaded in Resources.");
   }
 
   function saveResource(resource: PrepResource) {
-    if (resourceUrls.has(normalizeResourceUrl(resource.url))) return;
+    if (resourceUrls.has(normalizeResourceUrl(resource.url))) {
+      announce(`${resource.title} is already downloaded in Resources.`);
+      return;
+    }
     s.addResource({ title: resource.title, url: resource.url, category: config.shortLabel, tags: resource.tags, note: resource.why, favorite: resource.kind === "Official" || resource.kind === "Assessment" });
     announce(`Saved ${resource.title} to Resources.`);
   }
@@ -506,8 +648,44 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
                 <button type="button" className={`depth-pill ${depth === "detailed" ? "on" : ""}`} onClick={() => changeDepth("detailed")}>Detailed</button>
               </div>
             } />
-          <div className="blueprint-tree-grid">
-            {config.areas.map((area) => {
+          <div className="blueprint-workspace">
+            <aside className="blueprint-spine" aria-label={`${config.shortLabel} blueprint areas`}>
+              <div className="blueprint-spine-kicker">Blueprint spine</div>
+              {config.areas.map((area) => {
+                const ids = areaLeafIds(area);
+                const areaPct = pct(ids.filter((id) => completed.has(id)).length, ids.length);
+                const isInstalled = installed.has(area.id);
+                const isOpen = openArea === area.id;
+                return (
+                  <button key={area.id} type="button"
+                    className={`blueprint-spine-row ${isOpen ? "on" : ""} ${isInstalled ? "installed" : ""}`}
+                    onClick={() => setOpenArea(area.id)}>
+                    <span className="blueprint-spine-dot" />
+                    <span className="grow">
+                      <b>{area.title}</b>
+                      <small>{isInstalled ? `${areaPct}% complete` : "available"}</small>
+                    </span>
+                    <span>{area.yield}</span>
+                  </button>
+                );
+              })}
+            </aside>
+            <div className="blueprint-library-main">
+              <div className="blueprint-filter-row">
+                {[
+                  ["all", "All areas"],
+                  ["installed", "Subscribed"],
+                  ["high", "High yield"],
+                  ["open", "Current"],
+                ].map(([id, label]) => (
+                  <button key={id} type="button" className={`filter-pill ${blueprintFilter === id ? "on" : ""}`}
+                    onClick={() => setBlueprintFilter(id as typeof blueprintFilter)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="blueprint-tree-grid">
+                {visibleAreas.map((area) => {
               const ids = areaLeafIds(area);
               const areaPct = pct(ids.filter((id) => completed.has(id)).length, ids.length);
               const isInstalled = installed.has(area.id);
@@ -584,6 +762,11 @@ export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId 
                 </div>
               );
             })}
+                {visibleAreas.length === 0 && (
+                  <div className="empty">No areas match this filter yet. Install the blueprint or switch back to All areas.</div>
+                )}
+              </div>
+            </div>
           </div>
         </GlassCard>
 

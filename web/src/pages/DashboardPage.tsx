@@ -144,7 +144,7 @@ export function DashboardPage() {
             </div>
             <div className={`day-fluid-pill dashboard-mini-fluid ${strongDay ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
               <span className="day-fluid-fill" style={{ width: `${floorFill}%` }} />
-              <span className="day-fluid-label">{strongDay && <Flame size={13} />} {floorFill}% daily floor</span>
+              <span className="day-fluid-label">{strongDay && <span className="fire-emoji" aria-hidden="true">🔥</span>} {floorFill}% daily floor</span>
             </div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
@@ -489,7 +489,7 @@ function TodayScoreWidget({
       </div>
       <div className={`day-fluid-pill ${strong ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
         <span className="day-fluid-fill" style={{ width: `${fill}%` }} />
-        <span className="day-fluid-label">{strong && <Flame size={13} />} {fill}% daily floor</span>
+        <span className="day-fluid-label">{strong && <span className="fire-emoji" aria-hidden="true">🔥</span>} {fill}% daily floor</span>
       </div>
       <div className="ring-wrap">
         <div className="ring">

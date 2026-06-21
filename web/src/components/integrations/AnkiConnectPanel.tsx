@@ -71,7 +71,7 @@ export function AnkiConnectPanel() {
     <GlassCard pad className="anki-connect-card">
       <PanelHeader
         title="Anki"
-        sub="Connect your local Anki via the AnkiConnect add-on to pull review counts into productivity."
+        sub="Connect the desktop Anki app through AnkiConnect. It is a local HTTP bridge, not a public HTTPS API."
         action={
           status === "connected"
             ? <Tag tone="green"><CheckCircle2 size={12} /> Connected</Tag>
@@ -107,7 +107,7 @@ export function AnkiConnectPanel() {
             <li>Open the Anki desktop app and keep it running.</li>
             <li>Install the <b>AnkiConnect</b> add-on (Tools → Add-ons → Get Add-ons → code <span className="mono">2055492159</span>), then restart Anki.</li>
             <li>Allow this site: AnkiConnect config → add <span className="mono">{typeof window !== "undefined" ? window.location.origin : "your origin"}</span> to <span className="mono">webCorsOriginList</span>.</li>
-            <li>Confirm the endpoint above matches AnkiConnect (default <span className="mono">{DEFAULT_ANKI_ENDPOINT}</span>).</li>
+            <li>Use the local endpoint above (default <span className="mono">{DEFAULT_ANKI_ENDPOINT}</span>). You will not find an HTTPS URL inside Anki.</li>
           </ol>
           <a className="gbtn sm" href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer noopener">AnkiConnect add-on <ExternalLink size={13} /></a>
         </div>

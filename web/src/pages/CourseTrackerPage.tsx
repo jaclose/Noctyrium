@@ -595,6 +595,7 @@ function TreeNode({
   return (
     <>
       <div className={`tree-node depth${Math.min(depth, 2)} ${active === node.path ? "on" : ""}`}
+        style={{ "--tree-indent": `${depth * 14}px` } as CSSProperties}
         onClick={() => { onSelect(node.path); if (hasKids) onToggle(node.path); }}>
         {hasKids ? (open ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span style={{ width: 14 }} />}
         <span>{node.name}</span>

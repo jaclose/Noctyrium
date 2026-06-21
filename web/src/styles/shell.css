@@ -74,7 +74,17 @@
 .nav-folder-head:hover { color: var(--text-60); }
 .nav-folder-head svg { color: inherit; }
 .nav-folder-count { margin-left: auto; font-size: 10px; color: var(--text-30); background: rgba(255,255,255,0.06); padding: 1px 7px; border-radius: 999px; }
-.nav-folder-items { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: none; }
+.nav-folder-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 0 12px;
+  padding: 2px 0 2px 10px;
+  border-left: 1px solid rgba(180,226,255,0.1);
+}
+.nav-folder-items .nav-item { padding-left: 12px; }
+.nav-folder-items .nav-item.on::before,
+.nav-folder-items .nav-item:not(.on):not(.manage):hover::before { left: -11px; }
 
 /* ---- Manage mode: subscribe/unsubscribe checkboxes ---- */
 .nav-item.manage { cursor: pointer; }

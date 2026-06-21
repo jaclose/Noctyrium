@@ -68,10 +68,10 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
             <GButton variant="primary" onClick={pomo.toggle}>
               {pomo.running ? <><Pause size={15} /> Pause</> : <><Play size={15} /> Start</>}
             </GButton>
-            <GButton size="sm" onClick={pomo.skip} title="Skip to the next phase">
+            <GButton size="sm" onClick={pomo.skip} title="Skip to the next phase and log elapsed focus minutes">
               <SkipForward size={14} /> Skip
             </GButton>
-            <GButton size="sm" onClick={pomo.reset} title="Reset the current phase">
+            <GButton size="sm" onClick={pomo.reset} title="Reset and log elapsed focus minutes">
               <RotateCcw size={14} /> Reset
             </GButton>
           </div>
