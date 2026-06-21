@@ -38,15 +38,27 @@ export class AnkiError extends Error {
 
 async function invoke<T>(action: string, params: Record<string, unknown>, endpoint: string): Promise<T> {
   let res: Response;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
     res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, version: 6, params }),
+      signal: controller.signal,
     });
-  } catch {
+  } catch (err) {
     // Network/CORS/mixed-content failures all surface here as a TypeError.
-    throw new AnkiError("Could not reach Anki. Make sure Anki is open with the AnkiConnect add-on installed and this origin is allow-listed.", "network");
+    const origin = typeof window !== "undefined" ? window.location.origin : "this site";
+    const timedOut = err instanceof DOMException && err.name === "AbortError";
+    throw new AnkiError(
+      timedOut
+        ? `AnkiConnect did not answer within 8 seconds. Confirm Anki is open and ${endpoint} opens in a browser.`
+        : `Could not reach AnkiConnect. Anki must be open, the add-on must be installed, and this exact origin must be allow-listed: ${origin}`,
+      "network",
+    );
+  } finally {
+    window.clearTimeout(timeout);
   }
   const data = await res.json().catch(() => ({ error: "Unexpected AnkiConnect response." }));
   if (data && data.error) throw new AnkiError(String(data.error), "anki");

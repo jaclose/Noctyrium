@@ -2,7 +2,7 @@
 // today's reviews + deck stats, and syncs review counts into the productivity
 // log (only the new reviews since the last sync, so it never double-counts).
 import { useEffect, useState } from "react";
-import { Layers, Plug, RefreshCw, CheckCircle2, AlertTriangle, Wand2, ExternalLink } from "lucide-react";
+import { Layers, Plug, RefreshCw, CheckCircle2, AlertTriangle, Wand2, ExternalLink, Copy } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../ui/primitives";
 import {
@@ -21,11 +21,24 @@ export function AnkiConnectPanel() {
   const [error, setError] = useState<{ message: string; kind: AnkiError["kind"] } | null>(null);
   const [autoSync, setAutoSyncState] = useState(getAnkiAutoSync());
   const [syncNote, setSyncNote] = useState("");
+  const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "your origin";
   const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
   const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(endpoint);
   const mixedContentRisk = isHttps && localEndpoint && endpoint.startsWith("http://");
+  const corsListPatch = JSON.stringify(["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin], null, 2);
+
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      window.setTimeout(() => setCopied((current) => (current === label ? "" : current)), 2500);
+    } catch {
+      setCopied("");
+    }
+  }
 
   async function connect(silentSync = autoSync) {
     setStatus("connecting");
@@ -92,10 +105,23 @@ export function AnkiConnectPanel() {
         </GButton>
       </div>
 
+      <div className="anki-origin-box">
+        <div>
+          <b>Allow-list this exact site</b>
+          <span className="mono">{origin}</span>
+          <small>Vercel preview URLs are different from production URLs. Add the URL shown here, exactly, then restart Anki.</small>
+        </div>
+        <div className="anki-origin-actions">
+          <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={13} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
+          <GButton size="sm" onClick={() => copyText(corsListPatch, "cors")}><Copy size={13} /> {copied === "cors" ? "Copied" : "Copy CORS list"}</GButton>
+          <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={13} /></a>
+        </div>
+      </div>
+
       {mixedContentRisk && (
         <div className="anki-warn">
           <AlertTriangle size={15} />
-          <span>This page is served over HTTPS, so the browser may block requests to <b>http://localhost</b> (mixed content). Use the local dev build, or allow insecure content for this site.</span>
+          <span>This hosted app is calling your local Anki at <b>{endpoint}</b>. If the local check opens but Connect fails, the usual cause is an exact-origin mismatch in <b>webCorsOriginList</b>.</span>
         </div>
       )}
 
@@ -106,7 +132,7 @@ export function AnkiConnectPanel() {
           <ol className="anki-steps">
             <li>Open the Anki desktop app and keep it running.</li>
             <li>Install the <b>AnkiConnect</b> add-on (Tools → Add-ons → Get Add-ons → code <span className="mono">2055492159</span>), then restart Anki.</li>
-            <li>Allow this site: AnkiConnect config → add <span className="mono">{typeof window !== "undefined" ? window.location.origin : "your origin"}</span> to <span className="mono">webCorsOriginList</span>.</li>
+            <li>Allow this site: AnkiConnect config → add <span className="mono">{origin}</span> to <span className="mono">webCorsOriginList</span>.</li>
             <li>Use the local endpoint above (default <span className="mono">{DEFAULT_ANKI_ENDPOINT}</span>). You will not find an HTTPS URL inside Anki.</li>
           </ol>
           <a className="gbtn sm" href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer noopener">AnkiConnect add-on <ExternalLink size={13} /></a>
