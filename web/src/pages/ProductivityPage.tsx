@@ -10,8 +10,9 @@ function stepVal(current: string, delta: number): string {
   return String(Math.max(0, (Number(current) || 0) + delta));
 }
 
-const QUICK: { label: string; type: string; minutes?: number; cards?: number; icon?: boolean }[] = [
-  { label: "Lecture +60m", type: "Lecture", minutes: 60 },
+type QuickLogItem = { label: string; type: string; minutes?: number; cards?: number; icon?: boolean };
+
+const QUICK_BASE: QuickLogItem[] = [
   { label: "+50 cards · 15m", type: "Anki", cards: 50, minutes: 15 },
   { label: "+100 cards · 30m", type: "Anki", cards: 100, minutes: 30 },
   { label: "+150 cards · 45m", type: "Anki", cards: 150, minutes: 45 },
@@ -36,6 +37,12 @@ export function ProductivityPage() {
   const monthly = useMemo(() => summarizePeriod(s.logs, currentMonthDays(), "month"), [s.logs]);
   const monthCells = useMemo(() => buildMonthCells(monthly.days), [monthly.days]);
   const calendarToday = isoDate(new Date());
+  const quickItems = useMemo(() => {
+    const primary: QuickLogItem = s.profile.educationTrack === "sgu"
+      ? { label: "Lecture 60min", type: "Lecture", minutes: 60 }
+      : { label: "Study 60min", type: "Study", minutes: 60 };
+    return [primary, ...QUICK_BASE];
+  }, [s.profile.educationTrack]);
 
   function logManual() {
     const minutes = Number(manualMinutes) || 0;
@@ -72,7 +79,7 @@ export function ProductivityPage() {
           action={!isActive ? <GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton> : undefined} />
         <Ring minutes={totals.minutes} cards={totals.cards} />
         <div className={`quick-grid ${isActive ? "" : "is-locked"}`}>
-          {QUICK.map((q) => (
+          {quickItems.map((q) => (
             <GButton key={q.label} onClick={() => s.logStudy({ type: q.type, minutes: q.minutes, cards: q.cards })}>
               {q.type === "Anki" ? <Layers size={14} /> : q.type === "Deep Study" ? <Zap size={14} /> : <Clock size={14} />}
               {q.label}

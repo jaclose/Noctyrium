@@ -3,7 +3,7 @@ import {
   Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
   Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
-  SlidersHorizontal, EyeOff, ArrowUp, ArrowDown,
+  SlidersHorizontal, GripVertical, PlusCircle, X, Link as LinkIcon, Brain,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
@@ -13,7 +13,7 @@ import type { DashboardWidgetId } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { gotoTrackerItem } from "../lib/uiStore";
-import { APP_BUILD_LABEL, APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
+import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
 import { StatCard } from "../components/ui/StatCard";
@@ -22,16 +22,20 @@ import { runAi } from "../services/aiClient";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
-const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string }> = [
-  { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out." },
-  { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor." },
-  { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days." },
-  { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps." },
-  { id: "aiActions", label: "AI actions", note: "Local/provider next-action queue." },
-  { id: "schedule", label: "Schedule", note: "Month activity map." },
-  { id: "termMap", label: "Term map", note: "Your current course structure." },
-  { id: "localData", label: "Local data", note: "Backup and package status." },
-  { id: "latestStandup", label: "Latest standup", note: "Most recent journal entry." },
+const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
+  { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
+  { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor.", preview: "rings" },
+  { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
+  { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps.", preview: "list" },
+  { id: "aiActions", label: "AI actions", note: "Provider-backed action queue; hidden by default.", preview: "ai" },
+  { id: "schedule", label: "Schedule", note: "Month activity map.", preview: "calendar" },
+  { id: "termMap", label: "Term map", note: "Current course structure; hidden by default.", preview: "map" },
+  { id: "localData", label: "Local data & package", note: "Backup, vault, and alpha package status.", preview: "vault" },
+  { id: "latestStandup", label: "Latest standup", note: "Most recent journal entry.", preview: "journal" },
+  { id: "productivityTrend", label: "Productivity trend", note: "Trend commentary from logged effort.", preview: "trend" },
+  { id: "premedHours", label: "Pre-Med hours", note: "Clinical/service/research hour progress.", preview: "hours" },
+  { id: "resourceFocus", label: "Resource focus", note: "Pinned resources and SGU drive state.", preview: "links" },
+  { id: "boardBlueprint", label: "Blueprint pulse", note: "Current exam/prep lane status.", preview: "brain" },
 ];
 
 export function DashboardPage() {
@@ -91,21 +95,29 @@ export function DashboardPage() {
     if (widgetId === "termMap") return <TermMapWidget key={widgetId} termMap={termMap} trackShort={track.short} tracker={s.tracker} />;
     if (widgetId === "localData") return <LocalDataWidget key={widgetId} state={s} />;
     if (widgetId === "latestStandup") return <LatestStandupWidget key={widgetId} />;
+    if (widgetId === "productivityTrend") return <ProductivityTrendWidget key={widgetId} performance={performance} week={week} />;
+    if (widgetId === "premedHours") return <PremedHoursWidget key={widgetId} />;
+    if (widgetId === "resourceFocus") return <ResourceFocusWidget key={widgetId} />;
+    if (widgetId === "boardBlueprint") return <BoardBlueprintWidget key={widgetId} />;
     return null;
   };
 
   return (
     <>
       <AlphaBuildBanner
+        profileName={s.profile.name}
         activeDayKey={s.activeDayKey}
         termCount={s.terms.length}
+        performanceLabel={performance.performanceLabel}
+        energyScore={performance.energyScore}
       />
 
       <GlassCard pad className="dashboard-control-card">
         <div className="spread">
           <div>
-            <div className="panel-title">Personalized dashboard</div>
-            <div className="panel-sub">Tailored to {track.short} · {performance.performanceLabel} · Energy {performance.energyScore}/100</div>
+            <div className="dashboard-control-kicker">Personal command surface</div>
+            <div className="panel-title">Tailored to {track.short}</div>
+            <div className="panel-sub">{performance.performanceLabel} · Energy {performance.energyScore}/100 · {hiddenWidgets.size} widgets in the library</div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
             <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
@@ -114,15 +126,13 @@ export function DashboardPage() {
         {editDashboard && <DashboardWidgetEditor order={widgetOrder} hidden={hiddenWidgets} />}
       </GlassCard>
 
-      <div className="grid grid-stats">
+      <div className="grid dashboard-stat-row">
         <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
           trend="🃏" trendTone="neutral" />
         <StatCard title="Study" value={`${today.minutes}m`} note="logged today" icon={<Clock size={18} />}
           trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"} />
-        <StatCard title="Tasks" value={`${openTasks}`} note={`${doneToday} done today`} icon={<ListChecks size={18} />}
-          trend="Execute" trendTone="cyan" />
-        <StatCard title="Journal" value={`${s.journal.length}`} note="standups" icon={<BookText size={18} />}
-          trend="Reflect" trendTone="purple" />
+        <StatCard title="Tasks + Journal" value={`${openTasks}/${s.journal.length}`} note={`${doneToday} tasks done · ${s.journal.length} standups`} icon={<ListChecks size={18} />}
+          trend="Execute + reflect" trendTone="cyan" />
         <StatCard title="Tracker" value={`${trackerReady}%`} note={`${matureItems} mature · ${reviewItems} need attention`} icon={<BadgeDot />}
           trend={`${masteredItems} mastered`} trendTone="green" />
         <StatCard title="Energy" value={`${performance.energyScore}`} note={performance.journalSignal} icon={<Sunrise size={18} />}
@@ -134,25 +144,72 @@ export function DashboardPage() {
   );
 }
 
-function AlphaBuildBanner({ activeDayKey, termCount }: { activeDayKey: string; termCount: number }) {
+function AlphaBuildBanner({
+  profileName, activeDayKey, termCount, performanceLabel, energyScore,
+}: {
+  profileName: string;
+  activeDayKey: string;
+  termCount: number;
+  performanceLabel: string;
+  energyScore: number;
+}) {
+  const displayName = profileName && profileName !== "Noctyrium" ? profileName : "JD";
+  const quote = dailyDashboardMessage(activeDayKey);
+  const date = new Date(`${activeDayKey}T12:00:00`).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
   return (
     <GlassCard pad className="alpha-build-banner">
       <div className="alpha-build-mark">
         <PackageCheck size={19} />
       </div>
       <div className="alpha-build-copy">
-        <span>First alpha package</span>
-        <b>{APP_BUILD_LABEL}</b>
-        <p>Local-first web build, Vercel-ready backend shell, and packaged-download workflow.</p>
+        <span>{date}</span>
+        <b>Welcome, {displayName}</b>
+        <p>{quote}</p>
       </div>
       <div className="alpha-build-meta">
+        <span><Sparkles size={13} /> {performanceLabel}</span>
+        <span><Sunrise size={13} /> Energy {energyScore}/100</span>
         <span><ShieldCheck size={13} /> Version v{APP_RELEASE_VERSION}</span>
         <span><Database size={13} /> Schema {SCHEMA_VERSION}</span>
-        <span><CalendarDays size={13} /> Study day {activeDayKey}</span>
         <span>{termCount} active map nodes</span>
       </div>
     </GlassCard>
   );
+}
+
+const DASHBOARD_MESSAGES = [
+  "Do the honest block. Then do the next one.",
+  "A clean hour beats a noisy day.",
+  "Protect the floor; the ceiling takes care of itself.",
+  "Questions reveal the map. Review repairs it.",
+  "You are not behind if you return with a plan.",
+  "Make today legible: effort, evidence, next move.",
+  "Small retrieval done daily is not small.",
+  "The goal is not panic. The goal is contact with the work.",
+  "Good medicine starts with good attention.",
+  "Be precise, be kind, keep moving.",
+];
+
+function dailyDashboardMessage(key: string) {
+  const code = key.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return DASHBOARD_MESSAGES[code % DASHBOARD_MESSAGES.length];
+}
+
+const WRAP_MESSAGES = [
+  "Close the loop while the day is still fresh.",
+  "A short honest review is enough.",
+  "Record the signal before memory edits it.",
+  "Name the blocker, keep the useful part.",
+  "End clean so tomorrow starts lighter.",
+];
+
+function wrapUpMessage(key: string) {
+  const code = key.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return WRAP_MESSAGES[code % WRAP_MESSAGES.length];
 }
 
 function BadgeDot() {
@@ -161,56 +218,115 @@ function BadgeDot() {
 
 function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
   const updateProfile = useStore((state) => state.updateProfile);
+  const [dragId, setDragId] = useState<DashboardWidgetId | null>(null);
+  const [overId, setOverId] = useState<DashboardWidgetId | null>(null);
 
   function setOrder(next: DashboardWidgetId[]) {
     updateProfile({ dashboardWidgetOrder: normalizeWidgetOrder(next) });
   }
 
-  function toggle(id: DashboardWidgetId) {
+  function remove(id: DashboardWidgetId) {
     const next = new Set(hidden);
-    next.has(id) ? next.delete(id) : next.add(id);
+    next.add(id);
     updateProfile({ hiddenDashboardWidgets: [...next] });
   }
 
-  function move(id: DashboardWidgetId, delta: -1 | 1) {
-    const current = normalizeWidgetOrder(order);
-    const from = current.indexOf(id);
-    const to = from + delta;
-    if (from < 0 || to < 0 || to >= current.length) return;
-    const next = [...current];
-    [next[from], next[to]] = [next[to], next[from]];
-    setOrder(next);
+  function subscribe(id: DashboardWidgetId) {
+    const next = new Set(hidden);
+    next.delete(id);
+    updateProfile({ hiddenDashboardWidgets: [...next], dashboardWidgetOrder: normalizeWidgetOrder(order) });
   }
+
+  function handleDrop(targetId: DashboardWidgetId) {
+    if (!dragId || dragId === targetId) return;
+    const current = normalizeWidgetOrder(order);
+    const from = current.indexOf(dragId);
+    const to = current.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...current];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrder(next);
+    setDragId(null);
+    setOverId(null);
+  }
+
+  const visible = order.filter((id) => !hidden.has(id));
+  const available = order.filter((id) => hidden.has(id));
 
   return (
     <div className="dashboard-widget-editor">
-      {order.map((id, index) => {
-        const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
-        if (!meta) return null;
-        const off = hidden.has(id);
-        return (
-          <div className={`widget-library-row ${off ? "off" : ""}`} key={id}>
-            <button className="ghost-btn" title={off ? "Show widget" : "Hide widget"} onClick={() => toggle(id)}>
-              {off ? <EyeOff size={14} /> : <Check size={14} />}
-            </button>
-            <div className="grow">
-              <b>{meta.label}</b>
-              <span>{meta.note}</span>
-            </div>
-            <div className="row gap6">
-              <button className="ghost-btn" title="Move up" disabled={index === 0} onClick={() => move(id, -1)}><ArrowUp size={14} /></button>
-              <button className="ghost-btn" title="Move down" disabled={index === order.length - 1} onClick={() => move(id, 1)}><ArrowDown size={14} /></button>
-            </div>
-          </div>
-        );
-      })}
-      <div className="row">
+      <div className="widget-editor-head">
+        <div>
+          <span className="widget-library-eyebrow">Widget Library</span>
+          <b>Drag to arrange</b>
+          <span>Grab anywhere on a widget row. Remove sends it back to the library.</span>
+        </div>
         <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: [] })}>
-          Reset dashboard
+          Show all
         </GButton>
-        <span className="sub">This is saved locally with your profile.</span>
+      </div>
+
+      <div className="widget-editor-zones">
+        <section className="widget-editor-zone">
+          <div className="widget-zone-title">On Dashboard</div>
+          {visible.map((id) => {
+            const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
+            if (!meta) return null;
+            return (
+              <div className={`widget-library-row draggable ${overId === id ? "drop-target" : ""}`} key={id}
+                draggable
+                onDragStart={() => setDragId(id)}
+                onDragOver={(event) => { event.preventDefault(); setOverId(id); }}
+                onDragEnd={() => { setDragId(null); setOverId(null); }}
+                onDrop={(event) => { event.preventDefault(); handleDrop(id); }}>
+                <GripVertical size={16} className="widget-grip" />
+                <WidgetPreview kind={meta.preview} />
+                <div className="grow">
+                  <b>{meta.label}</b>
+                  <span>{meta.note}</span>
+                </div>
+                <button className="ghost-btn" title="Remove widget" onClick={() => remove(id)}><X size={14} /></button>
+              </div>
+            );
+          })}
+        </section>
+
+        <section className="widget-editor-zone available">
+          <div className="widget-zone-title">Available Widgets</div>
+          {available.map((id) => {
+            const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
+            if (!meta) return null;
+            return (
+              <div className="widget-library-row off" key={id}>
+                <PlusCircle size={16} className="widget-grip" />
+                <WidgetPreview kind={meta.preview} />
+                <div className="grow">
+                  <b>{meta.label}</b>
+                  <span>{meta.note}</span>
+                </div>
+                <GButton size="sm" onClick={() => subscribe(id)}>Subscribe</GButton>
+              </div>
+            );
+          })}
+        </section>
+      </div>
+
+      <div className="row">
+        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: ["aiActions", "schedule", "termMap", "localData", "latestStandup", "productivityTrend", "premedHours", "resourceFocus", "boardBlueprint"] })}>
+          Reset to focused layout
+        </GButton>
+        <span className="sub">Saved locally with your profile, backup, and future sync payload.</span>
       </div>
     </div>
+  );
+}
+
+function WidgetPreview({ kind }: { kind: string }) {
+  return (
+    <span className={`widget-preview mini-${kind}`} aria-hidden="true">
+      <i /><i /><i /><i />
+    </span>
   );
 }
 
@@ -235,6 +351,8 @@ function TodayScoreWidget({
   targetsMet: boolean;
   activeDayKey: string;
 }) {
+  const fill = Math.min(100, Math.round((cardPct + minPct) / 2));
+  const strong = grade === "green" || grade === "blue" || fill >= 80;
   return (
     <GlassCard pad>
       <div className="panel-head">
@@ -245,6 +363,10 @@ function TodayScoreWidget({
         <span className="streak-badge" title="Consecutive study days">
           <Flame size={14} /> {streak} day{streak === 1 ? "" : "s"}
         </span>
+      </div>
+      <div className={`day-fluid-pill ${strong ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
+        <span className="day-fluid-fill" style={{ width: `${fill}%` }} />
+        <span className="day-fluid-label">{strong && <Flame size={13} />} {fill}% daily floor</span>
       </div>
       <div className="ring-wrap">
         <div className="ring">
@@ -501,6 +623,96 @@ function LatestStandupWidget() {
   );
 }
 
+function ProductivityTrendWidget({
+  performance,
+  week,
+}: {
+  performance: ReturnType<typeof analyzePerformance>;
+  week: ReturnType<typeof weeklySummary>;
+}) {
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Productivity Trend" sub="A short read on the week, not another noisy chart"
+        action={<Tag tone={performance.performanceScore >= 70 ? "green" : performance.performanceScore >= 45 ? "orange" : "neutral"}>{performance.performanceScore}/100</Tag>} />
+      <div className="trend-widget">
+        <div><b>{Math.round(week.minutes / 60)}h</b><span>this week</span></div>
+        <div><b>{week.activeDays}/7</b><span>active days</span></div>
+        <div><b>{week.cards}</b><span>cards</span></div>
+      </div>
+      <div className="trend-comment">{performance.recommendation}</div>
+    </GlassCard>
+  );
+}
+
+function PremedHoursWidget() {
+  const entries = useStore((state) => state.premedExperiences ?? []);
+  const total = entries.reduce((sum, entry) => sum + entry.hours, 0);
+  const clinical = entries.filter((entry) => entry.kind === "Clinical" || entry.kind === "Shadowing").reduce((sum, entry) => sum + entry.hours, 0);
+  const service = entries.filter((entry) => entry.kind === "Service").reduce((sum, entry) => sum + entry.hours, 0);
+  const verified = entries.filter((entry) => entry.verified).reduce((sum, entry) => sum + entry.hours, 0);
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Pre-Med Hours" sub="Clinical, service, research, and verification evidence"
+        action={<a className="gbtn sm" href="#premed">Open <ArrowRight size={14} /></a>} />
+      <div className="trend-widget">
+        <div><b>{total}</b><span>total</span></div>
+        <div><b>{clinical}</b><span>clinical/shadow</span></div>
+        <div><b>{verified}</b><span>verified</span></div>
+      </div>
+      <div className="premed-mini-bars">
+        <ProgressBar label="Clinical + shadowing" value={clinical} target={150} pct={Math.min(100, Math.round((clinical / 150) * 100))} color="var(--green)" />
+        <ProgressBar label="Service" value={service} target={100} pct={Math.min(100, Math.round((service / 100) * 100))} color="var(--cyan)" />
+      </div>
+    </GlassCard>
+  );
+}
+
+function ResourceFocusWidget() {
+  const s = useStore();
+  const favorites = s.resources.filter((resource) => resource.favorite).slice(0, 4);
+  const drives = s.resources.filter((resource) => resource.category === "Drives").length;
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Resource Focus" sub={`${favorites.length} pinned resources · ${drives} drives`}
+        action={<a className="gbtn sm" href="#resources">Library <LinkIcon size={14} /></a>} />
+      <div className="stack gap8">
+        {favorites.length ? favorites.map((resource) => (
+          <a className="sugg clickable" href={resource.url} target="_blank" rel="noreferrer" key={resource.id}>
+            <span className="sugg-dot" style={{ background: "var(--cyan)" }} />
+            <div className="grow">
+              <div className="sugg-title">{resource.title}</div>
+              <div className="sugg-reason">{resource.category}</div>
+            </div>
+            <ExternalLink size={14} />
+          </a>
+        )) : <div className="dim">Favorite resources to make this widget useful.</div>}
+      </div>
+    </GlassCard>
+  );
+}
+
+function BoardBlueprintWidget() {
+  const s = useStore();
+  const active = s.profile.activeFocusId ?? "step1";
+  const exam: "step1" | "step2" | "step3" | "shelf" | "mcat" | "premed" =
+    active === "step2" || active === "step3" || active === "shelf" || active === "mcat" || active === "premed" ? active : "step1";
+  const prep = s.boardPrep[exam];
+  const logs = prep?.blueprintLogs ?? [];
+  const minutes = logs.slice(0, 7).reduce((sum, log) => sum + log.minutes, 0);
+  return (
+    <GlassCard pad>
+      <PanelHeader title="Blueprint Pulse" sub="Current prep lane status"
+        action={<a className="gbtn sm" href={exam === "premed" || exam === "mcat" ? "#premed" : "#step"}><Brain size={14} /> Open</a>} />
+      <div className="trend-widget">
+        <div><b>{exam.toUpperCase()}</b><span>lane</span></div>
+        <div><b>{logs.length}</b><span>logs</span></div>
+        <div><b>{minutes}m</b><span>recent</span></div>
+      </div>
+      <div className="trend-comment">{logs.length ? "Keep turning blueprint logs into tracker rows and question repair." : "Install a blueprint or log one focused block to generate signal."}</div>
+    </GlassCard>
+  );
+}
+
 const OUTCOMES: { key: "won" | "partial" | "missed"; label: string; tone: "green" | "orange" | "red" }[] = [
   { key: "won", label: "Won it", tone: "green" },
   { key: "partial", label: "Partial", tone: "orange" },
@@ -520,9 +732,14 @@ function WinTheDay() {
   const [intention, setIntention] = useState("");
   const [wins, setWins] = useState("");
   const [note, setNote] = useState("");
+  const [showWrapPrompt, setShowWrapPrompt] = useState(false);
 
   const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 5);
   const reviewDue = isAfterLocalTime(s.profile.journalReviewTime ?? "20:00");
+
+  useEffect(() => {
+    if (todayPlan && !todayPlan.outcome && reviewDue) setShowWrapPrompt(true);
+  }, [reviewDue, todayPlan?.dayKey, todayPlan?.outcome]);
 
   function save() {
     if (!intention.trim()) return;
@@ -532,6 +749,17 @@ function WinTheDay() {
 
   return (
     <GlassCard pad className="win-day" data-tour="intention">
+      {showWrapPrompt && todayPlan && !todayPlan.outcome && (
+        <div className="journal-wrap-popover">
+          <button className="ghost-btn" onClick={() => setShowWrapPrompt(false)} title="Dismiss"><X size={14} /></button>
+          <div className="journal-wrap-mark"><BookText size={18} /></div>
+          <div>
+            <b>Wrap up the day</b>
+            <span>{wrapUpMessage(today)} Review “{todayPlan.intention}”, then turn it into a useful standup.</span>
+          </div>
+          <a className="gbtn sm primary" href="#journal">Open Journal</a>
+        </div>
+      )}
       {pendingPast && (
         <div className="carry-over">
           <ArrowRightCircle size={16} />

@@ -7,9 +7,12 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
-  Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog,
+  PremedExperienceEntry, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog,
 } from "./types";
-import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES } from "./seed";
+import {
+  APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+  driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES,
+} from "./seed";
 import { dayKey } from "./scoring";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
@@ -83,6 +86,11 @@ interface Actions {
   updateJournal: (id: string, patch: Partial<JournalEntry>) => void;
   removeJournal: (id: string) => void;
 
+  // pre-med experiences
+  addPremedExperience: (e: Omit<PremedExperienceEntry, "id" | "created">) => void;
+  updatePremedExperience: (id: string, patch: Partial<PremedExperienceEntry>) => void;
+  removePremedExperience: (id: string) => void;
+
   // prompts
   addPrompt: (p: Omit<Prompt, "id" | "created" | "updated">) => void;
   updatePrompt: (id: string, patch: Partial<Prompt>) => void;
@@ -140,6 +148,7 @@ export const useStore = create<Store>()(
             ...s.profile,
             educationTrack: trackId,
             showSguResources: opts.showSguResources ?? track.showsSguResources,
+            hiddenNav: hiddenNavForTrackSwitch(s.profile.hiddenNav, trackId),
             focusSubscriptions,
             activeFocusId,
             phase: focus?.phase ?? s.profile.phase,
@@ -298,6 +307,13 @@ export const useStore = create<Store>()(
         set((s) => ({ journal: s.journal.map((j) => (j.id === id ? { ...j, ...patch } : j)) })),
       removeJournal: (id) => set((s) => ({ journal: s.journal.filter((j) => j.id !== id) })),
 
+      addPremedExperience: (e) =>
+        set((s) => ({ premedExperiences: [{ ...e, id: uid(), created: now() }, ...(s.premedExperiences ?? [])] })),
+      updatePremedExperience: (id, patch) =>
+        set((s) => ({ premedExperiences: (s.premedExperiences ?? []).map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)) })),
+      removePremedExperience: (id) =>
+        set((s) => ({ premedExperiences: (s.premedExperiences ?? []).filter((entry) => entry.id !== id) })),
+
       addPrompt: (p) =>
         set((s) => ({ prompts: [{ ...p, id: uid(), created: now(), updated: now() }, ...s.prompts] })),
       updatePrompt: (id, patch) =>
@@ -408,7 +424,7 @@ export const useStore = create<Store>()(
           terms: [], courses: [], tracker: [], tasks: [],
           // keep the curated shared drives even on a fresh start
           resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
-          journal: [], prompts: [], folders: [], logs: [], dayPlans: [],
+          journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: dayKey(),
           // keep the user's profile + integrations catalog
@@ -582,16 +598,26 @@ export const useStore = create<Store>()(
         if (fromVersion < 19) {
           s.profile = normalizeProfile(s.profile);
         }
+        if (fromVersion < 20) {
+          s.premedExperiences = s.premedExperiences ?? [];
+          const profile = isRecord(s.profile) ? s.profile : {};
+          profile.hiddenDashboardWidgets = mergeStringLists(
+            profile.hiddenDashboardWidgets,
+            DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+          );
+          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+          s.profile = normalizeProfile(profile);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
         // persist data only — strip the action functions
         const {
-          profile, terms, courses, tracker, resources, tasks, journal, prompts,
+          profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
         } = s;
         return {
-          profile, terms, courses, tracker, resources, tasks, journal, prompts,
+          profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, activeDayKey, schemaVersion,
         } as NoctyriumState;
       },
@@ -702,6 +728,7 @@ function normalizeProfile(value: unknown): Profile {
   ).id;
   const dashboardWidgetOrder = normalizeDashboardWidgetOrder(profile.dashboardWidgetOrder);
   const hiddenDashboardWidgets = normalizeDashboardWidgetList(profile.hiddenDashboardWidgets);
+  const hiddenNav = normalizeHiddenNav(profile.hiddenNav, educationTrack);
   const journalReviewTime = typeof profile.journalReviewTime === "string" && /^\d{2}:\d{2}$/.test(profile.journalReviewTime)
     ? profile.journalReviewTime
     : "20:00";
@@ -727,6 +754,9 @@ function normalizeProfile(value: unknown): Profile {
     focusSubscriptions,
     dashboardWidgetOrder,
     hiddenDashboardWidgets,
+    hiddenNav,
+    toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
+    prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
     journalReviewTime,
   };
 }
@@ -746,6 +776,43 @@ function normalizeDashboardWidgetList(value: unknown): Profile["hiddenDashboardW
   return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   ))];
+}
+
+function normalizeHiddenNav(value: unknown, trackId: string): Profile["hiddenNav"] {
+  if (!Array.isArray(value)) return defaultHiddenNavForTrack(trackId);
+  return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
+}
+
+function mergeStringLists(value: unknown, defaults: readonly string[]) {
+  const incoming = Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+  return [...new Set([...incoming, ...defaults])];
+}
+
+function defaultHiddenNavForTrack(trackId: string): string[] {
+  const base = ["prompts", "integrations", "folders"];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
+  return [...base, "premed"];
+}
+
+function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
+  const set = new Set(normalizeHiddenNav(current, trackId));
+  set.add("prompts");
+  set.add("integrations");
+  set.add("folders");
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") {
+    set.add("step");
+    set.delete("premed");
+  } else if (trackId === "nursing" || trackId === "pa") {
+    set.add("step");
+    set.add("premed");
+  } else {
+    set.add("premed");
+    set.delete("step");
+  }
+  return [...set];
 }
 
 function normalizePromise(value: unknown): Profile["promise"] {

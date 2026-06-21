@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
-  Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench,
+  Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap,
 } from "lucide-react";
-import { navById, SIDEBAR_TOP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
+import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
 import { useStore } from "../../lib/store";
 import type { SettingsTab } from "./SettingsModal";
 
@@ -21,6 +21,7 @@ export function Sidebar({
 
   const hidden = new Set(profile.hiddenNav ?? []);
   const toolsOpen = !profile.toolsCollapsed;
+  const prepOpen = !profile.prepCollapsed;
 
   function toggleHidden(id: string) {
     if (SIDEBAR_LOCKED.has(id)) return;
@@ -54,6 +55,7 @@ export function Sidebar({
   }
 
   const toolItems = (manage ? SIDEBAR_TOOLS : SIDEBAR_TOOLS.filter((id) => !hidden.has(id)));
+  const prepItems = (manage ? SIDEBAR_PREP : SIDEBAR_PREP.filter((id) => !hidden.has(id)));
   const help = navById("help");
   const HelpIcon = help?.icon;
 
@@ -93,6 +95,22 @@ export function Sidebar({
 
         <nav className="nav">
           {SIDEBAR_TOP.map((id) => <Item key={id} id={id} />)}
+
+          {(prepItems.length > 0 || manage) && (
+            <div className="nav-folder">
+              <button type="button" className="nav-folder-head"
+                onClick={() => updateProfile({ prepCollapsed: !profile.prepCollapsed })}>
+                {prepOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <GraduationCap size={15} /><span>Academic Prep</span>
+                {!prepOpen && <span className="nav-folder-count">{prepItems.length}</span>}
+              </button>
+              {prepOpen && (
+                <div className="nav-folder-items">
+                  {prepItems.map((id) => <Item key={id} id={id} />)}
+                </div>
+              )}
+            </div>
+          )}
 
           {(toolItems.length > 0 || manage) && (
             <div className="nav-folder">

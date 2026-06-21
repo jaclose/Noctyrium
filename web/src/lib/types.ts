@@ -86,6 +86,21 @@ export interface JournalEntry {
   rating: string; // "Useful" | "Wasted" | ...
 }
 
+export type PremedExperienceKind = "Clinical" | "Service" | "Research" | "Shadowing" | "Leadership";
+
+export interface PremedExperienceEntry {
+  id: ID;
+  date: string; // yyyy-MM-dd
+  kind: PremedExperienceKind;
+  title: string;
+  organization: string;
+  contact?: string;
+  hours: number;
+  verified: boolean;
+  reflection: string;
+  created: string; // ISO
+}
+
 export interface Prompt {
   id: ID;
   title: string;
@@ -232,7 +247,11 @@ export type DashboardWidgetId =
   | "schedule"
   | "termMap"
   | "localData"
-  | "latestStandup";
+  | "latestStandup"
+  | "productivityTrend"
+  | "premedHours"
+  | "resourceFocus"
+  | "boardBlueprint";
 
 export interface Profile {
   name: string;
@@ -246,6 +265,7 @@ export interface Profile {
   // Sidebar customization: hidden (unsubscribed) nav ids + collapsed Tools folder
   hiddenNav?: string[];
   toolsCollapsed?: boolean;
+  prepCollapsed?: boolean;
   // First-launch onboarding
   onboarded: boolean;
   tourDone?: boolean; // guided tour + promise cutscene completed
@@ -275,6 +295,7 @@ export interface NoctyriumState {
   resources: Resource[];
   tasks: Task[];
   journal: JournalEntry[];
+  premedExperiences: PremedExperienceEntry[];
   prompts: Prompt[];
   folders: HubFolder[];
   logs: StudyLog[];

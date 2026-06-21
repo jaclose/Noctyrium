@@ -1,14 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Brain, CheckCircle2, ClipboardCheck, Database, ExternalLink, FlaskConical,
   ListChecks, ListPlus, Plus, Sparkles, WandSparkles,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
+import { Field, SelectField, TextAreaField } from "../components/ui/Modal";
+import { BlueprintCommand } from "../components/blueprints/BlueprintCommand";
+import { BLUEPRINTS, blueprintsForTrack } from "../lib/blueprints";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { dayKey } from "../lib/scoring";
 import { normalizeResourceUrl } from "../lib/resourceUtils";
-import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, TrackerItem, Yield } from "../lib/types";
+import { resolveTrack } from "../lib/tracks";
+import type { BoardBlueprintLog, BoardExamId, BoardPrepProfile, PremedExperienceKind, TrackerItem, Yield } from "../lib/types";
 
 // What "one pass" and "done" mean for each blueprint, in that exam's vocabulary.
 // This is the answer to "I added a prerequisite — what's a pass, when am I done?"
@@ -171,6 +175,7 @@ const EVIDENCE = [
 
 const weightTone: Record<Domain["weight"], "green" | "cyan" | "neutral"> = { high: "green", medium: "cyan", low: "neutral" };
 const weightYield: Record<Domain["weight"], Yield> = { high: "high", medium: "none", low: "low" };
+const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
 
 function defaultPrep(exam: BoardExamId): BoardPrepProfile {
   return {
@@ -195,9 +200,9 @@ function boardReadiness(logs: BoardBlueprintLog[]): number {
   return Math.round(confidence * 0.4 + accuracy * 0.4 + coverage * 0.2);
 }
 
-export function StepPage() {
+export function StepPage({ initialExam = "step1" }: { initialExam?: BoardExamId }) {
   const s = useStore();
-  const [examId, setExamId] = useState<BoardExamId>("step1");
+  const [examId, setExamId] = useState<BoardExamId>(initialExam);
   const [flash, setFlash] = useState<{ msg: string; href: string } | null>(null);
   const [logArea, setLogArea] = useState(EXAMS.step1.domains[0].name);
   const [logMode, setLogMode] = useState<BoardBlueprintLog["mode"]>("Questions");
@@ -207,6 +212,11 @@ export function StepPage() {
   const [logConfidence, setLogConfidence] = useState<BoardBlueprintLog["confidence"]>("orange");
   const [logNotes, setLogNotes] = useState("");
   const exam = EXAMS[examId];
+  const track = resolveTrack(s.profile.educationTrack);
+  const tailoredBlueprints = useMemo(
+    () => blueprintsForTrack(track.id, s.profile.focusSubscriptions),
+    [track.id, s.profile.focusSubscriptions],
+  );
   const prep = s.boardPrep?.[examId] ?? defaultPrep(examId);
   const resources = RESOURCE_CATALOG[examId];
   const activeLogArea = exam.domains.some((d) => d.name === logArea) ? logArea : exam.domains[0]?.name ?? exam.label;
@@ -220,6 +230,11 @@ export function StepPage() {
   const savedCount = resources.filter((r) => savedUrls.has(normalizeResourceUrl(r.url))).length;
   const officialInstalled = savedCount === resources.length;
   const suggestions = suggestMoves(examItems, 3);
+  const blueprintFirst = initialExam !== "premed";
+
+  useEffect(() => {
+    setLogArea(EXAMS[examId].domains[0]?.name ?? EXAMS[examId].label);
+  }, [examId]);
 
   function announce(msg: string, href: string) {
     setFlash({ msg, href });
@@ -274,6 +289,8 @@ export function StepPage() {
 
   return (
     <>
+      {blueprintFirst && <BlueprintCommand blueprints={tailoredBlueprints} allBlueprints={BLUEPRINTS} />}
+
       <GlassCard pad className="step-command" data-tour="step">
         <div className="tk-hero">
           <div className="row gap12">
@@ -322,6 +339,10 @@ export function StepPage() {
           <div><b>When it's done</b><span>{EXAM_PROGRESS[examId].done}</span></div>
         </div>
       </div>
+
+      {examId === "premed" && <PremedExperiencePanel />}
+
+      {!blueprintFirst && <BlueprintCommand blueprints={tailoredBlueprints} allBlueprints={BLUEPRINTS} />}
 
       <GlassCard pad>
         <PanelHeader title="Big-picture domains" sub="One row per major domain — install all, or add them individually" />
@@ -525,5 +546,115 @@ export function StepPage() {
         </GlassCard>
       </div>
     </>
+  );
+}
+
+function PremedExperiencePanel() {
+  const s = useStore();
+  const [kind, setKind] = useState<PremedExperienceKind>("Clinical");
+  const [date, setDate] = useState(dayKey());
+  const [title, setTitle] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [contact, setContact] = useState("");
+  const [hours, setHours] = useState("2");
+  const [verified, setVerified] = useState(false);
+  const [reflection, setReflection] = useState("");
+  const entries = s.premedExperiences ?? [];
+  const totals = PREMED_KINDS.map((k) => ({
+    kind: k,
+    hours: entries.filter((entry) => entry.kind === k).reduce((sum, entry) => sum + entry.hours, 0),
+    verified: entries.filter((entry) => entry.kind === k && entry.verified).reduce((sum, entry) => sum + entry.hours, 0),
+  }));
+  const totalHours = totals.reduce((sum, item) => sum + item.hours, 0);
+  const verifiedHours = totals.reduce((sum, item) => sum + item.verified, 0);
+  const recent = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const max = Math.max(1, ...totals.map((item) => item.hours));
+
+  function save() {
+    const amount = Math.max(0, Number(hours) || 0);
+    if (!title.trim() || !organization.trim() || amount <= 0) return;
+    s.addPremedExperience({
+      date,
+      kind,
+      title: title.trim(),
+      organization: organization.trim(),
+      contact: contact.trim() || undefined,
+      hours: amount,
+      verified,
+      reflection: reflection.trim(),
+    });
+    setTitle("");
+    setOrganization("");
+    setContact("");
+    setHours("2");
+    setVerified(false);
+    setReflection("");
+  }
+
+  return (
+    <GlassCard pad className="premed-hours-card">
+      <PanelHeader title="Pre-Med Experience Log" sub="Clinical exposure, service, research, shadowing, leadership, and verification evidence"
+        action={<Tag tone={verifiedHours >= 50 ? "green" : verifiedHours > 0 ? "cyan" : "neutral"}>{verifiedHours} verified hours</Tag>} />
+      <div className="premed-hours-layout">
+        <div className="premed-hours-form">
+          <div className="step-form-grid">
+            <SelectField label="Category" value={kind} onChange={(e) => setKind(e.target.value as PremedExperienceKind)}>
+              {PREMED_KINDS.map((k) => <option key={k}>{k}</option>)}
+            </SelectField>
+            <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Field label="Hours" type="number" min="0" step="0.25" value={hours} onChange={(e) => setHours(e.target.value)} />
+          </div>
+          <Field label="What did you do?" placeholder="e.g. Shadowed cardiology clinic" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <div className="step-form-grid">
+            <Field label="Organization / physician / service" value={organization} onChange={(e) => setOrganization(e.target.value)} />
+            <Field label="Verification contact" placeholder="email, supervisor, club officer" value={contact} onChange={(e) => setContact(e.target.value)} />
+          </div>
+          <TextAreaField label="Reflection / evidence" placeholder="What mattered? What did you learn? What proof exists?" value={reflection} onChange={(e) => setReflection(e.target.value)} />
+          <div className="premed-log-actions">
+            <label className="promise-check compact">
+              <input type="checkbox" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
+              <span>Verified or verification path exists</span>
+            </label>
+            <GButton variant="primary" onClick={save}>Log experience</GButton>
+          </div>
+        </div>
+        <div className="premed-hours-dashboard">
+          <div className="premed-hours-total">
+            <b>{totalHours}</b>
+            <span>total hours logged</span>
+          </div>
+          <div className="premed-hour-bars">
+            {totals.map((item) => (
+              <div className="premed-hour-bar" key={item.kind}>
+                <div className="spread"><span>{item.kind}</span><b>{item.hours}h</b></div>
+                <div className="track">
+                  <div className="track-fill" style={{ width: `${Math.round((item.hours / max) * 100)}%`, background: item.verified ? "var(--green)" : "var(--cyan)" }} />
+                </div>
+                <small>{item.verified}h verified</small>
+              </div>
+            ))}
+          </div>
+          <div className="premed-trend-note">
+            {entries.length
+              ? `${recent[0].kind} was your latest signal. Keep reflections specific enough to become application material later.`
+              : "Start with one honest entry. Verified hours are useful; reflective detail is what makes them usable."}
+          </div>
+        </div>
+      </div>
+      {recent.length > 0 && (
+        <div className="premed-recent-list">
+          {recent.map((entry) => (
+            <div className="premed-recent-row" key={entry.id}>
+              <Tag tone={entry.verified ? "green" : "neutral"}>{entry.kind}</Tag>
+              <div className="grow">
+                <b>{entry.title}</b>
+                <span>{entry.date} · {entry.organization} · {entry.hours}h{entry.verified ? " · verified" : ""}</span>
+              </div>
+              <button className="ghost-btn danger" onClick={() => s.removePremedExperience(entry.id)}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </GlassCard>
   );
 }

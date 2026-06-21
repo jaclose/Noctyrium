@@ -65,6 +65,10 @@
   -webkit-overflow-scrolling: touch;
   animation: fade .5s ease;
 }
+.promise-scrim.sealed {
+  align-items: center;
+  overflow: hidden;
+}
 .promise-orbs { pointer-events: none; }
 .promise-orbs i { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.5; }
 .promise-orbs i:nth-child(1) { width: 480px; height: 480px; background: radial-gradient(circle, rgba(90,215,239,0.25), transparent 70%); top: -160px; left: -120px; animation: drift1 20s ease-in-out infinite; }
@@ -140,7 +144,20 @@
 .promise-defer:hover { color: #5a5340; }
 
 /* Sealed state */
-.promise-sealed { position: relative; z-index: 1; text-align: center; color: #fff; animation: sealed-in 1s cubic-bezier(.2,.8,.2,1); }
+.promise-sealed {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  min-height: min(520px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  text-align: center;
+  color: #fff;
+  animation: sealed-in 1s cubic-bezier(.2,.8,.2,1);
+}
 @keyframes sealed-in { from { opacity: 0; transform: scale(.9); } }
 .promise-sealed-ring {
   width: 96px; height: 96px; margin: 0 auto 22px; border-radius: 50%;
@@ -182,6 +199,7 @@
       max(12px, env(safe-area-inset-bottom))
       max(12px, env(safe-area-inset-left));
   }
+  .promise-orbs i { animation: none; opacity: 0.28; }
   .promise-paper { padding: 22px 18px; border-radius: 18px; }
   .promise-seal-mark { width: 40px; height: 40px; margin-bottom: 12px; font-size: 20px; }
   .promise-heading { margin-bottom: 12px; font-size: 11px; letter-spacing: 0.18em; }
@@ -195,5 +213,11 @@
   .promise-oath p { font-size: 14px; }
   .promise-check { align-items: flex-start; line-height: 1.35; }
   .promise-check input { width: 22px; height: 22px; flex: 0 0 auto; margin-top: 0; }
+  .promise-sealed {
+    min-height: calc(100dvh - 24px);
+    padding: 18px;
+  }
+  .promise-sealed-ring { width: 84px; height: 84px; margin-bottom: 18px; }
   .promise-sealed-title { font-size: 32px; }
+  .promise-sealed-name { max-width: 100%; font-size: 22px; overflow-wrap: anywhere; }
 }

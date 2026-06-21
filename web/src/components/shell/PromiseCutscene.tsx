@@ -70,7 +70,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="promise-scrim" ref={scrimRef}>
+    <div className={`promise-scrim ${stage === "sealed" ? "sealed" : ""}`} ref={scrimRef}>
       <div className="promise-orbs"><i /><i /><i /></div>
 
       {stage !== "sealed" ? (

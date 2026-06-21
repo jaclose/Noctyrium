@@ -9,7 +9,7 @@ import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -23,6 +23,21 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "termMap",
   "localData",
   "latestStandup",
+  "productivityTrend",
+  "premedHours",
+  "resourceFocus",
+  "boardBlueprint",
+];
+export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
+  "aiActions",
+  "schedule",
+  "termMap",
+  "localData",
+  "latestStandup",
+  "productivityTrend",
+  "premedHours",
+  "resourceFocus",
+  "boardBlueprint",
 ];
 
 const now = () => new Date().toISOString();
@@ -55,8 +70,9 @@ export function makeSeed(): NoctyriumState {
       activeFocusId: "term1",
       focusSubscriptions: DEFAULT_FOCUS_IDS,
       dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
-      hiddenDashboardWidgets: [],
+      hiddenDashboardWidgets: DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
       journalReviewTime: "20:00",
+      hiddenNav: ["prompts", "integrations", "folders", "premed"],
     },
     terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),
     courses: ACADEMIC_TEMPLATE_COURSES.map(({ aliases: _aliases, modules, ...course }) => ({
@@ -88,6 +104,7 @@ export function makeSeed(): NoctyriumState {
       { id: crypto.randomUUID(), title: "Save progress from Settings", done: false, archived: false, scope: "Cloud Sync", created: now() },
     ],
     journal: [],
+    premedExperiences: [],
     prompts: [
       {
         id: crypto.randomUUID(), title: "Lecture → Anki cloze deck", category: "Anki",

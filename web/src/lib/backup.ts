@@ -2,14 +2,14 @@
 // JSON export / import. The portable backup story for the browser-stored data.
 // ===========================================================================
 import type { NoctyriumState } from "./types";
-import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
+import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
 import { userIdFromName } from "./userIdentity";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { resolveTrack } from "./tracks";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
-  "prompts", "folders", "logs", "integrations", "boardPrep", "dayPlans", "activeDayKey", "schemaVersion",
+  "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "dayPlans", "activeDayKey", "schemaVersion",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -75,6 +75,9 @@ export function parseImport(text: string): NoctyriumState {
       focusSubscriptions,
       dashboardWidgetOrder: normalizeDashboardWidgetOrder(profile.dashboardWidgetOrder),
       hiddenDashboardWidgets: normalizeDashboardWidgetList(profile.hiddenDashboardWidgets),
+      hiddenNav: normalizeHiddenNav(profile.hiddenNav, educationTrack),
+      toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
+      prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
       journalReviewTime: normalizeJournalReviewTime(profile.journalReviewTime),
     },
     terms: data.terms ?? [],
@@ -83,6 +86,7 @@ export function parseImport(text: string): NoctyriumState {
     resources: data.resources ?? [],
     tasks: data.tasks ?? [],
     journal: data.journal ?? [],
+    premedExperiences: data.premedExperiences ?? [],
     prompts: data.prompts ?? [],
     folders: data.folders ?? [],
     logs: data.logs ?? [],
@@ -111,11 +115,21 @@ function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumSta
 }
 
 function normalizeDashboardWidgetList(value: unknown): NonNullable<NoctyriumState["profile"]["hiddenDashboardWidgets"]> {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) return [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS];
   const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
   return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   ))];
+}
+
+function normalizeHiddenNav(value: unknown, trackId: string) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
+  }
+  const base = ["prompts", "integrations", "folders"];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
+  return [...base, "premed"];
 }
 
 function normalizeJournalReviewTime(value: unknown) {

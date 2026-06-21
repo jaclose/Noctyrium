@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
-  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy,
+  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass,
 } from "lucide-react";
 
 export interface NavItem {
@@ -22,7 +22,8 @@ export const NAV: NavItem[] = [
   { id: "journal", label: "Journal", subtitle: "Daily standups, intention follow-up, blockers, and tomorrow's plan", icon: BookText },
   { id: "reports", label: "Reports", subtitle: "Traceable statistics, energy, and performance vs. your goals", icon: LineChart },
   { id: "resources", label: "Resources", subtitle: "Saved hyperlinks for courses, boards, references, and tools", icon: Link },
-  { id: "step", label: "Boards", subtitle: "Step, shelf, MCAT, schedule, and AI board strategy", icon: Brain },
+  { id: "step", label: "USMLE / Shelf Prep", subtitle: "Step 1, Step 2, Step 3, shelf exams, and blueprint strategy", icon: Brain },
+  { id: "premed", label: "Pre-Med / MCAT", subtitle: "Clinical hours, service, research, applications, and MCAT runway", icon: Compass },
   { id: "appchecker", label: "Application Checker", subtitle: "Med school + residency application tracking", icon: ClipboardCheck },
   // Tools folder
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },
@@ -40,8 +41,9 @@ export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id
 
 // Sidebar order (Alpha 2). Tools is a collapsible folder.
 export const SIDEBAR_TOP = [
-  "dashboard", "courses", "tracker", "productivity", "journal", "reports", "resources", "step", "appchecker",
+  "dashboard", "courses", "tracker", "productivity", "journal", "reports", "resources",
 ];
+export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "anki", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.

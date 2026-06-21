@@ -2,7 +2,12 @@
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: var(--font-rounded);
@@ -33,6 +38,8 @@ input, textarea, select { font-family: inherit; }
 .app-root {
   position: fixed;
   inset: 0;
+  width: 100%;
+  max-width: 100vw;
   display: flex;
   padding: clamp(0px, 1.4vw, 22px);
   isolation: isolate;
@@ -127,6 +134,17 @@ input, textarea, select { font-family: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .shell::after, .orb { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .orb {
+    animation: none;
+    transform: none;
+  }
+  .shell::after {
+    display: none;
+    animation: none;
+  }
 }
 
 /* Main content column (right of the sidebar) */

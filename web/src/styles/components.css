@@ -630,14 +630,17 @@ select.field, .scope-select {
 .onboarding-scrim {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   background: rgba(2,3,8,0.5);
   backdrop-filter: blur(14px);
   animation: fade .2s ease;
 }
 .onboarding-card {
   width: 100%; max-width: 620px;
-  max-height: 88vh; overflow-y: auto;
+  max-height: min(88vh, calc(100dvh - 48px));
+  overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: linear-gradient(135deg, rgba(23,34,53,0.97), rgba(7,13,25,0.99));
   border: 1px solid var(--glass-card-border-hover);
   border-radius: var(--shell-radius);
@@ -876,7 +879,12 @@ select.field, .scope-select {
 .onboarding-summary b { font-size: 13.5px; }
 
 .onboarding-actions {
+  position: sticky;
+  bottom: -1px;
+  z-index: 3;
   display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(11,18,31,0), rgba(11,18,31,0.98) 30%, rgba(11,18,31,1));
 }
 .onboarding-actions .sub { font-size: 11.5px; }
 
@@ -913,8 +921,65 @@ select.field, .scope-select {
 
 @media (max-width: 640px) {
   .onboarding-phase-grid, .onboarding-summary, .onboarding-ai-grid, .focus-card-grid { grid-template-columns: 1fr; }
-  .onboarding-card { padding: 20px; }
+  .onboarding-scrim {
+    align-items: stretch;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    background: rgba(2,3,8,0.68);
+  }
+  .onboarding-card {
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(25,37,58,0.99), rgba(8,14,27,1));
+  }
+  .onboarding-card::before {
+    top: -150px;
+    width: 360px;
+    height: 260px;
+    opacity: 0.65;
+  }
+  .onboarding-steps {
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .onboarding-step-dot > span {
+    width: 24px;
+    height: 24px;
+  }
   .onboarding-step-dot small { display: none; }
+  .onboarding-body { gap: 12px; }
+  .onboarding-body h2 { font-size: 22px; }
+  .onboarding-lede { font-size: 13px; line-height: 1.48; }
+  .onboarding-mark { animation: none; }
+  .focus-group { padding: 10px; border-radius: 14px; }
+  .focus-card {
+    min-height: 78px;
+    padding: 11px 42px 11px 11px;
+  }
+  .focus-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .onboarding-toggle-row {
+    align-items: flex-start;
+  }
+  .onboarding-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+    margin: 4px -18px -18px;
+    padding: 14px 18px 18px;
+    border-top: 1px solid rgba(180,226,255,0.08);
+  }
+  .onboarding-actions .gbtn {
+    width: 100%;
+    min-height: 44px;
+  }
+  .onboarding-actions .sub {
+    display: block;
+    text-align: center;
+    line-height: 1.35;
+  }
 }
 
 .track-settings-grid {
