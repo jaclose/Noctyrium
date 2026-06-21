@@ -13,11 +13,13 @@ import type { DashboardWidgetId } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { gotoTrackerItem } from "../lib/uiStore";
+import { useInView } from "../lib/useInView";
 import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
+import { Pomodoro } from "../components/productivity/Pomodoro";
 import { runAi } from "../services/aiClient";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
@@ -25,6 +27,7 @@ const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.a
 const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
   { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
   { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor.", preview: "rings" },
+  { id: "pomodoro", label: "Pomodoro timer", note: "Focus sprints that auto-log their minutes.", preview: "rings" },
   { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
   { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps.", preview: "list" },
   { id: "aiActions", label: "AI actions", note: "Provider-backed action queue; hidden by default.", preview: "ai" },
@@ -48,6 +51,7 @@ export function DashboardPage() {
   const doneToday = s.tasks.filter((t) => t.done && t.completedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
   const matureItems = s.tracker.filter((t) => t.passes >= 3).length;
   const masteredItems = s.tracker.filter((t) => t.passes >= 4).length;
+  const ankiActive = s.tracker.filter((t) => t.ankiPasses > 0).length;
   const trackerReady = scopeMastery(s.tracker);
   const reviewItems = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
 
@@ -90,6 +94,7 @@ export function DashboardPage() {
           targetsMet={targetsMet} activeDayKey={s.activeDayKey} />
       );
     }
+    if (widgetId === "pomodoro") return <Pomodoro key={widgetId} compact />;
     if (widgetId === "weekly") return <WeeklyWidget key={widgetId} week={week} />;
     if (widgetId === "suggested") return <SuggestedMovesWidget key={widgetId} suggestions={suggestions} />;
     if (widgetId === "aiActions") return <AiSuggestedActions key={widgetId} />;
@@ -138,14 +143,43 @@ export function DashboardPage() {
 
       <div className="grid dashboard-stat-row">
         <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
-          trend="🃏" trendTone="neutral" />
+          trend="🃏" trendTone="neutral"
+          overview={<OverviewPanel title="Anki today" rows={[
+            { label: "Cards today", value: `${today.cards}`, tone: today.cards >= cardTarget ? "green" : "" },
+            { label: "Daily card floor", value: `${cardTarget}`, },
+            { label: "Floor progress", value: `${cardPct}%`, tone: cardPct >= 100 ? "green" : cardPct >= 60 ? "cyan" : "orange" },
+            { label: "Decks in rotation", value: `${ankiActive} item${ankiActive === 1 ? "" : "s"}` },
+            { label: "This week", value: `${week.cards} cards` },
+          ]} foot={today.cards >= cardTarget ? "Card floor cleared — protect the streak, not the maximum." : `${Math.max(0, cardTarget - today.cards)} cards to clear today's floor.`} />} />
         <StatCard title="Study" value={`${today.minutes}m`} note="logged today" icon={<Clock size={18} />}
-          trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"} />
-        <TasksJournalStatCard openTasks={openTasks} doneToday={doneToday} journalCount={s.journal.length} />
+          trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"}
+          overview={<OverviewPanel title="Study time" rows={[
+            { label: "Minutes today", value: `${today.minutes}m`, tone: today.minutes >= minTarget ? "green" : "" },
+            { label: "Daily minute floor", value: `${minTarget}m` },
+            { label: "Day grade", value: gradeLabel(grade).replace("👑 ", ""), tone: grade === "green" || grade === "blue" ? "green" : grade === "orange" ? "orange" : "red" },
+            { label: "Current streak", value: `${streak} day${streak === 1 ? "" : "s"}` },
+            { label: "This week", value: `${Math.round(week.minutes / 60)}h · ${week.activeDays}/7 active` },
+          ]} foot={today.minutes >= minTarget ? "Minute floor cleared for today." : `${Math.max(0, minTarget - today.minutes)}m to clear today's floor.`} />} />
+        <TasksJournalStatCard openTasks={openTasks} doneToday={doneToday} journalCount={s.journal.length}
+          firstTasks={s.tasks.filter((t) => !t.done && !t.archived).slice(0, 3).map((t) => t.title)}
+          lastStandup={s.journal[0]?.date} />
         <StatCard title="Tracker" value={`${trackerReady}%`} note={`${matureItems} mature · ${reviewItems} need attention`} icon={<BadgeDot />}
-          trend={`${masteredItems} mastered`} trendTone="green" />
+          trend={`${masteredItems} mastered`} trendTone="green"
+          overview={<OverviewPanel title="Tracker mastery" rows={[
+            { label: "Overall readiness", value: `${trackerReady}%`, tone: trackerReady >= 70 ? "green" : trackerReady >= 40 ? "cyan" : "orange" },
+            { label: "Tracked rows", value: `${s.tracker.length}` },
+            { label: "Mastered (4+)", value: `${masteredItems}`, tone: "green" },
+            { label: "Mature (3)", value: `${matureItems}` },
+            { label: "Needs attention", value: `${reviewItems}`, tone: reviewItems ? "orange" : "green" },
+          ]} foot={reviewItems ? `${reviewItems} item${reviewItems === 1 ? "" : "s"} flagged review or under two passes.` : "No review flags — keep cycling fresh evidence."} />} />
         <StatCard title="Energy" value={`${performance.energyScore}`} note={performance.journalSignal} icon={<Sunrise size={18} />}
-          trend={performance.energyLabel} trendTone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"} />
+          trend={performance.energyLabel} trendTone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"}
+          overview={<OverviewPanel title="Energy read" rows={[
+            { label: "Energy score", value: `${performance.energyScore}/100`, tone: performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red" },
+            { label: "Read", value: performance.energyLabel },
+            { label: "Performance", value: performance.performanceLabel },
+            { label: "Journal signal", value: performance.journalSignal },
+          ]} foot={performance.recommendation} />} />
       </div>
 
       {widgetOrder.map(renderWidget)}
@@ -226,31 +260,69 @@ function BadgeDot() {
 }
 
 function TasksJournalStatCard({
-  openTasks, doneToday, journalCount,
+  openTasks, doneToday, journalCount, firstTasks, lastStandup,
 }: {
   openTasks: number;
   doneToday: number;
   journalCount: number;
+  firstTasks: string[];
+  lastStandup?: string;
 }) {
   return (
-    <GlassCard className="stat-card tasks-journal-stat" pad>
-      <div className="stat-top">
-        <span className="stat-icon"><ListChecks size={18} /></span>
-        <Tag tone={openTasks ? "orange" : "green"}>{openTasks ? `${openTasks} open` : "Clear"}</Tag>
-      </div>
-      <div className="tasks-journal-split">
-        <div>
-          <b>{openTasks}</b>
-          <span>open tasks</span>
+    <div className="stat-card-wrap">
+      <GlassCard className="stat-card tasks-journal-stat has-overview" pad>
+        <div className="stat-top">
+          <span className="stat-icon"><ListChecks size={18} /></span>
+          <Tag tone={openTasks ? "orange" : "green"}>{openTasks ? `${openTasks} open` : "Clear"}</Tag>
         </div>
-        <div>
-          <b>{journalCount}</b>
-          <span>standups</span>
+        <div className="tasks-journal-split">
+          <div>
+            <b>{openTasks}</b>
+            <span>open tasks</span>
+          </div>
+          <div>
+            <b>{journalCount}</b>
+            <span>standups</span>
+          </div>
         </div>
+        <div className="stat-title">Tasks + Journal</div>
+        <div className="stat-note">{doneToday} done today · execute, then reflect</div>
+      </GlassCard>
+      <div className="stat-overview" role="tooltip">
+        <div className="stat-ov-title">Tasks &amp; Journal</div>
+        <div className="stat-ov-row"><span>Open tasks</span><b className={openTasks ? "orange" : "green"}>{openTasks}</b></div>
+        <div className="stat-ov-row"><span>Done today</span><b className="green">{doneToday}</b></div>
+        <div className="stat-ov-row"><span>Standups logged</span><b>{journalCount}</b></div>
+        <div className="stat-ov-row"><span>Last standup</span><b>{lastStandup ? prettyDate(lastStandup) : "None yet"}</b></div>
+        {firstTasks.length > 0 && (
+          <div className="stat-ov-list">
+            {firstTasks.map((title) => <span key={title}><Circle size={9} /> {title}</span>)}
+          </div>
+        )}
+        <div className="stat-ov-foot">{openTasks ? "Clear the open loop, then write the standup." : "Inbox clear — reflect and set tomorrow's intention."}</div>
       </div>
-      <div className="stat-title">Tasks + Journal</div>
-      <div className="stat-note">{doneToday} done today · execute, then reflect</div>
-    </GlassCard>
+    </div>
+  );
+}
+
+// Shared hover-popover body for the dashboard stat cards.
+function OverviewPanel({
+  title, rows, foot,
+}: {
+  title: string;
+  rows: Array<{ label: string; value: string; tone?: string }>;
+  foot?: string;
+}) {
+  return (
+    <>
+      <div className="stat-ov-title">{title}</div>
+      {rows.map((row) => (
+        <div className="stat-ov-row" key={row.label}>
+          <span>{row.label}</span><b className={row.tone}>{row.value}</b>
+        </div>
+      ))}
+      {foot && <div className="stat-ov-foot">{foot}</div>}
+    </>
   );
 }
 
@@ -430,6 +502,7 @@ function TodayScoreWidget({
 }
 
 function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
+  const reveal = useInView<HTMLDivElement>();
   return (
     <GlassCard pad className="weekly-card">
       <PanelHeader title="Weekly Overview" sub="Last 7 calendar days from your local study log"
@@ -444,7 +517,7 @@ function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
           <small>week result</small>
         </div>
       </div>
-      <div className="week-bars">
+      <div className={`week-bars reveal-bars ${reveal.inView ? "in-view" : ""}`} ref={reveal.ref}>
         {week.days.map((d) => (
           <div className="week-day" key={d.key} title={`${d.key}: ${d.minutes}m, ${d.cards} cards`}>
             <div className="week-bar-shell">

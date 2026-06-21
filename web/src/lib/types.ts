@@ -243,6 +243,7 @@ export type EducationTrackId =
 export type DashboardWidgetId =
   | "winDay"
   | "todayScore"
+  | "pomodoro"
   | "weekly"
   | "suggested"
   | "aiActions"

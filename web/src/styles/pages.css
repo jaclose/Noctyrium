@@ -2473,16 +2473,163 @@
 .lb-value { flex-shrink: 0; font-size: 13.5px; font-weight: 900; }
 .lb-value small { font-weight: 600; color: var(--text-45); font-size: 10px; }
 
-/* Pomodoro mock (under construction) */
-.pomo-mock { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 6px; }
-.pomo-dial {
-  width: 100px; height: 100px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; font-weight: 800; color: var(--text);
-  background: conic-gradient(var(--cyan) 0% 30%, rgba(255,255,255,0.08) 30% 100%);
-  box-shadow: inset 0 0 0 6px rgba(0,0,0,0.25);
+/* ---- Pomodoro timer (Productivity panel + Dashboard widget) ---- */
+.pomodoro .pomo-body { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-top: 8px; }
+.pomodoro.compact .pomo-body { gap: 16px; }
+.pomo-phase-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 800;
 }
-.pomo-dial span { background: var(--bg-2); width: 74px; height: 74px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.pomo-phase-pill.focus { color: var(--cyan); background: rgba(90,215,239,0.12); border: 1px solid rgba(90,215,239,0.3); }
+.pomo-phase-pill.break { color: var(--green); background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); }
+.pomo-dial { position: relative; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; }
+.pomo-dial svg { display: block; }
+.pomo-clock { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.pomo-time { font-size: 27px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: 0.5px; line-height: 1; }
+.pomodoro.compact .pomo-time { font-size: 22px; }
+.pomo-sub { margin-top: 3px; font-size: 9.5px; color: var(--text-45); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
+.pomo-controls { flex: 1; min-width: 210px; display: flex; flex-direction: column; gap: 11px; }
+.pomo-presets { display: flex; gap: 7px; }
+.pomo-preset {
+  flex: 1; padding: 8px 0; border-radius: 10px; font-size: 12px; font-weight: 800; color: var(--text-60);
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(180,226,255,0.09); cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.pomo-preset:hover:not(:disabled) { color: var(--text); border-color: rgba(90,215,239,0.4); }
+.pomo-preset.on { color: var(--cyan); background: rgba(90,215,239,0.14); border-color: rgba(90,215,239,0.45); }
+.pomo-preset:disabled { opacity: 0.5; cursor: not-allowed; }
+.pomo-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pomo-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-45); }
+.pomo-stat { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; }
+.pomo-stat svg { color: var(--cyan); }
+.pomo-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; -webkit-user-select: none; user-select: none; font-weight: 700; }
+.pomo-toggle input { accent-color: var(--cyan); }
+.pomodoro.running .pomo-dial { animation: pomo-breathe 3.2s ease-in-out infinite; }
+.pomodoro.running.phase-focus .pomo-dial { box-shadow: 0 0 26px rgba(90,215,239,0.2); }
+.pomodoro.running.phase-break .pomo-dial { box-shadow: 0 0 26px rgba(74,222,128,0.2); }
+@keyframes pomo-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.018); } }
+
+/* ---- Activity Log (GitHub-style feed, Productivity) ---- */
+.activity-feed { display: flex; flex-direction: column; margin-top: 6px; }
+.activity-day { position: relative; }
+.activity-day-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin: 12px 0 4px; font-size: 12px; font-weight: 800; color: var(--text-80);
+}
+.activity-day-head small { font-weight: 700; color: var(--text-45); font-size: 11px; }
+.activity-row { position: relative; display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.activity-row::before {
+  content: ""; position: absolute; left: 13px; top: 0; bottom: 0; width: 2px;
+  background: rgba(180,226,255,0.1);
+}
+.activity-row:first-of-type::before { top: 50%; }
+.activity-row:last-of-type::before { bottom: 50%; }
+.activity-dot {
+  position: relative; z-index: 1; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--bg-2);
+  border: 1px solid rgba(180,226,255,0.14); color: var(--text-60);
+}
+.activity-dot.green { color: var(--green); border-color: rgba(74,222,128,0.42); }
+.activity-dot.cyan { color: var(--cyan); border-color: rgba(90,215,239,0.42); }
+.activity-dot.purple { color: var(--purple); border-color: rgba(155,123,255,0.42); }
+.activity-dot.orange { color: var(--orange); border-color: rgba(255,159,67,0.42); }
+.activity-dot.red { color: var(--red); border-color: rgba(255,99,108,0.42); }
+.activity-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.activity-text { font-size: 12.5px; font-weight: 700; color: var(--text-80); }
+.activity-note { font-size: 11px; color: var(--text-45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-time { flex-shrink: 0; font-size: 11px; color: var(--text-45); font-variant-numeric: tabular-nums; }
+.activity-toggle {
+  margin-top: 12px; width: 100%; padding: 9px; border-radius: 11px; font-size: 12px; font-weight: 800;
+  color: var(--text-60); background: rgba(255,255,255,0.035); border: 1px solid rgba(180,226,255,0.09);
+  cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.activity-toggle:hover { color: var(--text); border-color: rgba(90,215,239,0.35); }
+.activity-empty { display: flex; align-items: center; gap: 12px; padding: 16px 6px; color: var(--text-45); }
+.activity-empty svg { color: var(--cyan); flex-shrink: 0; }
+.activity-empty b { display: block; font-size: 13px; color: var(--text-80); }
+.activity-empty span { font-size: 12px; }
+
+/* ---- Dashboard stat card hover overview ---- */
+.stat-card-wrap { position: relative; }
+.stat-card.has-overview { cursor: default; }
+.stat-overview {
+  position: absolute; top: calc(100% + 9px); left: 0; right: 0; z-index: 40;
+  padding: 13px 14px; border-radius: 15px;
+  background: linear-gradient(160deg, rgba(20,33,50,0.98), rgba(11,19,33,0.98));
+  border: 1px solid rgba(120,200,255,0.2);
+  box-shadow: 0 20px 44px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(-6px); pointer-events: none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+.stat-card-wrap:hover .stat-overview,
+.stat-card-wrap:focus-within .stat-overview { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.stat-overview::before {
+  content: ""; position: absolute; top: -5px; left: 26px; width: 10px; height: 10px;
+  background: rgba(20,33,50,0.98); border-left: 1px solid rgba(120,200,255,0.2); border-top: 1px solid rgba(120,200,255,0.2);
+  transform: rotate(45deg);
+}
+.stat-ov-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cyan); margin-bottom: 8px; }
+.stat-ov-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 12px; }
+.stat-ov-row > span { color: var(--text-45); }
+.stat-ov-row b { font-weight: 800; color: var(--text-80); font-variant-numeric: tabular-nums; text-align: right; }
+.stat-ov-row b.green { color: var(--green); }
+.stat-ov-row b.cyan { color: var(--cyan); }
+.stat-ov-row b.orange { color: var(--orange); }
+.stat-ov-row b.red { color: var(--red); }
+.stat-ov-list { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 2px; }
+.stat-ov-list span { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-60); }
+.stat-ov-list svg { color: var(--cyan); flex-shrink: 0; }
+.stat-ov-foot { margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(180,226,255,0.1); font-size: 11.5px; line-height: 1.45; color: var(--text-60); }
+@media (max-width: 720px) { .stat-overview { position: static; opacity: 1; transform: none; pointer-events: auto; margin-top: 10px; box-shadow: none; } .stat-overview::before { display: none; } }
+
+/* ---- Ember glow on streak + flame markers ---- */
+.streak-badge { animation: ember-border 3.6s ease-in-out infinite; }
+.streak-badge svg { animation: ember-flicker 1.9s ease-in-out infinite; }
+.day-fluid-label svg { animation: ember-flicker 1.9s ease-in-out infinite; }
+@keyframes ember-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,138,61,0); border-color: rgba(255,168,77,0.28); }
+  50% { box-shadow: 0 0 15px 1px rgba(255,138,61,0.3); border-color: rgba(255,168,77,0.58); }
+}
+@keyframes ember-flicker {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(255,138,61,0.4)); transform: translateY(0) scale(1); }
+  45% { filter: drop-shadow(0 0 8px rgba(255,138,61,0.85)); transform: translateY(-0.5px) scale(1.07); }
+}
+
+/* ---- Scroll-aware bar reveal (week bars + productivity strip) ---- */
+.reveal-bars .week-bar-fill, .reveal-bars .day-pillar-fill { transform-origin: bottom; }
+.reveal-bars.in-view .week-bar-fill, .reveal-bars.in-view .day-pillar-fill {
+  animation: bar-rise .7s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes bar-rise { from { transform: scaleY(0.04); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+.reveal-bars.in-view .week-day:nth-child(1) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(1) .day-pillar-fill { animation-delay: .02s; }
+.reveal-bars.in-view .week-day:nth-child(2) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(2) .day-pillar-fill { animation-delay: .07s; }
+.reveal-bars.in-view .week-day:nth-child(3) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(3) .day-pillar-fill { animation-delay: .12s; }
+.reveal-bars.in-view .week-day:nth-child(4) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(4) .day-pillar-fill { animation-delay: .17s; }
+.reveal-bars.in-view .week-day:nth-child(5) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(5) .day-pillar-fill { animation-delay: .22s; }
+.reveal-bars.in-view .week-day:nth-child(6) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(6) .day-pillar-fill { animation-delay: .27s; }
+.reveal-bars.in-view .week-day:nth-child(7) .week-bar-fill,
+.reveal-bars.in-view .day-pillar:nth-child(7) .day-pillar-fill { animation-delay: .32s; }
+
+/* ---- Progress bar sheen (subtle premium fill animation) ---- */
+.track-fill { position: relative; overflow: hidden; }
+.track-fill::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  transform: translateX(-110%); animation: track-sheen 3.4s ease-in-out infinite;
+}
+@keyframes track-sheen { 0% { transform: translateX(-110%); } 55%, 100% { transform: translateX(110%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .streak-badge, .streak-badge svg, .day-fluid-label svg, .pomodoro.running .pomo-dial,
+  .track-fill::after, .day-fluid-fill, .day-fluid-fill::after { animation: none !important; }
+  .reveal-bars.in-view .week-bar-fill, .reveal-bars.in-view .day-pillar-fill { animation: none !important; }
+}
 
 /* ---- In-app Alpha notice ---- */
 .alpha-notice {

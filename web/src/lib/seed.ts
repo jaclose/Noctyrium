@@ -16,6 +16,7 @@ export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
 export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "winDay",
   "todayScore",
+  "pomodoro",
   "weekly",
   "suggested",
   "aiActions",

@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, CalendarDays, Clock, Layers, Minus, Plus, Sunrise, Target, Timer, TrendingUp, Zap } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Sunrise, Target, Timer, TrendingUp, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayKey, dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, todayGrade } from "../lib/scoring";
+import type { StudyLog } from "../lib/types";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Ring } from "../components/ui/Ring";
+import { Pomodoro } from "../components/productivity/Pomodoro";
+import { useInView } from "../lib/useInView";
 
 function stepVal(current: string, delta: number): string {
   return String((Number(current) || 0) + delta);
@@ -27,6 +30,7 @@ export function ProductivityPage() {
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualCards, setManualCards] = useState("");
   const [manualNote, setManualNote] = useState("");
+  const strip = useInView<HTMLDivElement>();
 
   const viewKey = pickedDay ?? s.activeDayKey;
   const totals = dayTotals(s.logs, viewKey);
@@ -128,7 +132,7 @@ export function ProductivityPage() {
             <Metric icon={<TrendingUp size={15} />} label="Consistency" value={`${weekly.consistency}%`} note={`${weekly.strongDays.length} strong day${weekly.strongDays.length === 1 ? "" : "s"}`} />
             <Metric icon={<Target size={15} />} label="Needs work" value={`${weekly.needsWorkDays.length}`} note="quiet or fragile days" />
           </div>
-          <div className="productivity-strip">
+          <div className={`productivity-strip reveal-bars ${strip.inView ? "in-view" : ""}`} ref={strip.ref}>
             {weekly.days.map((d) => <DayPillar key={d.key} day={d} onPick={() => setPickedDay(d.key)} />)}
           </div>
           <InsightList insights={weekly.insights} />
@@ -197,22 +201,9 @@ export function ProductivityPage() {
         </div>
       </GlassCard>
 
-      <GlassCard pad className="under-construction">
-        <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-tape t2">Coming Soon</span>
-        <span className="uc-badge"><Timer size={15} /> Pomodoro timer — coming soon</span>
-        <div className="uc-inner">
-          <PanelHeader title="Pomodoro" sub="Focus sprints that auto-log minutes when you finish" />
-          <div className="pomo-mock">
-            <div className="pomo-dial"><span>25:00</span></div>
-            <div className="row gap8">
-              <span className="gbtn sm">25 / 5</span>
-              <span className="gbtn sm">50 / 10</span>
-              <span className="gbtn sm primary">Start</span>
-            </div>
-          </div>
-        </div>
-      </GlassCard>
+      <ActivityLog logs={s.logs} />
+
+      <Pomodoro />
 
       <GlassCard pad>
         <PanelHeader title="Future Integration Slots" sub="Auto-logging from connected tools (coming soon)" />
@@ -461,6 +452,106 @@ function scheduleNote(summary: PeriodSummary): { title: string; body: string } {
     title: "Useful middle ground",
     body: "The week has activity, but the next gain is consistency. Add one retrieval block to the next quiet day.",
   };
+}
+
+// GitHub-style activity feed: every logged study event as a timeline row,
+// grouped by day, newest first — "you logged a lecture at this time".
+function ActivityLog({ logs }: { logs: StudyLog[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const limit = expanded ? 200 : 14;
+  const visible = logs.slice(0, limit);
+  const groups = useMemo(() => groupLogsByDay(visible), [visible]);
+  const todayKey = isoDate(new Date());
+
+  return (
+    <GlassCard pad className="activity-log-card">
+      <PanelHeader title="Activity Log" sub="Every logged block, newest first — a running history of your effort"
+        action={<Tag tone={logs.length ? "cyan" : "neutral"}>{logs.length} event{logs.length === 1 ? "" : "s"}</Tag>} />
+      {logs.length === 0 ? (
+        <div className="activity-empty">
+          <History size={20} />
+          <div>
+            <b>No activity yet</b>
+            <span>Log minutes or cards above and each entry will appear here as a timeline.</span>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="activity-feed">
+            {groups.map((group) => (
+              <div className="activity-day" key={group.key}>
+                <div className="activity-day-head">
+                  <span>{group.key === todayKey ? "Today" : prettyDate(`${group.key}T12:00:00`)}</span>
+                  <small>{group.minutes}m · {group.cards} cards</small>
+                </div>
+                {group.entries.map((log) => {
+                  const meta = describeLog(log);
+                  return (
+                    <div className="activity-row" key={log.id}>
+                      <span className={`activity-dot ${meta.tone}`}>{meta.icon}</span>
+                      <div className="activity-main">
+                        <span className="activity-text">{meta.text}</span>
+                        {log.note && <span className="activity-note">{log.note}</span>}
+                      </div>
+                      <span className="activity-time">{formatLogTime(log.ts)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          {logs.length > 14 && (
+            <button type="button" className="activity-toggle" onClick={() => setExpanded((open) => !open)}>
+              {expanded ? "Show less" : `Show all ${logs.length} events`}
+            </button>
+          )}
+        </>
+      )}
+    </GlassCard>
+  );
+}
+
+interface ActivityGroup { key: string; minutes: number; cards: number; entries: StudyLog[] }
+
+function groupLogsByDay(logs: StudyLog[]): ActivityGroup[] {
+  const order: string[] = [];
+  const map = new Map<string, ActivityGroup>();
+  for (const log of logs) {
+    let group = map.get(log.dayKey);
+    if (!group) {
+      group = { key: log.dayKey, minutes: 0, cards: 0, entries: [] };
+      map.set(log.dayKey, group);
+      order.push(log.dayKey);
+    }
+    group.entries.push(log);
+    group.minutes += log.minutes;
+    group.cards += log.cards;
+  }
+  return order.map((key) => map.get(key)!);
+}
+
+function describeLog(log: StudyLog): { text: string; tone: string; icon: ReactNode } {
+  const type = log.type || "Study";
+  const lower = type.toLowerCase();
+  const parts: string[] = [];
+  if (log.cards) parts.push(`${log.cards > 0 ? "+" : ""}${log.cards} card${Math.abs(log.cards) === 1 ? "" : "s"}`);
+  if (log.minutes) parts.push(`${log.minutes > 0 ? "+" : ""}${log.minutes}m`);
+  const detail = parts.length ? ` · ${parts.join(" · ")}` : "";
+  const correction = log.minutes < 0 || log.cards < 0;
+  let icon: ReactNode = <Clock size={13} />;
+  let tone = "neutral";
+  if (correction) { icon = <Minus size={13} />; tone = "red"; }
+  else if (lower.includes("anki") || lower.includes("card")) { icon = <Layers size={13} />; tone = "green"; }
+  else if (lower.includes("pomodoro")) { icon = <Timer size={13} />; tone = "purple"; }
+  else if (lower.includes("lecture")) { icon = <BookOpen size={13} />; tone = "cyan"; }
+  else if (lower.includes("deep")) { icon = <Zap size={13} />; tone = "orange"; }
+  return { text: `${correction ? "Corrected" : "Logged"} ${type}${detail}`, tone, icon };
+}
+
+function formatLogTime(ts: string): string {
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 function shortDate(key: string): string {
