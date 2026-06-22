@@ -283,7 +283,7 @@ export type BlueprintNodeStatus = "not-started" | "in-progress" | "blocked" | "m
 export type BlueprintPriority = "high" | "medium" | "low";
 
 export type SourceType = "official" | "tool" | "internal";
-export type VerificationStatus = "verified" | "needs-review" | "unverified";
+export type VerificationStatus = "verified" | "source-audited" | "needs-review" | "unverified";
 export type SourceConfidence = "high" | "medium" | "low";
 
 /** Source governance — official sources govern; tools are labeled as tools. */
@@ -294,6 +294,10 @@ export interface BlueprintSource {
   lastVerified?: string; // ISO date
   verification: VerificationStatus;
   confidence: SourceConfidence;
+  sourceVersion?: string;
+  changeLog?: string;
+  auditNote?: string;
+  userConfirmed?: boolean;
 }
 
 export interface BlueprintResourceLink {
@@ -316,8 +320,14 @@ export interface InstalledBlueprintNode {
   mastery: number;       // 0–100
   tags: string[];
   sourceType?: SourceType;
+  sourceName?: string;
   sourceUrl?: string;
   lastVerified?: string;
+  sourceVerification?: VerificationStatus;
+  sourceConfidence?: SourceConfidence;
+  sourceVersion?: string;
+  sourceAuditNote?: string;
+  sourceChangeLog?: string;
   resourceLinks: BlueprintResourceLink[];
   linkedQuestions: number;
   linkedAnki: number;

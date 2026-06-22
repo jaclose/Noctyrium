@@ -3,6 +3,7 @@ import { Download, ShieldCheck, Stethoscope, Users, FlaskConical, Eye, Trophy } 
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { exportPremedExperienceWorkbook } from "../lib/premedExport";
+import { premedEvidenceStrength } from "../lib/premedScoring";
 import type { PremedExperienceEntry, PremedExperienceKind } from "../lib/types";
 
 const TABS: Array<"Overview" | PremedExperienceKind> = ["Overview", "Clinical", "Service", "Research", "Shadowing", "Leadership"];
@@ -19,6 +20,7 @@ export function PremedExperienceLogPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   const shown = tab === "Overview" ? entries : entries.filter((entry) => entry.kind === tab);
   const summary = useMemo(() => summarize(entries), [entries]);
+  const strength = useMemo(() => premedEvidenceStrength(entries), [entries]);
 
   return (
     <div className="stack gap16">
@@ -33,16 +35,40 @@ export function PremedExperienceLogPage() {
       </GlassCard>
 
       {tab === "Overview" && (
-        <div className="grid grid-stats">
-          {summary.map((item) => (
-            <GlassCard pad className="premed-log-stat" key={item.kind}>
-              <div className="stat-icon">{ICONS[item.kind]}</div>
-              <div className="stat-value">{item.hours.toFixed(item.hours % 1 ? 1 : 0)}h</div>
-              <div className="stat-label">{item.kind}</div>
-              <div className="stat-note">{item.verified.toFixed(item.verified % 1 ? 1 : 0)}h verified · {item.entries} entries</div>
-            </GlassCard>
-          ))}
-        </div>
+        <>
+          <GlassCard pad className="premed-evidence-overview">
+            <PanelHeader title="Application Evidence Strength"
+              sub="Transparent local score from verification, evidence, reflection, competency breadth, sustainment, and progression"
+              action={<Tag tone={strength.score >= 58 ? "green" : strength.score >= 30 ? "orange" : "neutral"}>{strength.rank}</Tag>} />
+            <div className="premed-evidence-score">
+              <b>{strength.score}</b>
+              <span>/100</span>
+              <div className="track"><i style={{ width: `${strength.score}%` }} /></div>
+            </div>
+            <div className="premed-evidence-grid">
+              {strength.rationale.map((item) => <span key={item}>{item}</span>)}
+            </div>
+            {!!strength.nextActions.length && (
+              <div className="premed-action-list">
+                {strength.nextActions.map((action) => <span key={action}>{action}</span>)}
+              </div>
+            )}
+          </GlassCard>
+          <div className="grid grid-stats">
+            {summary.map((item) => {
+              const kindScore = strength.kindScores.find((score) => score.kind === item.kind);
+              return (
+                <GlassCard pad className="premed-log-stat" key={item.kind}>
+                  <div className="stat-icon">{ICONS[item.kind]}</div>
+                  <div className="stat-value">{item.hours.toFixed(item.hours % 1 ? 1 : 0)}h</div>
+                  <div className="stat-label">{item.kind}</div>
+                  <div className="stat-note">{item.verified.toFixed(item.verified % 1 ? 1 : 0)}h verified · {item.entries} entries</div>
+                  {!!kindScore?.milestones.length && <div className="stat-note">Milestones: {kindScore.milestones.slice(0, 2).join(", ")}</div>}
+                </GlassCard>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <GlassCard pad>

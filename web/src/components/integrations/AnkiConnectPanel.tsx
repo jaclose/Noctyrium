@@ -119,6 +119,13 @@ export function AnkiConnectPanel() {
         }
       />
 
+      <div className="anki-not-working-note">
+        <AlertTriangle size={15} />
+        <span>
+          Anki sync is not considered working yet. This panel is now a local diagnostic path only until the connection is user-confirmed on your machine.
+        </span>
+      </div>
+
       <div className={`anki-path-card ${mixedContentRisk ? "hosted" : "local"}`}>
         <b>{mixedContentRisk ? "Hosted browser path" : "Local browser path"}</b>
         <span>

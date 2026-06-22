@@ -1,5 +1,6 @@
 import type { WorkBook } from "xlsx-js-style";
 import type { PremedExperienceEntry, PremedExperienceKind } from "./types";
+import { premedEvidenceStrength } from "./premedScoring";
 
 const KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
 const HEADER = {
@@ -30,12 +31,24 @@ export async function exportPremedExperienceWorkbook(entries: PremedExperienceEn
   };
 
   appendSheet(XLSX, wb, "Overview", overviewRows(entries), overviewWidths());
+  appendSheet(XLSX, wb, "Evidence Strength", evidenceRows(entries), [24, 18, 72]);
   for (const kind of KINDS) {
     appendSheet(XLSX, wb, kind, detailRows(entries.filter((entry) => entry.kind === kind)), detailWidths());
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `noctyrium-premed-experiences-${stamp}.xlsx`);
+}
+
+function evidenceRows(entries: PremedExperienceEntry[]) {
+  const strength = premedEvidenceStrength(entries);
+  return [
+    ["Metric", "Value", "Rationale / next action"],
+    ["Application Evidence Strength", `${strength.score}/100`, strength.rank],
+    ["Verified ratio", `${Math.round(strength.verifiedRatio * 100)}%`, strength.rationale.join(" | ")],
+    ["Competency breadth", strength.competencyCount, "Unique competency tags represented across logged evidence"],
+    ...strength.nextActions.map((action, index) => [`Next action ${index + 1}`, "", action]),
+  ];
 }
 
 function overviewRows(entries: PremedExperienceEntry[]) {

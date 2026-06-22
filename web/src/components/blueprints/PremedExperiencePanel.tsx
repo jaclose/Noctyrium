@@ -8,9 +8,8 @@ import { GlassCard, GButton, PanelHeader, Tag } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { dayKey } from "../../lib/scoring";
 import { exportPremedExperienceWorkbook } from "../../lib/premedExport";
+import { premedEvidenceStrength, PREMED_KINDS } from "../../lib/premedScoring";
 import type { PremedExperienceKind } from "../../lib/types";
-
-const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
 
 // Ballpark hour benchmarks for a competitive MD/DO applicant (guidance, not gospel).
 const HOUR_BENCHMARKS: Record<PremedExperienceKind, { recommended: number; competitive: number }> = {
@@ -43,6 +42,7 @@ export function PremedExperiencePanel() {
   const totalHours = totals.reduce((sum, item) => sum + item.hours, 0);
   const verifiedHours = totals.reduce((sum, item) => sum + item.verified, 0);
   const recent = [...entries].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const strength = premedEvidenceStrength(entries);
 
   function save() {
     const amount = Math.max(0, Number(hours) || 0);
@@ -97,6 +97,14 @@ export function PremedExperiencePanel() {
           </div>
         </div>
         <div className="premed-hours-dashboard">
+          <div className="premed-strength-card">
+            <div>
+              <span>Application Evidence Strength</span>
+              <b>{strength.score}/100</b>
+              <small>{strength.rank} · raw hours are capped in this score</small>
+            </div>
+            <div className="track"><span style={{ width: `${strength.score}%` }} /></div>
+          </div>
           <div className="premed-hours-total">
             <b>{totalHours}</b>
             <span>total hours logged</span>
@@ -134,9 +142,14 @@ export function PremedExperiencePanel() {
           </div>
           <div className="premed-trend-note">
             {entries.length
-              ? `${recent[0].kind} was your latest signal. Keep reflections specific enough to become application material later.`
+              ? strength.nextActions[0] ?? `${recent[0].kind} was your latest signal. Keep reflections specific enough to become application material later.`
               : "Start with one honest entry. Verified hours are useful; reflective detail is what makes them usable."}
           </div>
+          {strength.nextActions.length > 1 && (
+            <div className="premed-action-list">
+              {strength.nextActions.slice(1).map((action) => <span key={action}>{action}</span>)}
+            </div>
+          )}
         </div>
       </div>
       {recent.length > 0 && (

@@ -2,10 +2,11 @@ import { useState } from "react";
 import {
   PlayCircle, Sparkles, BookOpen, FileText, ExternalLink, Check, Copy,
   Sunrise, NotebookPen, Timer, LineChart, BadgeCheck, Link2, Brain, ListChecks, Database, Layers,
-  SlidersHorizontal,
+  SlidersHorizontal, Eye, AlertTriangle, ArrowRight,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader } from "../components/ui/primitives";
+import { Modal } from "../components/ui/Modal";
 
 const BUG_EMAIL = "jdabbagh@sgu.edu";
 
@@ -53,8 +54,94 @@ const ADDONS = [
   { name: "Anki Terminator V2 (AI sidebar)", id: "1468920185", note: "ChatGPT / DeepSeek sidebar inside Anki." },
 ];
 
+type GuideStatus = "Ready to test" | "In progress" | "Planned" | "Requires setup" | "Hidden until enabled" | "Not working yet";
+interface GuideEntry {
+  icon: typeof Sunrise;
+  name: string;
+  status: GuideStatus;
+  lives: string;
+  start: string;
+  prerequisite: string;
+  route: string;
+  preview: string;
+}
+
+const FEATURE_GUIDES: GuideEntry[] = [
+  {
+    icon: AlertTriangle,
+    name: "AnkiConnect sync",
+    status: "Not working yet",
+    lives: "Integrations → Anki",
+    start: "Use the card as a diagnostic only until the local connection is user-confirmed.",
+    prerequisite: "Desktop Anki open, AnkiConnect installed, and browser local-network access allowed.",
+    route: "integrations",
+    preview: "Local HTTP bridge to Anki. Hosted Vercel can still be blocked by browser local-network rules, so the supported path is local Noctyrium plus local Anki.",
+  },
+  {
+    icon: Timer,
+    name: "Pomodoro",
+    status: "Ready to test",
+    lives: "Productivity and Dashboard widget",
+    start: "Select a target, set an intention, start a sprint, and let it log when complete or when reset after at least one minute.",
+    prerequisite: "Auto-log must be on if you want minutes written to Productivity.",
+    route: "productivity",
+    preview: "A persisted focus timer with a progress ring, tracker/blueprint target, intention, partial logging on reset/skip, and refresh recovery.",
+  },
+  {
+    icon: Brain,
+    name: "Blueprint install",
+    status: "In progress",
+    lives: "USMLE / Shelf Prep and Pre-Med / MCAT / DAT",
+    start: "Pick a lane, install a blueprint, then open the container from the Course Tracker mastery tree.",
+    prerequisite: "Choose the correct pathway lane; source-audited does not mean user-verified.",
+    route: "step",
+    preview: "Blueprint containers use exam objects, source metadata, linked questions, Anki counts, error logs, assessment counts, notes, due dates, and mastery.",
+  },
+  {
+    icon: BadgeCheck,
+    name: "Course Tracker mastery tree",
+    status: "Ready to test",
+    lives: "Course Tracker",
+    start: "Open Term Mastery for schoolwork or Blueprint Mastery for installed exam containers.",
+    prerequisite: "Add course/tracker rows or install a blueprint first.",
+    route: "tracker",
+    preview: "Term items and blueprint objects are separated so lecture/DLA/PQ logic does not flatten boards or MCAT prep.",
+  },
+  {
+    icon: LineChart,
+    name: "Pre-Med experience log",
+    status: "Ready to test",
+    lives: "Pre-Med / MCAT / DAT and Experience Log",
+    start: "Log an experience with category, hours, reflection, evidence, verifier, and competency tags.",
+    prerequisite: "A useful score needs real entries over time; admissions probability is intentionally not shown.",
+    route: "premed-log",
+    preview: "Application Evidence Strength scores verification, reflection, competency breadth, sustainment, and progression milestones instead of worshipping raw hours.",
+  },
+  {
+    icon: Database,
+    name: "Local backup and exports",
+    status: "Ready to test",
+    lives: "Settings / Account & Sync plus log pages",
+    start: "Use JSON backup for the whole app; use .xlsx exports for Pre-Med and Activity History.",
+    prerequisite: "Exports stay local in the browser.",
+    route: "activity",
+    preview: "Local-first data survives refresh and can be exported without a backend. Account sync remains a future bridge, not a false cloud claim.",
+  },
+  {
+    icon: Sparkles,
+    name: "Optional widgets and hidden tools",
+    status: "Hidden until enabled",
+    lives: "Dashboard Customize and sidebar Customize",
+    start: "Use Customize to subscribe only to the surfaces you actually use.",
+    prerequisite: "Dashboard is locked; optional widgets/tools can be hidden.",
+    route: "dashboard",
+    preview: "The app should start quieter, then expand as the user subscribes to more workflows.",
+  },
+];
+
 export function HelpPage() {
   const s = useStore();
+  const [activeGuide, setActiveGuide] = useState<GuideEntry | null>(null);
   return (
     <>
       <GlassCard pad className="help-card">
@@ -64,6 +151,43 @@ export function HelpPage() {
           </GButton>} />
         <div className="sub" style={{ marginTop: 2 }}>Replaying the tour ends with the promise again. Your data is never erased.</div>
       </GlassCard>
+
+      <GlassCard pad>
+        <PanelHeader title="Feature guide" sub="Truthful status, where each tool lives, and how to start without hunting" />
+        <div className="feature-guide-grid">
+          {FEATURE_GUIDES.map((guide) => {
+            const I = guide.icon;
+            return (
+              <div className="feature-guide-card" key={guide.name}>
+                <div className="feature-guide-top">
+                  <span className="guide-tile-icon"><I size={18} /></span>
+                  <span className={`feature-status ${statusClass(guide.status)}`}>{guide.status}</span>
+                </div>
+                <b>{guide.name}</b>
+                <span>{guide.preview}</span>
+                <div className="feature-guide-meta">
+                  <small>{guide.lives}</small>
+                  <button type="button" onClick={() => setActiveGuide(guide)}><Eye size={13} /> Preview</button>
+                  <a href={`#${guide.route}`}>Open <ArrowRight size={13} /></a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </GlassCard>
+
+      {activeGuide && (
+        <Modal title={activeGuide.name} onClose={() => setActiveGuide(null)}
+          footer={<a className="gbtn primary" href={`#${activeGuide.route}`} onClick={() => setActiveGuide(null)}>Open feature <ArrowRight size={14} /></a>}>
+          <div className="feature-preview-modal">
+            <span className={`feature-status ${statusClass(activeGuide.status)}`}>{activeGuide.status}</span>
+            <div><b>Where it lives</b><span>{activeGuide.lives}</span></div>
+            <div><b>How to start</b><span>{activeGuide.start}</span></div>
+            <div><b>Prerequisite</b><span>{activeGuide.prerequisite}</span></div>
+            <div><b>Preview</b><span>{activeGuide.preview}</span></div>
+          </div>
+        </Modal>
+      )}
 
       <GlassCard pad>
         <PanelHeader title="Master guide" sub="The whole system, in a sentence each" />
@@ -83,15 +207,18 @@ export function HelpPage() {
       <GlassCard pad>
         <PanelHeader title="Importing Noctyrium cards into Anki" sub="Eight steps, from your generated CSV to graded reviews"
           action={<a className="gbtn sm" href="https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp?usp=sharing" target="_blank" rel="noreferrer noopener"><Layers size={14} /> JD Anki Builds</a>} />
-        <div className="anki-guide-steps">
-          {ANKI_STEPS.map((step, i) => (
-            <div className="anki-guide-step" key={step.title}>
-              <div className="anki-step-head"><span className="anki-step-n">{i + 1}</span> <b>{step.title}</b></div>
-              {step.img && <img className="anki-shot" src={`./anki-guide/${step.img}`} alt={step.title} loading="lazy" />}
-              <div className="anki-step-body">{step.body}</div>
-            </div>
-          ))}
-        </div>
+        <details className="help-compact-details">
+          <summary>Show Anki import screenshots</summary>
+          <div className="anki-guide-steps compact">
+            {ANKI_STEPS.map((step, i) => (
+              <div className="anki-guide-step" key={step.title}>
+                <div className="anki-step-head"><span className="anki-step-n">{i + 1}</span> <b>{step.title}</b></div>
+                {step.img && <img className="anki-shot" src={`./anki-guide/${step.img}`} alt={step.title} loading="lazy" />}
+                <div className="anki-step-body">{step.body}</div>
+              </div>
+            ))}
+          </div>
+        </details>
       </GlassCard>
 
       <GlassCard pad>
@@ -121,6 +248,15 @@ export function HelpPage() {
       <FeedbackForm />
     </>
   );
+}
+
+function statusClass(status: GuideStatus): string {
+  if (status === "Ready to test") return "ready";
+  if (status === "Not working yet") return "blocked";
+  if (status === "Requires setup") return "setup";
+  if (status === "Hidden until enabled") return "hidden";
+  if (status === "Planned") return "planned";
+  return "progress";
 }
 
 function FeedbackForm() {

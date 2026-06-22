@@ -15,7 +15,7 @@ import {
   BLUEPRINTS, blueprintsForLane, lanesForMode, blueprintById,
 } from "../../lib/blueprintCatalog";
 import { routeForBlueprintLane } from "../../lib/blueprintRoutes";
-import type { BlueprintLaneId, BlueprintMode, BlueprintNodeStatus, BlueprintNodeType, InstalledBlueprint, InstalledBlueprintNode, SourceType } from "../../lib/types";
+import type { BlueprintLaneId, BlueprintMode, BlueprintNodeStatus, BlueprintNodeType, BlueprintSource, InstalledBlueprint, InstalledBlueprintNode, SourceType } from "../../lib/types";
 
 const DEPTH_KEY = "noctyrium-blueprint-depth";
 const laneKey = (mode: BlueprintMode) => `noctyrium-blueprint-lane-${mode}`;
@@ -161,7 +161,7 @@ function LaneCatalog({
               <div className="bp-catalog-card" key={id}>
                 <div className="bp-catalog-top">
                   <span className="bp-catalog-mark"><Brain size={17} /></span>
-                  <SourceBadge type={bp.source.type} name={bp.source.name} url={bp.source.url} verification={bp.source.verification} />
+                  <SourceBadge source={bp.source} />
                 </div>
                 <b>{bp.title}</b>
                 <span className="bp-catalog-sum">{bp.summary}</span>
@@ -248,7 +248,7 @@ function ContainerView({ install, onClose }: { install: InstalledBlueprint; onCl
           <div className="bp-container-title">{install.title}</div>
           <div className="bp-container-sub">
             {stats.mastered}/{stats.total} mastered · {stats.pct}% overall
-            {bp && <> · <SourceBadge type={bp.source.type} name={bp.source.name} url={bp.source.url} verification={bp.source.verification} inline /></>}
+            {bp && <> · <SourceBadge source={bp.source} inline /></>}
           </div>
         </div>
         <div className="depth-toggle" title="Macro shows strategy; Detailed exposes objectives + trackers">
@@ -284,7 +284,8 @@ function ContainerView({ install, onClose }: { install: InstalledBlueprint; onCl
       <div className="bp-category-list">
         {categories.map((category) => (
           <CategoryBlock key={category.name} name={category.name} nodes={category.nodes} depth={depth}
-            installId={install.id} openNodeId={openNodeId} onOpenNode={setOpenNodeId} />
+            installId={install.id} openNodeId={openNodeId} onOpenNode={setOpenNodeId}
+            forceOpen={Boolean(q || statusFilter !== "all" || tagFilter !== "all")} />
         ))}
         {categories.length === 0 && <div className="dim" style={{ padding: "8px 2px" }}>No nodes match the current filters.</div>}
       </div>
@@ -293,7 +294,7 @@ function ContainerView({ install, onClose }: { install: InstalledBlueprint; onCl
 }
 
 function CategoryBlock({
-  name, nodes, depth, installId, openNodeId, onOpenNode,
+  name, nodes, depth, installId, openNodeId, onOpenNode, forceOpen,
 }: {
   name: string;
   nodes: InstalledBlueprintNode[];
@@ -301,8 +302,10 @@ function CategoryBlock({
   installId: string;
   openNodeId: string | null;
   onOpenNode: (id: string | null) => void;
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const isOpen = forceOpen || open;
   const mastery = Math.round(nodes.reduce((sum, n) => sum + n.mastery, 0) / Math.max(1, nodes.length));
   const mastered = nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
 
@@ -347,15 +350,15 @@ function CategoryBlock({
   }
 
   return (
-    <div className={`bp-cat ${open ? "open" : ""}`}>
+    <div className={`bp-cat ${isOpen ? "open" : ""}`}>
       <button type="button" className="bp-cat-head" onClick={() => setOpen((o) => !o)}>
-        {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
         <span className="bp-cat-icon"><Target size={15} /></span>
         <b className="grow">{name}</b>
         <span className="bp-cat-count">{mastered}/{nodes.length}</span>
         <span className="bp-cat-mastery">{mastery}%</span>
       </button>
-      {open && (
+      {isOpen && (
         <div className="bp-node-list">
           {nodes.map((node) => (
             <NodeRow key={node.id} node={node} installId={installId}
@@ -445,12 +448,13 @@ function NodeDetail({ node, installId }: { node: InstalledBlueprintNode; install
 
       <div className="bp-node-foot">
         {node.sourceUrl
-          ? <a className="bp-node-source" href={node.sourceUrl} target="_blank" rel="noreferrer noopener"><ShieldCheck size={12} /> {node.sourceType} source <ExternalLink size={11} /></a>
-          : <span className="bp-node-source dim"><ShieldCheck size={12} /> {node.sourceType ?? "internal"} source</span>}
+          ? <a className="bp-node-source" href={node.sourceUrl} target="_blank" rel="noreferrer noopener"><ShieldCheck size={12} /> {sourceStatusText(node)} <ExternalLink size={11} /></a>
+          : <span className="bp-node-source dim"><ShieldCheck size={12} /> {sourceStatusText(node)}</span>}
         {node.resourceLinks.map((r) => (
           <a key={r.url} className={`bp-node-source kind-${r.kind}`} href={r.url} target="_blank" rel="noreferrer noopener">{r.label} <ExternalLink size={11} /></a>
         ))}
-        {node.lastVerified && <span className="bp-node-verified">verified {node.lastVerified}</span>}
+        {node.sourceVersion && <span className="bp-node-verified">{node.sourceVersion}</span>}
+        {node.lastVerified && <span className="bp-node-verified">audited {node.lastVerified}</span>}
       </div>
     </div>
   );
@@ -469,16 +473,37 @@ function LinkStepper({ icon, label, value, onStep }: { icon: React.ReactNode; la
   );
 }
 
-function SourceBadge({ type, name, url, verification, inline }: { type: SourceType; name: string; url?: string; verification: string; inline?: boolean }) {
+function SourceBadge({ source, inline }: { source: BlueprintSource; inline?: boolean }) {
+  const { type, name, url, verification, sourceVersion, lastVerified } = source;
+  const label = verification === "verified"
+    ? "user confirmed"
+    : verification === "source-audited"
+      ? "audited"
+      : verification === "needs-review"
+        ? "needs review"
+        : "unverified";
   const body = <>
     {type === "official" ? <ShieldCheck size={11} /> : type === "tool" ? <FlaskConical size={11} /> : <Trophy size={11} />}
     {type === "official" ? "Official" : type === "tool" ? "Tool" : "Internal"}
-    {verification === "verified" && type === "official" ? " · verified" : ""}
+    {` · ${label}`}
   </>;
-  if (inline) return <span className={`bp-source-inline kind-${type}`} title={name}>{body}</span>;
+  const title = [name, sourceVersion, lastVerified ? `audited ${lastVerified}` : ""].filter(Boolean).join(" · ");
+  if (inline) return <span className={`bp-source-inline kind-${type}`} title={title}>{body}</span>;
   return url
-    ? <a className={`tag ${SOURCE_TONE[type] === "cyan" ? "" : SOURCE_TONE[type]} bp-source-tag`} href={url} target="_blank" rel="noreferrer noopener" title={name}>{body}</a>
-    : <span className={`tag ${SOURCE_TONE[type] === "cyan" ? "" : SOURCE_TONE[type]}`} title={name}>{body}</span>;
+    ? <a className={`tag ${SOURCE_TONE[type] === "cyan" ? "" : SOURCE_TONE[type]} bp-source-tag`} href={url} target="_blank" rel="noreferrer noopener" title={title}>{body}</a>
+    : <span className={`tag ${SOURCE_TONE[type] === "cyan" ? "" : SOURCE_TONE[type]}`} title={title}>{body}</span>;
+}
+
+function sourceStatusText(node: InstalledBlueprintNode): string {
+  const type = node.sourceType ?? "internal";
+  const state = node.sourceVerification === "verified"
+    ? "user confirmed"
+    : node.sourceVerification === "source-audited"
+      ? "source audited"
+      : node.sourceVerification === "needs-review"
+        ? "needs review"
+        : "unverified";
+  return `${type} source · ${state}`;
 }
 
 function installStats(install: InstalledBlueprint) {

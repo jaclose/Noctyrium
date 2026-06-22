@@ -656,7 +656,8 @@ function BlueprintTrackerRow({ install, node }: { install: InstalledBlueprint; n
         <Tag tone={node.priority === "high" ? "orange" : node.priority === "low" ? "neutral" : "cyan"}>{node.priority} priority</Tag>
         <Tag tone={node.sourceType === "official" ? "green" : node.sourceType === "tool" ? "cyan" : "neutral"}>{node.sourceType ?? "internal"} source</Tag>
         {node.sourceUrl && <a className="gbtn tiny" href={node.sourceUrl} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={12} /></a>}
-        {node.lastVerified && <span className="sub">verified {node.lastVerified}</span>}
+        {node.sourceVersion && <span className="sub">{node.sourceVersion}</span>}
+        {node.lastVerified && <span className="sub">source audited {node.lastVerified}</span>}
       </div>
     </div>
   );
