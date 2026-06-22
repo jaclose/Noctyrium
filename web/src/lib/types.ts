@@ -98,6 +98,9 @@ export interface PremedExperienceEntry {
   hours: number;
   verified: boolean;
   reflection: string;
+  evidenceLink?: string;
+  competencyTags?: string[];
+  notes?: string;
   created: string; // ISO
 }
 

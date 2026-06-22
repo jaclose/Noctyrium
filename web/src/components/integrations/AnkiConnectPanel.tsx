@@ -30,7 +30,6 @@ export function AnkiConnectPanel() {
   const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
   const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(endpoint);
   const mixedContentRisk = isHttps && localEndpoint && endpoint.startsWith("http://");
-  const corsListPatch = JSON.stringify(["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin], null, 2);
   const corsConfigSnippet = JSON.stringify({
     apiKey: null,
     apiLogPath: null,
@@ -120,6 +119,15 @@ export function AnkiConnectPanel() {
         }
       />
 
+      <div className={`anki-path-card ${mixedContentRisk ? "hosted" : "local"}`}>
+        <b>{mixedContentRisk ? "Hosted browser path" : "Local browser path"}</b>
+        <span>
+          {mixedContentRisk
+            ? "This can be blocked by Chrome before AnkiConnect ever answers. For reliable sync, run Noctyrium locally and connect from 127.0.0.1."
+            : "This is the supported path: Noctyrium and AnkiConnect are both local, so the browser can reach the bridge directly."}
+        </span>
+      </div>
+
       <div className="anki-endpoint-row">
         <label className="stack gap6 grow">
           <span className="field-label">AnkiConnect endpoint</span>
@@ -131,20 +139,19 @@ export function AnkiConnectPanel() {
         </GButton>
       </div>
 
-      <div className="anki-origin-box">
-        <div>
-          <b>Allow-list this exact site</b>
-          <span className="mono">{origin}</span>
-          <small>Vercel preview URLs are different from production URLs. Add the URL shown here, exactly, then restart Anki.</small>
-        </div>
-        <div className="anki-origin-actions">
-          <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={13} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
-          <GButton size="sm" onClick={() => copyText(corsListPatch, "cors")}><Copy size={13} /> {copied === "cors" ? "Copied" : "Copy CORS list"}</GButton>
-          <GButton size="sm" onClick={() => copyText(corsConfigSnippet, "config")}><Copy size={13} /> {copied === "config" ? "Copied" : "Copy full config"}</GButton>
-          <GButton size="sm" onClick={() => copyText(localLaunchCommand, "local")}><Copy size={13} /> {copied === "local" ? "Copied" : "Copy local command"}</GButton>
-          <GButton size="sm" onClick={() => connect(false)} disabled={status === "connecting"}><RefreshCw size={13} className={status === "connecting" ? "spin" : ""} /> Test endpoint</GButton>
-          <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={13} /></a>
-        </div>
+      <div className="anki-quiet-actions">
+        <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={13} /></a>
+        <details className="anki-advanced">
+          <summary>Setup details</summary>
+          <div className="anki-advanced-body">
+            <div><b>Current origin</b><span className="mono">{origin}</span></div>
+            <div className="row wrap gap6">
+              <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={13} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
+              <GButton size="sm" onClick={() => copyText(corsConfigSnippet, "config")}><Copy size={13} /> {copied === "config" ? "Copied" : "Copy config"}</GButton>
+              <GButton size="sm" onClick={() => copyText(localLaunchCommand, "local")}><Copy size={13} /> {copied === "local" ? "Copied" : "Copy local command"}</GButton>
+            </div>
+          </div>
+        </details>
       </div>
 
       {(status === "connecting" || steps.some((step) => step.status !== "pending")) && (
@@ -161,36 +168,15 @@ export function AnkiConnectPanel() {
         </div>
       )}
 
-      {mixedContentRisk && (
-        <div className="anki-warn">
-          <AlertTriangle size={15} />
-          <span>
-            This hosted app is calling local Anki at <b>{endpoint}</b>. If the local check opens but Connect fails,
-            Chrome is likely blocking <b>Local Network / Apps on device</b> access for this site.
-          </span>
-        </div>
-      )}
-
-      {mixedContentRisk && (
-        <div className="anki-local-fix">
-          <b>Fast fixes</b>
-          <span>Chrome: click the sliders/tune icon beside the URL, open Site settings, allow Local Network or Apps on device, then reload.</span>
-          <span>Most reliable: run Noctyrium locally and connect from <a href={localAppUrl}>127.0.0.1:5173</a>.</span>
-        </div>
-      )}
-
       {status === "error" && error && (
-        <div className="anki-setup">
+        <div className="anki-setup compact">
           <div className="anki-setup-head"><AlertTriangle size={15} /> <b>{failureKindLabel(error.kind)}</b></div>
           <p className="sub">{error.message}</p>
-          <ol className="anki-steps">
-            <li>Open the Anki desktop app and keep it running.</li>
-            <li>Install the <b>AnkiConnect</b> add-on (Tools → Add-ons → Get Add-ons → code <span className="mono">2055492159</span>), then restart Anki.</li>
-            <li>Allow this site: AnkiConnect config → add <span className="mono">{origin}</span> to <span className="mono">webCorsOriginList</span>.</li>
-            <li>If this is a Chrome-hosted Vercel page, allow <b>Local Network</b> / <b>Apps on device</b> for this site or use the local app URL.</li>
-            <li>Use the local endpoint above (default <span className="mono">{DEFAULT_ANKI_ENDPOINT}</span>). You will not find an HTTPS URL inside Anki.</li>
-          </ol>
-          <a className="gbtn sm" href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer noopener">AnkiConnect add-on <ExternalLink size={13} /></a>
+          <div className="anki-next-steps">
+            <span>1. Open Anki desktop and keep it running.</span>
+            <span>2. Confirm AnkiConnect is installed: Tools → Add-ons → code <span className="mono">2055492159</span>.</span>
+            <span>3. If hosted keeps failing, use the local app path: <a href={localAppUrl}>127.0.0.1:5173</a>.</span>
+          </div>
         </div>
       )}
 

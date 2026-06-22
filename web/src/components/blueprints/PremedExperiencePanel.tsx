@@ -2,10 +2,12 @@
 // bars and recommended/competitive tick marks. Extracted so the Blueprint
 // Workbench (Pre-Health mode) can render it alongside the Applicant OS lane.
 import { useState } from "react";
+import { Download } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { dayKey } from "../../lib/scoring";
+import { exportPremedExperienceWorkbook } from "../../lib/premedExport";
 import type { PremedExperienceKind } from "../../lib/types";
 
 const PREMED_KINDS: PremedExperienceKind[] = ["Clinical", "Service", "Research", "Shadowing", "Leadership"];
@@ -29,6 +31,9 @@ export function PremedExperiencePanel() {
   const [hours, setHours] = useState("2");
   const [verified, setVerified] = useState(false);
   const [reflection, setReflection] = useState("");
+  const [evidenceLink, setEvidenceLink] = useState("");
+  const [competencyTags, setCompetencyTags] = useState("");
+  const [notes, setNotes] = useState("");
   const entries = s.premedExperiences ?? [];
   const totals = PREMED_KINDS.map((k) => ({
     kind: k,
@@ -45,14 +50,24 @@ export function PremedExperiencePanel() {
     s.addPremedExperience({
       date, kind, title: title.trim(), organization: organization.trim(),
       contact: contact.trim() || undefined, hours: amount, verified, reflection: reflection.trim(),
+      evidenceLink: evidenceLink.trim() || undefined,
+      competencyTags: splitTags(competencyTags),
+      notes: notes.trim() || undefined,
     });
     setTitle(""); setOrganization(""); setContact(""); setHours("2"); setVerified(false); setReflection("");
+    setEvidenceLink(""); setCompetencyTags(""); setNotes("");
   }
 
   return (
     <GlassCard pad className="premed-hours-card">
       <PanelHeader title="Pre-Med Experience Log" sub="Clinical exposure, service, research, shadowing, leadership, and verification evidence"
-        action={<Tag tone={verifiedHours >= 50 ? "green" : verifiedHours > 0 ? "cyan" : "neutral"}>{verifiedHours} verified hours</Tag>} />
+        action={
+          <div className="row gap6">
+            <Tag tone={verifiedHours >= 50 ? "green" : verifiedHours > 0 ? "cyan" : "neutral"}>{verifiedHours} verified hours</Tag>
+            <a className="gbtn sm" href="#premed-log">View log</a>
+            <GButton size="sm" onClick={() => exportPremedExperienceWorkbook(entries)} disabled={!entries.length}><Download size={13} /> Export</GButton>
+          </div>
+        } />
       <div className="premed-hours-layout">
         <div className="premed-hours-form">
           <div className="step-form-grid">
@@ -68,6 +83,11 @@ export function PremedExperiencePanel() {
             <Field label="Verification contact" placeholder="email, supervisor, club officer" value={contact} onChange={(e) => setContact(e.target.value)} />
           </div>
           <TextAreaField label="Reflection / evidence" placeholder="What mattered? What did you learn? What proof exists?" value={reflection} onChange={(e) => setReflection(e.target.value)} />
+          <Field label="Evidence link" placeholder="optional URL, folder, or artifact" value={evidenceLink} onChange={(e) => setEvidenceLink(e.target.value)} />
+          <div className="step-form-grid">
+            <Field label="Competency tags" placeholder="service, teamwork, reliability" value={competencyTags} onChange={(e) => setCompetencyTags(e.target.value)} />
+            <Field label="Notes" placeholder="verifier status, application use, next follow-up" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
           <div className="premed-log-actions">
             <label className="promise-check compact">
               <input type="checkbox" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
@@ -135,4 +155,8 @@ export function PremedExperiencePanel() {
       )}
     </GlassCard>
   );
+}
+
+function splitTags(input: string): string[] {
+  return [...new Set(input.split(",").map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean))];
 }

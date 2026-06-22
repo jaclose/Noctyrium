@@ -73,7 +73,7 @@ export function makeSeed(): NoctyriumState {
       dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
       hiddenDashboardWidgets: DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
       journalReviewTime: "20:00",
-      hiddenNav: ["courses", "prompts", "integrations", "folders", "premed", "mcat", "dat", "casper"],
+      hiddenNav: ["courses", "prompts", "integrations", "folders", "premed"],
     },
     terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),
     courses: ACADEMIC_TEMPLATE_COURSES.map(({ aliases: _aliases, modules, ...course }) => ({

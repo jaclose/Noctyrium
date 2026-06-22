@@ -46,7 +46,7 @@ export class AnkiError extends Error {
   }
 }
 
-export type AnkiDiagnosticStepId = "endpoint" | "permission" | "version" | "decks" | "reviews";
+export type AnkiDiagnosticStepId = "endpoint" | "version" | "decks" | "reviews";
 export type AnkiDiagnosticStatus = "pending" | "running" | "ok" | "failed";
 export interface AnkiDiagnosticStep {
   id: AnkiDiagnosticStepId;
@@ -57,7 +57,6 @@ export interface AnkiDiagnosticStep {
 
 export const ANKI_DIAGNOSTIC_TEMPLATE: AnkiDiagnosticStep[] = [
   { id: "endpoint", label: "Checking endpoint", status: "pending" },
-  { id: "permission", label: "Requesting AnkiConnect permission", status: "pending" },
   { id: "version", label: "Testing AnkiConnect version", status: "pending" },
   { id: "decks", label: "Reading decks", status: "pending" },
   { id: "reviews", label: "Reading review counts", status: "pending" },
@@ -65,7 +64,7 @@ export const ANKI_DIAGNOSTIC_TEMPLATE: AnkiDiagnosticStep[] = [
 
 interface LocalFetchInit extends RequestInit {
   // Chrome Local Network Access hint. It is not in TypeScript's DOM lib yet.
-  targetAddressSpace?: "loopback" | "local";
+  targetAddressSpace?: "local";
 }
 
 function endpointUrl(endpoint: string): URL {
@@ -111,9 +110,7 @@ async function invoke<T>(action: string, params: Record<string, unknown>, endpoi
   return data.result as T;
 }
 
-function targetAddressSpace(endpoint: URL): "loopback" | "local" {
-  const host = endpoint.hostname.toLowerCase();
-  if (host === "localhost" || host === "::1" || host.startsWith("127.")) return "loopback";
+function targetAddressSpace(_endpoint: URL): "local" {
   return "local";
 }
 
@@ -180,16 +177,10 @@ export async function fetchAnkiSnapshot(endpoint: string, onStep?: (id: AnkiDiag
   onStep?.("endpoint", "running");
   endpointUrl(endpoint);
   onStep?.("endpoint", "ok", endpoint);
-  onStep?.("permission", "running");
-  const permission = await requestAnkiPermission(endpoint);
-  if (permission.permission !== "granted") {
-    throw new AnkiError("AnkiConnect denied this site. Remove the origin from ignoreOriginList if it was denied earlier, add this exact site to webCorsOriginList, then restart Anki.", "permission-denied");
-  }
-  onStep?.("permission", "ok", permission.requireApiKey ? "Granted with API key required" : "Granted");
   onStep?.("version", "running");
-  const version = permission.version ?? await ankiVersion(endpoint);
-  if (typeof version !== "number" || version < 6) {
-    throw new AnkiError(`Unsupported AnkiConnect API version: ${String(version)}. Noctyrium expects version 6.`, "api-incompatibility");
+  const version = await ankiVersion(endpoint);
+  if (typeof version !== "number" || version < 5) {
+    throw new AnkiError(`Unsupported AnkiConnect API version: ${String(version)}. Noctyrium expects version 5 or newer.`, "api-incompatibility");
   }
   onStep?.("version", "ok", `v${version}`);
   onStep?.("decks", "running");

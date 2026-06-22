@@ -27,10 +27,11 @@ export const NAV: NavItem[] = [
   { id: "dedicated", label: "Dedicated Prep", subtitle: "Exam runway planning, assessments, and execution loops", icon: Brain },
   { id: "shelf", label: "Shelf Exams", subtitle: "Rotation subject exams and carry-forward repair", icon: Brain },
   { id: "step3", label: "Step 3", subtitle: "Independent practice, CCS, and longitudinal management", icon: Brain },
-  { id: "premed", label: "Pre-Med / MCAT", subtitle: "Clinical hours, service, research, applications, and MCAT runway", icon: Compass },
+  { id: "premed", label: "Pre-Med / MCAT / DAT", subtitle: "Premed evidence, MCAT, DAT, CASPer, and application runway", icon: Compass },
   { id: "mcat", label: "MCAT", subtitle: "AAMC content spine, passages, CARS, and full-length repair", icon: Compass },
   { id: "dat", label: "DAT", subtitle: "Dental admission test blueprint and evidence-guided prep", icon: Compass },
   { id: "casper", label: "CASPer", subtitle: "Situational judgment practice and reflection evidence", icon: Compass },
+  { id: "premed-log", label: "Experience Log", subtitle: "Pre-med activities, verification, evidence, and export", icon: Compass },
   { id: "appchecker", label: "Application Checker", subtitle: "Med school + residency application tracking", icon: ClipboardCheck },
   // Tools folder
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },
@@ -38,6 +39,7 @@ export const NAV: NavItem[] = [
   { id: "prompts", label: "Prompt Library", subtitle: "Reusable AI prompts for study workflows", icon: Library },
   { id: "integrations", label: "Integrations", subtitle: "Connect Anki, calendar, drives, and more", icon: Share2 },
   { id: "leaderboards", label: "Leaderboards", subtitle: "Opt-in, friendly accountability (coming soon)", icon: Trophy },
+  { id: "activity", label: "Activity History", subtitle: "Full local study ledger with filters and export", icon: Calendar },
   // After Tools
   { id: "about", label: "About", subtitle: "What Noctyrium is, where it is headed, and the live project preview", icon: Info },
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
@@ -51,7 +53,7 @@ export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id
 export const SIDEBAR_TOP = [
   "dashboard", "courses", "tracker", "productivity", "journal", "reports",
 ];
-export const SIDEBAR_PREP = ["step", "step2", "dedicated", "shelf", "step3", "premed", "mcat", "dat", "casper", "appchecker"];
+export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.

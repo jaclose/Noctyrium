@@ -398,7 +398,12 @@ function ActivityLog({ logs }: { logs: StudyLog[] }) {
   return (
     <GlassCard pad className="activity-log-card">
       <PanelHeader title="Activity Log" sub="Every logged block, newest first — a running history of your effort"
-        action={<Tag tone={logs.length ? "cyan" : "neutral"}>{logs.length} event{logs.length === 1 ? "" : "s"}</Tag>} />
+        action={
+          <div className="row gap6">
+            <Tag tone={logs.length ? "cyan" : "neutral"}>{logs.length} event{logs.length === 1 ? "" : "s"}</Tag>
+            <a className="gbtn sm" href="#activity">View full activity</a>
+          </div>
+        } />
       {logs.length === 0 ? (
         <div className="activity-empty">
           <History size={20} />

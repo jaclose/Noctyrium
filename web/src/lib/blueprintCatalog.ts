@@ -59,23 +59,23 @@ export function catalogNodeId(blueprintId: string, category: string, objective: 
 }
 
 // ---- Source records (official sources govern) -----------------------------
-const verified = (name: string, url: string): BlueprintSource =>
-  ({ type: "official", name, url, lastVerified: "2026-06-21", verification: "verified", confidence: "high" });
+const official = (name: string, url: string): BlueprintSource =>
+  ({ type: "official", name, url, verification: "needs-review", confidence: "high" });
 const tool = (name: string, url: string): BlueprintSource =>
-  ({ type: "tool", name, url, lastVerified: "2026-06-21", verification: "verified", confidence: "medium" });
+  ({ type: "tool", name, url, verification: "needs-review", confidence: "medium" });
 const internal = (name: string): BlueprintSource =>
   ({ type: "internal", name, verification: "unverified", confidence: "medium" });
 
 const SRC = {
-  usmleStep1: verified("USMLE Step 1 Content Outline", "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications"),
-  usmleStep2: verified("USMLE Step 2 CK Content Outline", "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications"),
-  usmleStep3: verified("USMLE Step 3 Content Outline", "https://www.usmle.org/exam-resources/step-3-materials/step-3-content-outline-and-specifications"),
-  nbmeShelf: verified("NBME Clinical Science Subject Exams", "https://www.nbme.org/educators/assess-learn/subject-exams/clinical-science"),
-  aamcMcat: verified("AAMC What's on the MCAT Exam", "https://students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline"),
-  aamcComp: verified("AAMC Premed Competencies", "https://students-residents.aamc.org/real-stories-demonstrating-premed-competencies/premed-competencies-entering-medical-students"),
-  amcas: verified("AAMC AMCAS Applicant Guide", "https://students-residents.aamc.org/applying-medical-school-amcas/applying-medical-school-amcas"),
-  casper: verified("Acuity Insights — Casper", "https://acuityinsights.app/casper/"),
-  dat: verified("ADA Dental Admission Test (DAT)", "https://www.ada.org/education/testing/dental-admission-test"),
+  usmleStep1: official("USMLE Step 1 Content Outline", "https://www.usmle.org/exam-resources/step-1-materials/step-1-content-outline-and-specifications"),
+  usmleStep2: official("USMLE Step 2 CK Content Outline", "https://www.usmle.org/exam-resources/step-2-ck-materials/step-2-ck-content-outline-specifications"),
+  usmleStep3: official("USMLE Step 3 Content Outline", "https://www.usmle.org/exam-resources/step-3-materials/step-3-content-outline-and-specifications"),
+  nbmeShelf: official("NBME Clinical Science Subject Exams", "https://www.nbme.org/educators/assess-learn/subject-exams/clinical-science"),
+  aamcMcat: official("AAMC What's on the MCAT Exam", "https://students-residents.aamc.org/prepare-mcat-exam/whats-mcat-exam-pdf-outline"),
+  aamcComp: official("AAMC Premed Competencies", "https://students-residents.aamc.org/real-stories-demonstrating-premed-competencies/premed-competencies-entering-medical-students"),
+  amcas: official("AAMC AMCAS Applicant Guide", "https://students-residents.aamc.org/applying-medical-school-amcas/applying-medical-school-amcas"),
+  casper: official("Acuity Insights — Casper", "https://acuityinsights.app/casper/"),
+  dat: official("ADA Dental Admission Test (DAT)", "https://www.ada.org/education/testing/dental-admission-test"),
   jackWestin: tool("Jack Westin (topic navigation + early practice tool)", "https://jackwestin.com/"),
   godFile: internal("Blueprint Study God File v1"),
 } as const;

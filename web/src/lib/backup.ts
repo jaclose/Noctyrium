@@ -128,11 +128,9 @@ function normalizeHiddenNav(value: unknown, trackId: string) {
     return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
   }
   const base = ["courses", "prompts", "integrations", "folders"];
-  const usmle = ["step", "step2", "dedicated", "shelf", "step3"];
-  const prehealth = ["premed", "mcat", "dat", "casper"];
-  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, ...usmle, "dat"];
-  if (trackId === "nursing" || trackId === "pa") return [...base, ...usmle, ...prehealth];
-  return [...base, ...prehealth];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
+  return [...base, "premed"];
 }
 
 function normalizeJournalReviewTime(value: unknown) {

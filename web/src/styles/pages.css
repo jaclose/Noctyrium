@@ -2226,11 +2226,42 @@
 }
 .premed-recent-row b { display: block; font-size: 12.5px; }
 .premed-recent-row span { display: block; color: var(--text-45); font-size: 11.2px; margin-top: 2px; }
+.premed-log-stat .stat-icon { color: var(--cyan); }
+.premed-log-table { display: grid; gap: 6px; }
+.premed-log-head, .premed-log-row {
+  display: grid;
+  grid-template-columns: 100px 112px 72px minmax(220px, 1fr) minmax(150px, 210px);
+  gap: 10px;
+  align-items: start;
+}
+.premed-log-head {
+  padding: 0 10px 6px;
+  color: var(--text-35);
+  font-size: 10.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.premed-log-row {
+  padding: 11px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.026);
+  border: 1px solid rgba(180,226,255,0.08);
+  color: var(--text-65);
+  font-size: 12px;
+}
+.premed-log-main, .premed-log-evidence { display: grid; gap: 4px; }
+.premed-log-main b { color: var(--text); font-size: 13px; }
+.premed-log-main small, .premed-log-evidence small { color: var(--text-40); }
+.premed-log-main em { color: var(--text-55); font-style: normal; line-height: 1.35; }
+.premed-log-evidence { justify-items: start; }
 @media (max-width: 920px) {
   .premed-hours-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .premed-recent-row { align-items: flex-start; flex-wrap: wrap; }
+  .premed-log-head { display: none; }
+  .premed-log-row { grid-template-columns: 1fr; }
 }
 
 /* Prep resource library rows (real add-to-library actions) */
@@ -3088,6 +3119,27 @@
 /* ---- Anki (AnkiConnect) integration ---- */
 .anki-endpoint-row { display: flex; align-items: flex-end; gap: 10px; margin-top: 4px; }
 .anki-endpoint-row .field-label { font-size: 11px; }
+.anki-path-card {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 12px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  border: 1px solid rgba(90,215,239,0.16);
+  background: rgba(90,215,239,0.05);
+}
+.anki-path-card.hosted {
+  border-color: rgba(255,159,67,0.18);
+  background: rgba(255,159,67,0.055);
+}
+.anki-path-card b { font-size: 12.5px; color: var(--text-85); }
+.anki-path-card span { color: var(--text-55); font-size: 12px; line-height: 1.4; }
+.anki-quiet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.anki-advanced { color: var(--text-45); font-size: 12px; }
+.anki-advanced summary { cursor: pointer; font-weight: 800; }
+.anki-advanced-body { display: grid; gap: 8px; margin-top: 8px; padding: 10px; border-radius: 11px; background: rgba(255,255,255,0.025); border: 1px solid rgba(180,226,255,0.08); }
+.anki-advanced-body b { display: block; color: var(--text-65); margin-bottom: 3px; }
+.anki-advanced-body .mono { color: var(--cyan); word-break: break-all; }
 .anki-origin-box {
   display: flex;
   justify-content: space-between;
@@ -3165,9 +3217,12 @@
 .anki-local-fix span { color: var(--text-60); }
 .anki-local-fix a { color: var(--cyan); font-weight: 800; }
 .anki-setup { margin-top: 12px; padding: 12px 13px; border-radius: 13px; background: rgba(255,159,67,0.06); border: 1px solid rgba(255,159,67,0.22); }
+.anki-setup.compact { background: rgba(255,159,67,0.045); }
 .anki-setup-head { display: flex; align-items: center; gap: 7px; font-size: 13px; }
 .anki-setup-head svg { color: var(--orange); }
 .anki-setup p { margin: 6px 0 8px; }
+.anki-next-steps { display: grid; gap: 5px; color: var(--text-60); font-size: 12px; line-height: 1.4; }
+.anki-next-steps a { color: var(--cyan); font-weight: 850; }
 .anki-steps { margin: 8px 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--text-70); line-height: 1.45; }
 .anki-steps .mono { color: var(--cyan); }
 .anki-stat-row { margin-top: 14px; }
@@ -3243,6 +3298,31 @@
 .activity-empty svg { color: var(--cyan); flex-shrink: 0; }
 .activity-empty b { display: block; font-size: 13px; color: var(--text-80); }
 .activity-empty span { font-size: 12px; }
+.activity-history-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 160px 160px;
+  gap: 10px;
+  margin-top: 12px;
+}
+.activity-history-list { display: grid; gap: 7px; }
+.activity-history-row {
+  display: grid;
+  grid-template-columns: 110px 110px 72px 92px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.026);
+  border: 1px solid rgba(180,226,255,0.08);
+  color: var(--text-62);
+  font-size: 12px;
+}
+.activity-history-row b { display: block; color: var(--text); font-size: 12.5px; }
+.activity-history-row small { display: block; color: var(--text-40); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) {
+  .activity-history-filters,
+  .activity-history-row { grid-template-columns: 1fr; }
+}
 
 /* ---- Dashboard stat card hover overview ---- */
 /* The wrap is a flex box so the inner card stretches to the shared grid-row

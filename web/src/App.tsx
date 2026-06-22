@@ -27,6 +27,8 @@ import { HelpPage } from "./pages/HelpPage";
 import { AboutPage } from "./pages/AboutPage";
 import { ApplicationCheckerPage } from "./pages/ApplicationCheckerPage";
 import { LeaderboardsPage } from "./pages/LeaderboardsPage";
+import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
+import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -43,6 +45,8 @@ const PAGES: Record<string, () => JSX.Element> = {
   mcat: () => <StepPage initialLane="mcat" />,
   dat: () => <StepPage initialLane="dat" />,
   casper: () => <StepPage initialLane="casper" />,
+  "premed-log": PremedExperienceLogPage,
+  activity: ActivityHistoryPage,
   reports: ReportsPage,
   productivity: ProductivityPage,
   tasks: TasksPage,

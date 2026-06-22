@@ -873,11 +873,9 @@ function mergeStringLists(value: unknown, defaults: readonly string[]) {
 
 function defaultHiddenNavForTrack(trackId: string): string[] {
   const base = ["courses", "prompts", "integrations", "folders"];
-  const usmle = ["step", "step2", "dedicated", "shelf", "step3"];
-  const prehealth = ["premed", "mcat", "dat", "casper"];
-  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, ...usmle, "dat"];
-  if (trackId === "nursing" || trackId === "pa") return [...base, ...usmle, ...prehealth];
-  return [...base, ...prehealth];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
+  return [...base, "premed"];
 }
 
 function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
@@ -887,15 +885,14 @@ function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
   set.add("integrations");
   set.add("folders");
   if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") {
-    ["step", "step2", "dedicated", "shelf", "step3", "dat"].forEach((id) => set.add(id));
+    set.add("step");
     set.delete("premed");
-    set.delete("mcat");
-    set.delete("casper");
   } else if (trackId === "nursing" || trackId === "pa") {
-    ["step", "step2", "dedicated", "shelf", "step3", "premed", "mcat", "dat", "casper"].forEach((id) => set.add(id));
+    set.add("step");
+    set.add("premed");
   } else {
-    ["premed", "mcat", "dat", "casper"].forEach((id) => set.add(id));
-    ["step", "step2", "dedicated", "shelf", "step3"].forEach((id) => set.delete(id));
+    set.add("premed");
+    set.delete("step");
   }
   return [...set];
 }
