@@ -9,7 +9,7 @@ import { resolveTrack } from "./tracks";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
-  "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "dayPlans", "activeDayKey", "schemaVersion",
+  "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -100,6 +100,7 @@ export function parseImport(text: string): NoctyriumState {
       premed: defaultBoardPrep("Pre-Med", "not-started", 8, 15),
       ...(data.boardPrep ?? {}),
     },
+    blueprintInstalls: Array.isArray(data.blueprintInstalls) ? data.blueprintInstalls : [],
     dayPlans: data.dayPlans ?? [],
     activeDayKey: data.activeDayKey,
   } as NoctyriumState;
@@ -127,9 +128,11 @@ function normalizeHiddenNav(value: unknown, trackId: string) {
     return [...new Set(value.filter((item): item is string => typeof item === "string" && item.trim().length > 0))];
   }
   const base = ["courses", "prompts", "integrations", "folders"];
-  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
-  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
-  return [...base, "premed"];
+  const usmle = ["step", "step2", "dedicated", "shelf", "step3"];
+  const prehealth = ["premed", "mcat", "dat", "casper"];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, ...usmle, "dat"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, ...usmle, ...prehealth];
+  return [...base, ...prehealth];
 }
 
 function normalizeJournalReviewTime(value: unknown) {

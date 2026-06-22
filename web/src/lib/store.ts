@@ -683,6 +683,12 @@ export const useStore = create<Store>()(
           // Introduce installable blueprint containers; existing data is untouched.
           s.blueprintInstalls = Array.isArray(s.blueprintInstalls) ? s.blueprintInstalls : [];
         }
+        if (fromVersion < 23) {
+          // Add direct Blueprint lane routes without flooding existing sidebars.
+          const profile = isRecord(s.profile) ? s.profile : {};
+          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+          s.profile = normalizeProfile(profile);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -867,9 +873,11 @@ function mergeStringLists(value: unknown, defaults: readonly string[]) {
 
 function defaultHiddenNavForTrack(trackId: string): string[] {
   const base = ["courses", "prompts", "integrations", "folders"];
-  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, "step"];
-  if (trackId === "nursing" || trackId === "pa") return [...base, "step", "premed"];
-  return [...base, "premed"];
+  const usmle = ["step", "step2", "dedicated", "shelf", "step3"];
+  const prehealth = ["premed", "mcat", "dat", "casper"];
+  if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") return [...base, ...usmle, "dat"];
+  if (trackId === "nursing" || trackId === "pa") return [...base, ...usmle, ...prehealth];
+  return [...base, ...prehealth];
 }
 
 function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
@@ -879,14 +887,15 @@ function hiddenNavForTrackSwitch(current: unknown, trackId: string): string[] {
   set.add("integrations");
   set.add("folders");
   if (trackId === "premed" || trackId === "mcat" || trackId === "undergrad") {
-    set.add("step");
+    ["step", "step2", "dedicated", "shelf", "step3", "dat"].forEach((id) => set.add(id));
     set.delete("premed");
+    set.delete("mcat");
+    set.delete("casper");
   } else if (trackId === "nursing" || trackId === "pa") {
-    set.add("step");
-    set.add("premed");
+    ["step", "step2", "dedicated", "shelf", "step3", "premed", "mcat", "dat", "casper"].forEach((id) => set.add(id));
   } else {
-    set.add("premed");
-    set.delete("step");
+    ["premed", "mcat", "dat", "casper"].forEach((id) => set.add(id));
+    ["step", "step2", "dedicated", "shelf", "step3"].forEach((id) => set.delete(id));
   }
   return [...set];
 }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useUi } from "../lib/uiStore";
 import {
-  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil, Brain,
+  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil, Brain, ExternalLink,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
@@ -11,12 +11,23 @@ import {
   passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
   suggestMoves, scopeMastery, isCompletionKind, isQuestionKind,
 } from "../lib/tracker";
+import { BLUEPRINT_LANES } from "../lib/blueprintCatalog";
+import { routeForBlueprintLane } from "../lib/blueprintRoutes";
 import { canonicalTrackerPath, normalizeTrackerPath, trackerItemKey, trackerPathKey } from "../lib/pathUtils";
-import type { Course, InstalledBlueprint, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
+import type { BlueprintNodeStatus, Course, InstalledBlueprint, InstalledBlueprintNode, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
 type Tab = (typeof TABS)[number];
+const BLUEPRINT_SCOPE_PREFIX = "blueprint:";
+const BLUEPRINT_STATUS_LABEL: Record<BlueprintNodeStatus, string> = {
+  "not-started": "Not started",
+  "in-progress": "In progress",
+  blocked: "Blocked",
+  mastered: "Mastered",
+  done: "Done",
+};
+const BLUEPRINT_STATUS_ORDER: BlueprintNodeStatus[] = ["not-started", "in-progress", "blocked", "mastered", "done"];
 
 const kindTone: Record<TrackerKind, "cyan" | "purple" | "orange" | "green" | "neutral"> = {
   Lecture: "cyan",
@@ -80,11 +91,23 @@ export function CourseTrackerPage() {
   const courseScopes = useMemo(() => collectCourseScopes(s.terms, s.courses), [s.terms, s.courses]);
   const tree = useMemo(() => buildTree(s.tracker, courseScopes), [s.tracker, courseScopes]);
   const scopeOptions = useMemo(() => mergeScopes(collectScopes(s.tracker), courseScopes), [s.tracker, courseScopes]);
+  const blueprintScope = parseBlueprintScope(scope);
+  const activeBlueprintInstall = blueprintScope
+    ? s.blueprintInstalls.find((install) => install.id === blueprintScope.installId) ?? null
+    : null;
+  const activeBlueprintCategory = blueprintScope?.category;
+  const activeBlueprintNodes = activeBlueprintInstall
+    ? sortedBlueprintNodes(activeBlueprintInstall.nodes).filter((node) => !activeBlueprintCategory || node.category === activeBlueprintCategory)
+    : [];
+  const inBlueprintScope = Boolean(activeBlueprintInstall);
+  const blueprintMastery = activeBlueprintNodes.length
+    ? Math.round(activeBlueprintNodes.reduce((sum, node) => sum + node.mastery, 0) / activeBlueprintNodes.length)
+    : 0;
 
-  const inScope = scope ? s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")) : s.tracker;
+  const inScope = inBlueprintScope ? [] : scope ? s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")) : s.tracker;
   const items = inScope.filter((t) => tabMatch(tab, t.kind));
-  const mastery = scopeMastery(inScope);
-  const suggestions = useMemo(() => suggestMoves(inScope, 3, salt), [inScope, salt]);
+  const mastery = inBlueprintScope ? blueprintMastery : scopeMastery(inScope);
+  const suggestions = useMemo(() => inBlueprintScope ? [] : suggestMoves(inScope, 3, salt), [inBlueprintScope, inScope, salt]);
 
   function toggle(path: string) {
     setOpenNodes((prev) => {
@@ -122,12 +145,12 @@ export function CourseTrackerPage() {
           <div className={`tree-node ${scope === "" ? "on" : ""}`} onClick={() => setScope("")}>
             <span style={{ width: 14 }} /><span>Everything</span><span className="tree-count">{s.tracker.length}</span>
           </div>
-          <BlueprintSpine installs={s.blueprintInstalls} />
           {tree.map((node) => (
             <TreeNode key={node.path} node={node} depth={0}
               openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
           ))}
           {tree.length === 0 && <EmptyState title="Empty tree" hint="Bulk-import your lectures to begin." />}
+          <BlueprintTree installs={s.blueprintInstalls} openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
         </div>
         <GButton size="sm" className="primary" style={{ marginTop: 12, width: "100%" }} onClick={() => setBulkOpen(true)}>
           <ListPlus size={15} /> Import lectures by name
@@ -146,25 +169,31 @@ export function CourseTrackerPage() {
                 <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}>
                   <HelpCircle size={14} /> {guideOpen ? "Hide guide" : "How passes work"}
                 </GButton>
-                <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Scope">
-                  <option value="">Everything</option>
-                  {scopeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
+                {inBlueprintScope && activeBlueprintInstall ? (
+                  <a className="gbtn sm" href={`#${routeForBlueprintLane(activeBlueprintInstall.laneId)}`}><Brain size={14} /> Workbench</a>
+                ) : (
+                  <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Scope">
+                    <option value="">Everything</option>
+                    {scopeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                )}
                 <GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={15} /></GhostButton>
               </div>} />
           {guideOpen && <TrackerGuide />}
           <div className="stack gap8">
-            {suggestions.map((sg, i) => (
-              <div className={`sugg ${sg.itemId ? "clickable" : ""}`} key={i}
-                onClick={() => sg.itemId && focusItem(sg.itemId)}>
-                <span className="sugg-dot" style={{ background: sg.color }} />
-                <div className="grow">
-                  <div className="sugg-title">{sg.title}</div>
-                  <div className="sugg-reason">{sg.reason}</div>
+            {inBlueprintScope && activeBlueprintInstall
+              ? <BlueprintSuggestions install={activeBlueprintInstall} nodes={activeBlueprintNodes} />
+              : suggestions.map((sg, i) => (
+                <div className={`sugg ${sg.itemId ? "clickable" : ""}`} key={i}
+                  onClick={() => sg.itemId && focusItem(sg.itemId)}>
+                  <span className="sugg-dot" style={{ background: sg.color }} />
+                  <div className="grow">
+                    <div className="sugg-title">{sg.title}</div>
+                    <div className="sugg-reason">{sg.reason}</div>
+                  </div>
+                  {sg.itemId && <PassPlus id={sg.itemId} />}
                 </div>
-                {sg.itemId && <PassPlus id={sg.itemId} />}
-              </div>
-            ))}
+              ))}
           </div>
           <div className="pass-legend">
             <span><i style={{ background: PASS_COLOR.untouched }} />0 pass: blue</span>
@@ -181,11 +210,19 @@ export function CourseTrackerPage() {
         <GlassCard pad>
           <div className="tk-hero">
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{scope || "Everything"}</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>
+                {inBlueprintScope && activeBlueprintInstall
+                  ? blueprintScope?.category ?? activeBlueprintInstall.title
+                  : scope || "Everything"}
+              </div>
               <div className="tk-mastery">
-                {inScope.length} items · {inScope.filter((i) => i.kind === "Lecture").length} lec ·{" "}
-                {inScope.filter((i) => i.kind === "DLA").length} DLA · {inScope.filter((i) => i.passes >= 3).length} mature ·{" "}
-                {inScope.filter((i) => i.passes >= 4).length} mastered
+                {inBlueprintScope
+                  ? `${activeBlueprintNodes.length} blueprint objects · ${activeBlueprintNodes.filter((n) => n.status === "done" || n.status === "mastered").length} complete · ${activeBlueprintNodes.filter((n) => n.sourceUrl).length} sourced`
+                  : <>
+                    {inScope.length} items · {inScope.filter((i) => i.kind === "Lecture").length} lec ·{" "}
+                    {inScope.filter((i) => i.kind === "DLA").length} DLA · {inScope.filter((i) => i.passes >= 3).length} mature ·{" "}
+                    {inScope.filter((i) => i.passes >= 4).length} mastered
+                  </>}
               </div>
             </div>
             <div className="ring" style={{ width: 92, height: 92 }}>
@@ -210,13 +247,19 @@ export function CourseTrackerPage() {
               </div>
             } />
           {guideOpen && <TrackerGuide />}
-          <div className="filter-bar" style={{ marginBottom: 12 }}>
-            {TABS.map((t) => (
-              <button key={t} className={`filter-pill ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</button>
-            ))}
-          </div>
-          {items.length === 0 && <EmptyState title="No items here" hint="Pick another scope, switch tabs, or import." />}
-          {items.map((it) => <ItemRow key={it.id} item={it} highlight={it.id === highlightId} />)}
+          {inBlueprintScope && activeBlueprintInstall ? (
+            <BlueprintTrackerItems install={activeBlueprintInstall} nodes={activeBlueprintNodes} category={blueprintScope?.category} />
+          ) : (
+            <>
+              <div className="filter-bar" style={{ marginBottom: 12 }}>
+                {TABS.map((t) => (
+                  <button key={t} className={`filter-pill ${tab === t ? "on" : ""}`} onClick={() => setTab(t)}>{t}</button>
+                ))}
+              </div>
+              {items.length === 0 && <EmptyState title="No items here" hint="Pick another scope, switch tabs, or import." />}
+              {items.map((it) => <ItemRow key={it.id} item={it} highlight={it.id === highlightId} />)}
+            </>
+          )}
         </GlassCard>
       </div>
 
@@ -415,42 +458,285 @@ function PassPlus({ id }: { id: string }) {
   );
 }
 
-// Installed blueprint containers, surfaced as collapsible nodes under the
-// mastery tree. Each links to its lane in Blueprint Prep (the rich workbench).
-const USMLE_LANES = new Set(["step1", "step2", "dedicated", "shelf", "step3"]);
-
-function BlueprintSpine({ installs }: { installs: InstalledBlueprint[] }) {
+function BlueprintTree({
+  installs, openNodes, onToggle, active, onSelect,
+}: {
+  installs: InstalledBlueprint[];
+  openNodes: Set<string>;
+  onToggle: (path: string) => void;
+  active: string;
+  onSelect: (scope: string) => void;
+}) {
   if (installs.length === 0) {
     return (
       <div className="tracker-blueprint-spine empty" aria-label="Installed blueprints">
-        <div className="tracker-blueprint-spine-head"><Brain size={13} /> Installed Blueprints</div>
+        <div className="tracker-blueprint-spine-head"><Brain size={13} /> Blueprints & Exams</div>
         <a className="tracker-blueprint-empty" href="#step">Install a blueprint to spin up a container here <ChevronRight size={13} /></a>
       </div>
     );
   }
+  const byLane = new Map(installs.map((install) => [install.laneId, [] as InstalledBlueprint[]]));
+  installs.forEach((install) => byLane.get(install.laneId)?.push(install));
   return (
     <div className="tracker-blueprint-spine" aria-label="Installed blueprints">
-      <div className="tracker-blueprint-spine-head"><Brain size={13} /> Installed Blueprints</div>
-      {installs.map((install) => {
-        const total = install.nodes.length;
-        const mastered = install.nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
-        const overall = total ? Math.round(install.nodes.reduce((sum, n) => sum + n.mastery, 0) / total) : 0;
-        const href = USMLE_LANES.has(install.laneId) ? "#step" : "#premed";
-        const categories = new Set(install.nodes.map((n) => n.category)).size;
+      <div className="tracker-blueprint-spine-head"><Brain size={13} /> Blueprints & Exams</div>
+      {BLUEPRINT_LANES.filter((lane) => byLane.has(lane.id)).map((lane) => {
+        const laneInstalls = byLane.get(lane.id) ?? [];
+        const laneKey = `bp-lane:${lane.id}`;
+        const laneOpen = openNodes.has(laneKey);
         return (
-          <a key={install.id} className="tracker-blueprint-row installed" href={href}
-            title={`${install.title}: ${mastered}/${total} mastered`}>
-            <span className="tracker-blueprint-dot" />
-            <span className="grow">
-              <b>{install.title}</b>
-              <small>{categories} categories · {mastered}/{total} mastered · {overall}% overall</small>
-            </span>
-            <span>open</span>
-          </a>
+          <div key={lane.id} className="tracker-blueprint-group">
+            <button type="button" className="tree-node bp-tree-node" onClick={() => onToggle(laneKey)}>
+              {laneOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              <span>{lane.label}</span>
+              <span className="tree-count">{laneInstalls.length}</span>
+            </button>
+            {laneOpen && (
+              <div className="tree-children">
+                <div className="tree-node bp-tree-label">
+                  <span style={{ width: 14 }} />
+                  <span>Installed Blueprints</span>
+                  <span className="tree-count">{laneInstalls.length}</span>
+                </div>
+                {laneInstalls.map((install) => (
+                  <BlueprintInstallTree key={install.id} install={install}
+                    active={active} openNodes={openNodes} onToggle={onToggle} onSelect={onSelect} />
+                ))}
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
   );
+}
+
+function BlueprintInstallTree({
+  install, active, openNodes, onToggle, onSelect,
+}: {
+  install: InstalledBlueprint;
+  active: string;
+  openNodes: Set<string>;
+  onToggle: (path: string) => void;
+  onSelect: (scope: string) => void;
+}) {
+  const scope = blueprintScope(install.id);
+  const openKey = `bp-install:${install.id}`;
+  const open = openNodes.has(openKey);
+  const nodes = sortedBlueprintNodes(install.nodes);
+  const categories = [...new Set(nodes.map((node) => node.category))];
+  const total = nodes.length;
+  const mastered = nodes.filter(isBlueprintNodeDone).length;
+  const overall = total ? Math.round(nodes.reduce((sum, node) => sum + node.mastery, 0) / total) : 0;
+  return (
+    <div className="bp-install-tree">
+      <button type="button" className={`tree-node bp-tree-node ${active === scope ? "on" : ""}`}
+        onClick={() => { onToggle(openKey); onSelect(scope); }}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span className="grow">{install.title}</span>
+        <span className="tree-count">{overall}%</span>
+      </button>
+      {open && (
+        <div className="tree-children bp-cat-tree">
+          <a className="tree-node bp-tree-open" href={`#${routeForBlueprintLane(install.laneId)}`}>
+            <span style={{ width: 14 }} />
+            <span>Open workbench</span>
+            <ChevronRight size={13} />
+          </a>
+          {categories.map((category) => {
+            const catScope = blueprintScope(install.id, category);
+            const catNodes = nodes.filter((node) => node.category === category);
+            return (
+              <button key={category} type="button" className={`tree-node bp-tree-category ${active === catScope ? "on" : ""}`}
+                onClick={() => onSelect(catScope)}>
+                <span style={{ width: 14 }} />
+                <span className="grow">{category}</span>
+                <span className="tree-count">{catNodes.filter(isBlueprintNodeDone).length}/{catNodes.length}</span>
+              </button>
+            );
+          })}
+          <div className="bp-tree-summary">{mastered}/{total} complete across this container</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BlueprintTrackerItems({ install, nodes, category }: { install: InstalledBlueprint; nodes: InstalledBlueprintNode[]; category?: string }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<BlueprintNodeStatus | "all">("all");
+  const [tag, setTag] = useState("all");
+  const tags = useMemo(() => [...new Set(nodes.flatMap((node) => node.tags))].sort(), [nodes]);
+  const q = query.trim().toLowerCase();
+  const filtered = sortedBlueprintNodes(nodes).filter((node) =>
+    (status === "all" || node.status === status)
+    && (tag === "all" || node.tags.includes(tag))
+    && (!q
+      || node.objective.toLowerCase().includes(q)
+      || node.category.toLowerCase().includes(q)
+      || node.tags.some((item) => item.toLowerCase().includes(q))),
+  );
+
+  return (
+    <div className="bp-tracker-panel">
+      <div className="bp-tracker-tools">
+        <input className="field" placeholder={`Search ${category ?? install.title}`} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select className="field" value={status} onChange={(e) => setStatus(e.target.value as BlueprintNodeStatus | "all")}>
+          <option value="all">All statuses</option>
+          {BLUEPRINT_STATUS_ORDER.map((item) => <option key={item} value={item}>{BLUEPRINT_STATUS_LABEL[item]}</option>)}
+        </select>
+        <select className="field" value={tag} onChange={(e) => setTag(e.target.value)}>
+          <option value="all">All tags</option>
+          {tags.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+      {filtered.length === 0 && <EmptyState title="No Blueprint objects match" hint="Clear filters or pick another category in the Blueprint tree." />}
+      {filtered.map((node) => <BlueprintTrackerRow key={node.id} install={install} node={node} />)}
+    </div>
+  );
+}
+
+function BlueprintTrackerRow({ install, node }: { install: InstalledBlueprint; node: InstalledBlueprintNode }) {
+  const update = useStore((s) => s.updateBlueprintNode);
+  const patch = (input: Partial<InstalledBlueprintNode>) => update(install.id, node.id, input);
+  const move = (direction: -1 | 1) => moveBlueprintNode(install, node, direction, update);
+  const linkedTotal = node.linkedQuestions + node.linkedAnki + node.linkedErrorLog + node.linkedAssessments;
+  return (
+    <div className={`bp-tracker-row ${isBlueprintNodeDone(node) ? "done" : ""}`}>
+      <div className="bp-tracker-row-head">
+        <span className="bp-node-dot" style={{ background: node.mastery >= 75 ? "var(--green)" : node.mastery >= 35 ? "var(--cyan)" : "rgba(255,255,255,0.22)" }} />
+        <div className="grow">
+          <b>{node.objective}</b>
+          <span>{node.category}{node.subCategory ? ` / ${node.subCategory}` : ""}</span>
+        </div>
+        <div className="row gap6">
+          <GhostButton title="Move up" onClick={() => move(-1)}><ChevronDown size={14} style={{ transform: "rotate(180deg)" }} /></GhostButton>
+          <GhostButton title="Move down" onClick={() => move(1)}><ChevronDown size={14} /></GhostButton>
+        </div>
+      </div>
+      {node.detail && <div className="dr-note">{node.detail}</div>}
+      <div className="bp-tracker-edit-grid">
+        <label className="stack gap6">
+          <span className="field-label">Status</span>
+          <select className="field" value={node.status} onChange={(e) => patch({ status: e.target.value as BlueprintNodeStatus })}>
+            {BLUEPRINT_STATUS_ORDER.map((item) => <option key={item} value={item}>{BLUEPRINT_STATUS_LABEL[item]}</option>)}
+          </select>
+        </label>
+        <label className="stack gap6">
+          <span className="field-label">Mastery</span>
+          <input className="field" type="range" min="0" max="100" step="5" value={node.mastery} onChange={(e) => patch({ mastery: Number(e.target.value) })} />
+        </label>
+        <label className="stack gap6">
+          <span className="field-label">Due date</span>
+          <input className="field" type="date" value={node.dueDate ?? ""} onChange={(e) => patch({ dueDate: e.target.value || undefined })} />
+        </label>
+        <label className="stack gap6">
+          <span className="field-label">Tags</span>
+          <input className="field" value={node.tags.join(", ")} onChange={(e) => patch({ tags: splitTags(e.target.value) })} />
+        </label>
+      </div>
+      <div className="bp-linked-strip">
+        <BlueprintLinkButton label="Questions" value={node.linkedQuestions} onStep={(delta) => patch({ linkedQuestions: Math.max(0, node.linkedQuestions + delta) })} />
+        <BlueprintLinkButton label="Anki" value={node.linkedAnki} onStep={(delta) => patch({ linkedAnki: Math.max(0, node.linkedAnki + delta) })} />
+        <BlueprintLinkButton label="Errors" value={node.linkedErrorLog} onStep={(delta) => patch({ linkedErrorLog: Math.max(0, node.linkedErrorLog + delta) })} />
+        <BlueprintLinkButton label="Assessments" value={node.linkedAssessments} onStep={(delta) => patch({ linkedAssessments: Math.max(0, node.linkedAssessments + delta) })} />
+        <Tag tone={linkedTotal ? "cyan" : "neutral"}>{linkedTotal} linked</Tag>
+      </div>
+      <div className="bp-tracker-edit-grid two">
+        <label className="stack gap6">
+          <span className="field-label">Evidence</span>
+          <input className="field" placeholder="score, link, artifact, question set…" value={node.evidenceOfCompletion ?? ""} onChange={(e) => patch({ evidenceOfCompletion: e.target.value || undefined })} />
+        </label>
+        <label className="stack gap6">
+          <span className="field-label">Notes</span>
+          <input className="field" placeholder="what changed, what to retest, what to prove" value={node.notes ?? ""} onChange={(e) => patch({ notes: e.target.value || undefined })} />
+        </label>
+      </div>
+      <div className="bp-tracker-foot">
+        <Tag tone={node.priority === "high" ? "orange" : node.priority === "low" ? "neutral" : "cyan"}>{node.priority} priority</Tag>
+        <Tag tone={node.sourceType === "official" ? "green" : node.sourceType === "tool" ? "cyan" : "neutral"}>{node.sourceType ?? "internal"} source</Tag>
+        {node.sourceUrl && <a className="gbtn tiny" href={node.sourceUrl} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={12} /></a>}
+        {node.lastVerified && <span className="sub">verified {node.lastVerified}</span>}
+      </div>
+    </div>
+  );
+}
+
+function BlueprintSuggestions({ install, nodes }: { install: InstalledBlueprint; nodes: InstalledBlueprintNode[] }) {
+  const next = sortedBlueprintNodes(nodes)
+    .filter((node) => !isBlueprintNodeDone(node))
+    .sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority) || a.order - b.order)
+    .slice(0, 3);
+  if (!next.length) {
+    return <div className="sugg"><span className="sugg-dot" style={{ background: "var(--green)" }} /><div className="grow"><div className="sugg-title">Container complete</div><div className="sugg-reason">All visible Blueprint objects are marked complete or mastered.</div></div></div>;
+  }
+  return (
+    <>
+      {next.map((node) => (
+        <div className="sugg" key={node.id}>
+          <span className="sugg-dot" style={{ background: node.priority === "high" ? "var(--orange)" : "var(--cyan)" }} />
+          <div className="grow">
+            <div className="sugg-title">{node.objective}</div>
+            <div className="sugg-reason">{install.title} · {node.category} · {node.mastery}% mastery</div>
+          </div>
+          <Tag tone={node.priority === "high" ? "orange" : "cyan"}>{node.priority}</Tag>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function BlueprintLinkButton({ label, value, onStep }: { label: string; value: number; onStep: (delta: number) => void }) {
+  return (
+    <span className="bp-link-compact">
+      <button type="button" onClick={() => onStep(-1)} aria-label={`Decrease ${label}`}>-</button>
+      <b>{value}</b>
+      <button type="button" onClick={() => onStep(1)} aria-label={`Increase ${label}`}>+</button>
+      <em>{label}</em>
+    </span>
+  );
+}
+
+function blueprintScope(installId: string, category?: string): string {
+  return `${BLUEPRINT_SCOPE_PREFIX}${installId}${category ? `::${encodeURIComponent(category)}` : ""}`;
+}
+
+function parseBlueprintScope(scope: string): { installId: string; category?: string } | null {
+  if (!scope.startsWith(BLUEPRINT_SCOPE_PREFIX)) return null;
+  const raw = scope.slice(BLUEPRINT_SCOPE_PREFIX.length);
+  const [installId, encodedCategory] = raw.split("::");
+  if (!installId) return null;
+  return { installId, category: encodedCategory ? decodeURIComponent(encodedCategory) : undefined };
+}
+
+function sortedBlueprintNodes(nodes: InstalledBlueprintNode[]): InstalledBlueprintNode[] {
+  return [...nodes].sort((a, b) => a.order - b.order || a.category.localeCompare(b.category) || a.objective.localeCompare(b.objective));
+}
+
+function isBlueprintNodeDone(node: InstalledBlueprintNode) {
+  return node.status === "done" || node.status === "mastered";
+}
+
+function splitTags(input: string): string[] {
+  return [...new Set(input.split(",").map((item) => item.trim().replace(/^#/, "")).filter(Boolean))];
+}
+
+function priorityWeight(priority: InstalledBlueprintNode["priority"]) {
+  return priority === "high" ? 3 : priority === "medium" ? 2 : 1;
+}
+
+function moveBlueprintNode(
+  install: InstalledBlueprint,
+  node: InstalledBlueprintNode,
+  direction: -1 | 1,
+  update: (installId: string, nodeId: string, patch: Partial<InstalledBlueprintNode>) => void,
+) {
+  const siblings = sortedBlueprintNodes(install.nodes.filter((candidate) => candidate.category === node.category));
+  const index = siblings.findIndex((candidate) => candidate.id === node.id);
+  const target = siblings[index + direction];
+  if (!target) return;
+  update(install.id, node.id, { order: target.order });
+  update(install.id, target.id, { order: node.order });
 }
 
 interface TNode { path: string; name: string; children: TNode[]; count: number; }

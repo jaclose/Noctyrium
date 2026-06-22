@@ -8,8 +8,9 @@ import { GlassCard, GButton, PanelHeader, Tag } from "../ui/primitives";
 import {
   AnkiError, DEFAULT_ANKI_ENDPOINT, fetchAnkiSnapshot, getAnkiAutoSync, getAnkiEndpoint,
   setAnkiAutoSync, setAnkiEndpoint, pendingSyncDelta, commitSync, alreadySyncedToday,
+  ANKI_DIAGNOSTIC_TEMPLATE,
 } from "../../lib/ankiConnect";
-import type { AnkiSnapshot } from "../../lib/ankiConnect";
+import type { AnkiDiagnosticStatus, AnkiDiagnosticStepId, AnkiSnapshot } from "../../lib/ankiConnect";
 
 type Status = "idle" | "connecting" | "connected" | "error";
 
@@ -23,13 +24,23 @@ export function AnkiConnectPanel() {
   const [syncNote, setSyncNote] = useState("");
   const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState(false);
+  const [steps, setSteps] = useState(() => ANKI_DIAGNOSTIC_TEMPLATE.map((step) => ({ ...step })));
 
   const origin = typeof window !== "undefined" ? window.location.origin : "your origin";
   const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
   const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(endpoint);
   const mixedContentRisk = isHttps && localEndpoint && endpoint.startsWith("http://");
   const corsListPatch = JSON.stringify(["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin], null, 2);
+  const corsConfigSnippet = JSON.stringify({
+    apiKey: null,
+    apiLogPath: null,
+    ignoreOriginList: [],
+    webBindAddress: "127.0.0.1",
+    webBindPort: 8765,
+    webCorsOriginList: ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin],
+  }, null, 2);
   const localAppUrl = "http://127.0.0.1:5173/#integrations";
+  const localLaunchCommand = "cd /Users/jd/Developer/Noctyrium/web && npm run dev -- --host 127.0.0.1";
 
   async function copyText(text: string, label: string) {
     try {
@@ -45,17 +56,31 @@ export function AnkiConnectPanel() {
     setStatus("connecting");
     setError(null);
     setSyncNote("");
+    setSteps(ANKI_DIAGNOSTIC_TEMPLATE.map((step) => ({ ...step })));
     setAnkiEndpoint(endpoint);
     try {
-      const snap = await fetchAnkiSnapshot(endpoint);
+      const snap = await fetchAnkiSnapshot(endpoint, markStep);
       setSnapshot(snap);
       setStatus("connected");
       if (silentSync) doSync(snap.today, true);
     } catch (err) {
       const e = err as AnkiError;
       setError({ message: e.message, kind: e.kind ?? "network" });
+      failRunningStep(e.kind ?? "network");
       setStatus("error");
     }
+  }
+
+  function markStep(id: AnkiDiagnosticStepId, stepStatus: AnkiDiagnosticStatus, detail?: string) {
+    setSteps((current) => current.map((step) => step.id === id ? { ...step, status: stepStatus, detail } : step));
+  }
+
+  function failRunningStep(kind: AnkiError["kind"]) {
+    setSteps((current) => {
+      const runningIndex = current.findIndex((step) => step.status === "running");
+      if (runningIndex === -1) return current;
+      return current.map((step, index) => index === runningIndex ? { ...step, status: "failed", detail: failureKindLabel(kind) } : step);
+    });
   }
 
   function doSync(reviewsToday: number, silent = false) {
@@ -115,9 +140,26 @@ export function AnkiConnectPanel() {
         <div className="anki-origin-actions">
           <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={13} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
           <GButton size="sm" onClick={() => copyText(corsListPatch, "cors")}><Copy size={13} /> {copied === "cors" ? "Copied" : "Copy CORS list"}</GButton>
+          <GButton size="sm" onClick={() => copyText(corsConfigSnippet, "config")}><Copy size={13} /> {copied === "config" ? "Copied" : "Copy full config"}</GButton>
+          <GButton size="sm" onClick={() => copyText(localLaunchCommand, "local")}><Copy size={13} /> {copied === "local" ? "Copied" : "Copy local command"}</GButton>
+          <GButton size="sm" onClick={() => connect(false)} disabled={status === "connecting"}><RefreshCw size={13} className={status === "connecting" ? "spin" : ""} /> Test endpoint</GButton>
           <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={13} /></a>
         </div>
       </div>
+
+      {(status === "connecting" || steps.some((step) => step.status !== "pending")) && (
+        <div className="anki-diagnostic-steps">
+          {steps.map((step) => (
+            <div className={`anki-diagnostic-step ${step.status}`} key={step.id}>
+              <span className="anki-step-dot" />
+              <div className="grow">
+                <b>{step.label}</b>
+                {step.detail && <span>{step.detail}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {mixedContentRisk && (
         <div className="anki-warn">
@@ -139,7 +181,7 @@ export function AnkiConnectPanel() {
 
       {status === "error" && error && (
         <div className="anki-setup">
-          <div className="anki-setup-head"><AlertTriangle size={15} /> <b>Couldn't reach Anki</b></div>
+          <div className="anki-setup-head"><AlertTriangle size={15} /> <b>{failureKindLabel(error.kind)}</b></div>
           <p className="sub">{error.message}</p>
           <ol className="anki-steps">
             <li>Open the Anki desktop app and keep it running.</li>
@@ -211,4 +253,19 @@ export function AnkiConnectPanel() {
       )}
     </GlassCard>
   );
+}
+
+function failureKindLabel(kind: AnkiError["kind"]): string {
+  switch (kind) {
+    case "malformed-endpoint": return "Malformed endpoint";
+    case "endpoint-unreachable": return "Endpoint unreachable / Anki not running";
+    case "local-network-blocked": return "Browser local-network access blocked";
+    case "mixed-content-blocked": return "HTTPS to HTTP endpoint blocked";
+    case "cors-blocked": return "CORS origin blocked";
+    case "anki-connect-absent": return "AnkiConnect absent or wrong port";
+    case "permission-denied": return "AnkiConnect permission denied";
+    case "api-incompatibility": return "AnkiConnect API version mismatch";
+    case "anki": return "AnkiConnect returned an error";
+    default: return "Network request failed";
+  }
 }

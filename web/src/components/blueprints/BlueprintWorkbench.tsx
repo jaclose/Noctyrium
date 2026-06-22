@@ -3,7 +3,7 @@
 // mode's lanes. Installing a blueprint creates a rich container of mastery
 // objects (not lecture passes), with duplicate prevention, macro/detailed views,
 // node detail panels, search/filter, and source governance.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Brain, Plus, ChevronDown, ChevronRight, Search, Layers, ListChecks, ClipboardCheck,
   FlaskConical, Trophy, ShieldCheck, ExternalLink, Trash2, Copy, ArrowRight, Target, Gauge,
@@ -14,6 +14,7 @@ import { Modal } from "../ui/Modal";
 import {
   BLUEPRINTS, blueprintsForLane, lanesForMode, blueprintById,
 } from "../../lib/blueprintCatalog";
+import { routeForBlueprintLane } from "../../lib/blueprintRoutes";
 import type { BlueprintLaneId, BlueprintMode, BlueprintNodeStatus, BlueprintNodeType, InstalledBlueprint, InstalledBlueprintNode, SourceType } from "../../lib/types";
 
 const DEPTH_KEY = "noctyrium-blueprint-depth";
@@ -39,22 +40,35 @@ function readDepth(): "macro" | "detailed" {
   try { return localStorage.getItem(DEPTH_KEY) === "detailed" ? "detailed" : "macro"; } catch { return "macro"; }
 }
 
-export function BlueprintWorkbench({ mode }: { mode: BlueprintMode }) {
+export function BlueprintWorkbench({ mode, initialLane }: { mode: BlueprintMode; initialLane?: BlueprintLaneId }) {
   const lanes = useMemo(() => lanesForMode(mode), [mode]);
   const installs = useStore((s) => s.blueprintInstalls);
   const installBlueprint = useStore((s) => s.installBlueprint);
 
   const [activeLane, setActiveLane] = useState<BlueprintLaneId>(() => {
+    if (initialLane && lanes.some((l) => l.id === initialLane)) return initialLane;
     try { const saved = localStorage.getItem(laneKey(mode)) as BlueprintLaneId | null; if (saved && lanes.some((l) => l.id === saved)) return saved; } catch { /* ignore */ }
     return lanes[0]?.id;
   });
   const [openInstallId, setOpenInstallId] = useState<string | null>(null);
   const [dupFor, setDupFor] = useState<string | null>(null);
 
-  function selectLane(id: BlueprintLaneId) {
+  useEffect(() => {
+    if (initialLane && lanes.some((l) => l.id === initialLane)) {
+      setActiveLane(initialLane);
+      setOpenInstallId(null);
+      try { localStorage.setItem(laneKey(mode), initialLane); } catch { /* ignore */ }
+    }
+  }, [initialLane, lanes, mode]);
+
+  function selectLane(id: BlueprintLaneId, updateRoute = true) {
     setActiveLane(id);
     setOpenInstallId(null);
     try { localStorage.setItem(laneKey(mode), id); } catch { /* ignore */ }
+    if (updateRoute && typeof window !== "undefined") {
+      const route = routeForBlueprintLane(id);
+      if (window.location.hash.replace("#", "") !== route) window.location.hash = route;
+    }
   }
 
   const laneCatalog = blueprintsForLane(activeLane);
@@ -293,16 +307,42 @@ function CategoryBlock({
   const mastered = nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
 
   if (depth === "macro") {
+    const catId = `cat:${name}`;
+    const macroOpen = openNodeId === catId || nodes.some((node) => node.id === openNodeId);
+    const previewNodes = [...nodes]
+      .sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority) || a.order - b.order)
+      .slice(0, 6);
+    const nextNode = previewNodes.find((node) => node.status !== "done" && node.status !== "mastered") ?? previewNodes[0];
     return (
-      <button type="button" className="bp-macro-cat" onClick={() => onOpenNode(openNodeId === `cat:${name}` ? null : `cat:${name}`)}>
-        <span className="bp-cat-icon"><Target size={15} /></span>
-        <span className="grow">
-          <b>{name}</b>
-          <small>{nodes.length} nodes · {mastered} mastered</small>
-        </span>
-        <span className="bp-cat-mastery">{mastery}%</span>
-        <div className="bp-mini-track"><span style={{ width: `${mastery}%` }} /></div>
-      </button>
+      <div className={`bp-macro-block ${macroOpen ? "open" : ""}`}>
+        <button type="button" className="bp-macro-cat" onClick={() => onOpenNode(macroOpen ? null : catId)}>
+          <span className="bp-cat-icon"><Target size={15} /></span>
+          <span className="grow">
+            <b>{name}</b>
+            <small>{nodes.length} nodes · {mastered} mastered{nextNode ? ` · next: ${nextNode.objective}` : ""}</small>
+          </span>
+          <span className="bp-cat-mastery">{mastery}%</span>
+          <div className="bp-mini-track"><span style={{ width: `${mastery}%` }} /></div>
+        </button>
+        {macroOpen && (
+          <div className="bp-macro-detail">
+            {previewNodes.map((node) => (
+              <div className={`bp-macro-node ${openNodeId === node.id ? "open" : ""}`} key={node.id}>
+                <button type="button" onClick={() => onOpenNode(openNodeId === node.id ? catId : node.id)}>
+                  <span className="bp-node-dot" style={{ background: masteryColor(node.mastery, node.status) }} />
+                  <span className="grow">
+                    <b>{node.objective}</b>
+                    <small>{STATUS_LABEL[node.status]} · {node.mastery}% · {node.priority} priority</small>
+                  </span>
+                  <ChevronRight size={13} />
+                </button>
+                {openNodeId === node.id && <NodeDetail node={node} installId={installId} />}
+              </div>
+            ))}
+            {nodes.length > previewNodes.length && <div className="bp-macro-more">{nodes.length - previewNodes.length} more objects available in Detailed mode</div>}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -454,6 +494,10 @@ function masteryColor(mastery: number, status: BlueprintNodeStatus): string {
   if (mastery >= 50) return "var(--cyan)";
   if (mastery > 0 || status === "in-progress") return "var(--orange)";
   return "rgba(255,255,255,0.18)";
+}
+
+function priorityWeight(priority: InstalledBlueprintNode["priority"]) {
+  return priority === "high" ? 3 : priority === "medium" ? 2 : 1;
 }
 
 // Re-export the full catalog count for any callers that want a quick sanity number.

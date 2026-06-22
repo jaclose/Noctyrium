@@ -23,7 +23,14 @@ export const NAV: NavItem[] = [
   { id: "reports", label: "Reports", subtitle: "Traceable statistics, energy, and performance vs. your goals", icon: LineChart },
   { id: "resources", label: "Resources", subtitle: "Saved hyperlinks for courses, boards, references, and tools", icon: Link },
   { id: "step", label: "USMLE / Shelf Prep", subtitle: "Step 1, Step 2, Step 3, shelf exams, and blueprint strategy", icon: Brain },
+  { id: "step2", label: "Step 2 CK", subtitle: "Clinical reasoning blueprint and CK execution", icon: Brain },
+  { id: "dedicated", label: "Dedicated Prep", subtitle: "Exam runway planning, assessments, and execution loops", icon: Brain },
+  { id: "shelf", label: "Shelf Exams", subtitle: "Rotation subject exams and carry-forward repair", icon: Brain },
+  { id: "step3", label: "Step 3", subtitle: "Independent practice, CCS, and longitudinal management", icon: Brain },
   { id: "premed", label: "Pre-Med / MCAT", subtitle: "Clinical hours, service, research, applications, and MCAT runway", icon: Compass },
+  { id: "mcat", label: "MCAT", subtitle: "AAMC content spine, passages, CARS, and full-length repair", icon: Compass },
+  { id: "dat", label: "DAT", subtitle: "Dental admission test blueprint and evidence-guided prep", icon: Compass },
+  { id: "casper", label: "CASPer", subtitle: "Situational judgment practice and reflection evidence", icon: Compass },
   { id: "appchecker", label: "Application Checker", subtitle: "Med school + residency application tracking", icon: ClipboardCheck },
   // Tools folder
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },
@@ -44,7 +51,7 @@ export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id
 export const SIDEBAR_TOP = [
   "dashboard", "courses", "tracker", "productivity", "journal", "reports",
 ];
-export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
+export const SIDEBAR_PREP = ["step", "step2", "dedicated", "shelf", "step3", "premed", "mcat", "dat", "casper", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
