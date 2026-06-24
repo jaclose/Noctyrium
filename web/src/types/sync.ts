@@ -7,7 +7,19 @@ export interface CloudUser {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string;
+  pinEnabled?: boolean;
+  lockedUntil?: string;
   authNote?: string;
+}
+
+export interface CloudSession {
+  id: string;
+  userId: string;
+  token: string;
+  deviceLabel?: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
 }
 
 export interface CloudSnapshot {
@@ -35,6 +47,7 @@ export interface CloudBackup {
 
 export interface SyncMeta {
   user?: CloudUser;
+  session?: CloudSession;
   autoSync: boolean;
   lastSyncedAt?: string;
   lastCloudUpdatedAt?: string;

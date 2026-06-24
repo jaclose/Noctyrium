@@ -7,6 +7,7 @@ import { PASS_COLOR, PASS_LABEL, YIELD_LABEL, YIELD_TONE, passStage, scopeMaster
 import { resolveTrack } from "../lib/tracks";
 import { exportState } from "../lib/backup";
 import { analyzePerformance } from "../lib/performance";
+import { calculateReadiness } from "../lib/energy";
 import type { PassStage } from "../lib/tracker";
 import type { TrackerKind, Yield } from "../lib/types";
 
@@ -32,6 +33,15 @@ export function ReportsPage() {
     cardTarget,
     range,
   });
+  const readiness = useMemo(() => calculateReadiness({
+    date: s.activeDayKey,
+    factors: s.energyFactors ?? [],
+    journal: s.journal,
+    logs: s.logs,
+    tasks: s.tasks,
+    dayPlans: s.dayPlans,
+    productivityTrackers: s.productivityTrackers,
+  }), [s.activeDayKey, s.energyFactors, s.journal, s.logs, s.tasks, s.dayPlans, s.productivityTrackers]);
 
   const days = useMemo(() => lastNDays(range).map((d) => {
     const key = isoDate(d);
@@ -84,14 +94,14 @@ export function ReportsPage() {
         <ReportStat icon={<Flame size={17} />} label="Current streak" value={`${streak}`} note={`${streak === 1 ? "day" : "days"} in a row`} tone="orange" />
         <ReportStat icon={<CalendarCheck size={17} />} label="Consistency" value={`${consistency}%`} note={`${activeDays.length}/${range} active days`} tone={consistency >= 70 ? "green" : consistency >= 40 ? "orange" : "red"} />
         <ReportStat icon={<Target size={17} />} label="Hit the floor" value={`${adherence}%`} note={`${onFloorDays}/${range} days at target`} tone={adherence >= 60 ? "green" : adherence >= 30 ? "orange" : "red"} />
-        <ReportStat icon={<BatteryCharging size={17} />} label="Energy rating" value={`${performance.energyScore}`} note={`${performance.energyLabel} · ${performance.journalSignal}`} tone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"} />
+        <ReportStat icon={<BatteryCharging size={17} />} label="Readiness" value={`${readiness.estimatedReadiness}`} note={`Energy ${readiness.selfReportedEnergy.score} · ${readiness.primarySignal}`} tone={readiness.estimatedReadiness >= 78 ? "green" : readiness.estimatedReadiness >= 58 ? "orange" : "red"} />
         <ReportStat icon={<Gauge size={17} />} label="Performance" value={`${performance.performanceScore}`} note={performance.performanceLabel} tone={performance.performanceScore >= 62 ? "green" : performance.performanceScore >= 38 ? "orange" : "red"} />
         <ReportStat icon={<Layers size={17} />} label="Tracker mastery" value={`${mastery}%`} note={`${s.tracker.length} items · ${ankiAnchored} in Anki`} tone={mastery >= 60 ? "green" : mastery >= 30 ? "orange" : "neutral"} />
         <ReportStat icon={<ListChecks size={17} />} label="Tasks done" value={`${completedTasks.length}`} note={`${openTasks.length} still open`} />
       </div>
 
       <GlassCard pad className="report-performance-card">
-        <PanelHeader title="Energy & performance readout" sub="From study logs, tasks, tracker progress, today’s intention, and recent journal language"
+        <PanelHeader title="Energy, readiness, and performance" sub="Readiness uses confirmed ledger factors, tracker/goal signals, carryover decay, and self-reported energy."
           action={<Tag tone={performance.preliminary ? "orange" : "green"}>{performance.preliminary ? "Preliminary" : "Enough signal"}</Tag>} />
         {performance.preliminary && (
           <div className="report-prelim">
@@ -101,16 +111,16 @@ export function ReportsPage() {
         )}
         <div className="report-insight-grid">
           <div>
-            <b>Recommendation</b>
-            <span>{performance.recommendation}</span>
+            <b>Readiness recommendation</b>
+            <span>{readiness.recommendation}</span>
           </div>
           <div>
-            <b>Positive signals</b>
-            <span>{performance.positives.length ? performance.positives.join(", ") : "No strong positive language yet."}</span>
+            <b>Factor impact</b>
+            <span>{readiness.totalImpact >= 0 ? "+" : ""}{readiness.totalImpact} net · {readiness.carryoverImpact >= 0 ? "+" : ""}{readiness.carryoverImpact} carryover</span>
           </div>
           <div>
-            <b>Roadblocks</b>
-            <span>{performance.risks.length ? performance.risks.join(", ") : "No major language risk detected."}</span>
+            <b>Possible journal signals</b>
+            <span>{readiness.possibleSignals.length ? readiness.possibleSignals.map((signal) => signal.label).join(", ") : "No unconfirmed journal signals."}</span>
           </div>
         </div>
       </GlassCard>

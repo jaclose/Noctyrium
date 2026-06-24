@@ -7,7 +7,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DailyRolloverEvent, DayPlan, HubFolder, JournalEntry, NoctyriumState,
-  PremedExperienceEntry, ProductivityTracker, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode,
+  PremedExperienceEntry, ProductivityTracker, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode, EnergyFactor,
 } from "./types";
 import { blueprintById } from "./blueprintCatalog";
 import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
@@ -121,6 +121,11 @@ interface Actions {
   updateProductivityTracker: (id: string, patch: Partial<ProductivityTracker>) => void;
   startNewStudyDay: () => void;
   checkDailyRollover: (reason?: RolloverReason, at?: Date) => { changed: boolean; toDate: string; daysAway: number; carriedTaskIds?: string[] };
+
+  // energy/readiness
+  addEnergyFactor: (factor: Omit<EnergyFactor, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
+  updateEnergyFactor: (id: string, patch: Partial<EnergyFactor>) => void;
+  removeEnergyFactor: (id: string) => void;
 
   // board prep
   updateBoardPrep: (exam: BoardExamId, patch: Partial<BoardPrepProfile>) => void;
@@ -416,6 +421,41 @@ export const useStore = create<Store>()(
             tracker.id === id ? { ...tracker, ...patch, updatedAt: now() } : tracker),
         })),
 
+      addEnergyFactor: (factor) =>
+        set((s) => {
+          const timestamp = now();
+          const entry: EnergyFactor = {
+            ...factor,
+            id: factor.id ?? uid(),
+            date: factor.date || localDateKey(),
+            label: factor.label.trim() || "Readiness factor",
+            delta: clampNumber(factor.delta, -40, 40),
+            confidence: clampNumber(factor.confidence, 0, 1),
+            carryoverDays: Math.max(0, Math.min(14, Math.round(factor.carryoverDays))),
+            decayPerDay: clampNumber(factor.decayPerDay, 0, 1),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+          return { energyFactors: upsertEnergyFactor(s.energyFactors ?? [], entry) };
+        }),
+      updateEnergyFactor: (id, patch) =>
+        set((s) => ({
+          energyFactors: (s.energyFactors ?? []).map((factor) =>
+            factor.id === id
+              ? {
+                  ...factor,
+                  ...patch,
+                  delta: patch.delta === undefined ? factor.delta : clampNumber(patch.delta, -40, 40),
+                  confidence: patch.confidence === undefined ? factor.confidence : clampNumber(patch.confidence, 0, 1),
+                  carryoverDays: patch.carryoverDays === undefined ? factor.carryoverDays : Math.max(0, Math.min(14, Math.round(patch.carryoverDays))),
+                  decayPerDay: patch.decayPerDay === undefined ? factor.decayPerDay : clampNumber(patch.decayPerDay, 0, 1),
+                  updatedAt: now(),
+                }
+              : factor),
+        })),
+      removeEnergyFactor: (id) =>
+        set((s) => ({ energyFactors: (s.energyFactors ?? []).filter((factor) => factor.id !== id) })),
+
       // Deprecated compatibility path. The app shell now calls checkDailyRollover
       // automatically from load/focus/visibility/midnight events.
       startNewStudyDay: () =>
@@ -604,6 +644,7 @@ export const useStore = create<Store>()(
           // keep the curated shared drives even on a fresh start
           resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
+          energyFactors: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -826,6 +867,15 @@ export const useStore = create<Store>()(
           }));
           s.folders = normalizeFolders(s.folders);
         }
+        if (fromVersion < 25) {
+          s.energyFactors = normalizeEnergyFactors(s.energyFactors);
+          s.dailyArchives = arrayOfRecords(s.dailyArchives).map((archive) => ({
+            ...archive,
+            energyFactorIds: Array.isArray(archive.energyFactorIds)
+              ? archive.energyFactorIds.filter((id): id is string => typeof id === "string")
+              : [],
+          }));
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -833,12 +883,12 @@ export const useStore = create<Store>()(
         const {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
-          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, schemaVersion,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
-          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, schemaVersion,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -915,6 +965,46 @@ function normalizeProductivityTrackers(value: unknown): ProductivityTracker[] {
     });
   }
   return [...byName.values()];
+}
+
+const ENERGY_FACTOR_SOURCES: EnergyFactor["source"][] = ["journal", "manual", "sleep", "tracker", "habit", "goal", "import"];
+const ENERGY_FACTOR_CATEGORIES: EnergyFactor["category"][] = ["sleep", "movement", "food", "focus", "spirit", "recovery", "substance", "workload"];
+
+function upsertEnergyFactor(factors: EnergyFactor[], factor: EnergyFactor): EnergyFactor[] {
+  return [
+    factor,
+    ...factors.filter((item) => item.id !== factor.id),
+  ].sort((a, b) => b.date.localeCompare(a.date) || String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
+}
+
+function normalizeEnergyFactors(value: unknown): EnergyFactor[] {
+  const timestamp = new Date().toISOString();
+  return arrayOfRecords(value).map((record) => {
+    const date = typeof record.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(record.date)
+      ? record.date
+      : isoDate(new Date());
+    const source = ENERGY_FACTOR_SOURCES.includes(record.source as EnergyFactor["source"])
+      ? record.source as EnergyFactor["source"]
+      : "manual";
+    const category = ENERGY_FACTOR_CATEGORIES.includes(record.category as EnergyFactor["category"])
+      ? record.category as EnergyFactor["category"]
+      : "recovery";
+    return {
+      id: typeof record.id === "string" && record.id ? record.id : uid(),
+      date,
+      source,
+      label: String(record.label ?? "Readiness factor").trim() || "Readiness factor",
+      category,
+      delta: clampNumber(Number(record.delta ?? 0), -40, 40),
+      confidence: clampNumber(Number(record.confidence ?? 1), 0, 1),
+      carryoverDays: Math.max(0, Math.min(14, Math.round(Number(record.carryoverDays ?? 0)))),
+      decayPerDay: clampNumber(Number(record.decayPerDay ?? 1), 0, 1),
+      userConfirmed: typeof record.userConfirmed === "boolean" ? record.userConfirmed : true,
+      notes: typeof record.notes === "string" ? record.notes : undefined,
+      createdAt: typeof record.createdAt === "string" ? record.createdAt : timestamp,
+      updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : timestamp,
+    };
+  }).sort((a, b) => b.date.localeCompare(a.date) || String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
 }
 
 function isUnitType(value: unknown): value is ProductivityTracker["unitType"] {
@@ -1381,6 +1471,11 @@ function isRecord(value: unknown): value is AnyRecord {
 
 function cleanText(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 
 function cleanCode(value: unknown): string {

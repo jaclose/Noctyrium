@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2, Cloud, CloudDownload, CloudUpload, Database, Fingerprint,
-  HardDrive, KeyRound, RefreshCw, ShieldAlert, Sparkles, UserPlus,
+  HardDrive, KeyRound, LogOut, RefreshCw, ShieldAlert, Sparkles, UserPlus,
 } from "lucide-react";
 import { GButton } from "../ui/primitives";
 import { CloudBackupPanel } from "./CloudBackupPanel";
 import { useStore } from "../../lib/store";
 import {
   createCloudBackup,
+  createPinAccount,
   getBackendHealth,
   getCloudData,
   listCloudBackups,
   loadProgressByName,
   loginByName,
+  loginWithPin,
+  logoutPinSession,
   restoreCloudBackup,
   saveCloudData,
   saveProgressByName,
@@ -26,12 +29,13 @@ import {
 } from "../../services/storageService";
 import type { CloudBackup, CloudSnapshot, SyncMeta } from "../../types/sync";
 
-type BusyState = "idle" | "login" | "save" | "load" | "backup" | "restore" | "auto";
+type BusyState = "idle" | "login" | "pin" | "save" | "load" | "backup" | "restore" | "auto";
 
 export function AccountSyncPanel() {
   const store = useStore();
   const [meta, setMeta] = useState<SyncMeta>(() => loadSyncMeta());
   const [accountName, setAccountName] = useState(() => loadSyncMeta().user?.displayName || store.profile.name || "");
+  const [pin, setPin] = useState("");
   const [backupLabel, setBackupLabel] = useState("");
   const [backups, setBackups] = useState<CloudBackup[]>([]);
   const [busy, setBusy] = useState<BusyState>("idle");
@@ -80,6 +84,58 @@ export function AccountSyncPanel() {
       persistMeta(next);
       setStatus(cloud ? "Signed in. Cloud data exists, so choose Save or Load before replacing anything." : "Signed in. No cloud snapshot yet.");
       await refreshBackups(user.id);
+    });
+  }
+
+  async function handleCreatePinAccount() {
+    const username = accountName.trim();
+    if (!username || !pin.trim()) {
+      setStatus("Enter a username and PIN first.");
+      return;
+    }
+    await withBusy("pin", async () => {
+      const result = await createPinAccount({ username, pin, deviceLabel: metaRef.current.deviceLabel || defaultDeviceLabel() });
+      persistMeta({
+        ...metaRef.current,
+        user: result.user,
+        session: result.session,
+        deviceLabel: metaRef.current.deviceLabel || defaultDeviceLabel(),
+        lastLocalFingerprint: fingerprintState(useStore.getState()),
+      });
+      setPin("");
+      setStatus("PIN account created. This is still alpha authentication; keep JSON backups.");
+      await refreshBackups(result.user.id);
+    });
+  }
+
+  async function handlePinLogin() {
+    const username = accountName.trim();
+    if (!username || !pin.trim()) {
+      setStatus("Enter a username and PIN first.");
+      return;
+    }
+    await withBusy("pin", async () => {
+      const result = await loginWithPin({ username, pin, deviceLabel: metaRef.current.deviceLabel || defaultDeviceLabel() });
+      const cloud = await getCloudData(result.user.id);
+      persistMeta({
+        ...metaRef.current,
+        user: result.user,
+        session: result.session,
+        deviceLabel: metaRef.current.deviceLabel || defaultDeviceLabel(),
+        lastCloudUpdatedAt: cloud?.updatedAt,
+      });
+      setPin("");
+      setStatus(cloud ? "PIN login complete. Cloud data exists; choose Save or Load before replacing anything." : "PIN login complete. No cloud snapshot yet.");
+      await refreshBackups(result.user.id);
+    });
+  }
+
+  async function handlePinLogout() {
+    const session = metaRef.current.session;
+    await withBusy("pin", async () => {
+      if (session?.token) await logoutPinSession(session.token);
+      persistMeta({ ...metaRef.current, session: undefined, autoSync: false });
+      setStatus("Logged out of the PIN session on this device. Local vault remains available.");
     });
   }
 
@@ -386,6 +442,48 @@ export function AccountSyncPanel() {
       <section className="account-card">
         <div className="account-section-head">
           <div>
+            <div className="sync-title"><KeyRound size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Username + PIN account</div>
+            <div className="sub">Six digits preferred. Four digits remain accepted only as a legacy/minimum fallback.</div>
+          </div>
+          <span className={`sync-pill ${meta.session ? "on" : ""}`}>{meta.session ? "Session active" : "Alpha auth"}</span>
+        </div>
+        <div className="sync-grid">
+          <label className="stack gap6">
+            <span className="field-label">Username</span>
+            <input className="field" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="your username" autoComplete="username" />
+          </label>
+          <label className="stack gap6">
+            <span className="field-label">PIN</span>
+            <input className="field" type="password" inputMode="numeric" pattern="[0-9]*" minLength={4} maxLength={12}
+              value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 12))}
+              placeholder="6 digits preferred" autoComplete="current-password" />
+          </label>
+        </div>
+        <div className="row wrap gap8" style={{ marginTop: 10 }}>
+          <GButton size="sm" variant="primary" onClick={handleCreatePinAccount} disabled={isBusy || !accountName.trim() || pin.length < 4}>
+            <UserPlus size={14} /> Create PIN account
+          </GButton>
+          <GButton size="sm" onClick={handlePinLogin} disabled={isBusy || !accountName.trim() || pin.length < 4}>
+            <KeyRound size={14} /> Log in with PIN
+          </GButton>
+          <GButton size="sm" onClick={handlePinLogout} disabled={isBusy || !meta.session}>
+            <LogOut size={14} /> Log out session
+          </GButton>
+        </div>
+        <div className="sync-warning compact">
+          <ShieldAlert size={15} />
+          <span>PINs are hashed server-side with lockout/backoff, but this is not final medical-grade authentication. Recovery, passkeys, OAuth, and email verification are future work.</span>
+        </div>
+        {meta.session && (
+          <div className="sub" style={{ marginTop: 8 }}>
+            Session expires {formatDate(meta.session.expiresAt)} on {meta.session.deviceLabel || meta.deviceLabel || "this device"}.
+          </div>
+        )}
+      </section>
+
+      <section className="account-card">
+        <div className="account-section-head">
+          <div>
             <div className="sync-title">Cloud copy controls</div>
             <div className="sub">Manual controls for Alpha testing. Confirm before replacing local data.</div>
           </div>
@@ -487,6 +585,7 @@ function labelBusy(value: BusyState) {
   const labels: Record<BusyState, string> = {
     idle: "Idle",
     login: "Signing in",
+    pin: "Checking PIN",
     save: "Saving",
     load: "Loading",
     backup: "Backing up",

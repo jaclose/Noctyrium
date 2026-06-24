@@ -179,7 +179,7 @@ input, textarea, select { font-family: inherit; }
 .row.wrap { flex-wrap: wrap; }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .stack { display: flex; flex-direction: column; }
-.gap6 { gap: 6px; } .gap8 { gap: 8px; } .gap12 { gap: 12px; } .gap16 { gap: 16px; }
+.gap4 { gap: 4px; } .gap6 { gap: 6px; } .gap8 { gap: 8px; } .gap12 { gap: 12px; } .gap16 { gap: 16px; }
 .grow { flex: 1; min-width: 0; }
 .right { margin-left: auto; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,5 +1,6 @@
 import { ApiError } from "./http.js";
 import { getReadySql, hasDatabase } from "./db.js";
+import { createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 
 type DbRow = Record<string, unknown>;
 
@@ -10,6 +11,15 @@ export interface SaveSnapshotInput {
   deviceLabel?: string;
   backupLabel?: string;
 }
+
+export interface PinAccountInput {
+  username: string;
+  pin: string;
+  deviceLabel?: string;
+}
+
+const PIN_ITERATIONS = 210_000;
+const SESSION_DAYS = 30;
 
 export function normalizeName(name: string) {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -36,11 +46,100 @@ export async function loginByName(name: string) {
   return mapUser(rows[0]);
 }
 
+export async function createPinAccount(input: PinAccountInput) {
+  ensureDb();
+  const displayName = normalizeDisplayName(input.username);
+  const normalizedName = normalizeName(displayName);
+  validatePin(input.pin);
+  const sql = await getReadySql();
+  const existing = (await sql`
+    SELECT id, pin_hash
+    FROM users
+    WHERE normalized_name = ${normalizedName}
+    LIMIT 1
+  `) as DbRow[];
+  if (existing[0]?.pin_hash) throw new ApiError(409, "This username already has a PIN. Log in instead.");
+  const secret = hashPin(input.pin);
+  const rows = (await sql`
+    INSERT INTO users (
+      display_name, normalized_name, pin_hash, pin_salt, pin_iterations,
+      failed_login_count, locked_until, last_login_at, updated_at
+    )
+    VALUES (
+      ${displayName}, ${normalizedName}, ${secret.hash}, ${secret.salt}, ${secret.iterations},
+      0, NULL, now(), now()
+    )
+    ON CONFLICT (normalized_name)
+    DO UPDATE SET
+      display_name = EXCLUDED.display_name,
+      pin_hash = COALESCE(users.pin_hash, EXCLUDED.pin_hash),
+      pin_salt = COALESCE(users.pin_salt, EXCLUDED.pin_salt),
+      pin_iterations = COALESCE(users.pin_iterations, EXCLUDED.pin_iterations),
+      updated_at = now()
+    RETURNING id, display_name, normalized_name, created_at, updated_at, last_login_at, failed_login_count, locked_until
+  `) as DbRow[];
+  const session = await createSession(String(rows[0].id), input.deviceLabel);
+  await logChange(String(rows[0].id), "create_pin_account", "user", String(rows[0].id), {
+    auth: "pin",
+    deviceLabel: input.deviceLabel,
+  }, input.deviceLabel);
+  return { user: mapUser(rows[0]), session };
+}
+
+export async function loginByPin(input: PinAccountInput) {
+  ensureDb();
+  const displayName = normalizeDisplayName(input.username);
+  const normalizedName = normalizeName(displayName);
+  validatePin(input.pin);
+  const sql = await getReadySql();
+  const rows = (await sql`
+    SELECT id, display_name, normalized_name, pin_hash, pin_salt, pin_iterations,
+      failed_login_count, locked_until, created_at, updated_at, last_login_at
+    FROM users
+    WHERE normalized_name = ${normalizedName}
+    LIMIT 1
+  `) as DbRow[];
+  const row = rows[0];
+  if (!row || !row.pin_hash || !row.pin_salt) throw new ApiError(401, "Invalid username or PIN.");
+  if (row.locked_until && new Date(String(row.locked_until)).getTime() > Date.now()) {
+    throw new ApiError(423, "Account is temporarily locked after repeated failed attempts.");
+  }
+  const ok = verifyPin(input.pin, String(row.pin_salt), Number(row.pin_iterations ?? PIN_ITERATIONS), String(row.pin_hash));
+  if (!ok) {
+    const failed = Number(row.failed_login_count ?? 0) + 1;
+    const lockMinutes = failed >= 5 ? Math.min(30, 2 ** Math.min(failed - 5, 4)) : 0;
+    const lockedUntil = lockMinutes ? new Date(Date.now() + lockMinutes * 60_000).toISOString() : null;
+    await sql`
+      UPDATE users
+      SET failed_login_count = ${failed},
+          locked_until = ${lockedUntil},
+          updated_at = now()
+      WHERE id = ${String(row.id)}
+    `;
+    throw new ApiError(failed >= 5 ? 423 : 401, failed >= 5 ? "Too many failed attempts. Try again later." : "Invalid username or PIN.");
+  }
+  const updated = (await sql`
+    UPDATE users
+    SET failed_login_count = 0, locked_until = NULL, last_login_at = now(), updated_at = now()
+    WHERE id = ${String(row.id)}
+    RETURNING id, display_name, normalized_name, created_at, updated_at, last_login_at, failed_login_count, locked_until
+  `) as DbRow[];
+  const session = await createSession(String(row.id), input.deviceLabel);
+  return { user: mapUser(updated[0]), session };
+}
+
+export async function logoutSession(token: string) {
+  ensureDb();
+  if (!token.trim()) return;
+  const sql = await getReadySql();
+  await sql`DELETE FROM user_sessions WHERE token_hash = ${sessionHash(token)}`;
+}
+
 export async function getUser(id: string) {
   ensureDb();
   const sql = await getReadySql();
   const rows = (await sql`
-    SELECT id, display_name, normalized_name, created_at, updated_at, last_login_at
+    SELECT id, display_name, normalized_name, pin_hash, locked_until, created_at, updated_at, last_login_at
     FROM users
     WHERE id = ${id}
     LIMIT 1
@@ -198,6 +297,61 @@ function ensureDb() {
   }
 }
 
+function normalizeDisplayName(name: string) {
+  const displayName = name.trim().replace(/\s+/g, " ");
+  if (!displayName) throw new ApiError(400, "Username is required.");
+  if (displayName.length > 80) throw new ApiError(400, "Username is too long.");
+  return displayName;
+}
+
+function validatePin(pin: string) {
+  const clean = pin.trim();
+  if (!/^\d{4,12}$/.test(clean)) throw new ApiError(400, "PIN must be 4 to 12 digits. Six digits is preferred.");
+  if (clean.length < 6) {
+    // Legacy compatibility only. Keep accepting 4-5 digits, but make the UI prefer six.
+    return;
+  }
+}
+
+function hashPin(pin: string) {
+  const salt = randomBytes(16).toString("base64url");
+  return {
+    salt,
+    iterations: PIN_ITERATIONS,
+    hash: pbkdf2Sync(pin, salt, PIN_ITERATIONS, 32, "sha256").toString("base64url"),
+  };
+}
+
+function verifyPin(pin: string, salt: string, iterations: number, expected: string) {
+  const actual = pbkdf2Sync(pin, salt, iterations || PIN_ITERATIONS, 32, "sha256");
+  const expectedBuffer = Buffer.from(expected, "base64url");
+  return actual.length === expectedBuffer.length && timingSafeEqual(actual, expectedBuffer);
+}
+
+async function createSession(userId: string, deviceLabel?: string) {
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = sessionHash(token);
+  const sql = await getReadySql();
+  const rows = (await sql`
+    INSERT INTO user_sessions (user_id, token_hash, device_label, expires_at)
+    VALUES (${userId}, ${tokenHash}, ${deviceLabel ?? null}, now() + (${`${SESSION_DAYS} days`})::interval)
+    RETURNING id, user_id, device_label, created_at, last_seen_at, expires_at
+  `) as DbRow[];
+  return {
+    id: String(rows[0].id),
+    userId: String(rows[0].user_id),
+    token,
+    deviceLabel: rows[0].device_label ? String(rows[0].device_label) : undefined,
+    createdAt: iso(rows[0].created_at),
+    lastSeenAt: iso(rows[0].last_seen_at),
+    expiresAt: iso(rows[0].expires_at),
+  };
+}
+
+function sessionHash(token: string) {
+  return createHash("sha256").update(token).digest("base64url");
+}
+
 function mapUser(row: Record<string, unknown>) {
   return {
     id: String(row.id),
@@ -206,7 +360,9 @@ function mapUser(row: Record<string, unknown>) {
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
     lastLoginAt: iso(row.last_login_at),
-    authNote: "This is lightweight identity, not secure authentication. For production multi-user use, migrate to email magic links, OAuth, or passkeys.",
+    pinEnabled: Boolean(row.pin_hash),
+    lockedUntil: row.locked_until ? iso(row.locked_until) : undefined,
+    authNote: "PIN auth is an alpha convenience layer. For production multi-user use, migrate to passkeys, email magic links, OAuth, or verified email recovery.",
   };
 }
 

@@ -33,7 +33,8 @@ function state(patch: Partial<NoctyriumState> = {}): NoctyriumState {
     lastTimezoneOffset: 240,
     dailyArchives: [],
     dailyRolloverEvents: [],
-    schemaVersion: 24,
+    energyFactors: [],
+    schemaVersion: 25,
     ...patch,
   };
 }
@@ -82,10 +83,12 @@ describe("daily rollover helpers", () => {
       tasks: [{ id: "task", title: "Task", due: "2026-06-23", done: false, archived: false, created: "x" }],
       journal: [{ id: "j", date: "2026-06-23T20:00:00", today: "A", tomorrow: "B", blockers: "", energy: "High", rating: "Useful" }],
       dayPlans: [{ dayKey: "2026-06-23", intention: "Win", wins: [], createdAt: "x", outcome: "partial" }],
+      energyFactors: [{ id: "energy", date: "2026-06-23", source: "manual", label: "Poor sleep", category: "sleep", delta: -10, confidence: 1, carryoverDays: 2, decayPerDay: 0.4, userConfirmed: true }],
     }), "2026-06-23", ["task"], "2026-06-24T08:00:00.000Z");
     expect(archived.studyMinutes).toBe(50);
     expect(archived.ankiCards).toBe(20);
     expect(archived.journalEntryIds).toEqual(["j"]);
+    expect(archived.energyFactorIds).toEqual(["energy"]);
     expect(archived.dayPlanOutcome).toBe("partial");
   });
 

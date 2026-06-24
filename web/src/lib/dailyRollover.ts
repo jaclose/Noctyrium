@@ -1,4 +1,4 @@
-import type { DailyArchive, DailyRolloverEvent, JournalEntry, NoctyriumState, StudyLog, Task } from "./types";
+import type { DailyArchive, DailyRolloverEvent, EnergyFactor, JournalEntry, NoctyriumState, StudyLog, Task } from "./types";
 import { dayTotals, isoDate } from "./scoring";
 
 export type RolloverReason = DailyRolloverEvent["reason"];
@@ -64,7 +64,7 @@ export function shouldRollover(
 }
 
 export function buildDailyArchive(
-  state: Pick<NoctyriumState, "logs" | "tasks" | "journal" | "dayPlans">,
+  state: Pick<NoctyriumState, "logs" | "tasks" | "journal" | "dayPlans"> & { energyFactors?: EnergyFactor[] },
   date: string,
   carriedTaskIds: string[],
   archivedAt: string,
@@ -79,6 +79,7 @@ export function buildDailyArchive(
     openTaskIds: state.tasks.filter((task) => !task.done && !task.archived && taskDueOnOrBefore(task, date)).map((task) => task.id),
     carriedTaskIds,
     journalEntryIds: journalEntryIdsForDay(state.journal, date),
+    energyFactorIds: (state.energyFactors ?? []).filter((factor) => factor.date === date).map((factor) => factor.id),
     dayPlanOutcome: state.dayPlans.find((plan) => plan.dayKey === date)?.outcome,
   };
 }

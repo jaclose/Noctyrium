@@ -10,7 +10,7 @@ import { useStore } from "../lib/store";
 import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
 import { missedStandupDays, planForDay, standupStatusToday } from "../lib/journal";
 import type { Grade } from "../lib/scoring";
-import type { Course, Term, TrackerItem } from "../lib/types";
+import type { Course, EnergyFactor, Term, TrackerItem } from "../lib/types";
 import type { DashboardWidgetId } from "../lib/types";
 import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
@@ -20,6 +20,7 @@ import { canAutoFocus } from "../lib/device";
 import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
+import { calculateReadiness, QUICK_ENERGY_FACTORS, type ReadinessResult } from "../lib/energy";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Pomodoro } from "../components/productivity/Pomodoro";
@@ -61,7 +62,7 @@ export function DashboardPage() {
 
   const streak = studyStreak(s.logs);
   const missedSet = useMemo(() => new Set(missedStandupDays(s)), [s.journal, s.logs, s.dayPlans]);
-  const week = weeklySummary(s.logs);
+  const week = weeklySummary(s);
   const cardTarget = s.profile.dailyCardTarget || 120;
   const minTarget = s.profile.dailyMinuteTarget || 240;
   const cardPct = Math.min(100, Math.round((today.cards / cardTarget) * 100));
@@ -84,6 +85,15 @@ export function DashboardPage() {
     cardTarget,
     range: 14,
   });
+  const readiness = useMemo(() => calculateReadiness({
+    date: s.activeDayKey,
+    factors: s.energyFactors ?? [],
+    journal: s.journal,
+    logs: s.logs,
+    tasks: s.tasks,
+    dayPlans: s.dayPlans,
+    productivityTrackers: s.productivityTrackers,
+  }), [s.activeDayKey, s.energyFactors, s.journal, s.logs, s.tasks, s.dayPlans, s.productivityTrackers]);
   const widgetOrder = normalizeWidgetOrder(s.profile.dashboardWidgetOrder);
   const hiddenWidgets = new Set(s.profile.hiddenDashboardWidgets ?? []);
   const showWidget = (id: DashboardWidgetId) => !hiddenWidgets.has(id);
@@ -121,7 +131,8 @@ export function DashboardPage() {
         activeDayKey={s.activeDayKey}
         termCount={s.terms.length}
         performanceLabel={performance.performanceLabel}
-        energyScore={performance.energyScore}
+        energyScore={readiness.selfReportedEnergy.score}
+        readinessScore={readiness.estimatedReadiness}
       />
 
       <StandupPrompt />
@@ -140,7 +151,8 @@ export function DashboardPage() {
             </div>
             <div className="dashboard-control-meta">
               <span>{performance.performanceLabel}</span>
-              <span>Energy {performance.energyScore}/100</span>
+              <span>Energy {readiness.selfReportedEnergy.score}/100</span>
+              <span>Readiness {readiness.estimatedReadiness}/100</span>
               <span>{hiddenWidgets.size} widgets in the library</span>
             </div>
             <div className={`day-fluid-pill dashboard-mini-fluid ${strongDay ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
@@ -187,14 +199,14 @@ export function DashboardPage() {
             { label: "Mature (3)", value: `${matureItems}` },
             { label: "Needs attention", value: `${reviewItems}`, tone: reviewItems ? "orange" : "green" },
           ]} foot={reviewItems ? `${reviewItems} item${reviewItems === 1 ? "" : "s"} flagged review or under two passes.` : "No review flags — keep cycling fresh evidence."} />} />
-        <StatCard title="Energy" value={`${performance.energyScore}`} note={performance.journalSignal} icon={<Sunrise size={18} />}
-          trend={performance.energyLabel} trendTone={performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red"}
-          overview={<OverviewPanel title="Energy read" rows={[
-            { label: "Energy score", value: `${performance.energyScore}/100`, tone: performance.energyScore >= 72 ? "green" : performance.energyScore >= 45 ? "orange" : "red" },
-            { label: "Read", value: performance.energyLabel },
-            { label: "Performance", value: performance.performanceLabel },
-            { label: "Journal signal", value: performance.journalSignal },
-          ]} foot={performance.recommendation} />} />
+        <StatCard title="Readiness" value={`${readiness.estimatedReadiness}`} note={`Energy ${readiness.selfReportedEnergy.label} · ${readiness.primarySignal}`} icon={<Sunrise size={18} />}
+          trend={readiness.readinessLabel} trendTone={readiness.estimatedReadiness >= 78 ? "green" : readiness.estimatedReadiness >= 58 ? "cyan" : readiness.estimatedReadiness >= 38 ? "orange" : "red"}
+          overview={<EnergyLedgerPopover
+            readiness={readiness}
+            onAdd={(factor) => s.addEnergyFactor(factor)}
+            onUpdate={s.updateEnergyFactor}
+            onRemove={s.removeEnergyFactor}
+          />} />
       </div>
 
       {widgetOrder.map(renderWidget)}
@@ -203,13 +215,14 @@ export function DashboardPage() {
 }
 
 function AlphaBuildBanner({
-  profileName, activeDayKey, termCount, performanceLabel, energyScore,
+  profileName, activeDayKey, termCount, performanceLabel, energyScore, readinessScore,
 }: {
   profileName: string;
   activeDayKey: string;
   termCount: number;
   performanceLabel: string;
   energyScore: number;
+  readinessScore: number;
 }) {
   const displayName = profileName && profileName !== "Noctyrium" ? profileName : "JD";
   const quote = dailyDashboardMessage(activeDayKey);
@@ -231,6 +244,7 @@ function AlphaBuildBanner({
       <div className="alpha-build-meta">
         <span><Sparkles size={13} /> {performanceLabel}</span>
         <span><Sunrise size={13} /> Energy {energyScore}/100</span>
+        <span><Brain size={13} /> Readiness {readinessScore}/100</span>
         <span><ShieldCheck size={13} /> Version v{APP_RELEASE_VERSION}</span>
         <span><Database size={13} /> Schema {SCHEMA_VERSION}</span>
         <span>{termCount} active map nodes</span>
@@ -339,6 +353,106 @@ function OverviewPanel({
       {foot && <div className="stat-ov-foot">{foot}</div>}
     </>
   );
+}
+
+function EnergyLedgerPopover({
+  readiness,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  readiness: ReadinessResult;
+  onAdd: (factor: Omit<EnergyFactor, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
+  onUpdate: (id: string, patch: Partial<EnergyFactor>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const editable = readiness.contributions.filter((item) => item.factorId && item.editable).slice(0, 4);
+  const topContributions = readiness.contributions.slice(0, 5);
+  return (
+    <div className="energy-ledger-popover">
+      <div className="stat-ov-title">Energy and readiness</div>
+      <div className="energy-score-grid">
+        <div>
+          <span>Self-reported</span>
+          <b>{readiness.selfReportedEnergy.score}</b>
+          <small>{readiness.selfReportedEnergy.label}</small>
+        </div>
+        <div>
+          <span>Estimated</span>
+          <b>{readiness.estimatedReadiness}</b>
+          <small>{readiness.readinessLabel}</small>
+        </div>
+      </div>
+      <div className="stat-ov-row"><span>Baseline</span><b>{readiness.baseline}/100</b></div>
+      <div className="stat-ov-row"><span>Net factor impact</span><b className={toneForDelta(readiness.totalImpact)}>{formatDelta(readiness.totalImpact)}</b></div>
+      <div className="stat-ov-row"><span>Carryover impact</span><b className={toneForDelta(readiness.carryoverImpact)}>{formatDelta(readiness.carryoverImpact)}</b></div>
+
+      {topContributions.length > 0 && (
+        <div className="energy-factor-list">
+          {topContributions.map((item) => (
+            <div className="energy-factor-row" key={item.id}>
+              <div>
+                <b>{item.label}</b>
+                <span>{item.source} · {item.category}{item.daysSince ? ` · carryover d${item.daysSince}` : ""}</span>
+                <small>{item.explanation}</small>
+              </div>
+              <strong className={toneForDelta(item.appliedDelta)}>{formatDelta(item.appliedDelta)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editable.length > 0 && (
+        <div className="energy-edit-list">
+          {editable.map((item) => (
+            <div className="energy-edit-row" key={item.factorId}>
+              <span>{item.label}</span>
+              <div className="row gap4">
+                <GButton size="tiny" iconOnly title="Lower factor weight" onClick={() => item.factorId && onUpdate(item.factorId, { delta: item.delta - 1 })}>-</GButton>
+                <GButton size="tiny" iconOnly title="Raise factor weight" onClick={() => item.factorId && onUpdate(item.factorId, { delta: item.delta + 1 })}>+</GButton>
+                <GButton size="tiny" iconOnly title="Remove factor" onClick={() => item.factorId && onRemove(item.factorId)}><X size={11} /></GButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="energy-quick-row">
+        {QUICK_ENERGY_FACTORS.slice(0, 5).map((preset) => (
+          <button type="button" key={preset.label} onClick={() => onAdd({ ...preset, date: readiness.date, userConfirmed: true })}>
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {readiness.possibleSignals.length > 0 && (
+        <div className="energy-signal-box">
+          <b>Possible signal detected</b>
+          {readiness.possibleSignals.slice(0, 3).map((signal) => (
+            <div className="energy-signal-row" key={signal.id}>
+              <span>{signal.label} {formatDelta(signal.delta * signal.confidence)}</span>
+              <div className="row gap4">
+                <GButton size="tiny" onClick={() => onAdd({ ...signal, userConfirmed: true })}>Confirm</GButton>
+                <GButton size="tiny" onClick={() => onAdd({ ...signal, delta: 0, userConfirmed: false, notes: "Ignored by the user; kept only to avoid suggesting it again." })}>Ignore</GButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="stat-ov-foot">{readiness.recommendation}</div>
+    </div>
+  );
+}
+
+function formatDelta(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded}`;
+}
+
+function toneForDelta(value: number) {
+  if (value > 0) return "green";
+  if (value < 0) return "red";
+  return "cyan";
 }
 
 function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
@@ -518,6 +632,8 @@ function TodayScoreWidget({
 
 function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
   const reveal = useInView<HTMLDivElement>();
+  const [selectedKey, setSelectedKey] = useState(() => week.days.at(-1)?.key ?? "");
+  const selected = week.days.find((day) => day.key === selectedKey) ?? week.days.at(-1) ?? week.days[0];
   return (
     <GlassCard pad className="weekly-card">
       <PanelHeader title="Weekly Overview" sub="Last 7 calendar days from your local study log"
@@ -534,15 +650,50 @@ function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
       </div>
       <div className={`week-bars reveal-bars ${reveal.inView ? "in-view" : ""}`} ref={reveal.ref}>
         {week.days.map((d) => (
-          <div className="week-day" key={d.key} title={`${d.key}: ${d.minutes}m, ${d.cards} cards`}>
+          <button type="button" className={`week-day ${selected?.key === d.key ? "on" : ""}`} key={d.key}
+            title={`${d.key}: ${d.minutes}m, ${d.cards} cards, readiness ${d.readiness}`}
+            onMouseEnter={() => setSelectedKey(d.key)}
+            onFocus={() => setSelectedKey(d.key)}
+            onClick={() => setSelectedKey(d.key)}>
             <div className="week-bar-shell">
               <div className="week-bar-fill" style={{ height: `${Math.max(8, d.intensity)}%`, background: gradeColor(d.grade) }} />
             </div>
             <span>{d.label}</span>
-          </div>
+          </button>
         ))}
       </div>
+      {selected && (
+        <div className="weekly-day-detail">
+          <div className="weekly-day-head">
+            <div>
+              <b>{selected.dateLabel}</b>
+              <span>{selected.key}</span>
+            </div>
+            <Tag tone={selected.readiness >= 78 ? "green" : selected.readiness >= 58 ? "cyan" : selected.readiness >= 38 ? "orange" : "red"}>
+              Readiness {selected.readiness}
+            </Tag>
+          </div>
+          <div className="weekly-detail-grid">
+            <DetailMetric label="Study" value={`${selected.minutes}m · ${selected.cards} cards`} />
+            <DetailMetric label="Productive" value={`${selected.productiveMinutes}m`} />
+            <DetailMetric label="Tasks" value={`${selected.tasksDone} done · ${selected.openTasksDue} due`} />
+            <DetailMetric label="Journal" value={selected.journalSummary} />
+            <DetailMetric label="Top activity" value={selected.topActivity} />
+            <DetailMetric label="Strongest action" value={selected.strongestAction} />
+          </div>
+          <div className="weekly-correction"><ArrowRightCircle size={14} /> {selected.suggestedCorrection}</div>
+        </div>
+      )}
     </GlassCard>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="weekly-detail-metric">
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
   );
 }
 
@@ -1241,17 +1392,38 @@ function summarizeCourse(course: Course, tracker: TrackerItem[]) {
   return { items: items.length, ready, review, highYield };
 }
 
-function weeklySummary(logs: ReturnType<typeof useStore.getState>["logs"]) {
+function weeklySummary(s: ReturnType<typeof useStore.getState>) {
   const days = lastNDays(7).map((d) => {
     const key = isoDate(d);
-    const totals = dayTotals(logs, key);
+    const totals = dayTotals(s.logs, key);
+    const productive = productiveTotals(s.logs, key);
     const grade = todayGrade(totals.minutes, totals.cards);
     const intensity = Math.min(100, Math.max((totals.minutes / 480) * 100, (totals.cards / 350) * 100));
+    const readiness = calculateReadiness({
+      date: key,
+      factors: s.energyFactors ?? [],
+      journal: s.journal,
+      logs: s.logs,
+      tasks: s.tasks,
+      dayPlans: s.dayPlans,
+      productivityTrackers: s.productivityTrackers,
+    });
+    const tasksDone = s.tasks.filter((task) => task.done && task.completedAt?.startsWith(key)).length;
+    const openTasksDue = s.tasks.filter((task) => !task.done && !task.archived && task.due?.slice(0, 10) === key).length;
     return {
       key,
+      dateLabel: d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }),
       label: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1),
       minutes: totals.minutes,
       cards: totals.cards,
+      productiveMinutes: productive.minutes,
+      tasksDone,
+      openTasksDue,
+      journalSummary: journalSummaryForDay(s.journal, key),
+      topActivity: topActivityForDay(s.logs, key),
+      strongestAction: strongestActionForDay({ logs: s.logs, dayPlans: s.dayPlans, tasksDone, key }),
+      suggestedCorrection: correctionForDay({ minutes: totals.minutes, cards: totals.cards, openTasksDue, readiness: readiness.estimatedReadiness }),
+      readiness: readiness.estimatedReadiness,
       grade,
       intensity,
     };
@@ -1264,9 +1436,62 @@ function weeklySummary(logs: ReturnType<typeof useStore.getState>["logs"]) {
     minutes,
     cards,
     activeDays,
-    tasksDone: useStore.getState().tasks.filter((t) => t.done && t.completedAt && days.some((d) => t.completedAt?.startsWith(d.key))).length,
+    tasksDone: days.reduce((sum, day) => sum + day.tasksDone, 0),
     grade: todayGrade(Math.round(minutes / Math.max(activeDays, 1)), Math.round(cards / Math.max(activeDays, 1))),
   };
+}
+
+function journalSummaryForDay(journal: ReturnType<typeof useStore.getState>["journal"], key: string) {
+  const entry = journal.find((item) => item.date.slice(0, 10) === key);
+  if (!entry) return "No standup";
+  const text = [entry.today, entry.blockers, entry.rating].find((part) => part.trim()) ?? "";
+  return truncateText(text || `${entry.energy || "Logged"} standup`, 58);
+}
+
+function topActivityForDay(logs: ReturnType<typeof useStore.getState>["logs"], key: string) {
+  const totals = new Map<string, number>();
+  for (const log of logs.filter((item) => item.dayKey === key)) {
+    totals.set(log.type, (totals.get(log.type) ?? 0) + Math.max(log.minutes, Number(log.quantity ?? 0), log.cards));
+  }
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top ? `${top[0]} (${Math.round(top[1])})` : "No logged activity";
+}
+
+function strongestActionForDay({
+  logs, dayPlans, tasksDone, key,
+}: {
+  logs: ReturnType<typeof useStore.getState>["logs"];
+  dayPlans: ReturnType<typeof useStore.getState>["dayPlans"];
+  tasksDone: number;
+  key: string;
+}) {
+  const plan = dayPlans.find((item) => item.dayKey === key);
+  if (plan?.outcome === "won") return "Won the plan";
+  if (tasksDone > 0) return `${tasksDone} task${tasksDone === 1 ? "" : "s"} closed`;
+  const totals = dayTotals(logs, key);
+  if (totals.cards >= 120) return "Card floor cleared";
+  if (totals.minutes >= 120) return "Study block protected";
+  return "Needs one clear win";
+}
+
+function correctionForDay({
+  minutes, cards, openTasksDue, readiness,
+}: {
+  minutes: number;
+  cards: number;
+  openTasksDue: number;
+  readiness: number;
+}) {
+  if (readiness < 45) return "Tomorrow: lower the load and close one small loop.";
+  if (openTasksDue > 0) return "Tomorrow: clear the oldest due task before adding volume.";
+  if (minutes === 0 && cards === 0) return "Tomorrow: create signal with one 25-minute block.";
+  if (cards < 60) return "Tomorrow: add a small retrieval/card pass.";
+  return "Tomorrow: keep the same floor and add only one precision target.";
+}
+
+function truncateText(value: string, max: number) {
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
 }
 
 interface ScheduleDay {

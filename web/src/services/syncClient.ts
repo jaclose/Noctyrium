@@ -1,4 +1,4 @@
-import type { BackendHealth, CloudBackup, CloudSnapshot, CloudUser, SaveCloudInput } from "../types/sync";
+import type { BackendHealth, CloudBackup, CloudSession, CloudSnapshot, CloudUser, SaveCloudInput } from "../types/sync";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (isLocalOnlyRuntime()) {
@@ -25,6 +25,27 @@ export async function loginByName(name: string) {
     body: JSON.stringify({ name }),
   });
   return data.user;
+}
+
+export async function createPinAccount(input: { username: string; pin: string; deviceLabel?: string }) {
+  return api<{ user: CloudUser; session: CloudSession }>("/api/user/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function loginWithPin(input: { username: string; pin: string; deviceLabel?: string }) {
+  return api<{ user: CloudUser; session: CloudSession }>("/api/user/pin-login", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function logoutPinSession(sessionToken: string) {
+  return api<{ ok: true }>("/api/user/logout", {
+    method: "POST",
+    body: JSON.stringify({ sessionToken }),
+  });
 }
 
 export async function getBackendHealth() {

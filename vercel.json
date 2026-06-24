@@ -5,6 +5,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "web/dist",
   "rewrites": [
+    { "source": "/api/user/register", "destination": "/api/user?action=register" },
+    { "source": "/api/user/pin-login", "destination": "/api/user?action=pin-login" },
+    { "source": "/api/user/logout", "destination": "/api/user?action=logout" },
     { "source": "/api/user/login", "destination": "/api/user?action=login" },
     { "source": "/api/user/:id", "destination": "/api/user?id=:id" },
     { "source": "/api/data/:userId/restore/:backupId", "destination": "/api/data?action=restore&userId=:userId&backupId=:backupId" },

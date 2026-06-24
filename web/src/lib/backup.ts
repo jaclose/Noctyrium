@@ -8,8 +8,9 @@ import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience
 import { resolveTrack } from "./tracks";
 
 const DATA_KEYS = [
-  "profile", "terms", "courses", "tracker", "resources", "tasks", "journal",
+  "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
+  "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -83,6 +84,7 @@ export function parseImport(text: string): NoctyriumState {
     terms: data.terms ?? [],
     courses: data.courses ?? [],
     tracker: data.tracker ?? [],
+    productivityTrackers: Array.isArray(data.productivityTrackers) ? data.productivityTrackers : [],
     resources: data.resources ?? [],
     tasks: data.tasks ?? [],
     journal: data.journal ?? [],
@@ -102,7 +104,12 @@ export function parseImport(text: string): NoctyriumState {
     },
     blueprintInstalls: Array.isArray(data.blueprintInstalls) ? data.blueprintInstalls : [],
     dayPlans: data.dayPlans ?? [],
-    activeDayKey: data.activeDayKey,
+    activeDayKey: typeof data.activeDayKey === "string" ? data.activeDayKey : new Date().toISOString().slice(0, 10),
+    lastActiveLocalDate: typeof data.lastActiveLocalDate === "string" ? data.lastActiveLocalDate : (typeof data.activeDayKey === "string" ? data.activeDayKey : new Date().toISOString().slice(0, 10)),
+    lastTimezoneOffset: typeof data.lastTimezoneOffset === "number" ? data.lastTimezoneOffset : new Date().getTimezoneOffset(),
+    dailyArchives: Array.isArray(data.dailyArchives) ? data.dailyArchives : [],
+    dailyRolloverEvents: Array.isArray(data.dailyRolloverEvents) ? data.dailyRolloverEvents : [],
+    energyFactors: Array.isArray(data.energyFactors) ? data.energyFactors : [],
   } as NoctyriumState;
 }
 

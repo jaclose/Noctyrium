@@ -249,6 +249,7 @@ export interface DailyArchive {
   openTaskIds: string[];
   carriedTaskIds: string[];
   journalEntryIds: string[];
+  energyFactorIds: string[];
   dayPlanOutcome?: DayPlan["outcome"];
 }
 
@@ -261,6 +262,34 @@ export interface DailyRolloverEvent {
   daysAway: number;
   timezoneOffset: number;
   carriedTaskIds: string[];
+}
+
+export type EnergyFactorSource = "journal" | "manual" | "sleep" | "tracker" | "habit" | "goal" | "import";
+
+export type EnergyFactorCategory =
+  | "sleep"
+  | "movement"
+  | "food"
+  | "focus"
+  | "spirit"
+  | "recovery"
+  | "substance"
+  | "workload";
+
+export interface EnergyFactor {
+  id: ID;
+  date: string; // local yyyy-MM-dd
+  source: EnergyFactorSource;
+  label: string;
+  category: EnergyFactorCategory;
+  delta: number;
+  confidence: number;
+  carryoverDays: number;
+  decayPerDay: number;
+  userConfirmed: boolean;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** Academic phase, set during first-launch onboarding — tailors targets, tagline, and AI context. */
@@ -472,5 +501,6 @@ export interface NoctyriumState {
   lastTimezoneOffset: number;
   dailyArchives: DailyArchive[];
   dailyRolloverEvents: DailyRolloverEvent[];
+  energyFactors: EnergyFactor[];
   schemaVersion: number;
 }
