@@ -6,16 +6,27 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
-  BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DayPlan, HubFolder, JournalEntry, NoctyriumState,
-  PremedExperienceEntry, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode,
+  BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DailyRolloverEvent, DayPlan, HubFolder, JournalEntry, NoctyriumState,
+  PremedExperienceEntry, ProductivityTracker, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode,
 } from "./types";
 import { blueprintById } from "./blueprintCatalog";
 import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
 import {
   APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+  defaultProductivityTrackers,
   driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES,
 } from "./seed";
-import { dayKey } from "./scoring";
+import { dayKey, isoDate } from "./scoring";
+import {
+  buildDailyArchive,
+  carryOpenTasksForward,
+  localDateKey,
+  markRolloverDone,
+  mergeDailyArchive,
+  mergeRolloverEvent,
+  shouldRollover,
+  type RolloverReason,
+} from "./dailyRollover";
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
@@ -105,7 +116,11 @@ interface Actions {
 
   // productivity
   logStudy: (entry: { type: string; minutes?: number; cards?: number; note?: string }) => void;
+  logProductivity: (entry: { trackerId: string; quantity?: number; minutes?: number; note?: string }) => void;
+  addProductivityTracker: (tracker: Omit<ProductivityTracker, "id" | "createdAt" | "updatedAt">) => void;
+  updateProductivityTracker: (id: string, patch: Partial<ProductivityTracker>) => void;
   startNewStudyDay: () => void;
+  checkDailyRollover: (reason?: RolloverReason, at?: Date) => { changed: boolean; toDate: string; daysAway: number; carriedTaskIds?: string[] };
 
   // board prep
   updateBoardPrep: (exam: BoardExamId, patch: Partial<BoardPrepProfile>) => void;
@@ -331,15 +346,16 @@ export const useStore = create<Store>()(
         })),
       removePrompt: (id) => set((s) => ({ prompts: s.prompts.filter((p) => p.id !== id) })),
 
-      addFolder: (f) => set((s) => ({ folders: [...s.folders, { ...f, id: uid() }] })),
+      addFolder: (f) => set((s) => upsertFolder(s.folders, f)),
       updateFolder: (id, patch) =>
-        set((s) => ({ folders: s.folders.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
+        set((s) => ({ folders: sortFolders(s.folders.map((f) => (f.id === id ? { ...f, ...patch, updatedAt: now() } : f))) })),
       removeFolder: (id) => set((s) => ({ folders: s.folders.filter((f) => f.id !== id) })),
 
       logStudy: ({ type, minutes = 0, cards = 0, note }) =>
         set((s) => {
+          const tracker = matchProductivityTracker(s.productivityTrackers, type);
           const current = s.logs.reduce((totals, log) => {
-            if (log.dayKey !== s.activeDayKey) return totals;
+            if (log.dayKey !== s.activeDayKey || log.academic === false) return totals;
             return { minutes: totals.minutes + log.minutes, cards: totals.cards + log.cards };
           }, { minutes: 0, cards: 0 });
           let nextMinutes = Number.isFinite(minutes) ? minutes : 0;
@@ -351,22 +367,121 @@ export const useStore = create<Store>()(
             id: uid(),
             dayKey: s.activeDayKey,
             ts: now(),
-            type: type.trim() || "Study",
+            type: type.trim() || tracker?.name || "Study",
             minutes: nextMinutes,
             cards: nextCards,
             note,
+            trackerId: tracker?.id,
+            unitType: tracker?.unitType ?? "minutes",
+            quantity: tracker?.unitType === "count" ? nextCards : nextMinutes,
+            academic: tracker ? tracker.contributesToAcademicStudy : true,
+            productive: tracker ? tracker.contributesToTotalProductiveTime : true,
           };
           return { logs: [entry, ...s.logs] };
         }),
 
-      // Close the current study day, advance the pointer to the next day.
-      // Idempotent in spirit: it only advances after the real shifted day moves.
+      logProductivity: ({ trackerId, quantity = 0, minutes, note }) =>
+        set((s) => {
+          const tracker = s.productivityTrackers.find((item) => item.id === trackerId);
+          if (!tracker || tracker.archived) return {};
+          const value = Number.isFinite(minutes) ? Number(minutes) : Number(quantity) || 0;
+          if (!value) return {};
+          const entry: StudyLog = {
+            id: uid(),
+            dayKey: s.activeDayKey,
+            ts: now(),
+            type: tracker.name,
+            minutes: tracker.unitType === "minutes" ? value : 0,
+            cards: 0,
+            note,
+            trackerId: tracker.id,
+            unitType: tracker.unitType,
+            quantity: value,
+            academic: tracker.contributesToAcademicStudy,
+            productive: tracker.contributesToTotalProductiveTime,
+          };
+          return { logs: [entry, ...s.logs] };
+        }),
+
+      addProductivityTracker: (tracker) =>
+        set((s) => ({
+          productivityTrackers: [
+            ...s.productivityTrackers,
+            { ...tracker, id: uid(), createdAt: now(), updatedAt: now() },
+          ],
+        })),
+      updateProductivityTracker: (id, patch) =>
+        set((s) => ({
+          productivityTrackers: s.productivityTrackers.map((tracker) =>
+            tracker.id === id ? { ...tracker, ...patch, updatedAt: now() } : tracker),
+        })),
+
+      // Deprecated compatibility path. The app shell now calls checkDailyRollover
+      // automatically from load/focus/visibility/midnight events.
       startNewStudyDay: () =>
         set((s) => {
-          const today = dayKey();
+          const today = localDateKey();
           if (s.activeDayKey >= today) return {};
-          return { activeDayKey: today };
+          return { activeDayKey: today, lastActiveLocalDate: today, lastTimezoneOffset: new Date().getTimezoneOffset() };
         }),
+
+      checkDailyRollover: (reason = "manual-check", at = new Date()) => {
+        const current = get();
+        const decision = shouldRollover(current, at);
+        if (!decision.due) {
+          return { changed: false, toDate: decision.today, daysAway: 0 };
+        }
+        const processedAt = at.toISOString();
+        const fromDate = decision.lastDate;
+        const toDate = decision.today;
+        let carriedTaskIds: string[] = [];
+        set((s) => {
+          const freshDecision = shouldRollover(s, at);
+          if (!freshDecision.due) return {};
+          if (freshDecision.daysAway === 0 && freshDecision.lastDate === freshDecision.today) {
+            const event: DailyRolloverEvent = {
+              id: uid(),
+              fromDate: freshDecision.lastDate,
+              toDate: freshDecision.today,
+              processedAt,
+              reason: freshDecision.timezoneChanged ? "timezone-change" : reason,
+              daysAway: 0,
+              timezoneOffset: at.getTimezoneOffset(),
+              carriedTaskIds: [],
+            };
+            return {
+              activeDayKey: freshDecision.today,
+              lastActiveLocalDate: freshDecision.today,
+              lastTimezoneOffset: at.getTimezoneOffset(),
+              dailyRolloverEvents: mergeRolloverEvent(s.dailyRolloverEvents ?? [], event),
+            };
+          }
+          const carried = carryOpenTasksForward(s.tasks, previousRolloverArchiveDate(freshDecision.lastDate, freshDecision.today), freshDecision.today, processedAt);
+          carriedTaskIds = carried.carriedTaskIds;
+          const archiveDate = previousRolloverArchiveDate(freshDecision.lastDate, freshDecision.today);
+          const archive = buildDailyArchive(s, archiveDate, carried.carriedTaskIds, processedAt);
+          const event: DailyRolloverEvent = {
+            id: uid(),
+            fromDate: freshDecision.lastDate,
+            toDate: freshDecision.today,
+            processedAt,
+            reason: freshDecision.timezoneChanged ? "timezone-change" : reason,
+            daysAway: freshDecision.daysAway,
+            timezoneOffset: at.getTimezoneOffset(),
+            carriedTaskIds: carried.carriedTaskIds,
+          };
+          return {
+            tasks: carried.tasks,
+            activeDayKey: freshDecision.today,
+            lastActiveLocalDate: freshDecision.today,
+            lastTimezoneOffset: at.getTimezoneOffset(),
+            dailyArchives: mergeDailyArchive(s.dailyArchives ?? [], archive),
+            dailyRolloverEvents: mergeRolloverEvent(s.dailyRolloverEvents ?? [], event),
+          };
+        });
+        if (typeof localStorage !== "undefined") markRolloverDone(localStorage, toDate);
+        return { changed: true, toDate, daysAway: decision.daysAway || (fromDate === toDate ? 0 : 1), carriedTaskIds };
+      },
 
       updateBoardPrep: (exam, patch) =>
         set((s) => ({
@@ -485,13 +600,17 @@ export const useStore = create<Store>()(
       resetToSeed: () => set(() => ({ ...makeSeed() })),
       startFresh: () =>
         set((s) => ({
-          terms: [], courses: [], tracker: [], tasks: [],
+          terms: [], courses: [], tracker: [], productivityTrackers: defaultProductivityTrackers(), tasks: [],
           // keep the curated shared drives even on a fresh start
           resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
-          activeDayKey: dayKey(),
+          activeDayKey: localDateKey(),
+          lastActiveLocalDate: localDateKey(),
+          lastTimezoneOffset: new Date().getTimezoneOffset(),
+          dailyArchives: [],
+          dailyRolloverEvents: [],
           // keep the user's profile + integrations catalog
           profile: normalizeProfile({ ...s.profile, name: s.profile.name === "Noctyrium" ? "" : s.profile.name }),
         })),
@@ -689,17 +808,37 @@ export const useStore = create<Store>()(
           profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
           s.profile = normalizeProfile(profile);
         }
+        if (fromVersion < 24) {
+          s.activeDayKey = typeof s.activeDayKey === "string" && s.activeDayKey ? s.activeDayKey : isoDate(new Date());
+          s.lastActiveLocalDate = typeof s.lastActiveLocalDate === "string" && s.lastActiveLocalDate
+            ? s.lastActiveLocalDate
+            : String(s.activeDayKey);
+          s.lastTimezoneOffset = typeof s.lastTimezoneOffset === "number" ? s.lastTimezoneOffset : new Date().getTimezoneOffset();
+          s.dailyArchives = Array.isArray(s.dailyArchives) ? s.dailyArchives : [];
+          s.dailyRolloverEvents = Array.isArray(s.dailyRolloverEvents) ? s.dailyRolloverEvents : [];
+          s.productivityTrackers = normalizeProductivityTrackers(s.productivityTrackers);
+          s.logs = arrayOfRecords(s.logs).map((log) => ({
+            ...log,
+            academic: typeof log.academic === "boolean" ? log.academic : true,
+            productive: typeof log.productive === "boolean" ? log.productive : true,
+            unitType: typeof log.unitType === "string" ? log.unitType : "minutes",
+            quantity: typeof log.quantity === "number" ? log.quantity : Number(log.minutes ?? 0),
+          }));
+          s.folders = normalizeFolders(s.folders);
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
         // persist data only — strip the action functions
         const {
-          profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
-          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey, schemaVersion,
+          profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
+          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, schemaVersion,
         } = s;
         return {
-          profile, terms, courses, tracker, resources, tasks, journal, premedExperiences, prompts,
-          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey, schemaVersion,
+          profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
+          folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -737,6 +876,113 @@ function buildTrackStructure(track: EducationTrack): { terms: Term[]; courses: C
     updated: now(),
   }));
   return { terms, courses, tracker };
+}
+
+function matchProductivityTracker(trackers: ProductivityTracker[] = [], type: string): ProductivityTracker | undefined {
+  const clean = cleanText(type);
+  if (!clean) return trackers.find((tracker) => tracker.id === "tracker-study");
+  return trackers.find((tracker) => !tracker.archived && cleanText(tracker.name) === clean);
+}
+
+function normalizeProductivityTrackers(value: unknown): ProductivityTracker[] {
+  const timestamp = new Date().toISOString();
+  const defaults = defaultProductivityTrackers(timestamp);
+  const byName = new Map(defaults.map((tracker) => [cleanText(tracker.name), tracker]));
+  for (const record of arrayOfRecords(value)) {
+    const name = String(record.name ?? "").trim();
+    if (!name) continue;
+    const base = byName.get(cleanText(name));
+    byName.set(cleanText(name), {
+      ...(base ?? defaults[0]),
+      id: typeof record.id === "string" && record.id ? record.id : base?.id ?? uid(),
+      name,
+      icon: typeof record.icon === "string" && record.icon ? record.icon : base?.icon ?? "Activity",
+      color: typeof record.color === "string" && record.color ? record.color : base?.color ?? "var(--cyan)",
+      unitType: isUnitType(record.unitType) ? record.unitType : base?.unitType ?? "minutes",
+      customUnit: typeof record.customUnit === "string" ? record.customUnit : base?.customUnit,
+      dailyTarget: typeof record.dailyTarget === "number" ? record.dailyTarget : base?.dailyTarget,
+      weeklyTarget: typeof record.weeklyTarget === "number" ? record.weeklyTarget : base?.weeklyTarget,
+      category: typeof record.category === "string" && record.category ? record.category : base?.category ?? "Productivity",
+      contributesToAcademicStudy: typeof record.contributesToAcademicStudy === "boolean" ? record.contributesToAcademicStudy : base?.contributesToAcademicStudy ?? false,
+      contributesToTotalProductiveTime: typeof record.contributesToTotalProductiveTime === "boolean" ? record.contributesToTotalProductiveTime : base?.contributesToTotalProductiveTime ?? true,
+      contributesToEnergy: typeof record.contributesToEnergy === "boolean" ? record.contributesToEnergy : base?.contributesToEnergy ?? true,
+      contributesToReports: typeof record.contributesToReports === "boolean" ? record.contributesToReports : base?.contributesToReports ?? true,
+      contributesToHabitTracking: typeof record.contributesToHabitTracking === "boolean" ? record.contributesToHabitTracking : base?.contributesToHabitTracking ?? false,
+      visible: typeof record.visible === "boolean" ? record.visible : base?.visible ?? true,
+      archived: typeof record.archived === "boolean" ? record.archived : base?.archived ?? false,
+      createdAt: typeof record.createdAt === "string" ? record.createdAt : base?.createdAt ?? timestamp,
+      updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : timestamp,
+    });
+  }
+  return [...byName.values()];
+}
+
+function isUnitType(value: unknown): value is ProductivityTracker["unitType"] {
+  return ["minutes", "count", "yesno", "distance", "custom"].includes(String(value));
+}
+
+function upsertFolder(folders: HubFolder[], folder: Omit<HubFolder, "id">): { folders: HubFolder[] } {
+  const timestamp = now();
+  const key = folderIdentity(folder);
+  const existing = folders.find((candidate) => folderIdentity(candidate) === key);
+  if (existing) {
+    return {
+      folders: sortFolders(folders.map((candidate) =>
+        candidate.id === existing.id ? { ...candidate, ...folder, id: candidate.id, updatedAt: timestamp } : candidate)),
+    };
+  }
+  const sortOrder = typeof folder.sortOrder === "number" ? folder.sortOrder : nextFolderSortOrder(folders);
+  return {
+    folders: sortFolders([
+      ...folders,
+      { ...folder, id: uid(), sortOrder, archived: folder.archived ?? false, favorite: folder.favorite ?? false, tags: folder.tags ?? [], createdAt: timestamp, updatedAt: timestamp },
+    ]),
+  };
+}
+
+function normalizeFolders(value: unknown): HubFolder[] {
+  const timestamp = new Date().toISOString();
+  return sortFolders(arrayOfRecords(value).map((record, index) => ({
+    id: typeof record.id === "string" && record.id ? record.id : uid(),
+    name: String(record.name ?? "Untitled folder").trim() || "Untitled folder",
+    description: typeof record.description === "string" ? record.description : undefined,
+    link: typeof record.link === "string" ? record.link : undefined,
+    localPath: typeof record.localPath === "string" ? record.localPath : "",
+    icon: typeof record.icon === "string" ? record.icon : "Folder",
+    color: typeof record.color === "string" ? record.color : "var(--cyan)",
+    tags: Array.isArray(record.tags) ? record.tags.filter((item): item is string => typeof item === "string") : [],
+    group: typeof record.group === "string" ? record.group : undefined,
+    favorite: typeof record.favorite === "boolean" ? record.favorite : false,
+    archived: typeof record.archived === "boolean" ? record.archived : false,
+    sortOrder: typeof record.sortOrder === "number" ? record.sortOrder : index,
+    createdAt: typeof record.createdAt === "string" ? record.createdAt : timestamp,
+    updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : timestamp,
+  })));
+}
+
+function sortFolders(folders: HubFolder[]): HubFolder[] {
+  return [...folders].sort((a, b) =>
+    Number(a.archived) - Number(b.archived)
+    || (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    || a.name.localeCompare(b.name));
+}
+
+function nextFolderSortOrder(folders: HubFolder[]): number {
+  return folders.reduce((max, folder) => Math.max(max, folder.sortOrder ?? 0), -1) + 1;
+}
+
+function folderIdentity(folder: Pick<HubFolder, "name" | "link" | "localPath">): string {
+  const destination = String(folder.link || folder.localPath || "").trim().toLowerCase();
+  return destination || cleanText(folder.name);
+}
+
+function previousRolloverArchiveDate(lastDate: string, today: string): string {
+  return lastDate < today ? lastDate : isoDate(new Date(localDateAtStart(today).getTime() - 86_400_000));
+}
+
+function localDateAtStart(key: string): Date {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
 function normalizeAcademicMap(state: AnyRecord) {

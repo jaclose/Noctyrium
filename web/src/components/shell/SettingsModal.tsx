@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import {
   Cloud, Download, FileJson, ImagePlus, RotateCcw, ShieldCheck,
   SlidersHorizontal, Sparkles, Upload, UserCircle2, Check, ScrollText,
+  MessageCircle,
 } from "lucide-react";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
@@ -236,7 +237,20 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
         </div>
       )}
 
-      {tab === "account" && <AccountSyncPanel />}
+      {tab === "account" && (
+        <>
+          <AccountSyncPanel />
+          <div className="backup-actions-panel" style={{ marginTop: 14 }}>
+            <div>
+              <div className="sync-title">Community and beta feedback</div>
+              <div className="sub">Ask questions, report rough edges, and follow pre-beta progress without leaving the settings flow.</div>
+            </div>
+            <a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
+              <MessageCircle size={15} /> Noctyrium Discord Channel
+            </a>
+          </div>
+        </>
+      )}
 
       {resigning && <PromiseCutscene onDone={() => setResigning(false)} />}
       {viewingPromise && promise && <PromiseSheet onClose={() => setViewingPromise(false)} />}

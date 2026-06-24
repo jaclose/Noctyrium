@@ -7,7 +7,7 @@ import {
   AlertTriangle, CalendarClock,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayKey, dayTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
+import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
 import { missedStandupDays, planForDay, standupStatusToday } from "../lib/journal";
 import type { Grade } from "../lib/scoring";
 import type { Course, Term, TrackerItem } from "../lib/types";
@@ -49,6 +49,7 @@ export function DashboardPage() {
   const [editDashboard, setEditDashboard] = useState(false);
   const track = resolveTrack(s.profile.educationTrack);
   const today = dayTotals(s.logs, s.activeDayKey);
+  const productiveToday = productiveTotals(s.logs, s.activeDayKey);
   const grade = todayGrade(today.minutes, today.cards);
   const openTasks = s.tasks.filter((t) => !t.done).length;
   const doneToday = s.tasks.filter((t) => t.done && t.completedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
@@ -168,6 +169,7 @@ export function DashboardPage() {
           trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"}
           overview={<OverviewPanel title="Study time" rows={[
             { label: "Minutes today", value: `${today.minutes}m`, tone: today.minutes >= minTarget ? "green" : "" },
+            { label: "Total productive", value: `${productiveToday.minutes}m` },
             { label: "Daily minute floor", value: `${minTarget}m` },
             { label: "Day grade", value: gradeLabel(grade).replace("👑 ", ""), tone: grade === "green" || grade === "blue" ? "green" : grade === "orange" ? "orange" : "red" },
             { label: "Current streak", value: `${streak} day${streak === 1 ? "" : "s"}` },

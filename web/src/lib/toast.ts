@@ -12,6 +12,7 @@ export interface Toast {
   tone: ToastTone;
   href?: string;        // optional deep-link the action button follows
   actionLabel?: string;
+  onAction?: () => void;
   duration: number;     // ms before auto-dismiss; 0 = sticky
   /** De-dupe key so the same alert isn't stacked repeatedly. */
   dedupe?: string;

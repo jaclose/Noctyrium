@@ -28,6 +28,11 @@ export function Toaster() {
                   {toast.actionLabel} <ArrowRight size={13} />
                 </a>
               )}
+              {!toast.href && toast.onAction && toast.actionLabel && (
+                <button className="toast-action" type="button" onClick={() => { toast.onAction?.(); dismiss(toast.id); }}>
+                  {toast.actionLabel} <ArrowRight size={13} />
+                </button>
+              )}
             </div>
             <button type="button" className="toast-close" onClick={() => dismiss(toast.id)} aria-label="Dismiss">
               <X size={14} />

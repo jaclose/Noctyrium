@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Sunrise, Target, Timer, TrendingUp, Zap } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Target, Timer, TrendingUp, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayKey, dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, todayGrade } from "../lib/scoring";
+import { dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, productiveTotals, todayGrade } from "../lib/scoring";
+import { previousLocalDateKey } from "../lib/dailyRollover";
 import type { StudyLog } from "../lib/types";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Ring } from "../components/ui/Ring";
@@ -32,12 +33,15 @@ export function ProductivityPage() {
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualCards, setManualCards] = useState("");
   const [manualNote, setManualNote] = useState("");
+  const [manualTrackerId, setManualTrackerId] = useState("tracker-study");
   const strip = useInView<HTMLDivElement>();
 
   const viewKey = pickedDay ?? s.activeDayKey;
   const totals = dayTotals(s.logs, viewKey);
+  const productive = productiveTotals(s.logs, viewKey);
   const isActive = viewKey === s.activeDayKey;
-  const canStartNewDay = s.activeDayKey < dayKey();
+  const yesterdayKey = previousLocalDateKey(s.activeDayKey);
+  const carryover = s.tasks.filter((task) => !task.done && !task.archived && (task.carryoverFrom?.length ?? 0) > 0);
   const weekly = useMemo(() => summarizePeriod(s.logs, lastNDays(7), "week"), [s.logs]);
   const monthly = useMemo(() => summarizePeriod(s.logs, currentMonthDays(), "month"), [s.logs]);
   const monthCells = useMemo(() => buildMonthCells(monthly.days), [monthly.days]);
@@ -49,12 +53,14 @@ export function ProductivityPage() {
       : { label: "Study 60min", type: "Study", minutes: 60 };
     return [primary, ...QUICK_BASE];
   }, [s.profile.educationTrack]);
+  const visibleTrackers = s.productivityTrackers.filter((tracker) => tracker.visible && !tracker.archived);
+  const selectedTracker = visibleTrackers.find((tracker) => tracker.id === manualTrackerId) ?? visibleTrackers[0];
 
   function logManual() {
     const minutes = Number(manualMinutes) || 0;
     const cards = Number(manualCards) || 0;
     if (!minutes && !cards) return;
-    const type = manualType.trim() || (minutes < 0 || cards < 0 ? "Correction" : "Study");
+    const type = manualType.trim() || selectedTracker?.name || (minutes < 0 || cards < 0 ? "Correction" : "Study");
     s.logStudy({ type, minutes, cards, note: manualNote || undefined });
     setManualMinutes(""); setManualCards(""); setManualNote("");
   }
@@ -63,19 +69,22 @@ export function ProductivityPage() {
     <>
       <GlassCard pad>
         <PanelHeader title="Study Day Controls"
-          sub="Manual correction layer for clean productivity tracking" />
+          sub="Automatic local-date rollover is on. Use these controls to review history without mutating today." />
         <div className="row wrap gap8">
-          <GButton variant="primary" disabled={!canStartNewDay} onClick={() => s.startNewStudyDay()}>
-            <Sunrise size={15} /> Start New Study Day
+          <GButton variant="primary" onClick={() => setPickedDay(yesterdayKey)}>
+            <History size={15} /> Review Yesterday
+          </GButton>
+          <GButton onClick={() => gotoJournalDay(yesterdayKey)}>
+            <BookOpen size={14} /> Open Previous Standup
           </GButton>
           <GButton onClick={() => s.logStudy({ type: "Anki", cards: 20 })}><Plus size={14} /> 20 Anki Cards</GButton>
           <GButton onClick={() => s.logStudy({ type: "Study", minutes: 30 })}><Plus size={14} /> 30 Minutes</GButton>
-          <div className="right sub">Active study day: <span className="mono" style={{ color: "var(--cyan)" }}>{s.activeDayKey}</span></div>
+          <div className="right sub">Device-local day: <span className="mono" style={{ color: "var(--cyan)" }}>{s.activeDayKey}</span></div>
         </div>
         <div className="sub" style={{ marginTop: 10 }}>
-          {canStartNewDay
-            ? "A new shifted study day is available. Starting it will move the active pointer to today."
-            : "Start New Study Day unlocks only after the next real Noctyrium study day begins."}
+          Last rollover check: <span className="mono">{s.lastActiveLocalDate}</span>.
+          {" "}Academic: <b>{totals.minutes}m</b>. Total productive: <b>{productive.minutes}m</b>.
+          {carryover.length ? ` ${carryover.length} carried task${carryover.length === 1 ? "" : "s"} are still open.` : " No carried tasks are open."}
         </div>
       </GlassCard>
 
@@ -96,7 +105,27 @@ export function ProductivityPage() {
 
         <div className={`manual-logger ${isActive ? "" : "is-locked"}`}>
           <div className="manual-logger-head"><span>Manual Activity Logger</span></div>
+          <div className="tracker-breakdown-mini">
+            {visibleTrackers.slice(0, 7).map((tracker) => {
+              const trackerMinutes = s.logs
+                .filter((log) => log.dayKey === viewKey && log.trackerId === tracker.id)
+                .reduce((sum, log) => sum + Math.max(0, log.minutes), 0);
+              return (
+                <button key={tracker.id} type="button" className={`tracker-mini-chip ${manualTrackerId === tracker.id ? "on" : ""}`}
+                  style={{ borderColor: tracker.color }} onClick={() => setManualTrackerId(tracker.id)}>
+                  <span style={{ background: tracker.color }} />
+                  <b>{tracker.name}</b>
+                  <small>{tracker.unitType === "minutes" ? `${trackerMinutes}m` : tracker.unitType}</small>
+                </button>
+              );
+            })}
+          </div>
           <div className="manual-log">
+            <select className="field manual-type" aria-label="Productivity tracker" value={manualTrackerId} onChange={(e) => setManualTrackerId(e.target.value)}>
+              {visibleTrackers.map((tracker) => (
+                <option key={tracker.id} value={tracker.id}>{tracker.name}{tracker.contributesToAcademicStudy ? " · academic" : " · productive"}</option>
+              ))}
+            </select>
             <input className="field manual-type" placeholder="Activity type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
             <div className="stepper" title="Minutes (±10)">
               <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={14} /></button>

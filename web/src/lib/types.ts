@@ -74,6 +74,8 @@ export interface Task {
   completedAt?: string; // ISO
   scope?: string; // inferred course/module/board area
   archived?: boolean;
+  carryoverFrom?: string[]; // local calendar dates this task was carried from
+  carriedAt?: string; // ISO
 }
 
 export interface JournalEntry {
@@ -137,6 +139,36 @@ export interface HubFolder {
   localPath?: string; // local file/folder path for packaged/local use
   icon?: string; // lucide icon name
   color?: string;
+  tags?: string[];
+  group?: string;
+  favorite?: boolean;
+  archived?: boolean;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ProductivityUnitType = "minutes" | "count" | "yesno" | "distance" | "custom";
+
+export interface ProductivityTracker {
+  id: ID;
+  name: string;
+  icon: string;
+  color: string;
+  unitType: ProductivityUnitType;
+  customUnit?: string;
+  dailyTarget?: number;
+  weeklyTarget?: number;
+  category: string;
+  contributesToAcademicStudy: boolean;
+  contributesToTotalProductiveTime: boolean;
+  contributesToEnergy: boolean;
+  contributesToReports: boolean;
+  contributesToHabitTracking: boolean;
+  visible: boolean;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** One study event — minutes and/or cards logged on a given study day. */
@@ -148,6 +180,11 @@ export interface StudyLog {
   minutes: number;
   cards: number;
   note?: string;
+  trackerId?: string;
+  unitType?: ProductivityUnitType;
+  quantity?: number;
+  academic?: boolean;
+  productive?: boolean;
 }
 
 export type BoardBlueprintDimension = "system" | "competency" | "discipline";
@@ -201,6 +238,29 @@ export interface DayPlan {
   reviewedAt?: string;
   outcome?: "won" | "partial" | "missed";
   reviewNote?: string;
+}
+
+export interface DailyArchive {
+  date: string; // local yyyy-MM-dd
+  archivedAt: string;
+  studyMinutes: number;
+  ankiCards: number;
+  productiveMinutes: number;
+  openTaskIds: string[];
+  carriedTaskIds: string[];
+  journalEntryIds: string[];
+  dayPlanOutcome?: DayPlan["outcome"];
+}
+
+export interface DailyRolloverEvent {
+  id: ID;
+  fromDate: string;
+  toDate: string;
+  processedAt: string;
+  reason: "app-load" | "focus" | "visible" | "midnight" | "timezone-change" | "manual-check" | "migration";
+  daysAway: number;
+  timezoneOffset: number;
+  carriedTaskIds: string[];
 }
 
 /** Academic phase, set during first-launch onboarding — tailors targets, tagline, and AI context. */
@@ -395,6 +455,7 @@ export interface NoctyriumState {
   terms: Term[];
   courses: Course[];
   tracker: TrackerItem[];
+  productivityTrackers: ProductivityTracker[];
   resources: Resource[];
   tasks: Task[];
   journal: JournalEntry[];
@@ -407,5 +468,9 @@ export interface NoctyriumState {
   dayPlans: DayPlan[];
   blueprintInstalls: InstalledBlueprint[];
   activeDayKey: string; // current study day
+  lastActiveLocalDate: string; // current device-local calendar date
+  lastTimezoneOffset: number;
+  dailyArchives: DailyArchive[];
+  dailyRolloverEvents: DailyRolloverEvent[];
   schemaVersion: number;
 }

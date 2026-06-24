@@ -47,7 +47,8 @@ export function AnkiLabPage() {
   function toggleStyle(st: CardStyle) {
     setStyles((prev) => {
       const next = new Set(prev);
-      next.has(st) ? next.delete(st) : next.add(st);
+      if (next.has(st)) next.delete(st);
+      else next.add(st);
       return next;
     });
   }

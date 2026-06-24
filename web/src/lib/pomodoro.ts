@@ -14,12 +14,18 @@ export interface PomodoroPreset {
   label: string;
   focus: number; // minutes
   break: number; // minutes
+  longBreak?: number;
+  cyclesBeforeLongBreak?: number;
+  defaultTrackerId?: string;
 }
 
 export const POMODORO_PRESETS: PomodoroPreset[] = [
-  { id: "25-5", label: "25 / 5", focus: 25, break: 5 },
-  { id: "50-10", label: "50 / 10", focus: 50, break: 10 },
-  { id: "90-20", label: "90 / 20", focus: 90, break: 20 },
+  { id: "deep-study", label: "Deep Study", focus: 50, break: 10, longBreak: 25, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
+  { id: "anki", label: "Anki", focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
+  { id: "lecture-review", label: "Lecture Review", focus: 45, break: 10, longBreak: 20, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-study" },
+  { id: "coding", label: "Coding", focus: 60, break: 10, longBreak: 25, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-coding" },
+  { id: "reading", label: "Reading", focus: 30, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
+  { id: "custom", label: "Custom", focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 },
 ];
 
 export type PomodoroPhase = "focus" | "break";
@@ -54,6 +60,7 @@ interface PomodoroState {
   targetId?: string;
   targetLabel?: string;
   intention: string;
+  lastTickAt: number;
   // FX signal — bumped each time a focus sprint completes so the app root can
   // fire the page glow + completion toast (kept here so it works on any page).
   completedAt: string | null;
@@ -71,8 +78,14 @@ interface PomodoroState {
   _tick: () => void;
 }
 
+const PRESET_ALIASES: Record<string, string> = {
+  "25-5": "anki",
+  "50-10": "deep-study",
+  "90-20": "deep-study",
+};
+
 const presetById = (id: string): PomodoroPreset =>
-  POMODORO_PRESETS.find((preset) => preset.id === id) ?? POMODORO_PRESETS[0];
+  POMODORO_PRESETS.find((preset) => preset.id === (PRESET_ALIASES[id] ?? id)) ?? POMODORO_PRESETS[0];
 
 let interval: ReturnType<typeof setInterval> | null = null;
 const POMO_KEY = "noctyrium-pomodoro-session";
@@ -101,6 +114,7 @@ function readPersisted(): Partial<PersistedPomodoro> {
       ...parsed,
       phase,
       secondsLeft: Math.max(parsed.running ? 1 : 0, Math.min(maxSeconds, Number(parsed.secondsLeft || maxSeconds) - elapsed)),
+      presetId: PRESET_ALIASES[parsed.presetId] ?? parsed.presetId,
       targetKind: parsed.targetKind ?? "free",
       intention: parsed.intention ?? "",
     };
@@ -205,6 +219,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         phase: "break",
         secondsLeft: preset.break * 60,
         running: natural,
+        lastTickAt: Date.now(),
         sessionsToday: natural ? s.sessionsToday + 1 : s.sessionsToday,
         loggedMinutesToday: natural && autoLog ? s.loggedMinutesToday + preset.focus : s.loggedMinutesToday,
         completedAt: natural ? new Date().toISOString() : s.completedAt,
@@ -214,7 +229,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (natural) startInterval(() => get()._tick());
     } else {
       if (natural) chime(false);
-      set({ phase: "focus", secondsLeft: preset.focus * 60, running: false });
+      set({ phase: "focus", secondsLeft: preset.focus * 60, running: false, lastTickAt: Date.now() });
       persistSnapshot(get());
     }
   };
@@ -232,6 +247,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     targetId: initial.targetId,
     targetLabel: initial.targetLabel,
     intention: initial.intention ?? "",
+    lastTickAt: Date.now(),
     completedAt: null,
     completedMinutes: 0,
 
@@ -243,13 +259,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
         Notification.requestPermission().catch(() => { /* ignore */ });
       }
-      set({ running: true });
+      set({ running: true, lastTickAt: Date.now() });
       persistSnapshot(get());
       startInterval(() => get()._tick());
     },
     pause: () => {
       stopInterval();
-      set({ running: false });
+      set({ running: false, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
     toggle: () => (get().running ? get().pause() : get().start()),
@@ -257,7 +273,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       stopInterval();
       logPartialFocus("reset");
       const preset = presetById(get().presetId);
-      set({ running: false, phase: "focus", secondsLeft: preset.focus * 60 });
+      set({ running: false, phase: "focus", secondsLeft: preset.focus * 60, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
     skip: () => {
@@ -267,7 +283,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     setPreset: (id) => {
       stopInterval();
       const preset = presetById(id);
-      set({ presetId: id, phase: "focus", secondsLeft: preset.focus * 60, running: false });
+      set({ presetId: PRESET_ALIASES[id] ?? id, phase: "focus", secondsLeft: preset.focus * 60, running: false, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
     setAutoLog: (autoLog) => { set({ autoLog }); persistSnapshot(get()); },
@@ -281,12 +297,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     },
     setIntention: (intention) => { set({ intention }); persistSnapshot(get()); },
     _tick: () => {
-      const { secondsLeft } = get();
-      if (secondsLeft <= 1) {
+      const state = get();
+      const elapsed = Math.max(1, Math.floor((Date.now() - state.lastTickAt) / 1000));
+      if (state.secondsLeft <= elapsed) {
         complete(true);
         return;
       }
-      set({ secondsLeft: secondsLeft - 1 });
+      set({ secondsLeft: state.secondsLeft - elapsed, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
   };

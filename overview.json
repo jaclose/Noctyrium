@@ -1,0 +1,4029 @@
+{
+  "rootFolder": "/Users/jd/Developer/Noctyrium",
+  "analyzedAt": "2026-06-24T04:18:46.630Z",
+  "rootStructure": [
+    {
+      "name": ".gitattributes",
+      "type": "file",
+      "size": 106,
+      "lines": 10
+    },
+    {
+      "name": ".gitignore",
+      "type": "file",
+      "size": 770,
+      "lines": 56
+    },
+    {
+      "name": "00 📥 Inbox - Need Work Look Over",
+      "type": "dir"
+    },
+    {
+      "name": "01 BPM 500",
+      "type": "dir"
+    },
+    {
+      "name": "01 BPM 501",
+      "type": "dir"
+    },
+    {
+      "name": "02 PPM500",
+      "type": "dir"
+    },
+    {
+      "name": "02 PPM501",
+      "type": "dir"
+    },
+    {
+      "name": "02 PPM502",
+      "type": "dir"
+    },
+    {
+      "name": "03 🧠 STEP 1",
+      "type": "dir"
+    },
+    {
+      "name": "04 🃏 Anki Decks",
+      "type": "dir"
+    },
+    {
+      "name": "05 🔬 Research",
+      "type": "dir"
+    },
+    {
+      "name": "06 📊 Summaries and Sheets",
+      "type": "dir"
+    },
+    {
+      "name": "07 Personal Med",
+      "type": "dir"
+    },
+    {
+      "name": "08 Drives and External",
+      "type": "dir"
+    },
+    {
+      "name": "09 Admin",
+      "type": "dir"
+    },
+    {
+      "name": "10 Courses",
+      "type": "dir"
+    },
+    {
+      "name": "10 Prompt Library",
+      "type": "dir"
+    },
+    {
+      "name": "99 🗄️ Archives",
+      "type": "dir"
+    },
+    {
+      "name": "ANKI Decks",
+      "type": "dir"
+    },
+    {
+      "name": "CHANGELOG.md",
+      "type": "file",
+      "size": 10788,
+      "lines": 176
+    },
+    {
+      "name": "Medical School",
+      "type": "dir"
+    },
+    {
+      "name": "Package.swift",
+      "type": "file",
+      "size": 275,
+      "lines": 16
+    },
+    {
+      "name": "README.md",
+      "type": "file",
+      "size": 5718,
+      "lines": 161
+    },
+    {
+      "name": "Resources",
+      "type": "dir"
+    },
+    {
+      "name": "Sources",
+      "type": "dir"
+    },
+    {
+      "name": "api",
+      "type": "dir"
+    },
+    {
+      "name": "blue-prints",
+      "type": "dir"
+    },
+    {
+      "name": "blueprints",
+      "type": "file",
+      "size": 0,
+      "lines": 1
+    },
+    {
+      "name": "build",
+      "type": "dir"
+    },
+    {
+      "name": "current_version.txt",
+      "type": "file",
+      "size": 14,
+      "lines": 2
+    },
+    {
+      "name": "db",
+      "type": "dir"
+    },
+    {
+      "name": "docs",
+      "type": "dir"
+    },
+    {
+      "name": "lib",
+      "type": "dir"
+    },
+    {
+      "name": "node_modules",
+      "type": "dir"
+    },
+    {
+      "name": "overview.json",
+      "type": "file",
+      "size": 121506,
+      "lines": 3996
+    },
+    {
+      "name": "overview_architecture.puml",
+      "type": "file",
+      "size": 246,
+      "lines": 7
+    },
+    {
+      "name": "package-lock.json",
+      "type": "file",
+      "size": 9122,
+      "lines": 293
+    },
+    {
+      "name": "package.json",
+      "type": "file",
+      "size": 800,
+      "lines": 25
+    },
+    {
+      "name": "scripts",
+      "type": "dir"
+    },
+    {
+      "name": "src-tauri",
+      "type": "dir"
+    },
+    {
+      "name": "test-results",
+      "type": "dir"
+    },
+    {
+      "name": "vercel.json",
+      "type": "file",
+      "size": 988,
+      "lines": 19
+    },
+    {
+      "name": "web",
+      "type": "dir"
+    }
+  ],
+  "rootFileSnippets": {
+    "CHANGELOG.md": [
+      "# Noctyrium Changelog",
+      "",
+      "## 0.1.0-alpha.1 — 2026-06-16 (final polish)",
+      "",
+      "Pre-release polish patch: consumer-facing wording, resource corrections, Help, and Anki guide.",
+      "",
+      "- **Vercel Hobby deploy hotfix:** consolidated 13 public route files into five grouped",
+      "functions (`api/user.ts`, `api/data.ts`, `api/ai.ts`, `api/feedback.ts`, `api/health.ts`)",
+      "and moved backend helpers to `lib/api/`, preserving the old public URLs through rewrites.",
+      "- **Guided tour + Promise** shipped to production (web auto-deploy) and added **Vercel Analytics**."
+    ],
+    "Package.swift": [
+      "// swift-tools-version: 5.9",
+      "import PackageDescription",
+      "",
+      "let package = Package(",
+      "name: \"Noctyrium\",",
+      "platforms: [",
+      ".macOS(.v13)",
+      "],",
+      "targets: [",
+      ".executableTarget("
+    ],
+    "README.md": [
+      "# Noctyrium",
+      "",
+      "Noctyrium is a premium, local-first medical school command center for SGU and",
+      "medical students. Alpha 1 is centered on the deployable Vite/React web app in",
+      "[`web/`](web/) with optional Vercel serverless backend sync.",
+      "",
+      "The app combines:",
+      "",
+      "- Course, term, module, Lecture, DLA, and PQ tracking",
+      "- Pass/mastery tracking with Anki-aware study status"
+    ],
+    "blueprints": [
+      ""
+    ],
+    "current_version.txt": [
+      "0.1.0-alpha.1",
+      ""
+    ],
+    "overview.json": [
+      "{",
+      "\"rootFolder\": \"/Users/jd/Developer/Noctyrium\",",
+      "\"analyzedAt\": \"2026-06-24T00:42:32.578Z\",",
+      "\"rootStructure\": [",
+      "{",
+      "\"name\": \".gitattributes\",",
+      "\"type\": \"file\",",
+      "\"size\": 106,",
+      "\"lines\": 10",
+      "},"
+    ],
+    "overview_architecture.puml": [
+      "@startuml",
+      "' Generated by SASVA Maria on 2026-06-24T00:42:44.304Z",
+      "' ERROR: Diagram generation failed",
+      "",
+      "note \"Architecture Diagram Generation Failed\\n\\nError: No chat model configured\\n\\nPlease check the logs for more details.\" as ErrorNote",
+      "",
+      "@enduml"
+    ],
+    "package-lock.json": [
+      "{",
+      "\"name\": \"noctyrium-cloud\",",
+      "\"version\": \"0.1.0-alpha.1\",",
+      "\"lockfileVersion\": 3,",
+      "\"requires\": true,",
+      "\"packages\": {",
+      "\"\": {",
+      "\"name\": \"noctyrium-cloud\",",
+      "\"version\": \"0.1.0-alpha.1\",",
+      "\"dependencies\": {"
+    ],
+    "package.json": [
+      "{",
+      "\"name\": \"noctyrium-cloud\",",
+      "\"private\": true,",
+      "\"version\": \"0.1.0-alpha.1\",",
+      "\"type\": \"module\",",
+      "\"description\": \"Optional Vercel serverless backend for Noctyrium cloud sync and AI scaffolding.\",",
+      "\"scripts\": {",
+      "\"build\": \"npm --prefix web run build\",",
+      "\"dev\": \"npx vercel dev\",",
+      "\"web:dev\": \"npm --prefix web run dev\","
+    ],
+    "vercel.json": [
+      "{",
+      "\"$schema\": \"https://openapi.vercel.sh/vercel.json\",",
+      "\"framework\": \"vite\",",
+      "\"installCommand\": \"npm ci && npm --prefix web ci\",",
+      "\"buildCommand\": \"npm run build\",",
+      "\"outputDirectory\": \"web/dist\",",
+      "\"rewrites\": [",
+      "{ \"source\": \"/api/user/login\", \"destination\": \"/api/user?action=login\" },",
+      "{ \"source\": \"/api/user/:id\", \"destination\": \"/api/user?id=:id\" },",
+      "{ \"source\": \"/api/data/:userId/restore/:backupId\", \"destination\": \"/api/data?action=restore&userId=:userId&backupId=:backupId\" },"
+    ]
+  },
+  "importantFolders": [
+    {
+      "path": ".build",
+      "category": "frontend",
+      "fileCount": 6555
+    },
+    {
+      "path": ".build/arm64-apple-macosx",
+      "category": "frontend",
+      "fileCount": 4266
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/Noctyrium.build",
+      "category": "frontend",
+      "fileCount": 15
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/store/v5/records/UI",
+      "category": "frontend",
+      "fileCount": 4
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/Noctyrium.build",
+      "category": "frontend",
+      "fileCount": 5
+    },
+    {
+      "path": ".build/checkouts",
+      "category": "build",
+      "fileCount": 0
+    },
+    {
+      "path": ".build/index-build",
+      "category": "frontend",
+      "fileCount": 2283
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx",
+      "category": "frontend",
+      "fileCount": 2278
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/Noctyrium.build",
+      "category": "frontend",
+      "fileCount": 9
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/index/store/v5/records/UI",
+      "category": "frontend",
+      "fileCount": 2
+    },
+    {
+      "path": ".build/index-build/checkouts",
+      "category": "build",
+      "fileCount": 0
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Guides:Must Reads",
+      "category": "frontend",
+      "fileCount": 4
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Information:Guides ",
+      "category": "frontend",
+      "fileCount": 8
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Tools",
+      "category": "scripts",
+      "fileCount": 4
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Tuition",
+      "category": "frontend",
+      "fileCount": 3
+    },
+    {
+      "path": "01 BPM 500/Quizzes and Exams",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "01 BPM 500/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM500/Quizzes and Exams",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM500/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM501/Quizzes and Exams",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM501/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM502/Quizzes and Exams",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "02 PPM502/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "04 🃏 Anki Decks/Media Files",
+      "category": "assets",
+      "fileCount": 0
+    },
+    {
+      "path": "09 Admin/App Data",
+      "category": "frontend",
+      "fileCount": 107
+    },
+    {
+      "path": "09 Admin/App Data/Noctyrium/Brand/IconBuild",
+      "category": "frontend",
+      "fileCount": 10
+    },
+    {
+      "path": "09 Admin/App Data/Prompt Library",
+      "category": "core",
+      "fileCount": 7
+    },
+    {
+      "path": "09 Admin/App Framework",
+      "category": "frontend",
+      "fileCount": 95,
+      "primaryLanguage": "Swift"
+    },
+    {
+      "path": "09 Admin/App Framework/Build",
+      "category": "frontend",
+      "fileCount": 3
+    },
+    {
+      "path": "09 Admin/App Framework/Build/Noctyrium.app",
+      "category": "frontend",
+      "fileCount": 3
+    },
+    {
+      "path": "09 Admin/Finance and Tuition",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "09 Admin/SGU Documents",
+      "category": "docs",
+      "fileCount": 0
+    },
+    {
+      "path": "09 Admin/Sample:Tests",
+      "category": "tests",
+      "fileCount": 0
+    },
+    {
+      "path": "09 Admin/Schedules/Source DOCX",
+      "category": "docs",
+      "fileCount": 13
+    },
+    {
+      "path": "09 Admin/Scripts",
+      "category": "scripts",
+      "fileCount": 15,
+      "primaryLanguage": "Shell"
+    },
+    {
+      "path": "09 Admin/Update Log/🟦 Loved Previous Build",
+      "category": "frontend",
+      "fileCount": 6
+    },
+    {
+      "path": "09 Admin/Update Log/🟦 Loved Previous Build/v0.02/v0.02.01 - Cleanup Sorting Prompt Library Framework - 2026-04-30_14-00-27",
+      "category": "core",
+      "fileCount": 1
+    },
+    {
+      "path": "09 Admin/Update Log/🟦 Loved Previous Build/v0.02/v0.02.01 - Schedule Atlas Backend",
+      "category": "backend",
+      "fileCount": 1
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 500/CPR 1/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 500/CPR 2/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 500/FTM 1/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 500/FTM 2/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 500/MSK/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 1/01 BPM 501/NB 3/Esoft Quizzes",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 2/01 BPM 501/DM/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 2/01 BPM 501/ER/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 2/01 BPM 501/NB 1/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 2/01 BPM 501/NB 2/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 2/01 BPM 501/NB 3/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 3 /02 PPM 500/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 4/02 PPM 501/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Courses/Term 5/02 PPM 502/Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "10 Prompt Library",
+      "category": "core",
+      "fileCount": 4
+    },
+    {
+      "path": "99 🗄️ Archives/Deprecated Study Guides",
+      "category": "frontend",
+      "fileCount": 0
+    },
+    {
+      "path": "api",
+      "category": "backend",
+      "fileCount": 5,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "docs",
+      "category": "docs",
+      "fileCount": 4
+    },
+    {
+      "path": "lib",
+      "category": "core",
+      "fileCount": 4,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "lib/api",
+      "category": "backend",
+      "fileCount": 4,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "scripts",
+      "category": "scripts",
+      "fileCount": 6,
+      "primaryLanguage": "Shell"
+    },
+    {
+      "path": "test-results",
+      "category": "tests",
+      "fileCount": 1
+    },
+    {
+      "path": "web",
+      "category": "frontend",
+      "fileCount": 113,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "web/public",
+      "category": "assets",
+      "fileCount": 13,
+      "primaryLanguage": "JavaScript"
+    },
+    {
+      "path": "web/public/anki-guide",
+      "category": "frontend",
+      "fileCount": 8
+    },
+    {
+      "path": "web/scripts",
+      "category": "scripts",
+      "fileCount": 1,
+      "primaryLanguage": "Shell"
+    },
+    {
+      "path": "web/src/components",
+      "category": "frontend",
+      "fileCount": 22,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "web/src/components/ui",
+      "category": "frontend",
+      "fileCount": 5,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "web/src/lib",
+      "category": "core",
+      "fileCount": 28,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "web/src/services",
+      "category": "backend",
+      "fileCount": 4,
+      "primaryLanguage": "TypeScript"
+    },
+    {
+      "path": "web/test-results",
+      "category": "tests",
+      "fileCount": 1
+    }
+  ],
+  "readmeParagraphs": {
+    "web": "# Noctyrium — Web",
+    "root": "# Noctyrium"
+  },
+  "totals": {
+    "numFiles": 7961,
+    "numDirs": 2845,
+    "totalSizeBytes": 2606031565,
+    "totalLinesOfCode": 280146
+  },
+  "fileCategories": {
+    "other": 7503,
+    "config": 45,
+    "test": 65,
+    "documentation": 142,
+    "source": 205,
+    "build": 1
+  },
+  "linesOfCodePerLanguage": {
+    "Swift": 255782,
+    "Shell": 6082,
+    "TypeScript": 18219,
+    "Rust": 29,
+    "JavaScript": 34
+  },
+  "filesPerLanguage": {
+    "Swift": 75,
+    "Shell": 38,
+    "TypeScript": 88,
+    "Rust": 3,
+    "JavaScript": 1
+  },
+  "projectTypes": [
+    "Rust (Cargo)",
+    "JavaScript/Node.js"
+  ],
+  "frameworks": [
+    "Express.js",
+    "React",
+    "Vite"
+  ],
+  "entryPoints": [
+    "09 Admin/App Framework/build_medical_hub_app.sh",
+    "09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-03-26.sh",
+    "09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-52-16.sh",
+    "09 Admin/App Framework/build_noctyrium_app.before-productivity-ledger-fix.2026-05-01_13-57-22.sh",
+    "09 Admin/App Framework/build_noctyrium_app.before-real-start-new-day-fix.2026-05-01_14-16-19.sh",
+    "09 Admin/App Framework/build_noctyrium_app.before-start-new-day-surgical-fix.2026-05-01_13-51-56.sh",
+    "09 Admin/App Framework/build_noctyrium_app.before-study-day-ticks-time-fix.2026-05-01_14-05-52.sh",
+    "09 Admin/App Framework/build_noctyrium_app.before-time-studyday-only.2026-05-01_14-09-44.sh",
+    "09 Admin/App Framework/build_noctyrium_app.clean-open-fix.2026-05-01_11-45-10.sh",
+    "09 Admin/App Framework/build_noctyrium_app.fix-start-new-day-archive.2026-05-01_13-42-55.sh",
+    "09 Admin/App Framework/build_noctyrium_app.fix-start-new-day.2026-05-01_11-59-46.sh",
+    "09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_12-05-45.sh",
+    "09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_13-28-27.sh",
+    "09 Admin/App Framework/build_noctyrium_app.pre-start-day-archive-repair.2026-05-01_13-48-06.sh",
+    "09 Admin/App Framework/build_noctyrium_app.repair-localized-quit.2026-05-01_11-23-43.sh",
+    "09 Admin/App Framework/build_noctyrium_app.sh",
+    "09 Admin/App Framework/build_noctyrium_app.v00301-pre-patch.2026-05-01_13-35-12.sh",
+    "09 Admin/App Framework/build_noctyrium_app.v00301-pre-productivity-day-repair.2026-05-01_13-44-45.sh",
+    "09 Admin/App Framework/build_noctyrium_app.window-restore-fix.2026-05-01_11-44-01.sh",
+    "09 Admin/Scripts/auto_sort_medical.sh",
+    "09 Admin/Scripts/build_schedule_atlas_visual.sh",
+    "09 Admin/Scripts/build_schedule_atlas_visual_v2.sh",
+    "09 Admin/Scripts/clean_medical_temp_files.sh",
+    "09 Admin/Scripts/dashboard_stats.sh",
+    "09 Admin/Scripts/dashboard_stats.sh.before-productivity-stats-fix.2026-05-01_15-06-43.sh",
+    "09 Admin/Scripts/dashboard_stats.sh.daily-file-architecture-backup.2026-05-01_15-18-37.sh",
+    "09 Admin/Scripts/import_first_13_schedule_docs_and_build_atlas.sh",
+    "09 Admin/Scripts/import_schedule_atlas.sh",
+    "09 Admin/Scripts/run_medical_hub.sh",
+    "09 Admin/Scripts/safe_sort_downloads_to_medical.sh",
+    "09 Admin/Scripts/weekly_med_review.sh",
+    "scripts/build_app.sh",
+    "scripts/dashboard_stats.sh",
+    "scripts/legacy/build_noctyrium_app.original.sh",
+    "scripts/legacy/dashboard_stats.original.sh",
+    "scripts/legacy/run_medical_hub.original.sh",
+    "scripts/package.sh",
+    "web/scripts/package-web.sh"
+  ],
+  "ciCdTools": [],
+  "packageManagers": [
+    "npm/yarn"
+  ],
+  "topLevelDirectories": [
+    {
+      "name": "09 Admin",
+      "numFiles": 351,
+      "totalLoc": 256725,
+      "dominantLanguage": "Swift"
+    },
+    {
+      "name": "Sources",
+      "numFiles": 1,
+      "totalLoc": 4341,
+      "dominantLanguage": "Swift"
+    },
+    {
+      "name": "00 📥 Inbox - Need Work Look Over",
+      "numFiles": 162,
+      "totalLoc": 0
+    },
+    {
+      "name": "01 BPM 500",
+      "numFiles": 217,
+      "totalLoc": 0
+    },
+    {
+      "name": "01 BPM 501",
+      "numFiles": 482,
+      "totalLoc": 0
+    },
+    {
+      "name": "03 🧠 STEP 1",
+      "numFiles": 1,
+      "totalLoc": 0
+    },
+    {
+      "name": "04 🃏 Anki Decks",
+      "numFiles": 5,
+      "totalLoc": 0
+    },
+    {
+      "name": "05 🔬 Research",
+      "numFiles": 1,
+      "totalLoc": 0
+    },
+    {
+      "name": "06 📊 Summaries and Sheets",
+      "numFiles": 4,
+      "totalLoc": 0
+    },
+    {
+      "name": "10 Prompt Library",
+      "numFiles": 4,
+      "totalLoc": 0
+    },
+    {
+      "name": "Medical School",
+      "numFiles": 7,
+      "totalLoc": 0
+    },
+    {
+      "name": "Resources",
+      "numFiles": 2,
+      "totalLoc": 0
+    }
+  ],
+  "detailedDirectories": [
+    {
+      "path": "09 Admin",
+      "name": "09 Admin",
+      "level": 1,
+      "numFiles": 351,
+      "totalLoc": 256725,
+      "dominantLanguage": "Swift",
+      "category": "General",
+      "description": "General module with 351 files (Swift)",
+      "subdirectories": [
+        {
+          "path": "09 Admin/App Framework",
+          "name": "App Framework",
+          "level": 2,
+          "numFiles": 95,
+          "totalLoc": 254454,
+          "dominantLanguage": "Swift",
+          "category": "Application",
+          "description": "Application module with 95 files (Swift)",
+          "subdirectories": [
+            {
+              "path": "09 Admin/App Framework/Build",
+              "name": "Build",
+              "level": 3,
+              "numFiles": 3,
+              "totalLoc": 0,
+              "category": "Web/UI",
+              "description": "Web/UI module with 3 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "09 Admin/App Data",
+          "name": "App Data",
+          "level": 2,
+          "numFiles": 107,
+          "totalLoc": 0,
+          "category": "Application",
+          "description": "Application module with 107 files",
+          "subdirectories": [
+            {
+              "path": "09 Admin/App Data/Noctyrium",
+              "name": "Noctyrium",
+              "level": 3,
+              "numFiles": 69,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 69 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/App Data/Course Trackers",
+              "name": "Course Trackers",
+              "level": 3,
+              "numFiles": 16,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 16 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/App Data/Prompt Library",
+              "name": "Prompt Library",
+              "level": 3,
+              "numFiles": 7,
+              "totalLoc": 0,
+              "category": "Library",
+              "description": "Library module with 7 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/App Data/Schedule Atlas",
+              "name": "Schedule Atlas",
+              "level": 3,
+              "numFiles": 4,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 4 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/App Data/Archived Study Logs",
+              "name": "Archived Study Logs",
+              "level": 3,
+              "numFiles": 1,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 1 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "09 Admin/Schedules",
+          "name": "Schedules",
+          "level": 2,
+          "numFiles": 64,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 64 files",
+          "subdirectories": [
+            {
+              "path": "09 Admin/Schedules/Imported",
+              "name": "Imported",
+              "level": 3,
+              "numFiles": 19,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 19 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/Schedules/Text Extracts",
+              "name": "Text Extracts",
+              "level": 3,
+              "numFiles": 19,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 19 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/Schedules/PDF Previews",
+              "name": "PDF Previews",
+              "level": 3,
+              "numFiles": 13,
+              "totalLoc": 0,
+              "category": "Views/Templates",
+              "description": "Views/Templates module with 13 files",
+              "subdirectories": []
+            },
+            {
+              "path": "09 Admin/Schedules/Source DOCX",
+              "name": "Source DOCX",
+              "level": 3,
+              "numFiles": 13,
+              "totalLoc": 0,
+              "category": "Documentation",
+              "description": "Documentation module with 13 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "09 Admin/Reports",
+          "name": "Reports",
+          "level": 2,
+          "numFiles": 41,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 41 files",
+          "subdirectories": []
+        },
+        {
+          "path": "09 Admin/Journal",
+          "name": "Journal",
+          "level": 2,
+          "numFiles": 2,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 2 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "Sources",
+      "name": "Sources",
+      "level": 1,
+      "numFiles": 1,
+      "totalLoc": 4341,
+      "dominantLanguage": "Swift",
+      "category": "General",
+      "description": "General module with 1 files (Swift)",
+      "subdirectories": [
+        {
+          "path": "Sources/Noctyrium",
+          "name": "Noctyrium",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 4341,
+          "dominantLanguage": "Swift",
+          "category": "General",
+          "description": "General module with 1 files (Swift)",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "01 BPM 501",
+      "name": "01 BPM 501",
+      "level": 1,
+      "numFiles": 482,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 482 files",
+      "subdirectories": [
+        {
+          "path": "01 BPM 501/DM",
+          "name": "DM",
+          "level": 2,
+          "numFiles": 185,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 185 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 501/DM/B & B Metabolism",
+              "name": "B & B Metabolism",
+              "level": 3,
+              "numFiles": 16,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 16 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/DM/DM High Yield ",
+              "name": "DM High Yield ",
+              "level": 3,
+              "numFiles": 14,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 14 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/DM/DM Week 1",
+              "name": "DM Week 1",
+              "level": 3,
+              "numFiles": 11,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 11 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/DM/Final",
+              "name": "Final",
+              "level": 3,
+              "numFiles": 10,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 10 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/DM/IMCQs",
+              "name": "IMCQs",
+              "level": 3,
+              "numFiles": 8,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 8 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 501/BCSE T2",
+          "name": "BCSE T2",
+          "level": 2,
+          "numFiles": 155,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 155 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 501/BCSE T2/T1",
+              "name": "T1",
+              "level": 3,
+              "numFiles": 78,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 78 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/BCSE T2/T2",
+              "name": "T2",
+              "level": 3,
+              "numFiles": 60,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 60 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/BCSE T2/BSCE Questions",
+              "name": "BSCE Questions",
+              "level": 3,
+              "numFiles": 11,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 11 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/BCSE T2/Sakai BCSE Supplement Material (Look Over)",
+              "name": "Sakai BCSE Supplement Material (Look Over)",
+              "level": 3,
+              "numFiles": 5,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 5 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/BCSE T2/Lab Exam",
+              "name": "Lab Exam",
+              "level": 3,
+              "numFiles": 1,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 1 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 501/ER",
+          "name": "ER",
+          "level": 2,
+          "numFiles": 87,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 87 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 501/ER/Week 2-3",
+              "name": "Week 2-3",
+              "level": 3,
+              "numFiles": 51,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 51 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/ER/Week 1",
+              "name": "Week 1",
+              "level": 3,
+              "numFiles": 33,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 33 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 501/NB1",
+          "name": "NB1",
+          "level": 2,
+          "numFiles": 55,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 55 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 501/NB1/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 26,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 26 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/NB1/DLAs",
+              "name": "DLAs",
+              "level": 3,
+              "numFiles": 10,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 10 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/NB1/SG",
+              "name": "SG",
+              "level": 3,
+              "numFiles": 10,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 10 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/NB1/PQs",
+              "name": "PQs",
+              "level": 3,
+              "numFiles": 6,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 6 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 501/NB1/SIMLAB:LAB",
+              "name": "SIMLAB:LAB",
+              "level": 3,
+              "numFiles": 2,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 2 files",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "01 BPM 500",
+      "name": "01 BPM 500",
+      "level": 1,
+      "numFiles": 217,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 217 files",
+      "subdirectories": [
+        {
+          "path": "01 BPM 500/FTM1",
+          "name": "FTM1",
+          "level": 2,
+          "numFiles": 53,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 53 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 500/FTM1/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 27,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 27 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 500/FTM1/DLA",
+              "name": "DLA",
+              "level": 3,
+              "numFiles": 24,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 24 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 500/MSK",
+          "name": "MSK",
+          "level": 2,
+          "numFiles": 50,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 50 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 500/MSK/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 30,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 30 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 500/MSK/DLA",
+              "name": "DLA",
+              "level": 3,
+              "numFiles": 18,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 18 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 500/CPR2",
+          "name": "CPR2",
+          "level": 2,
+          "numFiles": 42,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 42 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 500/CPR2/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 30,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 30 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 500/CPR2/DLA",
+              "name": "DLA",
+              "level": 3,
+              "numFiles": 10,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 10 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 500/CPR1",
+          "name": "CPR1",
+          "level": 2,
+          "numFiles": 37,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 37 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 500/CPR1/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 23,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 23 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 500/CPR1/DLA",
+              "name": "DLA",
+              "level": 3,
+              "numFiles": 12,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 12 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "01 BPM 500/FTM2",
+          "name": "FTM2",
+          "level": 2,
+          "numFiles": 35,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 35 files",
+          "subdirectories": [
+            {
+              "path": "01 BPM 500/FTM2/Lectures",
+              "name": "Lectures",
+              "level": 3,
+              "numFiles": 27,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 27 files",
+              "subdirectories": []
+            },
+            {
+              "path": "01 BPM 500/FTM2/DLA",
+              "name": "DLA",
+              "level": 3,
+              "numFiles": 6,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 6 files",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "api",
+      "name": "api",
+      "level": 1,
+      "numFiles": 5,
+      "totalLoc": 183,
+      "dominantLanguage": "TypeScript",
+      "category": "Service",
+      "description": "Service module with 5 files (TypeScript)",
+      "subdirectories": []
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over",
+      "name": "00 📥 Inbox - Need Work Look Over",
+      "level": 1,
+      "numFiles": 162,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 162 files",
+      "subdirectories": [
+        {
+          "path": "00 📥 Inbox - Need Work Look Over/To Sort",
+          "name": "To Sort",
+          "level": 2,
+          "numFiles": 89,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 89 files",
+          "subdirectories": []
+        },
+        {
+          "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance",
+          "name": "SGU Admittance",
+          "level": 2,
+          "numFiles": 35,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 35 files",
+          "subdirectories": [
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/SGU::Terms for Admission",
+              "name": "SGU::Terms for Admission",
+              "level": 3,
+              "numFiles": 9,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 9 files",
+              "subdirectories": []
+            },
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Information:Guides ",
+              "name": "Information:Guides ",
+              "level": 3,
+              "numFiles": 8,
+              "totalLoc": 0,
+              "category": "Web/UI",
+              "description": "Web/UI module with 8 files",
+              "subdirectories": []
+            },
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/SGU::Interview Prep",
+              "name": "SGU::Interview Prep",
+              "level": 3,
+              "numFiles": 5,
+              "totalLoc": 0,
+              "category": "Views/Templates",
+              "description": "Views/Templates module with 5 files",
+              "subdirectories": []
+            },
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Guides:Must Reads",
+              "name": "Guides:Must Reads",
+              "level": 3,
+              "numFiles": 4,
+              "totalLoc": 0,
+              "category": "Web/UI",
+              "description": "Web/UI module with 4 files",
+              "subdirectories": []
+            },
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/SGU::Letters",
+              "name": "SGU::Letters",
+              "level": 3,
+              "numFiles": 2,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 2 files",
+              "subdirectories": []
+            }
+          ]
+        },
+        {
+          "path": "00 📥 Inbox - Need Work Look Over/Immunizations",
+          "name": "Immunizations",
+          "level": 2,
+          "numFiles": 26,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 26 files",
+          "subdirectories": []
+        },
+        {
+          "path": "00 📥 Inbox - Need Work Look Over/Upper Terms",
+          "name": "Upper Terms",
+          "level": 2,
+          "numFiles": 12,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 12 files",
+          "subdirectories": [
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/Upper Terms/Term 5",
+              "name": "Term 5",
+              "level": 3,
+              "numFiles": 10,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 10 files",
+              "subdirectories": []
+            },
+            {
+              "path": "00 📥 Inbox - Need Work Look Over/Upper Terms/MEHLMAN MEDICAL FREE",
+              "name": "MEHLMAN MEDICAL FREE",
+              "level": 3,
+              "numFiles": 2,
+              "totalLoc": 0,
+              "category": "General",
+              "description": "General module with 2 files",
+              "subdirectories": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "Medical School",
+      "name": "Medical School",
+      "level": 1,
+      "numFiles": 7,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 7 files",
+      "subdirectories": [
+        {
+          "path": "Medical School/Omi",
+          "name": "Omi",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "04 🃏 Anki Decks",
+      "name": "04 🃏 Anki Decks",
+      "level": 1,
+      "numFiles": 5,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 5 files",
+      "subdirectories": [
+        {
+          "path": "04 🃏 Anki Decks/BPM 501 Decks",
+          "name": "BPM 501 Decks",
+          "level": 2,
+          "numFiles": 3,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 3 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "06 📊 Summaries and Sheets",
+      "name": "06 📊 Summaries and Sheets",
+      "level": 1,
+      "numFiles": 4,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 4 files",
+      "subdirectories": []
+    },
+    {
+      "path": "10 Prompt Library",
+      "name": "10 Prompt Library",
+      "level": 1,
+      "numFiles": 4,
+      "totalLoc": 0,
+      "category": "Library",
+      "description": "Library module with 4 files",
+      "subdirectories": [
+        {
+          "path": "10 Prompt Library/Anki Card Generation",
+          "name": "Anki Card Generation",
+          "level": 2,
+          "numFiles": 2,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 2 files",
+          "subdirectories": []
+        },
+        {
+          "path": "10 Prompt Library/Anki CSS and HTML",
+          "name": "Anki CSS and HTML",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        },
+        {
+          "path": "10 Prompt Library/File Upload Workflows",
+          "name": "File Upload Workflows",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        }
+      ]
+    },
+    {
+      "path": "blue-prints",
+      "name": "blue-prints",
+      "level": 1,
+      "numFiles": 3,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 3 files",
+      "subdirectories": []
+    },
+    {
+      "path": "Resources",
+      "name": "Resources",
+      "level": 1,
+      "numFiles": 2,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 2 files",
+      "subdirectories": []
+    },
+    {
+      "path": "03 🧠 STEP 1",
+      "name": "03 🧠 STEP 1",
+      "level": 1,
+      "numFiles": 1,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 1 files",
+      "subdirectories": []
+    },
+    {
+      "path": "05 🔬 Research",
+      "name": "05 🔬 Research",
+      "level": 1,
+      "numFiles": 1,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 1 files",
+      "subdirectories": []
+    },
+    {
+      "path": "db",
+      "name": "db",
+      "level": 1,
+      "numFiles": 1,
+      "totalLoc": 0,
+      "category": "General",
+      "description": "General module with 1 files",
+      "subdirectories": [
+        {
+          "path": "db/migrations",
+          "name": "migrations",
+          "level": 2,
+          "numFiles": 1,
+          "totalLoc": 0,
+          "category": "General",
+          "description": "General module with 1 files",
+          "subdirectories": []
+        }
+      ]
+    }
+  ],
+  "architecturalInsights": {
+    "coreApplications": [
+      {
+        "path": "api",
+        "name": "api",
+        "level": 1,
+        "numFiles": 5,
+        "totalLoc": 183,
+        "dominantLanguage": "TypeScript",
+        "category": "Service",
+        "description": "Service module with 5 files (TypeScript)",
+        "subdirectories": []
+      }
+    ],
+    "entryPointDetails": [
+      {
+        "path": "../../../../09 Admin/App Framework/build_medical_hub_app.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-03-26.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.backup.2026-05-01_11-52-16.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.before-productivity-ledger-fix.2026-05-01_13-57-22.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.before-real-start-new-day-fix.2026-05-01_14-16-19.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.before-start-new-day-surgical-fix.2026-05-01_13-51-56.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.before-study-day-ticks-time-fix.2026-05-01_14-05-52.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.before-time-studyday-only.2026-05-01_14-09-44.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.clean-open-fix.2026-05-01_11-45-10.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.fix-start-new-day-archive.2026-05-01_13-42-55.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.fix-start-new-day.2026-05-01_11-59-46.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_12-05-45.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.no-window-restore.2026-05-01_13-28-27.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.pre-start-day-archive-repair.2026-05-01_13-48-06.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.repair-localized-quit.2026-05-01_11-23-43.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.v00301-pre-patch.2026-05-01_13-35-12.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.v00301-pre-productivity-day-repair.2026-05-01_13-44-45.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/App Framework/build_noctyrium_app.window-restore-fix.2026-05-01_11-44-01.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/auto_sort_medical.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/build_schedule_atlas_visual.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/build_schedule_atlas_visual_v2.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/clean_medical_temp_files.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/dashboard_stats.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/dashboard_stats.sh.before-productivity-stats-fix.2026-05-01_15-06-43.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/dashboard_stats.sh.daily-file-architecture-backup.2026-05-01_15-18-37.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/import_first_13_schedule_docs_and_build_atlas.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/import_schedule_atlas.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/run_medical_hub.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/safe_sort_downloads_to_medical.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../09 Admin/Scripts/weekly_med_review.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/build_app.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/dashboard_stats.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/legacy/build_noctyrium_app.original.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/legacy/dashboard_stats.original.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/legacy/run_medical_hub.original.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../scripts/package.sh",
+        "type": "Unknown",
+        "description": ""
+      },
+      {
+        "path": "../../../../web/scripts/package-web.sh",
+        "type": "Unknown",
+        "description": ""
+      }
+    ],
+    "serviceArchitecture": {
+      "microservices": [
+        "api"
+      ],
+      "monoliths": [],
+      "libraries": [
+        "10 Prompt Library"
+      ]
+    },
+    "layeredArchitecture": {
+      "presentation": [],
+      "business": [],
+      "data": [],
+      "infrastructure": []
+    }
+  },
+  "largeFiles": [
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/db/v13/saved/data.mdb",
+      "sizeMb": 64
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/index/db/v13/p80065--28027f/data.mdb",
+      "sizeMb": 64
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/Cumulative Term 1 Review copy.pdf",
+      "sizeMb": 41.69
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/Comprehensive Pharmacology Drugs.xlsx",
+      "sizeMb": 41.06
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/MADCOW_MSK_COMPLETE_REVIEW.pdf",
+      "sizeMb": 33.88
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/CPR 1 & 2/CPR 2/MADCOW_CPR2_COMPLETE.pdf",
+      "sizeMb": 33.47
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 1/MADCOW_FTM1_COMPLETE_REVIEW.pdf",
+      "sizeMb": 26.26
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/T2 Anatomy Exam_ CH and JC (1).pdf",
+      "sizeMb": 26.05
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 5 Anatomy of the Gastrointestinal system I - Peritoneal Relations.pdf",
+      "sizeMb": 25.5
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/CPR 1 & 2/CPR 1/Natalies_CPR1_Cumulative_PLG.pdf",
+      "sizeMb": 24.64
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Review .pdf",
+      "sizeMb": 23.3
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 11 Anatomy of the Gastrointestinal system IV - GI Glands.pdf",
+      "sizeMb": 22.49
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/NB3 clinical correlates.pdf",
+      "sizeMb": 22.11
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/High-Yield Images.pdf",
+      "sizeMb": 20.53
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 7 Anatomy of the Gastrointestinal system II - GI Tract.pdf",
+      "sizeMb": 19.22
+    },
+    {
+      "path": "06 📊 Summaries and Sheets/Module 2 - FTM 2 Cumulative Review.pdf",
+      "sizeMb": 16.35
+    },
+    {
+      "path": "01 BPM 501/ER/ER Lecture 1-Flipped Class Room Pre-Read Activity.pdf",
+      "sizeMb": 16.18
+    },
+    {
+      "path": "01 BPM 501/DM/DM High Yield /Complete DM Chart.pdf",
+      "sizeMb": 15.5
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/ER OPLG _ZM.pdf",
+      "sizeMb": 14.93
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 9 Anatomy of the Gastrointestinal system III - GI Tract.pdf",
+      "sizeMb": 14.86
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/FTM2_Review_.pdf",
+      "sizeMb": 14.85
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /SG 04/DM SG 4-Gastrointestinal System Interactive Lab.pdf",
+      "sizeMb": 14.46
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/SG4/DM SG 4-Gastrointestinal System Interactive Lab.pdf",
+      "sizeMb": 14.46
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/natalie cardio ppt.pptx",
+      "sizeMb": 14.15
+    },
+    {
+      "path": "06 📊 Summaries and Sheets/Module 1 - FTM 1 Cumulative Review.pdf",
+      "sizeMb": 13.41
+    },
+    {
+      "path": "01 BPM 501/DM/Final/Kaplan GI - Answers Marked.pdf",
+      "sizeMb": 12.71
+    },
+    {
+      "path": "01 BPM 501/DM/Final/Kaplan GI - No Answers.pdf",
+      "sizeMb": 12.66
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 2-Glycolysis and PPP and their role in metabolism.pdf",
+      "sizeMb": 12.44
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/DM W1 Review.pdf",
+      "sizeMb": 12.42
+    },
+    {
+      "path": "01 BPM 501/DM/DM Week 1/DM W1 Review.pdf",
+      "sizeMb": 12.42
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Biochemistry.pdf",
+      "sizeMb": 12.39
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/Previous Immunizations.pdf",
+      "sizeMb": 11.78
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 8-ETC and Oxidative Phosphorylation.pdf",
+      "sizeMb": 11.78
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 3 Development of the GI System II.pdf",
+      "sizeMb": 11.74
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/Swift-34CZ58097D2J1.swiftmodule",
+      "sizeMb": 11.64
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/FTM 2 REVIEW 2.pdf",
+      "sizeMb": 11.64
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/AppKit-2VI8NB39I5AT6.pcm",
+      "sizeMb": 10.87
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 3-Anatomy of the Stomach, Liver and Gallbladder.pdf",
+      "sizeMb": 10.78
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/Previous Immunizations copy.pdf",
+      "sizeMb": 10.66
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/AppKit-2VI8NB39I5AT6.pcm",
+      "sizeMb": 10.54
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/AppKit-2VI8NB39I5AT6.pcm",
+      "sizeMb": 10.54
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/AppKit-2VI8NB39I5AT6.pcm",
+      "sizeMb": 10.54
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/DM Review (Some Week 2+3)_ ZM.pdf",
+      "sizeMb": 9.83
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T2/BSCE T2 Review eSofts/Study Guide.pdf",
+      "sizeMb": 9.51
+    },
+    {
+      "path": "01 BPM 501/NB1/SG/NB SG 06 - Special Senses - Eye_Ear_Interactive Lab.pdf",
+      "sizeMb": 9.15
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/DM Week 2 OPLG _ZM-2.pdf",
+      "sizeMb": 8.9
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/AppKit-MWD5ZTB0KZY8.pcm",
+      "sizeMb": 8.86
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/AppKit-MWD5ZTB0KZY8.pcm",
+      "sizeMb": 8.86
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/natalie biochem ppt with answers.pptx",
+      "sizeMb": 8.67
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 6-PDH and TCA Cycle.pdf",
+      "sizeMb": 8.38
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 19 - Histology of Bone Formation, Maintenance, and Repair.pdf",
+      "sizeMb": 8.26
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/BSCE_FULL_CLINICAL_CORRELATES_INDEX_v11_HIGH_FIDELITY.xlsx",
+      "sizeMb": 8.22
+    },
+    {
+      "path": "blue-prints/Science Topic Outline For The MCAT Exam - MCAT Content.pdf",
+      "sizeMb": 8.09
+    },
+    {
+      "path": "01 BPM 501/DM/Final/DM Week 2 Saturday PQs.pdf",
+      "sizeMb": 7.84
+    },
+    {
+      "path": "web/Noctyrium-mac-v0.1.0-alpha.1.zip",
+      "sizeMb": 7.67
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 11 Triangles of the Neck.pdf",
+      "sizeMb": 7.09
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/Information:Guides /Basic Principles of Medicine I_Orientation FALL 2025.pdf",
+      "sizeMb": 7.07
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER SG 3-Endocrine System Clinical Cases SV.pdf",
+      "sizeMb": 7.03
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER SG 3-Endocrine System Clinical Cases SV.pdf",
+      "sizeMb": 7.03
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 1-Clinical Embryology of the GI System.pdf",
+      "sizeMb": 6.91
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 15-Histology of Lower Gastrointestinal Tract.pdf",
+      "sizeMb": 6.89
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/PowerHouse DES Ultimate BSCE Questions (BSCE).pdf",
+      "sizeMb": 6.8
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 10-Glycogen metabolism and glycogen storage diseases.pdf",
+      "sizeMb": 6.79
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 13 - Pelvis.pdf",
+      "sizeMb": 6.71
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 8 Gluconeogenesis.pdf",
+      "sizeMb": 6.69
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/Foundation-24LYWIP48SHNP.pcm",
+      "sizeMb": 6.63
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 5-Anatomy of the Pancreas, Spleen and Small Intestine.pdf",
+      "sizeMb": 6.51
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Foundation-24LYWIP48SHNP.pcm",
+      "sizeMb": 6.48
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/Foundation-24LYWIP48SHNP.pcm",
+      "sizeMb": 6.48
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Foundation-24LYWIP48SHNP.pcm",
+      "sizeMb": 6.48
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/eSoft/MSK 4-1/MSK_Esoft_Quiz_4_1_-1.pdf",
+      "sizeMb": 6.44
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/eSoft/MSK 4-1/MSK_Esoft_Quiz_4_1_.pdf",
+      "sizeMb": 6.43
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 17-Histology of the Uterus, Vagina _ Breast Development.pdf",
+      "sizeMb": 6.41
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 2.5 DLA 4 - Gastrointestinal System and Peritonium Relationships_Before DM 3.pdf",
+      "sizeMb": 6.36
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/Darwin-2XL7BLEFGDR8S.pcm",
+      "sizeMb": 6.35
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/Darwin-2XL7BLEFGDR8S.pcm",
+      "sizeMb": 6.35
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 13-Histology of Upper Gastointestinal Tract.pdf",
+      "sizeMb": 6.33
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/B Vitamins.pdf",
+      "sizeMb": 6.31
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L7. Gastrointestinal System II.pdf",
+      "sizeMb": 6.26
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/Sample SOAP Notes.pdf",
+      "sizeMb": 6.25
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 7-Anatomy of the Large Intestine.pdf",
+      "sizeMb": 6.22
+    },
+    {
+      "path": "01 BPM 501/DM/DM High Yield /Everything Biochem Lippincotts Chart.pdf",
+      "sizeMb": 6.06
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/Darwin-1FXX23EKWOBA9.pcm",
+      "sizeMb": 5.94
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L10. Regulation of Glycolysis and Gluconeogenesis.pdf",
+      "sizeMb": 5.91
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/Comprehensive Physical Exam Manual.pdf",
+      "sizeMb": 5.9
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 16-Histology of the Female Reproductive System-Ovary to Oviduct.pdf",
+      "sizeMb": 5.84
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 9-Imaging of Gastrointestinal System.pdf",
+      "sizeMb": 5.83
+    },
+    {
+      "path": "01 BPM 501/DM/DM Week 1/Lectures/DM Lecture 2-Clinical Embryology of the GI System.pdf",
+      "sizeMb": 5.66
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/Foundation-2AB5QUAWCJXGZ.pcm",
+      "sizeMb": 5.63
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/Foundation-2AB5QUAWCJXGZ.pcm",
+      "sizeMb": 5.63
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 32 - Gene Regulation.pdf",
+      "sizeMb": 5.59
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 19, 20, 21 -  Histology of Blood Cell Formation.pdf",
+      "sizeMb": 5.51
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Darwin-1FXX23EKWOBA9.pcm",
+      "sizeMb": 5.5
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/Darwin-1FXX23EKWOBA9.pcm",
+      "sizeMb": 5.5
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Darwin-1FXX23EKWOBA9.pcm",
+      "sizeMb": 5.5
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L11. Liver, Pancreas, and Spleen .pdf",
+      "sizeMb": 5.43
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/S26 NB Lecture 19 - Gross Anatomy _ Development of the Orbit and Eye.pdf",
+      "sizeMb": 5.42
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 10 General Concepts of CN and Relationship to Skull.pdf",
+      "sizeMb": 5.39
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 25 -Tissues and Organs of the Lymphatic System.pdf",
+      "sizeMb": 5.35
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/FTM SG 02 - HCB Introcudtion_Interactive Lab.pdf",
+      "sizeMb": 5.32
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 07 - Histology of Epithelium and Glands F25.pdf",
+      "sizeMb": 5.31
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/SwiftUI-2T3KRU30LAU86.swiftmodule",
+      "sizeMb": 5.29
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 15-Histology of Lower Gastrointestinal Tract.pdf",
+      "sizeMb": 5.23
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 11-Clinical Anatomy, Imaging of Reproductive Sys.-Female Repro. Organs.pdf",
+      "sizeMb": 5.22
+    },
+    {
+      "path": "web/Noctyrium-web-v0.1.0-alpha.1.zip",
+      "sizeMb": 5.22
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/Noctyrium.dSYM/Contents/Resources/DWARF/Noctyrium",
+      "sizeMb": 5.21
+    },
+    {
+      "path": "01 BPM 501/DM/Final/DM 725Qs.pdf",
+      "sizeMb": 5.08
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 4-Gluconeogenesis.pdf",
+      "sizeMb": 5.06
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/Noctyrium.dSYM/Contents/Resources/DWARF/Noctyrium",
+      "sizeMb": 5
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L8. Gluconeogenesis .pdf",
+      "sizeMb": 4.96
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/Noctyrium.build/MedicalSchoolHub.swift.o",
+      "sizeMb": 4.93
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 6 Electron Transport Chain and Oxidative Phosphorylation.pdf",
+      "sizeMb": 4.9
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 6 - Histology of Basic Tissues - Epithelium.pdf",
+      "sizeMb": 4.85
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 17-Histology of the Associated Gastrointestinal Glands-Flipped Classroom.pdf",
+      "sizeMb": 4.85
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 13-Histology of Upper Gastointestinal Tract.pdf",
+      "sizeMb": 4.84
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 18 - Histological Classification and Organization of Bone.pdf",
+      "sizeMb": 4.79
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 12-Regulation of Carbohydrate Metabolism.pdf",
+      "sizeMb": 4.78
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 37 - Histology of Nerve Tissue - Central Nervous System.pdf",
+      "sizeMb": 4.63
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/God File (Last Updated After T2 ER Exam).xlsx",
+      "sizeMb": 4.61
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L9. Gastrointestinal System III.pdf",
+      "sizeMb": 4.47
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 15-Clinical Anatomy and Imaging of Reproductive Syst.-Female Perineum.pdf",
+      "sizeMb": 4.45
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 02 - Clinical Anatomy of the Heart.pdf",
+      "sizeMb": 4.44
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 25 - Cellular Adaptation.pdf",
+      "sizeMb": 4.43
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 10 Regulation of Glycolysis, Gluconeogenesis and Glycogen Metabolism.pdf",
+      "sizeMb": 4.42
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 15 - Clinical Anatomy of the Lower Limb 1.pdf",
+      "sizeMb": 4.34
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreServices-39NCTJOEW7PQ2.pcm",
+      "sizeMb": 4.3
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/CoreServices-39NCTJOEW7PQ2.pcm",
+      "sizeMb": 4.3
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreServices-39NCTJOEW7PQ2.pcm",
+      "sizeMb": 4.3
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 21 Gross Anatomy _ Development of the Ear.pdf",
+      "sizeMb": 4.25
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 5-Anatomy of the Pancreas, Spleen and Small Intestine.pdf",
+      "sizeMb": 4.22
+    },
+    {
+      "path": "01 BPM 500/CPR1/DLA/DLA 08 - Nutritional Aspects of Cardiovascular Disease.pdf",
+      "sizeMb": 4.21
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/CoreServices-39NCTJOEW7PQ2.pcm",
+      "sizeMb": 4.2
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 20 Histology of the Eye.pdf",
+      "sizeMb": 4.2
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/IOKit-1IAL9NTK1TABA.pcm",
+      "sizeMb": 4.17
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/IOKit-1IAL9NTK1TABA.pcm",
+      "sizeMb": 4.17
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/IOKit-1IAL9NTK1TABA.pcm",
+      "sizeMb": 4.17
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 10-Clinical Anatomy,Imaging of Reproductive System-Male Reproductive Organs.pdf",
+      "sizeMb": 4.16
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 36 - Histology of Nerve Tissue - Peripheral Nervous System.pdf",
+      "sizeMb": 4.1
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 28 - Histology of the Respiratory System.pdf",
+      "sizeMb": 4.05
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/simd-KY25Q80SBOHY.pcm",
+      "sizeMb": 4
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/IOKit-1IAL9NTK1TABA.pcm",
+      "sizeMb": 3.99
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L6. Electron Transport Chain _ Oxidative Phosphorylation .pdf",
+      "sizeMb": 3.99
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/CoreServices-NJDWD8MYN9O5.pcm",
+      "sizeMb": 3.95
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/CoreServices-NJDWD8MYN9O5.pcm",
+      "sizeMb": 3.95
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 16 - Clinical Anatomy of the Lower Limb 2.pdf",
+      "sizeMb": 3.95
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 23. Development of the Skull, Face and Paranasal Sinuses.pdf",
+      "sizeMb": 3.94
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 45 - Karyotypes and Aneuploidy.pdf",
+      "sizeMb": 3.87
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 35 - Flipped Class - Histology of Muscle Tissue - Pre-lecture Material.pdf",
+      "sizeMb": 3.86
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/Noctyrium.build/MedicalSchoolHub.swift.o",
+      "sizeMb": 3.84
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 9-Imaging of Gastrointestinal System.pdf",
+      "sizeMb": 3.84
+    },
+    {
+      "path": "01 BPM 501/DM/DM Week 1/Lectures/DM Lecture 1-Glycolysis and PPP and their role in metabolism.pdf",
+      "sizeMb": 3.79
+    },
+    {
+      "path": "01 BPM 501/NB1/PQs/Week 8 NB NSCI Practice Questions_With Answers.pdf",
+      "sizeMb": 3.78
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/simd-KY25Q80SBOHY.pcm",
+      "sizeMb": 3.77
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/simd-KY25Q80SBOHY.pcm",
+      "sizeMb": 3.77
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/simd-KY25Q80SBOHY.pcm",
+      "sizeMb": 3.77
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 43 - Histology of the Excretory Part of the Renal System.pdf",
+      "sizeMb": 3.77
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 7-Anatomy of the Large Intestine.pdf",
+      "sizeMb": 3.74
+    },
+    {
+      "path": "01 BPM 500/FTM2/DLA/DLA 16 - Population Genetics After Lecture 27.pdf",
+      "sizeMb": 3.69
+    },
+    {
+      "path": "01 BPM 500/FTM2/DLA/DLA 17 - Proteoglycans and Glycoproteins.pdf",
+      "sizeMb": 3.69
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/IOKit-2AVGGQW48PKFJ.pcm",
+      "sizeMb": 3.68
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/IOKit-2AVGGQW48PKFJ.pcm",
+      "sizeMb": 3.68
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/Lab Exam/Term 2 Lab Exam Review.pdf",
+      "sizeMb": 3.66
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 15 - Structure and Functions of Proteins.pdf",
+      "sizeMb": 3.56
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 02 - Histology of Cellular Organelles.pdf",
+      "sizeMb": 3.54
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 1.5 DLA 1-Structure and function of Carbohydrates_After DM 1.pdf",
+      "sizeMb": 3.53
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 6-PDH and TCA Cycle.pdf",
+      "sizeMb": 3.5
+    },
+    {
+      "path": "01 BPM 501/DM/DM High Yield /Abdomen-Blood-Supply.pdf",
+      "sizeMb": 3.49
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 4 PDH and TCA Cycle.pdf",
+      "sizeMb": 3.47
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 1-Integrative Histology of the Endocrine Glands-Lecture Slides.pdf",
+      "sizeMb": 3.4
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/Noctyrium",
+      "sizeMb": 3.34
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm",
+      "sizeMb": 3.34
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 26 - Development and Clinical Embryology of the Respiratory System.pdf",
+      "sizeMb": 3.32
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/529 300 form.pdf",
+      "sizeMb": 3.31
+    },
+    {
+      "path": "01 BPM 501/DM/DM Week 1/DLAs/DM DLA 1-Structure and function of Carbohydrates_After DM 1.pdf",
+      "sizeMb": 3.3
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 14 Infratemporal and Pterygopalatine Fossae.pdf",
+      "sizeMb": 3.3
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 29 - Connective Tissue Histology.pdf",
+      "sizeMb": 3.27
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 04 - Clinical Anatomy of Axilla and Brachial Plexus.pdf",
+      "sizeMb": 3.26
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 27 - Histology of the Skin.pdf",
+      "sizeMb": 3.26
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3/One Pagers/L18. Adipose Tissue Lipolysis + Fatty Acid Oxidation .pdf",
+      "sizeMb": 3.26
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/DLAs/DM DLA 9-Fat Soluble Vitamins_Vitamin A D E K _Parts 1,2,3__Before DM 33.pdf",
+      "sizeMb": 3.24
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 8-ETC and Oxidative Phosphorylation.pdf",
+      "sizeMb": 3.23
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 22 Histology of the Ear.pdf",
+      "sizeMb": 3.23
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 14 - Translation and Post Translational Modification.pdf",
+      "sizeMb": 3.2
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 03 - Histology of the Cardiovascular System.pdf",
+      "sizeMb": 3.19
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/BW Fall 2025.pdf",
+      "sizeMb": 3.18
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 42 - Purine Degradation and Pyrimidine Metabolism.pdf",
+      "sizeMb": 3.18
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 18 Oral Cavity and Palate.pdf",
+      "sizeMb": 3.16
+    },
+    {
+      "path": "01 BPM 500/CPR1/DLA/DLA 02 - Development of the Heart.pdf",
+      "sizeMb": 3.14
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 16-Fatty acid Synthesis and Regulation.pdf",
+      "sizeMb": 3.14
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm",
+      "sizeMb": 3.12
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm",
+      "sizeMb": 3.12
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/_Builtin_intrinsics-2OQWMRBVRD4OJ.pcm",
+      "sizeMb": 3.12
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 12-Histology of the Male Reproductive System.pdf",
+      "sizeMb": 3.12
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 16 Pharynx and Larynx.pdf",
+      "sizeMb": 3.11
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 20 - Flipped Class - Histology of Cartilage - POST AFTER CLASS.pdf",
+      "sizeMb": 3.1
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 27 - Clinical Anatomy of the Respiratory System.pdf",
+      "sizeMb": 3.08
+    },
+    {
+      "path": "01 BPM 501/DM/IMCQs/DM_IMCQ 6_KEY.pdf",
+      "sizeMb": 3.07
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 2.3 - DLA 3 - Autonomics of Abdomen_Before DM 3.pdf",
+      "sizeMb": 3.07
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/Security-3QCVXOV25KK54.pcm",
+      "sizeMb": 3.06
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 18-Adipose tissue lipolysis Fatty acid oxidation (1).pdf",
+      "sizeMb": 3.05
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Security-3QCVXOV25KK54.pcm",
+      "sizeMb": 3.04
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/Security-3QCVXOV25KK54.pcm",
+      "sizeMb": 3.04
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Security-3QCVXOV25KK54.pcm",
+      "sizeMb": 3.04
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 32 - Hemoglobin and Gas Transport.pdf",
+      "sizeMb": 3.04
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/Foundation-141UD8DNXZQAR.swiftmodule",
+      "sizeMb": 3.02
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 35-Lysosomal Storage Diseases.pdf",
+      "sizeMb": 3.02
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 01 - Histology of the Cytoskeleton of the Cell.pdf",
+      "sizeMb": 3.01
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 35 - Flipped Class - Histology of Muscle Tissue _After Lecture_.pdf",
+      "sizeMb": 2.97
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 40 - Cholinergic Agonists _ Antagonists.pdf",
+      "sizeMb": 2.95
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 5-Steroid Hormone Metabolism.pdf",
+      "sizeMb": 2.95
+    },
+    {
+      "path": "09 Admin/App Framework/Build/Noctyrium.app/Contents/MacOS/Noctyrium",
+      "sizeMb": 2.94
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 13 - Origin and Components of ECG.pdf",
+      "sizeMb": 2.92
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3/One Pagers/L22. Functions and Regulation of the GI tract (physio).pdf",
+      "sizeMb": 2.92
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 28 - Histology of the Skin Apendages.pdf",
+      "sizeMb": 2.91
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 23 - Neuromuscular Transmission and Excitation-Contraction Coupling.pdf",
+      "sizeMb": 2.89
+    },
+    {
+      "path": "01 BPM 501/DM/Final/_SGU BPM II DM Practice Exam (Answers).pdf",
+      "sizeMb": 2.87
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB - 17 - IX and X.pdf",
+      "sizeMb": 2.87
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM 12 Glycogen Metabolism and Glycogen Storage Diseases.pdf",
+      "sizeMb": 2.86
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 02 General Morphology of the Nervous System.pdf",
+      "sizeMb": 2.86
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/BSCE_Clinical_Correlates_Information_Atlas_v10_CLEAN_SOURCE.xlsx",
+      "sizeMb": 2.85
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 14 - ECG Leads, Mean Electrical Axis and Interpretation.pdf",
+      "sizeMb": 2.84
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 02 - Introduction to Clinical Imaging and Imaging of the Back.pdf",
+      "sizeMb": 2.81
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 11 - Anterior Abdominal  Wall _ Inguinal Region.pdf",
+      "sizeMb": 2.76
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 12 - Histopathological Aspects of Skin.pdf",
+      "sizeMb": 2.75
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/DLAs/DM DLA 10-Obesity_After DM 34.pdf",
+      "sizeMb": 2.75
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/Security-SJDU3NI47DU8.pcm",
+      "sizeMb": 2.74
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/Security-SJDU3NI47DU8.pcm",
+      "sizeMb": 2.74
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 13 - Genetic Code and Translation_Parts 1 and 2.pdf",
+      "sizeMb": 2.74
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 12  Face and Scalp.pdf",
+      "sizeMb": 2.72
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 24 Pharyngeal Apparatus Derivatives Neural Tube Defects.pdf",
+      "sizeMb": 2.72
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/OpenGL-H89XJT7GTCP.pcm",
+      "sizeMb": 2.71
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 11-Clinical Gastrointestinal System Flipped_Post-Lecture.pdf",
+      "sizeMb": 2.68
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/Metal-1GCZV9N85NJOH.pcm",
+      "sizeMb": 2.67
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 40 - Development and Clinical Embryology of the Urinary System.pdf",
+      "sizeMb": 2.64
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 3-Anatomy of the Stomach, Liver and Gallbladder.pdf",
+      "sizeMb": 2.62
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/OpenGL-H89XJT7GTCP.pcm",
+      "sizeMb": 2.61
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/OpenGL-H89XJT7GTCP.pcm",
+      "sizeMb": 2.61
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/OpenGL-H89XJT7GTCP.pcm",
+      "sizeMb": 2.61
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Amino Acids.pdf",
+      "sizeMb": 2.6
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Metal-1GCZV9N85NJOH.pcm",
+      "sizeMb": 2.59
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/Metal-1GCZV9N85NJOH.pcm",
+      "sizeMb": 2.59
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Metal-1GCZV9N85NJOH.pcm",
+      "sizeMb": 2.59
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/Disorders.pdf",
+      "sizeMb": 2.57
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 13 Cranial Nerves V and VII.pdf",
+      "sizeMb": 2.57
+    },
+    {
+      "path": "01 BPM 500/FTM2/DLA/DLA 18 - Prokaryotic Gene Expression.pdf",
+      "sizeMb": 2.55
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 17 - Primary and Secondary Hemostasis.pdf",
+      "sizeMb": 2.54
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 15 Nasal Cavity.pdf",
+      "sizeMb": 2.54
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 29 -Flipped Class _ Inflammation _ Post Session.pdf",
+      "sizeMb": 2.51
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 17 - Molecular Biology Techniques.pdf",
+      "sizeMb": 2.48
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 12 - Posterior Abdominal Wall.pdf",
+      "sizeMb": 2.48
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 19 - Use of Genomics in Diagnosis.pdf",
+      "sizeMb": 2.45
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 01 - Mediastinum.pdf",
+      "sizeMb": 2.43
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/Metabolism/DM Lecture 14-Metabolism of Fructose and Galactose.pdf",
+      "sizeMb": 2.43
+    },
+    {
+      "path": "09 Admin/App Data/Noctyrium/Brand/Noctyrium.icns",
+      "sizeMb": 2.41
+    },
+    {
+      "path": "09 Admin/App Framework/Build/Noctyrium.app/Contents/Resources/Noctyrium.icns",
+      "sizeMb": 2.41
+    },
+    {
+      "path": "Resources/Noctyrium.icns",
+      "sizeMb": 2.41
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/OpenGL-2EAE62AOXFXM2.pcm",
+      "sizeMb": 2.4
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/OpenGL-2EAE62AOXFXM2.pcm",
+      "sizeMb": 2.4
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 21 Genetic Screening.pdf",
+      "sizeMb": 2.4
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 05 - Imaging of the Heart and Mediastinum-1-1-1.pdf",
+      "sizeMb": 2.38
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 18-Adipose tissue lipolysis Fatty acid oxidation.pdf",
+      "sizeMb": 2.37
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 47 - Genetics of Oncogenes.pdf",
+      "sizeMb": 2.36
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /DLAs/DM DLA 4 - Gastrointestinal System and Peritonium Relationships_Before DM 3.pdf",
+      "sizeMb": 2.36
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 42 - Histology of the Nephron and Blood Pressure Control Mechanisms.pdf",
+      "sizeMb": 2.35
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 4 - Development of spinal cord and vertebrae.pdf",
+      "sizeMb": 2.35
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER DLA 4-Histology of the Male Reproductive System_Before ER 12.pdf",
+      "sizeMb": 2.35
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 20-Development of the Reproductive System.pdf",
+      "sizeMb": 2.34
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 28 - Fibrous Proteins.pdf",
+      "sizeMb": 2.31
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 7 - Clinical Anatomy of the Ankle and Foot.pdf",
+      "sizeMb": 2.29
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/DNA Sturcture + Purine:Pyridine + Glucose.pdf",
+      "sizeMb": 2.28
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER DLA 7-Fetal Membranes_Before ER 20.pdf",
+      "sizeMb": 2.28
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 06 - Clinical Embryology of the Heart.pdf",
+      "sizeMb": 2.27
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 24 - Apoptosis and Necrosis.pdf",
+      "sizeMb": 2.27
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/HEP A-C, Rubella, TB.pdf",
+      "sizeMb": 2.26
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 28-Digestion and Absorption.pdf",
+      "sizeMb": 2.25
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 12 - Cardiac Action Potential.pdf",
+      "sizeMb": 2.2
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 16 - HDL and Lipoprotein Disorders.pdf",
+      "sizeMb": 2.19
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 46 - Structural Chromosomal Abnormalities.pdf",
+      "sizeMb": 2.19
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 6 - Thoracic wall and Pectoral Region.pdf",
+      "sizeMb": 2.19
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 25-Disorders of Amino Acid Metabolism.pdf",
+      "sizeMb": 2.18
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 50 - Flipped Class - Nutrition in Health and Disease _After Lecture_.pdf",
+      "sizeMb": 2.17
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 12-Regulation of Carbohydrate Metabolism.pdf",
+      "sizeMb": 2.16
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 09 - Post Transcriptional Modification.pdf",
+      "sizeMb": 2.14
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 16-Fatty acid Synthesis and Regulation.pdf",
+      "sizeMb": 2.14
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 20 - Signal Transduction.pdf",
+      "sizeMb": 2.11
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 15 - Chylomicrons, VLDL and LDL Metabolism.pdf",
+      "sizeMb": 2.1
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/Spatial-1JZLH83HN83CS.pcm",
+      "sizeMb": 2.08
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 14 - Imaging of Abdomen and Pelvis.pdf",
+      "sizeMb": 2.08
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 22-Enteric motility.pdf",
+      "sizeMb": 2.08
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 05 - Clinical Anatomy of Arm and Forearm.pdf",
+      "sizeMb": 2.07
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 14 - Amino Acids Structure and Function.pdf",
+      "sizeMb": 2.06
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 19-Ketone body metabolism and disorders.pdf",
+      "sizeMb": 2.06
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 37 - Ventilation Perfusion Inequality _ Hypoxaemia.pdf",
+      "sizeMb": 2.05
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 08 - Determinants of Myocardial Performance.pdf",
+      "sizeMb": 2.04
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 08 - DNA Replication.pdf",
+      "sizeMb": 2.04
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 25 - PHYSIOLOGY OF CARDIAC AND SMOOTH MUSCLES.pdf",
+      "sizeMb": 2.04
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 33-Water soluble Vitamins.pdf",
+      "sizeMb": 2.01
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 4-Gluconeogenesis.pdf",
+      "sizeMb": 2
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 47 - Serum Proteins and Disorders.pdf",
+      "sizeMb": 1.97
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 18 - Enzymes.pdf",
+      "sizeMb": 1.97
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 24 - Flipped Class - Mechanics of Skeletal Muscle Contraction _After Lecture_.pdf",
+      "sizeMb": 1.95
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 08 - Flipped Class - Upper Limb Clinical Cases _After Lecture_.pdf",
+      "sizeMb": 1.94
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/Sakai BCSE Supplement Material (Look Over)/NBME_2018sample questions 2.pdf",
+      "sizeMb": 1.94
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 17 - Clinical and Imaging of the Lower Limb.pdf",
+      "sizeMb": 1.93
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/DLAs/DM DLA 8-Digestion and Absorption_Before DM 28.pdf",
+      "sizeMb": 1.93
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 01 Neuroembryology.pdf",
+      "sizeMb": 1.93
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 06 - Clinical Anatomy of Wrist and Hand.pdf",
+      "sizeMb": 1.92
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Spatial-1JZLH83HN83CS.pcm",
+      "sizeMb": 1.91
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/Spatial-1JZLH83HN83CS.pcm",
+      "sizeMb": 1.91
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/Spatial-1JZLH83HN83CS.pcm",
+      "sizeMb": 1.91
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 09 - Imaging of the thorax.pdf",
+      "sizeMb": 1.91
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 21-Cholesterol Metabolism and Regulation.pdf",
+      "sizeMb": 1.9
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 43 - Adrenergic Agonists _ Antagonists.pdf",
+      "sizeMb": 1.87
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 23-Nutritional Aspects of Pregnancy Lactation and Infant Nutrition.pdf",
+      "sizeMb": 1.87
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 33 - Hemoglobinopathies.pdf",
+      "sizeMb": 1.86
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Glycogen.pdf",
+      "sizeMb": 1.86
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER SG5-Integrated Clinical Cases Female Reproductive System SV.pdf",
+      "sizeMb": 1.86
+    },
+    {
+      "path": "Resources/Noctyrium-Logo.png",
+      "sizeMb": 1.85
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 30-Heme degradation and Jaundice.pdf",
+      "sizeMb": 1.84
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 3 - Vertebral Column and Spinal Cord.pdf",
+      "sizeMb": 1.83
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 41 - Flipped Class _ Anatomy Urinary _ Post Sessio.pdf",
+      "sizeMb": 1.82
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 04 - Cardiac Cycle and Regulation.pdf",
+      "sizeMb": 1.81
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 18 - Fibrinolysis and Disorders of Hemostasis.pdf",
+      "sizeMb": 1.81
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 48 - Genetics of Tumor Supressor Genes.pdf",
+      "sizeMb": 1.81
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 20 - Flipped Class - Histology of Cartilage Pre-read Material.pdf",
+      "sizeMb": 1.81
+    },
+    {
+      "path": "01 BPM 501/DM/Ronnster Slides/GI Anatomy/DM Lecture 12.5 - DLA 5-Histology of the Gastrointestinal Tract - OverviewBefore DM 13.pdf",
+      "sizeMb": 1.8
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/eSoft/MSK_Esoft_Quiz_3_1_-1.pdf",
+      "sizeMb": 1.79
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/eSoft/MSK_Esoft_Quiz_3_1_.pdf",
+      "sizeMb": 1.79
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER SG 4-Male Reproductive System Integrated Clinical Cases.pdf",
+      "sizeMb": 1.79
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 11b - MSK L26 BEFORE Triplet Repeat Disorders _ Pharmacogenetics - Triplet Repeat Disorders.pdf",
+      "sizeMb": 1.78
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 22 - Pentose Phosphate Pathway Significance RBCs and WBCs.pdf",
+      "sizeMb": 1.77
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 16 - Unexpected Events in Inheritance.pdf",
+      "sizeMb": 1.77
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 44 - Multifactorial Inheritance.pdf",
+      "sizeMb": 1.77
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/Metal-8JV5FD81FZJN.pcm",
+      "sizeMb": 1.75
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/Metal-8JV5FD81FZJN.pcm",
+      "sizeMb": 1.75
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA - Limb development.pdf",
+      "sizeMb": 1.74
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 31 - Pharmacokinetics.pdf",
+      "sizeMb": 1.72
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 9 - Vitamin D _ Fat soluble vitamin.pdf",
+      "sizeMb": 1.71
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 13 - X-linked Inheritance _After Lecture_.pdf",
+      "sizeMb": 1.7
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/SGU Admittance/SGU::Terms for Admission/MDStart-flyer-v8.pdf",
+      "sizeMb": 1.69
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 03 - Clinical Anatomy of the Back.pdf",
+      "sizeMb": 1.69
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Lysosomal Disease and Disorders.pdf",
+      "sizeMb": 1.69
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 20-Function and Regulation of GIT.pdf",
+      "sizeMb": 1.69
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER SG 5-Integrated Clinical Cases Female Reproductive System_After Lab.pdf",
+      "sizeMb": 1.68
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 21 - Second Messenger Systems.pdf",
+      "sizeMb": 1.67
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 49 - DNA Repair.pdf",
+      "sizeMb": 1.67
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/eSoft/FTM_Esoft_Quiz_4_1_.pdf",
+      "sizeMb": 1.67
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 15 - Genomics in Diagnosis.pdf",
+      "sizeMb": 1.66
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/CPR 1 & 2/CPR 1/IMCQ/CPR IMCQ Key _ 01.pdf",
+      "sizeMb": 1.66
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/eSoft/FTM_Esoft_Quiz_4_1_-1.pdf",
+      "sizeMb": 1.66
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 04  Meninges and Arteries.pdf",
+      "sizeMb": 1.66
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 36 - Flipped Class _ Glycolysis and Hemolysis_ Post Session.pdf",
+      "sizeMb": 1.65
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 5 - Clinical Anatomy of the Shoulder.pdf",
+      "sizeMb": 1.65
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/Sakai BCSE Supplement Material (Look Over)/USMLE Step_1_Sample_Items_2024.pdf",
+      "sizeMb": 1.65
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER DLA 9-Teratogenesis_After ER 22.pdf",
+      "sizeMb": 1.65
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/Noctyrium",
+      "sizeMb": 1.64
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 13 - X-linked Inheritance _Before Lecture_.pdf",
+      "sizeMb": 1.64
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 30 - Respiratory Muscles and Breathing Cycle.pdf",
+      "sizeMb": 1.61
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 14-Clinical Anatomy and Imaging of Reproductive System-Male Perineum.pdf",
+      "sizeMb": 1.61
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/CPR 1 & 2/CPR 1/IMCQ/CPR IMCQ Key _ 06.pdf",
+      "sizeMb": 1.6
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /DLAs/DM DLA 5-Histology of the Gastrointestinal Tract - OverviewBefore DM 13.pdf",
+      "sizeMb": 1.6
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 03 Organisation of the Nervous System.pdf",
+      "sizeMb": 1.6
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 26 - Molecular Mechanisms in Inherited Disorders.pdf",
+      "sizeMb": 1.59
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 01 - The Back.pdf",
+      "sizeMb": 1.59
+    },
+    {
+      "path": "01 BPM 500/CPR2/DLA/DLA 18 - Anatomy Urinary System.pdf",
+      "sizeMb": 1.57
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 45 Tubular Mechanisms.pdf",
+      "sizeMb": 1.57
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 30 - Pharmacodynamics.pdf",
+      "sizeMb": 1.56
+    },
+    {
+      "path": "01 BPM 500/CPR2/DLA/DLA 13 - Respiratory System.pdf",
+      "sizeMb": 1.55
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 06 Transport within the CNS.pdf",
+      "sizeMb": 1.55
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Lipid Metabolism + Hyperlipidemias.pdf",
+      "sizeMb": 1.54
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 12B - Unexpected Phenomena in Mendelian Disorders.pdf",
+      "sizeMb": 1.53
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 29-Heme synthesis and Porphyrias.pdf",
+      "sizeMb": 1.53
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 44  - Glomerular Mechanisms.pdf",
+      "sizeMb": 1.52
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2 /Lectures/DM Lecture 10-Glycogen metabolism and glycogen storage diseases.pdf",
+      "sizeMb": 1.52
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 31 - Spirometry.pdf",
+      "sizeMb": 1.51
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 12 - Flipped Classroom - Mendelian Inheritance AD and AR _Before Lecture_.pdf",
+      "sizeMb": 1.51
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 40-Clinical Correlates and inborn errors of metabolism_before lecture.pdf",
+      "sizeMb": 1.5
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 41 - Purine Synthesis and Salvage Pathway.pdf",
+      "sizeMb": 1.48
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/Sakai BCSE Supplement Material (Look Over)/NBME_2018sample questions 1.pdf",
+      "sizeMb": 1.48
+    },
+    {
+      "path": "01 BPM 501/NB1/SG/NB Small Groups Manual_S2026_SG03.pdf",
+      "sizeMb": 1.48
+    },
+    {
+      "path": "web/public/anki-guide/card-editor.png",
+      "sizeMb": 1.47
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 38 - Physiology of Autonomic Transmission.pdf",
+      "sizeMb": 1.46
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/L14. Glycogen Storage Diseases .pdf",
+      "sizeMb": 1.46
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lectures/DM Lecture 14-Metabolism of Fructose and Galactose.pdf",
+      "sizeMb": 1.46
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/CoreFoundation-16SA8WK3L6MQN.pcm",
+      "sizeMb": 1.45
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 10 -  Hemodynamics of Systemic Circulation-1.pdf",
+      "sizeMb": 1.45
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 05A - Early Embryology Week 1.pdf",
+      "sizeMb": 1.45
+    },
+    {
+      "path": "01 BPM 501/DM/DM High Yield /Complete pathway summary.pdf",
+      "sizeMb": 1.44
+    },
+    {
+      "path": "01 BPM 501/DM/IMCQs/DM_IMCQ 4_KEY.pdf",
+      "sizeMb": 1.43
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 2-Hypothalumus and Pituitary Functions.pdf",
+      "sizeMb": 1.43
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 4-Synthesis of Amino Acid Derivative Hormones.pdf",
+      "sizeMb": 1.43
+    },
+    {
+      "path": "src-tauri/icons/icon.png",
+      "sizeMb": 1.43
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 52 - Acid Base Disorders.pdf",
+      "sizeMb": 1.42
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/store/v5/records/DL/arm64e-apple-macos.swiftinterface-ANGR2ZBDPKDL",
+      "sizeMb": 1.41
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/index/store/v5/records/DL/arm64e-apple-macos.swiftinterface-ANGR2ZBDPKDL",
+      "sizeMb": 1.41
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/Immunizations updated.pdf",
+      "sizeMb": 1.41
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 12 - Flipped Classroom - Mendelian Inheritance AD and AR _After Lecture_.pdf",
+      "sizeMb": 1.41
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 08 Synaptic Transmission.pdf",
+      "sizeMb": 1.41
+    },
+    {
+      "path": "09 Admin/App Data/Noctyrium/Brand/IconBuild/Noctyrium.iconset/icon_512x512@2x.png",
+      "sizeMb": 1.4
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/store/v5/records/2O/arm64e-apple-macos.swiftinterface-ZCBYO4M2J22O",
+      "sizeMb": 1.38
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 38 - Gas Transport.pdf",
+      "sizeMb": 1.38
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Electron Transport Chain.pdf",
+      "sizeMb": 1.38
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/CoreGraphics-1PSDCAYCIV3T9.pcm",
+      "sizeMb": 1.37
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 24-Saliva and Gastric Secretions.pdf",
+      "sizeMb": 1.37
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 3-Anterior and Posterior pituitary Functions.pdf",
+      "sizeMb": 1.37
+    },
+    {
+      "path": "01 BPM 501/NB1/SG/NB SG 06 - Identification - Eye _ Ear_S2026.pdf",
+      "sizeMb": 1.37
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/NB 65 Flipped Class -Sensory-Motor Integration_Post Session.pdf",
+      "sizeMb": 1.36
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 05C - Early Embryology Week 3.pdf",
+      "sizeMb": 1.36
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 12A - X-linked Disorders.pdf",
+      "sizeMb": 1.36
+    },
+    {
+      "path": "01 BPM 501/NB1/DLAs/NB DLA 01 - Practical Clinical Neuroimaging II - After NB 03.pdf",
+      "sizeMb": 1.36
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 09 Neurotransmitter Pathways and Roles.pdf",
+      "sizeMb": 1.36
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 1/eSoft /FTM_Esoft_Quiz_1_1_.pdf",
+      "sizeMb": 1.35
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 23-Ammonia metabolism Urea cycle.pdf",
+      "sizeMb": 1.35
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 23 - Clinical Enzymology.pdf",
+      "sizeMb": 1.34
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 1/eSoft /FTM_Esoft_Quiz_1_1_-1.pdf",
+      "sizeMb": 1.34
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 8-Diabetes and Hypoglycemia.pdf",
+      "sizeMb": 1.34
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreFoundation-16SA8WK3L6MQN.pcm",
+      "sizeMb": 1.33
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/CoreFoundation-16SA8WK3L6MQN.pcm",
+      "sizeMb": 1.33
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreFoundation-16SA8WK3L6MQN.pcm",
+      "sizeMb": 1.33
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Ketone Bodies + Ethanol Metabolism.pdf",
+      "sizeMb": 1.32
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER Lecture 6-Adrenal Glands.pdf",
+      "sizeMb": 1.32
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/IMCQ /FTM IMCQ8_Fall 2025_KEY.pdf",
+      "sizeMb": 1.31
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/CoreImage-39ZO87840M5PP.pcm",
+      "sizeMb": 1.3
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 11 - Genetics Genomics and Human Variation.pdf",
+      "sizeMb": 1.3
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 32_Liver function tests.pdf",
+      "sizeMb": 1.29
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 37-Nutrition and intensive care.pdf",
+      "sizeMb": 1.29
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 22-Clinical Embroyology of the Reproductive System.pdf",
+      "sizeMb": 1.29
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 11C - Autosomal Recessive.pdf",
+      "sizeMb": 1.27
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 27 - Population Genetics.pdf",
+      "sizeMb": 1.27
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/IMCQ /FTM IMCQ 07 GNET_PHAR_HCB Key.pdf",
+      "sizeMb": 1.27
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/IMCQ/MSK IMCQ1 Fall 2025 - Key.pdf",
+      "sizeMb": 1.27
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/Noctyrium.dSYM/Contents/Resources/Relocations/aarch64/Noctyrium.yml",
+      "sizeMb": 1.26
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 18-Female Reproductive Functions.pdf",
+      "sizeMb": 1.26
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/Drugs.pdf",
+      "sizeMb": 1.25
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/NB 2- Psych.pdf",
+      "sizeMb": 1.25
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER DLA 5-Autonomic Innervation of the Female Pelvic Organs_After ER 10 copy.pdf",
+      "sizeMb": 1.25
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/CoreGraphics-2BPR03IHAWJAM.pcm",
+      "sizeMb": 1.24
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/CoreGraphics-2BPR03IHAWJAM.pcm",
+      "sizeMb": 1.24
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreImage-39ZO87840M5PP.pcm",
+      "sizeMb": 1.24
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/CoreImage-39ZO87840M5PP.pcm",
+      "sizeMb": 1.24
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreImage-39ZO87840M5PP.pcm",
+      "sizeMb": 1.24
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Glycolysis.pdf",
+      "sizeMb": 1.24
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/JAFAR VACCINATION CARD UPDATED 2009.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 03A - Structure and Function Lipids_Part 1.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 07 - Imaging of the Upper Limb.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 10 - Clinical Anatomy of the Thorax.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/natalie biochem.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 38-Metabolic changes in Diabetes mellitus.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER DLA 4-Autonomic Innervation of the Female Pelvic Organs_After ER 10.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER DLA 5-Autonomic Innervation of the Female Pelvic Organs_After ER 10.pdf",
+      "sizeMb": 1.23
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreGraphics-1PSDCAYCIV3T9.pcm",
+      "sizeMb": 1.22
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/store/v5/records/0F/arm64e-apple-macos.swiftinterface-1I0JMVRFMQZ0F",
+      "sizeMb": 1.22
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/CoreGraphics-1PSDCAYCIV3T9.pcm",
+      "sizeMb": 1.22
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/CoreGraphics-1PSDCAYCIV3T9.pcm",
+      "sizeMb": 1.22
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/eSoft/FTM_Esoft_Quiz_5_1_-1.pdf",
+      "sizeMb": 1.22
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 2/eSoft/FTM_Esoft_Quiz_5_1_.pdf",
+      "sizeMb": 1.22
+    },
+    {
+      "path": "01 BPM 501/DM/B & B Metabolism/Dragged Lectures/Exercise and Starvation.pdf",
+      "sizeMb": 1.22
+    },
+    {
+      "path": "01 BPM 501/DM/DM Week 1/SG/DM SG 1 HPWP3_Social Determinants of Health.pdf",
+      "sizeMb": 1.22
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 34 - Mechanics of Lung and Chest.pdf",
+      "sizeMb": 1.21
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 05 Neurons _ Glia.pdf",
+      "sizeMb": 1.21
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WCRCA3YJV0A3/ApplicationServices-3NXEUUZF9JJBD.pcm",
+      "sizeMb": 1.2
+    },
+    {
+      "path": "01 BPM 500/CPR1/DLA/DLA 03 - Aortic Arches.pdf",
+      "sizeMb": 1.2
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 21 - Calcium, Phosphate _ Vitamin D in Bone Health.pdf",
+      "sizeMb": 1.2
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/CoreFoundation-3CIVNEPWILBNO.pcm",
+      "sizeMb": 1.19
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/CoreFoundation-3CIVNEPWILBNO.pcm",
+      "sizeMb": 1.19
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/ApplicationServices-3NXEUUZF9JJBD.pcm",
+      "sizeMb": 1.19
+    },
+    {
+      "path": ".build/arm64-apple-macosx/release/ModuleCache/1R8N3HXJA9P3Z/ApplicationServices-3NXEUUZF9JJBD.pcm",
+      "sizeMb": 1.19
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/ModuleCache/2WHWIYUB2CXIG/ApplicationServices-3NXEUUZF9JJBD.pcm",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 07 - Mechanics of the Cardiac Pump.pdf",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/IMCQ/MSK iMCQ7 F25 -key.pdf",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 5 NB 3_Psych Term 2 Fall 2020 IN PROGRESS  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 5 NB 3_Psych Term 2 Fall 2020 IN PROGRESS Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "09 Admin/Schedules/Source DOCX/Exam 5 NB 3_Psych Term 2 Fall 2020 IN PROGRESS  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.19
+    },
+    {
+      "path": "01 BPM 500/CPR1/DLA/DLA 01 - Introduction to the Cardiovascular System.pdf",
+      "sizeMb": 1.18
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 35 - Ventilation.pdf",
+      "sizeMb": 1.18
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 53 - Flipped Class_ Interpreting Acid Base Disorders - Post session.pdf",
+      "sizeMb": 1.17
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T2/ER T2/IMCQ/ER IMCQ 3 KEY.pdf",
+      "sizeMb": 1.17
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER IMCQ 3 KEY.pdf",
+      "sizeMb": 1.17
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/Immunizations/Patient Visit Blood tests pt1.pdf",
+      "sizeMb": 1.15
+    },
+    {
+      "path": "01 BPM 500/MSK/Lectures/MSK Lecture 26 - Flipped Class -Triplet Repeat Disorders and Pharmacogenetics - _After Lecture__.pdf",
+      "sizeMb": 1.15
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/FTM 1 & 2/FTM 1/IMCQ/FTM IMCQ3 GNET _ BCHM KEY.pdf",
+      "sizeMb": 1.15
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 39 - Flipped Classroom - Autonomic Integration _After Lecture_.pdf",
+      "sizeMb": 1.14
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /DLAs/DM DLA 6-Histological Overview of the Salivary glands_Befor DM 17.pdf",
+      "sizeMb": 1.14
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER DLA 1-Nutrition and Aging_Before ER 3.pdf",
+      "sizeMb": 1.14
+    },
+    {
+      "path": "01 BPM 501/ER/Week 2-3/ER Lecture 24-Nutritional Disorders of Adolescence_Childhood_After Lecture-2.pdf",
+      "sizeMb": 1.14
+    },
+    {
+      "path": "01 BPM 501/NB1/DLAs/NB DLA 07 - Pharyngeal Arches, Pouches and Grooves - Before NB 23.pdf",
+      "sizeMb": 1.14
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 53 - Flipped Class_ Interpreting Acid Base Disorders_Pre Session.pdf",
+      "sizeMb": 1.13
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T1/MSK/IMCQ/MSK IMCQ6-KEY_Fall 2025.pdf",
+      "sizeMb": 1.12
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/index/store/v5/records/IZ/arm64e-apple-macos.swiftinterface-2X1JAKQ7GO1IZ",
+      "sizeMb": 1.11
+    },
+    {
+      "path": ".build/index-build/arm64-apple-macosx/debug/index/store/v5/records/IZ/arm64e-apple-macos.swiftinterface-2X1JAKQ7GO1IZ",
+      "sizeMb": 1.11
+    },
+    {
+      "path": "01 BPM 500/FTM1/DLA/DLA 01  - Membrane Structure and Transport Integrated Basic Principles.pdf",
+      "sizeMb": 1.11
+    },
+    {
+      "path": "01 BPM 501/DM/Week 5/Lectures/DM Lecture 36-Minerals and Nutritional anemias.pdf",
+      "sizeMb": 1.1
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/BSCE_Clinical_Correlates_Deep_Sweep.xlsx",
+      "sizeMb": 1.09
+    },
+    {
+      "path": "01 BPM 501/ER/Week 1/ER DLA 3-Autonomic Innervation of the Male Pelvic Organs_After ER 10.pdf",
+      "sizeMb": 1.09
+    },
+    {
+      "path": "01 BPM 501/NB1/Lectures/NB 07 Stimulated Excitable Cells.pdf",
+      "sizeMb": 1.09
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 51 - Acid Base Balance_Role of Kidney.pdf",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "01 BPM 500/FTM1/Lectures/FTM Lecture 22 - Flipped Classroom - Genomic Cases _After Lecture_.pdf",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 3 NB 1  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 3 NB 1 Term 2 Fall 2020 Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 4 NB 2  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Imported/Exam 4 NB 2 Term 2 Fall 2020 Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Source DOCX/Exam 3 NB 1  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "09 Admin/Schedules/Source DOCX/Exam 4 NB 2  Term 2 Fall 2020  Firehouse MedPrep Schedule.docx",
+      "sizeMb": 1.08
+    },
+    {
+      "path": "01 BPM 500/CPR1/DLA/DLA 09 - Eicosanoids.pdf",
+      "sizeMb": 1.07
+    },
+    {
+      "path": "01 BPM 501/DM/Week 3 /Lab/DM Lab_Student Activity.pdf",
+      "sizeMb": 1.06
+    },
+    {
+      "path": "01 BPM 501/NB1/DLAs/NB DLA 01 - Practical Clinical Neuroimaging I - After NB 03.pdf",
+      "sizeMb": 1.06
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 23 - Hypertension _ Heart Failure.pdf",
+      "sizeMb": 1.05
+    },
+    {
+      "path": "01 BPM 500/CPR2/Lectures/CPR 48 - Concentration and Dilution of Urine.pdf",
+      "sizeMb": 1.05
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 2 - Somatic Nerves and Plexuses.pdf",
+      "sizeMb": 1.05
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/CoreImage-33VV8IS3KK4I.pcm",
+      "sizeMb": 1.04
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/CoreImage-33VV8IS3KK4I.pcm",
+      "sizeMb": 1.04
+    },
+    {
+      "path": "00 📥 Inbox - Need Work Look Over/To Sort/6944a01ef950fa44b8f2eec3_matter-pizzuti-paper.pdf",
+      "sizeMb": 1.04
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/natalie cardio answers.pdf",
+      "sizeMb": 1.04
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/DLAs/DM DLA 7-Introduction to amino acid metabolism_Before DM 23.pdf",
+      "sizeMb": 1.04
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/1B13ALXONV4TX/ApplicationServices-2YSFVOQ02WUPY.pcm",
+      "sizeMb": 1.03
+    },
+    {
+      "path": ".build/arm64-apple-macosx/debug/ModuleCache/2GT3PW0NYP7FC/ApplicationServices-2YSFVOQ02WUPY.pcm",
+      "sizeMb": 1.03
+    },
+    {
+      "path": "01 BPM 500/CPR1/Lectures/CPR 11 - Cardiac Output.pdf",
+      "sizeMb": 1.03
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/T2/NB2 T2/IMCQ/NB IMCQ KEY_07.pdf",
+      "sizeMb": 1.03
+    },
+    {
+      "path": "web/public/anki-guide/my-anki-settings.pdf",
+      "sizeMb": 1.03
+    },
+    {
+      "path": "01 BPM 500/MSK/DLA/DLA 8 - Limb development Clinical.pdf",
+      "sizeMb": 1.02
+    },
+    {
+      "path": "01 BPM 500/FTM2/Lectures/FTM Lecture 39 - Flipped Classroom - Autonomic Integration _Before Lecture_.pdf",
+      "sizeMb": 1.01
+    },
+    {
+      "path": "01 BPM 501/BCSE T2/BSCE Questions/natalie cardio.pdf",
+      "sizeMb": 1.01
+    },
+    {
+      "path": "01 BPM 501/DM/Week 2/One Pagers/DM Lecture 3- Development 2.pdf",
+      "sizeMb": 1.01
+    },
+    {
+      "path": "01 BPM 501/DM/Week 4/Lectures/DM Lecture 27-Metabolic role of Folic acid and Vit B12.pdf",
+      "sizeMb": 1.01
+    }
+  ],
+  "dependencies": {
+    "production": [
+      "@neondatabase/serverless"
+    ],
+    "development": [
+      "@tauri-apps/cli",
+      "@types/node",
+      "typescript"
+    ],
+    "total": 4
+  },
+  "complexity": {
+    "averageFileSize": 35.18980027634719,
+    "maxFileSize": 671088.64,
+    "nestedDepth": 0,
+    "estimatedComplexity": "very high"
+  },
+  "gitRepo": {
+    "firstCommitDate": "2026-06-22",
+    "totalCommits": 45,
+    "numContributors": 0,
+    "currentBranch": "main",
+    "remoteUrls": [
+      "https://github.com/jaclose/Noctyrium.git"
+    ]
+  }
+}

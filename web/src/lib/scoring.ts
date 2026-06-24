@@ -38,8 +38,8 @@ export function heatColor(minutes: number, cards: number): string {
 }
 
 /**
- * Noctyrium study-day key: the calendar day shifted back 4 hours, so a session
- * past midnight still counts toward the prior day. Mirrors noctyriumDateKey().
+ * Legacy Noctyrium study-day key: the calendar day shifted back 4 hours.
+ * New dashboard rollover uses plain local calendar dates via isoDate().
  */
 export function dayKey(date: Date = new Date()): string {
   const shifted = new Date(date.getTime() - 4 * 60 * 60 * 1000);
@@ -66,7 +66,19 @@ export function dayTotals(logs: StudyLog[], key: string) {
   let minutes = 0;
   let cards = 0;
   for (const l of logs) {
-    if (l.dayKey === key) {
+    if (l.dayKey === key && l.academic !== false) {
+      minutes += l.minutes;
+      cards += l.cards;
+    }
+  }
+  return { minutes: Math.max(0, minutes), cards: Math.max(0, cards) };
+}
+
+export function productiveTotals(logs: StudyLog[], key: string) {
+  let minutes = 0;
+  let cards = 0;
+  for (const l of logs) {
+    if (l.dayKey === key && l.productive !== false) {
       minutes += l.minutes;
       cards += l.cards;
     }
@@ -92,7 +104,7 @@ export function lastNDays(n: number): Date[] {
  * A "don't break the chain" signal — but capped/sane, not a grind metric.
  */
 export function studyStreak(logs: StudyLog[]): number {
-  const active = new Set(logs.filter((l) => l.minutes > 0 || l.cards > 0).map((l) => l.dayKey));
+  const active = new Set(logs.filter((l) => l.academic !== false && (l.minutes > 0 || l.cards > 0)).map((l) => l.dayKey));
   let streak = 0;
   const d = new Date();
   // allow today to be empty without breaking the streak (you may study later)

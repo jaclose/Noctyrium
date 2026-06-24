@@ -6,6 +6,8 @@ import { OnboardingWizard } from "./components/shell/OnboardingWizard";
 import { GuidedTour } from "./components/shell/GuidedTour";
 import { Toaster } from "./components/shell/Toaster";
 import { StandupWatcher } from "./components/shell/StandupWatcher";
+import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
+import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
@@ -121,6 +123,8 @@ export default function App() {
           <div className="orb purple" />
           <div className="orb blue" />
         </div>
+        <DailyRolloverWatcher />
+        <UpdateAvailableWatcher />
         <OnboardingWizard />
       </div>
     );
@@ -161,6 +165,8 @@ export default function App() {
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
       {showTour && <GuidedTour onExit={endTour} onNavigate={navigateTour} currentRoute={route} />}
+      <DailyRolloverWatcher />
+      <UpdateAvailableWatcher />
       <PomodoroFx />
       <StandupWatcher />
       <Toaster />

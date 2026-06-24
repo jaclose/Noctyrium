@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap,
+  Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
 } from "lucide-react";
 import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
 import { useStore } from "../../lib/store";
@@ -26,7 +26,8 @@ export function Sidebar({
   function toggleHidden(id: string) {
     if (SIDEBAR_LOCKED.has(id)) return;
     const next = new Set(hidden);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     updateProfile({ hiddenNav: [...next] });
   }
 
@@ -141,6 +142,9 @@ export function Sidebar({
               <HelpIcon size={17} /><span>Help</span>
             </button>
           )}
+          <a className="nav-item footer-action" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
+            <MessageCircle size={17} /><span>Noctyrium Discord Channel</span>
+          </a>
           <div className="user-panel">
             <button type="button" className="user-id" onClick={() => onOpenSettings("general")} title="Profile & settings">
               <span className="avatar sm">

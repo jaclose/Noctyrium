@@ -13,7 +13,16 @@ import {
 } from "../lib/tracker";
 import { BLUEPRINT_LANES } from "../lib/blueprintCatalog";
 import { routeForBlueprintLane } from "../lib/blueprintRoutes";
-import { canonicalTrackerPath, normalizeTrackerPath, trackerItemKey, trackerPathKey } from "../lib/pathUtils";
+import {
+  appendWeekToPath,
+  canonicalTrackerPath,
+  compareTrackerPathSegment,
+  detectWeekLabel,
+  normalizeTrackerPath,
+  splitLeadingWeekLabel,
+  trackerItemKey,
+  trackerPathKey,
+} from "../lib/pathUtils";
 import type { BlueprintNodeStatus, Course, InstalledBlueprint, InstalledBlueprintNode, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
@@ -112,7 +121,8 @@ export function CourseTrackerPage() {
   function toggle(path: string) {
     setOpenNodes((prev) => {
       const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
       return next;
     });
   }
@@ -766,7 +776,7 @@ function addScope(root: TNode, path: string, countDelta: number) {
 }
 
 function sortTree(nodes: TNode[]) {
-  nodes.sort((a, b) => a.name.localeCompare(b.name));
+  nodes.sort((a, b) => compareTrackerPathSegment(a.name, b.name));
   nodes.forEach((n) => sortTree(n.children));
 }
 
@@ -1030,7 +1040,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
       </>}>
       <ol className="import-steps">
         <li>Pick the <b>destination</b>, default <b>kind</b>, and default <b>yield</b>. Inline tags like <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[Requirement]</span>, <span className="mono">[high]</span>, <span className="mono">[review]</span>, <span className="mono">[passes=2]</span>, or <span className="mono">[anki=1]</span> override a single line.</li>
-        <li>Paste one item per line, or upload CSV with headers: <span className="mono">label, kind, path, yield, passes, anki, note</span>. A plain line ending in “:” becomes a sub-folder for the lines beneath it.</li>
+        <li>Paste one item per line, or upload CSV with headers: <span className="mono">label, kind, path, week, yield, passes, anki, note</span>. A plain line ending in “:” becomes a sub-folder for the lines beneath it; week labels like <span className="mono">Week 1</span>, <span className="mono">W4</span>, and <span className="mono">Block 2 Week 3</span> become Week folders.</li>
         <li>Preview duplicates, yield flags, and starting mastery before importing. Duplicate rows are skipped by default.</li>
       </ol>
       <div className="row gap12">
@@ -1122,7 +1132,7 @@ const KIND_TAG_RE = /\[(lecture|dla|pq|lab|reading|requirement|milestone|evidenc
 const YIELD_TAG_RE = /\[(high(?:[-\s]?yield)?|needs[-\s]?review|review|low(?:[-\s]?yield)?)\]/i;
 const PASS_TAG_RE = /\[(?:passes?|p)=(\d+)\]/i;
 const ANKI_TAG_RE = /\[(?:anki|a)=(\d+)\]/i;
-const CSV_HEADERS = new Set(["label", "name", "title", "kind", "type", "path", "scope", "destination", "module", "yield", "priority", "passes", "pass", "anki", "ankipasses", "note", "notes"]);
+const CSV_HEADERS = new Set(["label", "name", "title", "kind", "type", "path", "scope", "destination", "module", "week", "yield", "priority", "passes", "pass", "anki", "ankipasses", "note", "notes"]);
 
 function parseImportRows(
   text: string,
@@ -1150,6 +1160,11 @@ function parseImportRows(
     if (headerMatch && !KIND_TAG_RE.test(line) && !YIELD_TAG_RE.test(line)) {
       let header = headerMatch[1].trim();
       if (stripNums) header = header.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").trim();
+      const week = detectWeekLabel(header);
+      if (week) {
+        subPath = week.label;
+        continue;
+      }
       subPath = header;
       continue;
     }
@@ -1163,6 +1178,11 @@ function parseImportRows(
     let passes = parsed.passes;
     let ankiPasses = parsed.ankiPasses;
     line = parsed.label;
+    const leadingWeek = splitLeadingWeekLabel(line);
+    if (leadingWeek.week) {
+      subPath = leadingWeek.week.label;
+      line = leadingWeek.label;
+    }
 
     const commaIdx = line.indexOf(",");
     if (commaIdx > -1) {
@@ -1177,14 +1197,14 @@ function parseImportRows(
         line = first;
         if (cells[4]) passes = clampInt(Number(cells[4]), 0, maxPassesForKind(kind));
         if (cells[5]) ankiPasses = clampInt(Number(cells[5]), 0, 3);
-        const fullPath = maybePath || (subPath ? `${basePath}/${subPath}` : basePath);
+        const fullPath = maybePath || appendWeekToPath(basePath, subPath);
         rows.push(makeImportRow(fullPath, line, kind, itemYield, passes, ankiPasses, cells[6], existing));
         continue;
       }
     }
 
     if (!line) continue;
-    const fullPath = subPath ? `${basePath}/${subPath}` : basePath;
+    const fullPath = appendWeekToPath(basePath, subPath);
     rows.push(makeImportRow(fullPath, line, kind, itemYield, passes, ankiPasses, undefined, existing));
   }
   return rows;
@@ -1211,7 +1231,10 @@ function rowFromCsv(
   const itemYield = parseYield(get("yield", "priority"), defaultYield);
   const rawPath = get("path", "scope", "destination");
   const module = get("module");
-  const path = rawPath ? canonicalTrackerPath(rawPath, scopeSuggestions) : (module ? `${basePath}/${module}` : basePath);
+  const week = get("week");
+  const weekLabel = detectWeekLabel(week)?.label || week;
+  const base = rawPath ? canonicalTrackerPath(rawPath, scopeSuggestions) : (module ? `${basePath}/${module}` : basePath);
+  const path = appendWeekToPath(base, weekLabel);
   const passes = clampInt(Number(get("passes", "pass")), 0, maxPassesForKind(kind));
   const ankiPasses = isQuestionKind(kind) || isCompletionKind(kind) ? 0 : clampInt(Number(get("anki", "ankipasses")), 0, 3);
   return [makeImportRow(path, label, kind, itemYield, passes, ankiPasses, get("note", "notes"), existing)];

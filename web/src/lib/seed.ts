@@ -3,13 +3,13 @@
 // personal workload: canonical SGU terms/courses, a few sample tracker rows,
 // official board resources, and empty logs/journal.
 // ===========================================================================
-import type { BoardPrepProfile, DashboardWidgetId, NoctyriumState, TrackerItem, TrackerKind, Yield } from "./types";
-import { dayKey, isoDate } from "./scoring";
+import type { BoardPrepProfile, DashboardWidgetId, NoctyriumState, ProductivityTracker, TrackerItem, TrackerKind, Yield } from "./types";
+import { isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
 import { normalizeResourceUrl } from "./resourceUtils";
 
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 export const APP_RELEASE_VERSION = "0.1.0-alpha.1";
 export const APP_BUILD_LABEL = `Noctyrium Alpha 1 · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
@@ -42,6 +42,7 @@ export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
 ];
 
 const now = () => new Date().toISOString();
+const localDate = () => isoDate(new Date());
 
 function trackerRow(
   path: string,
@@ -55,9 +56,14 @@ function trackerRow(
 }
 
 export function makeSeed(): NoctyriumState {
+  const seedNow = now();
   return {
     schemaVersion: SCHEMA_VERSION,
-    activeDayKey: dayKey(),
+    activeDayKey: localDate(),
+    lastActiveLocalDate: localDate(),
+    lastTimezoneOffset: new Date().getTimezoneOffset(),
+    dailyArchives: [],
+    dailyRolloverEvents: [],
     profile: {
       name: "Noctyrium",
       userId: userIdFromName("Noctyrium"),
@@ -81,6 +87,7 @@ export function makeSeed(): NoctyriumState {
       id: crypto.randomUUID(),
       modules: modules.map((n) => ({ id: crypto.randomUUID(), name: n })),
     })),
+    productivityTrackers: defaultProductivityTrackers(seedNow),
     tracker: [
       // Small examples only. Users can bulk-import real lecture/DLA/PQ lists.
       trackerRow("Term 1/BPM 500/FTM 1/Lectures", "Example lecture: Cellular adaptation", "Lecture", 0, 0, "high"),
@@ -150,6 +157,55 @@ export function makeSeed(): NoctyriumState {
     },
     dayPlans: [],
     blueprintInstalls: [],
+  };
+}
+
+export function defaultProductivityTrackers(timestamp = now()): ProductivityTracker[] {
+  return [
+    trackerDef("tracker-study", "Study", "BookOpen", "var(--cyan)", "minutes", 240, 1680, "Academic", true, true, true, true, true, timestamp),
+    trackerDef("tracker-coding", "Coding", "Code2", "var(--purple)", "minutes", 60, 420, "Deep Work", false, true, true, true, false, timestamp),
+    trackerDef("tracker-gym", "Gym", "Dumbbell", "var(--green)", "minutes", 45, 180, "Health", false, true, true, true, true, timestamp),
+    trackerDef("tracker-class", "Class", "GraduationCap", "var(--orange)", "minutes", 120, 600, "Academic", true, true, false, true, false, timestamp),
+    trackerDef("tracker-research", "Research", "FlaskConical", "var(--cyan)", "minutes", 60, 300, "Academic", false, true, true, true, false, timestamp),
+    trackerDef("tracker-writing", "Writing", "FileText", "var(--purple)", "minutes", 45, 240, "Creative", false, true, true, true, true, timestamp),
+    trackerDef("tracker-language", "Language Learning", "Languages", "var(--green)", "minutes", 30, 180, "Learning", false, true, true, true, true, timestamp),
+  ];
+}
+
+function trackerDef(
+  id: string,
+  name: string,
+  icon: string,
+  color: string,
+  unitType: ProductivityTracker["unitType"],
+  dailyTarget: number,
+  weeklyTarget: number,
+  category: string,
+  contributesToAcademicStudy: boolean,
+  contributesToTotalProductiveTime: boolean,
+  contributesToEnergy: boolean,
+  contributesToReports: boolean,
+  contributesToHabitTracking: boolean,
+  timestamp: string,
+): ProductivityTracker {
+  return {
+    id,
+    name,
+    icon,
+    color,
+    unitType,
+    dailyTarget,
+    weeklyTarget,
+    category,
+    contributesToAcademicStudy,
+    contributesToTotalProductiveTime,
+    contributesToEnergy,
+    contributesToReports,
+    contributesToHabitTracking,
+    visible: true,
+    archived: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
   };
 }
 
