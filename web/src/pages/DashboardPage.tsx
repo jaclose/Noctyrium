@@ -21,6 +21,8 @@ import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
 import { calculateReadiness, QUICK_ENERGY_FACTORS, type ReadinessResult } from "../lib/energy";
+import { pickFocusExam, buildExamCountdown, countdownHeadline, type PrepIntensity } from "../lib/examPlan";
+import { AnimatedProgressBar } from "../components/ui/motion";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Pomodoro } from "../components/productivity/Pomodoro";
@@ -31,6 +33,7 @@ const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.a
 const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
   { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
   { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor.", preview: "rings" },
+  { id: "examCountdown", label: "Exam countdown", note: "Days to your exam, phase, and a daily question target.", preview: "calendar" },
   { id: "pomodoro", label: "Pomodoro timer", note: "Focus sprints that auto-log their minutes.", preview: "rings" },
   { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
   { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps.", preview: "list" },
@@ -109,6 +112,7 @@ export function DashboardPage() {
           targetsMet={targetsMet} activeDayKey={s.activeDayKey} />
       );
     }
+    if (widgetId === "examCountdown") return <ExamCountdownWidget key={widgetId} />;
     if (widgetId === "pomodoro") return <Pomodoro key={widgetId} compact />;
     if (widgetId === "weekly") return <WeeklyWidget key={widgetId} week={week} />;
     if (widgetId === "suggested") return <SuggestedMovesWidget key={widgetId} suggestions={suggestions} />;
@@ -964,6 +968,57 @@ function ResourceFocusWidget() {
           </a>
         )) : <div className="dim">Favorite resources to make this widget useful.</div>}
       </div>
+    </GlassCard>
+  );
+}
+
+// Exam countdown + adaptive daily-question goal (directive §20 + §21). Reads the
+// existing boardPrep data; self-hides when the user has no exam date or content
+// progress on any board lane, so it only appears when it's useful.
+function ExamCountdownWidget() {
+  const boardPrep = useStore((s) => s.boardPrep);
+  const focusId = pickFocusExam(boardPrep);
+  if (!focusId) return null;
+  const prep = boardPrep[focusId];
+  const intensity: PrepIntensity = prep.confidence === "low" ? "gentle" : prep.confidence === "high" ? "intense" : "balanced";
+  const c = buildExamCountdown(focusId, prep, intensity);
+  const hasDate = c.daysUntil !== null;
+  const examPast = c.awaitingPostExam;
+
+  return (
+    <GlassCard pad className={`exam-countdown ${examPast ? "past" : ""}`}>
+      <PanelHeader
+        title={`${c.meta.short} countdown`}
+        sub={c.examDate ? `Exam ${prettyDate(`${c.examDate.slice(0, 10)}T12:00:00`)}` : "No exam date set yet"}
+        action={<a className="gbtn sm" href={`#${c.meta.route}`}><CalendarClock size={14} /> Open prep</a>}
+      />
+      <div className="exam-countdown-grid">
+        <div className="exam-countdown-num">
+          <b>{hasDate ? Math.abs(c.daysUntil as number) : "—"}</b>
+          <span>{!hasDate ? "set a date" : examPast ? "days since exam" : (c.daysUntil === 1 ? "day to go" : "days to go")}</span>
+        </div>
+        <div className="exam-countdown-meta">
+          <span className="exam-phase-pill">{c.phaseLabel} phase</span>
+          {c.milestone && <span className="exam-milestone">{c.milestone.label}</span>}
+        </div>
+      </div>
+
+      {c.recommendedDaily > 0 && !examPast && (
+        <>
+          <div className="exam-q-line">
+            <span>Today's questions</span>
+            <b>{c.answeredToday}/{c.recommendedDaily}{c.correctToday > 0 ? ` · ${Math.round((c.correctToday / Math.max(1, c.answeredToday)) * 100)}% correct` : ""}</b>
+          </div>
+          <AnimatedProgressBar
+            value={c.answeredToday}
+            max={c.recommendedDaily}
+            tone={c.questionProgress >= 100 ? "green" : "cyan"}
+            glow={c.questionProgress >= 100}
+            label={`${c.questionProgress}% of daily target`}
+          />
+        </>
+      )}
+      <div className="trend-comment">{countdownHeadline(c)}</div>
     </GlassCard>
   );
 }

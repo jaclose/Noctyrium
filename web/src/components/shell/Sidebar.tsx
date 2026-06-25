@@ -55,7 +55,11 @@ export function Sidebar({
     );
   }
 
-  const toolItems = (manage ? SIDEBAR_TOOLS : SIDEBAR_TOOLS.filter((id) => !hidden.has(id)));
+  // Experimental nav (e.g. Habit Tracker) only appears once opted in via
+  // Settings → Early Features, even in manage mode.
+  const habitsOn = profile.experimentalFlags?.habits === true;
+  const navGate = (id: string) => id !== "habits" || habitsOn;
+  const toolItems = (manage ? SIDEBAR_TOOLS : SIDEBAR_TOOLS.filter((id) => !hidden.has(id))).filter(navGate);
   const prepItems = (manage ? SIDEBAR_PREP : SIDEBAR_PREP.filter((id) => !hidden.has(id)));
   const help = navById("help");
   const HelpIcon = help?.icon;

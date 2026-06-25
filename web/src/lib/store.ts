@@ -8,6 +8,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DailyRolloverEvent, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   PremedExperienceEntry, ProductivityTracker, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode, EnergyFactor,
+  Habit, HabitEntry, HabitCheckStatus,
 } from "./types";
 import { blueprintById } from "./blueprintCatalog";
 import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
@@ -126,6 +127,13 @@ interface Actions {
   addEnergyFactor: (factor: Omit<EnergyFactor, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
   updateEnergyFactor: (id: string, patch: Partial<EnergyFactor>) => void;
   removeEnergyFactor: (id: string) => void;
+
+  // habits (experimental — §6)
+  addHabit: (habit: Omit<Habit, "id" | "createdAt" | "updatedAt">) => void;
+  updateHabit: (id: string, patch: Partial<Habit>) => void;
+  removeHabit: (id: string) => void;
+  checkHabit: (habitId: string, date: string, status: HabitCheckStatus, value?: number, note?: string) => void;
+  clearHabitCheck: (habitId: string, date: string) => void;
 
   // board prep
   updateBoardPrep: (exam: BoardExamId, patch: Partial<BoardPrepProfile>) => void;
@@ -456,6 +464,42 @@ export const useStore = create<Store>()(
       removeEnergyFactor: (id) =>
         set((s) => ({ energyFactors: (s.energyFactors ?? []).filter((factor) => factor.id !== id) })),
 
+      // habits (experimental — §6) -------------------------------------------
+      addHabit: (habit) =>
+        set((s) => ({
+          habits: [
+            ...(s.habits ?? []),
+            { ...habit, name: habit.name.trim() || "Habit", id: uid(), createdAt: now(), updatedAt: now() },
+          ],
+        })),
+      updateHabit: (id, patch) =>
+        set((s) => ({
+          habits: (s.habits ?? []).map((h) => (h.id === id ? { ...h, ...patch, updatedAt: now() } : h)),
+        })),
+      removeHabit: (id) =>
+        set((s) => ({
+          habits: (s.habits ?? []).filter((h) => h.id !== id),
+          habitEntries: (s.habitEntries ?? []).filter((e) => e.habitId !== id),
+        })),
+      // Upsert one check per habit per local date (idempotent — prevents dupes).
+      checkHabit: (habitId, date, status, value, note) =>
+        set((s) => {
+          const entries = s.habitEntries ?? [];
+          const existing = entries.find((e) => e.habitId === habitId && e.date === date);
+          if (existing) {
+            return {
+              habitEntries: entries.map((e) =>
+                e === existing ? { ...e, status, value, note } : e),
+            };
+          }
+          const entry: HabitEntry = { id: uid(), habitId, date, status, value, note, createdAt: now() };
+          return { habitEntries: [entry, ...entries] };
+        }),
+      clearHabitCheck: (habitId, date) =>
+        set((s) => ({
+          habitEntries: (s.habitEntries ?? []).filter((e) => !(e.habitId === habitId && e.date === date)),
+        })),
+
       // Deprecated compatibility path. The app shell now calls checkDailyRollover
       // automatically from load/focus/visibility/midnight events.
       startNewStudyDay: () =>
@@ -645,6 +689,7 @@ export const useStore = create<Store>()(
           resources: SGU_DRIVES.map((d) => ({ id: uid(), created: now(), ...driveResourceFields(d) })),
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
+          habits: [], habitEntries: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -876,6 +921,11 @@ export const useStore = create<Store>()(
               : [],
           }));
         }
+        if (fromVersion < 26) {
+          // Habit tracker (experimental). New arrays only — no existing data touched.
+          s.habits = Array.isArray(s.habits) ? s.habits : [];
+          s.habitEntries = Array.isArray(s.habitEntries) ? s.habitEntries : [];
+        }
         return s as unknown as NoctyriumState;
       },
       partialize: (s) => {
@@ -883,12 +933,14 @@ export const useStore = create<Store>()(
         const {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
-          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors, schemaVersion,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
+          habits, habitEntries, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
-          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors, schemaVersion,
+          lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
+          habits, habitEntries, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -1175,6 +1227,13 @@ function normalizeProfile(value: unknown): Profile {
     toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
     prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
     journalReviewTime,
+    // Preserve optional opt-in fields so they survive reset/migration.
+    blueprintMode: profile.blueprintMode === "usmle" || profile.blueprintMode === "prehealth"
+      ? profile.blueprintMode as Profile["blueprintMode"] : undefined,
+    taskAutofillDisabled: typeof profile.taskAutofillDisabled === "boolean" ? profile.taskAutofillDisabled : undefined,
+    taskTemplates: Array.isArray(profile.taskTemplates) ? profile.taskTemplates as Profile["taskTemplates"] : undefined,
+    experimentalFlags: isRecord(profile.experimentalFlags) ? profile.experimentalFlags as Profile["experimentalFlags"] : undefined,
+    pomodoroCustom: isRecord(profile.pomodoroCustom) ? profile.pomodoroCustom as Profile["pomodoroCustom"] : undefined,
   };
 }
 

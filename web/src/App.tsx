@@ -21,6 +21,7 @@ import { StepPage } from "./pages/StepPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ProductivityPage } from "./pages/ProductivityPage";
 import { TasksPage } from "./pages/TasksPage";
+import { HabitTrackerPage } from "./pages/HabitTrackerPage";
 import { JournalPage } from "./pages/JournalPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { PromptLibraryPage } from "./pages/PromptLibraryPage";
@@ -52,6 +53,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   reports: ReportsPage,
   productivity: ProductivityPage,
   tasks: TasksPage,
+  habits: HabitTrackerPage,
   journal: JournalPage,
   integrations: IntegrationsPage,
   prompts: PromptLibraryPage,

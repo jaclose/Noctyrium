@@ -360,6 +360,26 @@ function PersonalizationPanel() {
         </GButton>
       </div>
 
+      <div className="backup-actions-panel premium-panel">
+        <div>
+          <div className="sync-title">Early Features <Tag tone="orange">Labs</Tag></div>
+          <div className="sub">
+            Opt into experimental surfaces still under active development. They can change, move, or be removed
+            between releases — your data stays local either way.
+          </div>
+          <label className="early-feature-row">
+            <input
+              type="checkbox"
+              checked={profile.experimentalFlags?.habits === true}
+              onChange={(e) => store.updateProfile({
+                experimentalFlags: { ...(profile.experimentalFlags ?? {}), habits: e.target.checked },
+              })}
+            />
+            <span><b>Habit Tracker</b> — calm, recovery-friendly habit tracking. Adds a “Habit Tracker” entry under Tools.</span>
+          </label>
+        </div>
+      </div>
+
       <div className="track-settings-grid">
         {EDUCATION_TRACKS.map((t) => {
           const current = t.id === track.id;

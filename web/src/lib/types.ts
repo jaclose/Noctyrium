@@ -78,6 +78,16 @@ export interface Task {
   carriedAt?: string; // ISO
 }
 
+/** A reusable task template saved from the local repetitive-task detector (§18). */
+export interface TaskTemplate {
+  id: ID;
+  signature: string;
+  title: string;
+  frequency: "daily" | "weekdays" | "weekly" | "custom";
+  scope?: string;
+  createdAt: string;
+}
+
 export interface JournalEntry {
   id: ID;
   date: string; // ISO datetime
@@ -146,6 +156,57 @@ export interface HubFolder {
   sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ===========================================================================
+// Habit tracker (directive §6) — behind an experimental flag. Calm + behaviorally
+// intelligent: recovery-aware streaks, intentional skips, non-punitive language.
+// ===========================================================================
+export type HabitType =
+  | "binary" // did it or not
+  | "duration" // minutes toward a target
+  | "count" // reps/units toward a target
+  | "avoidance" // a thing you're trying NOT to do (success = avoided)
+  | "weekly" // flexible: N times per week, any days
+  | "scheduled" // specific weekdays
+  | "recovery" // gentle restart habit, streak never punishes
+  | "milestone"; // one-time / cumulative goal
+
+export type HabitCheckStatus = "done" | "partial" | "skipped" | "missed";
+
+export interface Habit {
+  id: ID;
+  name: string;
+  icon?: string;
+  color?: string;
+  type: HabitType;
+  category?: string;
+  target?: number; // count/duration target per day
+  unit?: string; // "min", "reps", "pages"…
+  weeklyTarget?: number; // for flexible weekly habits
+  schedule?: number[]; // weekday indices 0(Sun)–6(Sat) for scheduled habits
+  reminderStart?: string; // "08:00" — start of a reminder WINDOW, not a fixed alarm
+  reminderEnd?: string; // "10:00"
+  quietMode?: boolean; // suppress reminders
+  examMode?: boolean; // examination-period mode: pause pressure, keep logging
+  notes?: string;
+  archived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitEntry {
+  id: ID;
+  habitId: ID;
+  date: string; // local yyyy-MM-dd
+  status: HabitCheckStatus;
+  value?: number; // for count/duration habits
+  note?: string;
+  createdAt: string;
+}
+
+export interface ExperimentalFlags {
+  habits?: boolean;
 }
 
 export type ProductivityUnitType = "minutes" | "count" | "yesno" | "distance" | "custom";
@@ -335,6 +396,7 @@ export type EducationTrackId =
 export type DashboardWidgetId =
   | "winDay"
   | "todayScore"
+  | "examCountdown"
   | "pomodoro"
   | "weekly"
   | "suggested"
@@ -477,6 +539,13 @@ export interface Profile {
   hiddenDashboardWidgets?: DashboardWidgetId[];
   journalReviewTime?: string; // "20:00" local time
   blueprintMode?: BlueprintMode; // which lane bar (USMLE vs Pre-Health) is active
+  // Repetitive-task autofill (§18): user-owned, local-only.
+  taskAutofillDisabled?: boolean;
+  taskTemplates?: TaskTemplate[];
+  // Early/experimental features (§6) — opt-in via Settings → Early Features.
+  experimentalFlags?: ExperimentalFlags;
+  // Custom Pomodoro durations (§3), persisted with the profile.
+  pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
 }
 
 export interface NoctyriumState {
@@ -502,5 +571,7 @@ export interface NoctyriumState {
   dailyArchives: DailyArchive[];
   dailyRolloverEvents: DailyRolloverEvent[];
   energyFactors: EnergyFactor[];
+  habits: Habit[];
+  habitEntries: HabitEntry[];
   schemaVersion: number;
 }

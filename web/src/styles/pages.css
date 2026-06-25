@@ -477,6 +477,210 @@
   .trend-widget { grid-template-columns: 1fr; }
 }
 
+/* Exam countdown widget (directive §20/§21) */
+.exam-countdown.past { border-color: rgba(255,159,67,0.28); }
+.exam-countdown-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.exam-countdown-num {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.exam-countdown-num b {
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-90, #eaf2ff);
+}
+.exam-countdown-num span { color: var(--text-45); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.04em; }
+.exam-countdown-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.exam-phase-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--cyan);
+  background: rgba(90,215,239,0.12);
+  border: 1px solid rgba(90,215,239,0.3);
+}
+.exam-milestone { color: var(--text-60); font-size: 10.8px; font-weight: 700; text-align: right; max-width: 200px; }
+.exam-q-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+  font-size: 12px;
+  color: var(--text-60);
+}
+.exam-q-line b { color: var(--text-90, #eaf2ff); font-size: 13px; }
+.exam-countdown .trend-comment { margin-top: 12px; }
+
+/* Repetitive-task autofill suggestion (directive §18) */
+.autofill-suggest {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: rgba(90,215,239,0.07);
+  border: 1px solid rgba(90,215,239,0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.autofill-suggest-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-75, #d6e6ff);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.autofill-suggest-copy svg { color: var(--cyan); flex: none; }
+.autofill-suggest-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.filter-pill.ghost { opacity: 0.72; }
+.filter-pill.ghost:hover { opacity: 1; }
+.task-templates { margin-top: 14px; }
+.task-templates-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-45);
+  margin-bottom: 9px;
+}
+.task-templates-head svg { color: var(--cyan); }
+.task-template-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(180,226,255,0.16);
+  background: rgba(255,255,255,0.04);
+}
+.task-template-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  background: transparent;
+  border: none;
+  color: var(--text-75, #d6e6ff);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.task-template-add:hover { background: rgba(90,215,239,0.1); }
+.task-template-add em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-45);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+}
+.task-template-del {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(180,226,255,0.12);
+  color: var(--text-45);
+  cursor: pointer;
+}
+.task-template-del:hover { color: var(--grade-red, #ff5563); background: rgba(255,85,99,0.1); }
+
+/* Settings → Early Features */
+.early-feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--text-75, #d6e6ff);
+  cursor: pointer;
+}
+.early-feature-row input { margin-top: 2px; flex: none; }
+
+/* Habit tracker (experimental — §6) */
+.habit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(180,226,255,0.1);
+}
+.habit-subpanel {
+  padding: 12px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(180,226,255,0.1);
+}
+.habit-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.habit-title { display: flex; align-items: center; gap: 9px; }
+.habit-title b { font-size: 15px; }
+.habit-checkin { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.habit-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,226,255,0.14);
+  color: var(--text-60);
+}
+.habit-status-btn:hover { background: rgba(255,255,255,0.08); }
+.habit-status-btn.on.tone-green { color: #46d27e; border-color: rgba(70,210,126,0.5); background: rgba(70,210,126,0.12); }
+.habit-status-btn.on.tone-cyan { color: #5ad7ef; border-color: rgba(90,215,239,0.5); background: rgba(90,215,239,0.12); }
+.habit-status-btn.on.tone-neutral { color: var(--text-75,#d6e6ff); border-color: rgba(180,226,255,0.4); background: rgba(180,226,255,0.1); }
+.habit-status-btn.on.tone-orange { color: #ff9f43; border-color: rgba(255,159,67,0.5); background: rgba(255,159,67,0.12); }
+.habit-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; }
+.habit-heat-cell { width: 13px; height: 13px; border-radius: 3px; background: rgba(255,255,255,0.05); border: 1px solid transparent; }
+.habit-heat-cell.unscheduled { opacity: 0.3; }
+.habit-meta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 11.5px; color: var(--text-45); }
+.habit-recovery { font-size: 12px; color: var(--text-60); font-style: italic; }
+.habit-value-input { width: 78px; }
+
+/* Pomodoro custom durations (§3) */
+.pomo-custom-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(180,226,255,0.1);
+}
+.pomo-custom-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.pomo-custom-grid .field { width: 100%; }
+@media (max-width: 620px) {
+  .pomo-custom-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 .local-data-card {
   background:
     linear-gradient(135deg, rgba(247,217,154,0.07), transparent 34%),

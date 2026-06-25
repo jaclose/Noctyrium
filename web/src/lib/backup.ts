@@ -10,7 +10,7 @@ import { resolveTrack } from "./tracks";
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
-  "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors",
+  "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -80,6 +80,13 @@ export function parseImport(text: string): NoctyriumState {
       toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
       prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
       journalReviewTime: normalizeJournalReviewTime(profile.journalReviewTime),
+      // Preserve newer opt-in settings across export/import.
+      taskAutofillDisabled: typeof profile.taskAutofillDisabled === "boolean" ? profile.taskAutofillDisabled : undefined,
+      taskTemplates: Array.isArray(profile.taskTemplates) ? profile.taskTemplates as NoctyriumState["profile"]["taskTemplates"] : undefined,
+      experimentalFlags: profile.experimentalFlags && typeof profile.experimentalFlags === "object"
+        ? profile.experimentalFlags as NoctyriumState["profile"]["experimentalFlags"] : undefined,
+      pomodoroCustom: profile.pomodoroCustom && typeof profile.pomodoroCustom === "object"
+        ? profile.pomodoroCustom as NoctyriumState["profile"]["pomodoroCustom"] : undefined,
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],
@@ -110,6 +117,8 @@ export function parseImport(text: string): NoctyriumState {
     dailyArchives: Array.isArray(data.dailyArchives) ? data.dailyArchives : [],
     dailyRolloverEvents: Array.isArray(data.dailyRolloverEvents) ? data.dailyRolloverEvents : [],
     energyFactors: Array.isArray(data.energyFactors) ? data.energyFactors : [],
+    habits: Array.isArray(data.habits) ? data.habits : [],
+    habitEntries: Array.isArray(data.habitEntries) ? data.habitEntries : [],
   } as NoctyriumState;
 }
 

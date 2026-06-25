@@ -2,7 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
-  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info,
+  BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info, CalendarCheck,
 } from "lucide-react";
 
 export interface NavItem {
@@ -35,6 +35,7 @@ export const NAV: NavItem[] = [
   { id: "appchecker", label: "Application Checker", subtitle: "Med school + residency application tracking", icon: ClipboardCheck },
   // Tools folder
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },
+  { id: "habits", label: "Habit Tracker", subtitle: "Calm, recovery-friendly habit tracking (experimental)", icon: CalendarCheck },
   { id: "anki", label: "Anki Lab", subtitle: "Turn lectures, DLAs & slides into Anki cards", icon: Wand2 },
   { id: "prompts", label: "Prompt Library", subtitle: "Reusable AI prompts for study workflows", icon: Library },
   { id: "integrations", label: "Integrations", subtitle: "Connect Anki, calendar, drives, and more", icon: Share2 },
@@ -54,7 +55,7 @@ export const SIDEBAR_TOP = [
   "dashboard", "courses", "tracker", "productivity", "journal", "reports",
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
-export const SIDEBAR_TOOLS = ["tasks", "resources", "anki", "prompts", "integrations", "leaderboards"];
+export const SIDEBAR_TOOLS = ["tasks", "habits", "resources", "anki", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);

@@ -5,14 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, RotateCcw, SkipForward, Timer, Coffee, Flame } from "lucide-react";
 import { GlassCard, GButton, PanelHeader } from "../ui/primitives";
 import { useStore } from "../../lib/store";
-import { usePomodoro, POMODORO_PRESETS, pomodoroPreset, formatClock, ensurePomodoroClock } from "../../lib/pomodoro";
+import { usePomodoro, POMODORO_PRESETS, effectivePreset, formatClock, ensurePomodoroClock } from "../../lib/pomodoro";
 
 export function Pomodoro({ compact = false }: { compact?: boolean }) {
   const pomo = usePomodoro();
   const [intentionDraft, setIntentionDraft] = useState(pomo.intention);
   const tracker = useStore((s) => s.tracker);
   const blueprintInstalls = useStore((s) => s.blueprintInstalls);
-  const preset = pomodoroPreset(pomo.presetId);
+  const preset = effectivePreset(pomo);
   const total = (pomo.phase === "focus" ? preset.focus : preset.break) * 60;
   const elapsed = total - pomo.secondsLeft;
   const pct = total ? Math.min(100, Math.max(0, (elapsed / total) * 100)) : 0;
@@ -94,6 +94,34 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
               </button>
             ))}
           </div>
+
+          {!compact && pomo.presetId === "custom" && (
+            <div className="pomo-custom-box">
+              <span className="field-label">Custom durations (minutes)</span>
+              <div className="pomo-custom-grid">
+                <label className="stack gap6">
+                  <span className="field-label">Focus</span>
+                  <input className="field" type="number" min={1} max={180} value={pomo.customFocus} disabled={pomo.running}
+                    onChange={(e) => pomo.setCustom({ focus: Number(e.target.value) })} aria-label="Custom focus minutes" />
+                </label>
+                <label className="stack gap6">
+                  <span className="field-label">Short break</span>
+                  <input className="field" type="number" min={1} max={90} value={pomo.customBreak} disabled={pomo.running}
+                    onChange={(e) => pomo.setCustom({ break: Number(e.target.value) })} aria-label="Custom short break minutes" />
+                </label>
+                <label className="stack gap6">
+                  <span className="field-label">Long break</span>
+                  <input className="field" type="number" min={1} max={120} value={pomo.customLongBreak} disabled={pomo.running}
+                    onChange={(e) => pomo.setCustom({ longBreak: Number(e.target.value) })} aria-label="Custom long break minutes" />
+                </label>
+                <label className="stack gap6">
+                  <span className="field-label">Cycles → long</span>
+                  <input className="field" type="number" min={1} max={12} value={pomo.customCycles} disabled={pomo.running}
+                    onChange={(e) => pomo.setCustom({ cyclesBeforeLongBreak: Number(e.target.value) })} aria-label="Cycles before long break" />
+                </label>
+              </div>
+            </div>
+          )}
 
           {!compact && (
             <div className="pomo-target-box">

@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Check, Trash2, Plus, Calendar, Archive } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, Trash2, Plus, Calendar, Archive, Repeat, X, Sparkles } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { prettyDate } from "../lib/scoring";
-import type { Course, Task } from "../lib/types";
+import { pushToast } from "../lib/toast";
+import { suggestTemplateForDraft, FREQUENCY_LABEL, type TaskFrequency } from "../lib/taskAutofill";
+import type { Course, Task, TaskTemplate } from "../lib/types";
 
 type TaskView = "open" | "archive" | "all";
 
@@ -13,16 +15,55 @@ export function TasksPage() {
   const [due, setDue] = useState("");
   const [scope, setScope] = useState("");
   const [view, setView] = useState<TaskView>("open");
+  const [dismissedSigs, setDismissedSigs] = useState<Set<string>>(new Set());
 
   const inferredScope = scope.trim() || inferTaskScope(title, s.courses);
   const open = s.tasks.filter((t) => !t.done);
   const done = s.tasks.filter((t) => t.done);
   const visible = view === "open" ? open : view === "archive" ? done : s.tasks;
 
+  const autofillOff = s.profile.taskAutofillDisabled === true;
+  const templates = useMemo(() => s.profile.taskTemplates ?? [], [s.profile.taskTemplates]);
+  const savedSigs = useMemo(() => new Set(templates.map((t) => t.signature)), [templates]);
+
+  // Local, private detection — only suggests after a phrase has been typed >2×.
+  const suggestion = useMemo(() => {
+    if (autofillOff) return null;
+    const match = suggestTemplateForDraft(title, s.tasks);
+    if (!match) return null;
+    if (savedSigs.has(match.signature) || dismissedSigs.has(match.signature)) return null;
+    return match;
+  }, [autofillOff, title, s.tasks, savedSigs, dismissedSigs]);
+
   function add() {
     if (!title.trim()) return;
     s.addTask(title.trim(), due || undefined, inferredScope || undefined);
     setTitle(""); setDue(""); setScope("");
+  }
+
+  function saveTemplate(frequency: TaskFrequency) {
+    if (!suggestion) return;
+    const tpl: TaskTemplate = {
+      id: crypto.randomUUID(),
+      signature: suggestion.signature,
+      title: title.trim() || suggestion.title,
+      frequency,
+      scope: suggestion.scope || inferredScope || undefined,
+      createdAt: new Date().toISOString(),
+    };
+    s.updateProfile({ taskTemplates: [tpl, ...templates.filter((t) => t.signature !== tpl.signature)] });
+    // Adding the task is still an explicit, confirmed action — never automatic.
+    s.addTask(tpl.title, due || undefined, tpl.scope);
+    setTitle(""); setDue(""); setScope("");
+    pushToast({ title: "Template saved", body: `“${tpl.title}” saved as a ${FREQUENCY_LABEL[frequency].toLowerCase()} template.`, tone: "success" });
+  }
+
+  function dismissSuggestion() {
+    if (suggestion) setDismissedSigs((prev) => new Set(prev).add(suggestion.signature));
+  }
+
+  function removeTemplate(id: string) {
+    s.updateProfile({ taskTemplates: templates.filter((t) => t.id !== id) });
   }
 
   return (
@@ -38,6 +79,50 @@ export function TasksPage() {
           <GButton variant="primary" onClick={add}><Plus size={15} /> Add</GButton>
         </div>
         {inferredScope && <div className="sub" style={{ marginTop: 10 }}>Will file under <span className="mono">{inferredScope}</span>.</div>}
+
+        {suggestion && (
+          <div className="autofill-suggest" role="status">
+            <div className="autofill-suggest-copy">
+              <Repeat size={15} />
+              <span>You've entered a similar task {suggestion.count} times. Save as a recurring template?</span>
+            </div>
+            <div className="autofill-suggest-actions">
+              {(["daily", "weekdays", "weekly", "custom"] as TaskFrequency[]).map((freq) => (
+                <button key={freq} type="button"
+                  className={`filter-pill ${suggestion.frequency === freq ? "on" : ""}`}
+                  onClick={() => saveTemplate(freq)}>
+                  {FREQUENCY_LABEL[freq]}
+                </button>
+              ))}
+              <button type="button" className="filter-pill ghost" onClick={dismissSuggestion}>Not now</button>
+              <button type="button" className="filter-pill ghost"
+                onClick={() => { dismissSuggestion(); s.updateProfile({ taskAutofillDisabled: true }); }}>
+                Never suggest again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {templates.length > 0 && (
+          <div className="task-templates">
+            <div className="task-templates-head"><Sparkles size={13} /> Reusable templates</div>
+            <div className="row wrap gap8">
+              {templates.map((tpl) => (
+                <span key={tpl.id} className="task-template-chip">
+                  <button type="button" className="task-template-add"
+                    title={`Add “${tpl.title}”${tpl.scope ? ` · ${tpl.scope}` : ""}`}
+                    onClick={() => s.addTask(tpl.title, undefined, tpl.scope)}>
+                    <Plus size={12} /> {tpl.title}
+                    <em>{FREQUENCY_LABEL[tpl.frequency]}</em>
+                  </button>
+                  <button type="button" className="task-template-del" aria-label={`Remove template ${tpl.title}`} onClick={() => removeTemplate(tpl.id)}>
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </GlassCard>
 
       <GlassCard pad>
