@@ -24,9 +24,9 @@ export async function exportPremedExperienceWorkbook(entries: PremedExperienceEn
   const XLSX = await import("xlsx-js-style");
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: "Noctyrium Pre-Med Experience Log",
+    Title: "Axom Pre-Med Experience Log",
     Subject: "Clinical, service, research, shadowing, and leadership evidence",
-    Author: "Noctyrium",
+    Author: "Axom",
     CreatedDate: new Date(),
   };
 
@@ -37,7 +37,7 @@ export async function exportPremedExperienceWorkbook(entries: PremedExperienceEn
   }
 
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `noctyrium-premed-experiences-${stamp}.xlsx`);
+  XLSX.writeFile(wb, `axom-premed-experiences-${stamp}.xlsx`);
 }
 
 function evidenceRows(entries: PremedExperienceEntry[]) {

@@ -37,7 +37,7 @@ export function OnboardingWizard() {
   const initialFocus = focusOption(store.profile.activeFocusId) ?? focusOption(initialTrack.defaultFocusId)!;
 
   const [step, setStep] = useState(0);
-  const [name, setName] = useState(store.profile.name === "Noctyrium" ? "" : store.profile.name);
+  const [name, setName] = useState(/^(axom|noctyrium)$/i.test(store.profile.name) ? "" : store.profile.name);
   const [trackId, setTrackId] = useState<EducationTrackId>(initialTrack.id);
   const [activeFocusId, setActiveFocusId] = useState<ExperienceFocusId>(initialFocus.id);
   const [subscriptions, setSubscriptions] = useState<Set<ExperienceFocusId>>(() => new Set(initialTrack.focusIds));
@@ -82,7 +82,7 @@ export function OnboardingWizard() {
   function finish() {
     const nextSubscriptions = [...new Set([activeFocusId, ...subscriptions])];
     store.updateProfile({
-      name: name.trim() || "Noctyrium",
+      name: name.trim() || "Axom",
       tagline: activeFocus.tagline,
       onboarded: true,
     });
@@ -113,7 +113,7 @@ export function OnboardingWizard() {
         {step === 0 && (
           <div className="onboarding-body">
             <div className="onboarding-mark"><Sparkles size={26} /></div>
-            <h2>Personalize Noctyrium</h2>
+            <h2>Personalize Axom</h2>
             <p className="onboarding-lede">
               Next you'll pick your program — SGU, US MD/DO, pre-med, MCAT, undergrad, nursing, or PA.
               That choice tailors your starter courses, the resources you see, and the study lanes on
@@ -182,7 +182,7 @@ export function OnboardingWizard() {
           <div className="onboarding-body">
             <h2>Choose your focus lanes</h2>
             <p className="onboarding-lede">
-              These are the {track.short} lanes Noctyrium will track. Subscribe to the ones you want
+              These are the {track.short} lanes Axom will track. Subscribe to the ones you want
               visible, then mark one as your current primary focus for targets and AI context.
             </p>
             <div className="focus-card-grid">
@@ -263,7 +263,7 @@ export function OnboardingWizard() {
             <div className="onboarding-mark good"><Check size={26} /></div>
             <h2>Ready, {name.trim() || "there"}.</h2>
             <p className="onboarding-lede">
-              Noctyrium is set up for <b>{track.label}</b>, focused on <b>{activeFocus.label}</b>.
+              Axom is set up for <b>{track.label}</b>, focused on <b>{activeFocus.label}</b>.
               {!wasOnboarded && track.seedsStructure ? ` Your ${track.progress.unit} structure is loading now.` : ""}
             </p>
             <div className="onboarding-summary">

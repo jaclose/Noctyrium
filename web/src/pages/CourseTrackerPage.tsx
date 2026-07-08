@@ -887,7 +887,7 @@ function DeleteScopeModal({ scope, onSelect, onClose }: { scope: string; onSelec
       <div className="stack gap12">
         <div className="form-warning">
           <b>{scope}</b> contains {contained.length} tracker item{contained.length === 1 ? "" : "s"}.
-          {contained.length === 0 ? " Empty course shells live in the course map, so there is nothing destructive to remove here." : " Choose what should happen before Noctyrium touches the data."}
+          {contained.length === 0 ? " Empty course shells live in the course map, so there is nothing destructive to remove here." : " Choose what should happen before Axom touches the data."}
         </div>
         {contained.length > 0 && (
           <>

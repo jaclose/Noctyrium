@@ -1,23 +1,26 @@
 /* ===========================================================================
-   Noctyrium design tokens — ported from the SwiftUI build (v0.03.01.5).
-   Source: OuterBackground / Orb / GlassShell / GlassCard / glassButton.
+   Axom design tokens. Identity palette (brand guide 06): ink #0d0d0e,
+   graphite #1c1c1e, bone #e6e2d6, muted gold #c8a96a. The legacy variable
+   NAMES are kept (--cyan is the primary-accent slot everywhere) — only their
+   VALUES shift, so the whole app re-themes without touching function.
    =========================================================================== */
 :root {
-  /* Backdrop gradient (Swift OuterBackground LinearGradient, 0–1 → hex) */
-  --bg-1: #020308;
-  --bg-2: #07101f;
-  --bg-3: #041a24;
+  /* Backdrop gradient — near-black ink into graphite */
+  --bg-1: #0a0a0b;
+  --bg-2: #0d0d0e;
+  --bg-3: #141416;
 
-  /* Accents */
-  --cyan: #5ad7ef;          /* SwiftUI .cyan, warmed slightly for the web */
-  --cyan-strong: #38c6e6;
-  --purple: #9b7bff;
-  --blue: #4d8dff;
+  /* Accents. --cyan is the app's primary-accent slot → Axom muted gold. */
+  --cyan: #c8a96a;
+  --cyan-strong: #b8955a;
+  --purple: #a396c9;        /* desaturated — AI/secondary accents stay quiet */
+  --blue: #8fa8c8;
   --green: #4ade80;
   --orange: #ffa64d;
   --red: #ff5d6c;
-  --gold: #f7d99a;
-  --teal: #2dd4bf;
+  --gold: #c8a96a;
+  --teal: #9fb8a8;
+  --bone: #e6e2d6;
 
   /* Day-grade scale (todayGrade) */
   --grade-blue: #4d8dff;
@@ -25,21 +28,21 @@
   --grade-orange: #ff9f43;
   --grade-red: #ff5563;
 
-  /* Text */
-  --text: #ffffff;
-  --text-80: rgba(255, 255, 255, 0.82);
-  --text-60: rgba(255, 255, 255, 0.6);
-  --text-45: rgba(255, 255, 255, 0.46);
-  --text-30: rgba(255, 255, 255, 0.34);
+  /* Text — bone-warmed off-white per the identity */
+  --text: #f2efe7;
+  --text-80: rgba(242, 239, 231, 0.84);
+  --text-60: rgba(242, 239, 231, 0.62);
+  --text-45: rgba(242, 239, 231, 0.47);
+  --text-30: rgba(242, 239, 231, 0.34);
 
-  /* Glass surfaces */
+  /* Glass surfaces — neutral graphite, hairlines tinted bone not blue */
   --shell-radius: 30px;
   --card-radius: 20px;
   --btn-radius: 14px;
 
-  --glass-card-fill: rgba(9, 18, 33, 0.52);
-  --glass-card-border: rgba(180, 226, 255, 0.12);
-  --glass-card-border-hover: rgba(180, 226, 255, 0.24);
+  --glass-card-fill: rgba(20, 20, 22, 0.55);
+  --glass-card-border: rgba(230, 226, 214, 0.10);
+  --glass-card-border-hover: rgba(230, 226, 214, 0.22);
 
   --hairline: rgba(255, 255, 255, 0.08);
   --hairline-soft: rgba(255, 255, 255, 0.055);

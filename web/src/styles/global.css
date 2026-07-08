@@ -1,5 +1,14 @@
 @import "./theme.css";
 
+/* Axom wordmark lettering — Poppins Medium (brand guide 05), self-hosted. */
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/poppins-500-latin.woff2") format("woff2");
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root {
@@ -21,7 +30,16 @@ body {
 button { font-family: inherit; cursor: pointer; }
 input, textarea, select { font-family: inherit; }
 
-::selection { background: rgba(90, 215, 239, 0.28); }
+::selection { background: rgba(200, 169, 106, 0.32); }
+
+/* Brand wordmark: uppercase, widely tracked, bone — matches the lockup. */
+.brand-wordmark {
+  font-family: "Poppins", var(--font-rounded);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  color: var(--bone);
+}
 
 /* Custom scrollbars to keep the premium feel */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -51,9 +69,9 @@ input, textarea, select { font-family: inherit; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 22% 8%, rgba(90,215,239,0.12), transparent 26%),
-    radial-gradient(circle at 78% 18%, rgba(155,123,255,0.11), transparent 25%),
-    radial-gradient(circle at 50% 95%, rgba(45,212,191,0.08), transparent 34%),
+    radial-gradient(circle at 22% 8%, rgba(200,169,106,0.07), transparent 26%),
+    radial-gradient(circle at 78% 18%, rgba(230,226,214,0.045), transparent 25%),
+    radial-gradient(circle at 50% 95%, rgba(200,169,106,0.05), transparent 34%),
     linear-gradient(135deg, var(--bg-1), var(--bg-2) 52%, var(--bg-3));
   overflow: hidden;
 }
@@ -76,19 +94,19 @@ input, textarea, select { font-family: inherit; }
 }
 .orb.cyan {
   width: 460px; height: 460px;
-  background: radial-gradient(circle, rgba(90,215,239,0.22), rgba(90,215,239,0.04) 55%, transparent 72%);
+  background: radial-gradient(circle, rgba(200,169,106,0.12), rgba(200,169,106,0.025) 55%, transparent 72%);
   top: -260px; left: -200px;
   animation: drift1 26s ease-in-out infinite;
 }
 .orb.purple {
   width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(155,123,255,0.16), rgba(155,123,255,0.03) 55%, transparent 72%);
+  background: radial-gradient(circle, rgba(230,226,214,0.07), rgba(230,226,214,0.015) 55%, transparent 72%);
   bottom: -280px; right: -200px;
   animation: drift2 32s ease-in-out infinite;
 }
 .orb.blue {
   width: 380px; height: 380px;
-  background: radial-gradient(circle, rgba(77,141,255,0.12), rgba(77,141,255,0.02) 55%, transparent 72%);
+  background: radial-gradient(circle, rgba(200,169,106,0.06), rgba(200,169,106,0.012) 55%, transparent 72%);
   bottom: 8%; left: 36%;
   animation: drift3 38s ease-in-out infinite;
 }
@@ -104,8 +122,8 @@ input, textarea, select { font-family: inherit; }
   min-height: 0;
   border-radius: var(--shell-radius);
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0.052) 50%, rgba(255,255,255,0.024)),
-    rgba(5,12,24,0.58);
+    linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045) 50%, rgba(255,255,255,0.02)),
+    rgba(15,15,17,0.6);
   backdrop-filter: blur(30px) saturate(165%);
   -webkit-backdrop-filter: blur(30px) saturate(165%);
   border: 1px solid var(--glass-card-border-hover);
@@ -120,7 +138,7 @@ input, textarea, select { font-family: inherit; }
   left: -40%;
   width: 14%;
   height: 220%;
-  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.11), rgba(90,215,239,0.06), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(242,239,231,0.09), rgba(200,169,106,0.05), transparent);
   transform: rotate(17deg);
   animation: luster 7.8s ease-in-out infinite;
   pointer-events: none;

@@ -34,11 +34,11 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   const tabIntro: Record<SettingsTab, { title: string; body: string }> = {
     general: {
       title: "Profile & daily targets",
-      body: "Set the identity, avatar, and good-enough daily targets that shape the rest of Noctyrium on this device.",
+      body: "Set the identity, avatar, and good-enough daily targets that shape the rest of Axom on this device.",
     },
     personalization: {
       title: "Personalization",
-      body: "Choose the academic lanes you want Noctyrium to prioritize in the dashboard, suggestions, and sidebar.",
+      body: "Choose the academic lanes you want Axom to prioritize in the dashboard, suggestions, and sidebar.",
     },
     ai: {
       title: "AI providers",
@@ -97,7 +97,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
   return (
     <Modal
-      title="Your Noctyrium Setup"
+      title="Your Axom Setup"
       onClose={onClose}
       footer={<GButton variant="primary" onClick={onClose}>Done</GButton>}
     >
@@ -133,7 +133,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                 : <span className="avatar-mono">{(profile.name || "N").slice(0, 1)}</span>}
             </span>
             <div className="grow">
-              <div className="sync-title">{profile.name || "Noctyrium"}</div>
+              <div className="sync-title">{profile.name || "Axom"}</div>
               <div className="sub">Local profile · {profile.userId}</div>
             </div>
             <div className="row wrap gap8">
@@ -186,7 +186,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       {tab === "backup" && (
         <div className="backup-center">
           <div className="sub" style={{ marginBottom: 4 }}>
-            Noctyrium saves your work on this device automatically. Backups give you an extra copy you can keep, move, or restore later.
+            Axom saves your work on this device automatically. Backups give you an extra copy you can keep, move, or restore later.
           </div>
           <div className="backup-explainer">
             <div className="backup-explainer-card">
@@ -207,7 +207,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               <Upload size={17} />
               <div>
                 <b>Restore backup</b>
-                <span>Bring your Noctyrium data back from a saved backup file.</span>
+                <span>Bring your Axom data back from a saved backup file.</span>
               </div>
             </div>
             <div className="backup-explainer-card">
@@ -282,7 +282,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               <div className="sub">Ask questions, report rough edges, and follow pre-beta progress without leaving the settings flow.</div>
             </div>
             <a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-              <MessageCircle size={15} /> Noctyrium Discord Channel
+              <MessageCircle size={15} /> Axom Discord Channel
             </a>
           </div>
         </>

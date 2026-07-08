@@ -70,7 +70,7 @@ const official = (name: string, url: string, sourceVersion: string, changeLog: s
     confidence: "high",
     sourceVersion,
     changeLog,
-    auditNote: "Source-audited by Noctyrium; not user-confirmed verified.",
+    auditNote: "Source-audited by Axom; not user-confirmed verified.",
   });
 const tool = (name: string, url: string, sourceVersion = "Tool source; not governing curriculum"): BlueprintSource =>
   ({
@@ -82,7 +82,7 @@ const tool = (name: string, url: string, sourceVersion = "Tool source; not gover
     confidence: "medium",
     sourceVersion,
     changeLog: "Tool/support source only; official sources govern curriculum and policy.",
-    auditNote: "Tool source-audited by Noctyrium; not user-confirmed verified.",
+    auditNote: "Tool source-audited by Axom; not user-confirmed verified.",
   });
 const internal = (name: string): BlueprintSource =>
   ({ type: "internal", name, verification: "unverified", confidence: "medium" });

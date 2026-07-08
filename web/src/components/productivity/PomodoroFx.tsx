@@ -24,7 +24,7 @@ export function PomodoroFx() {
     });
     try {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification("Noctyrium — focus sprint complete", {
+        new Notification("Axom — focus sprint complete", {
           body: minutes ? `${minutes} minutes logged. Take your break.` : "Take your break.",
           icon: "./icon-192.png",
         });

@@ -49,7 +49,7 @@ export function AboutPage() {
         <div className="about-hero">
           <div>
             <Tag tone="cyan"><Sparkles size={12} /> Alpha 1</Tag>
-            <h2>Noctyrium</h2>
+            <h2>Axom</h2>
             <p>
               A local-first command surface for medical training: schoolwork, board prep, MCAT/pre-med planning,
               productivity, reflection, and resources in one adaptable workspace.

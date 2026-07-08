@@ -67,7 +67,7 @@ export function IntegrationsPage() {
       <GlassCard pad>
         <PanelHeader title="How data flows" sub="Local-first by design" />
         <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-          Noctyrium keeps everything on your device. When integrations arrive they'll bring data
+          Axom keeps everything on your device. When integrations arrive they'll bring data
           <i> into</i> your workspace (like nightly Anki counts), never the other way around — so the
           app stays usable offline and portable via backup.
         </div>

@@ -83,9 +83,9 @@ describe("detectRecurringTemplates", () => {
 
   it("ignores archived tasks", () => {
     const tasks = [
-      task("Code Noctyrium", "2026-06-21", { archived: true }),
+      task("Code Axom", "2026-06-21", { archived: true }),
       task("code noctyrium", "2026-06-22", { archived: true }),
-      task("Code Noctyrium", "2026-06-23"),
+      task("Code Axom", "2026-06-23"),
     ];
     expect(detectRecurringTemplates(tasks, { minOccurrences: 2 })).toHaveLength(0);
   });

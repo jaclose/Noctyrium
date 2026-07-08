@@ -119,7 +119,7 @@ function scoreItem(it: TrackerItem, scopeSize: number, untouchedRatio: number): 
  */
 export function suggestMoves(items: TrackerItem[], n = 3, salt = 0): Suggestion[] {
   if (!items.length) {
-    return [{ title: "Import the first tracker items", reason: "Add lectures, DLAs, PQs, or a CSV so Noctyrium can rank the next move.", color: PASS_COLOR.untouched }];
+    return [{ title: "Import the first tracker items", reason: "Add lectures, DLAs, PQs, or a CSV so Axom can rank the next move.", color: PASS_COLOR.untouched }];
   }
   const live = items.filter((it) => it.passes < targetPassesForItem(it));
   if (!live.length) {

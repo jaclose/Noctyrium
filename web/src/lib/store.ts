@@ -46,7 +46,7 @@ interface ApplyTrackOptions {
 }
 import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
 import { normalizeResourceUrl } from "./resourceUtils";
-import { STORAGE_KEYS } from "./brand";
+import { BRAND, STORAGE_KEYS } from "./brand";
 import {
   closeOpenSegment, findLiveSession, openNewSegment, restoreSession, sessionElapsedMinutes,
   type SessionCapture, type SessionLink, type SessionQuickLog, type StudySession,
@@ -909,7 +909,7 @@ export const useStore = create<Store>()(
           dailyArchives: [],
           dailyRolloverEvents: [],
           // keep the user's profile + integrations catalog
-          profile: normalizeProfile({ ...s.profile, name: s.profile.name === "Noctyrium" ? "" : s.profile.name }),
+          profile: normalizeProfile({ ...s.profile, name: isPlaceholderProfileName(s.profile.name) ? "" : s.profile.name }),
         })),
     }),
     {
@@ -1036,7 +1036,7 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       /^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) ||
       profile.versionLabel === "v0.10.0 · web" ||
       profile.versionLabel === "alpha 1 · web" ||
-      /^Noctyrium Alpha 1 · v[\d.-]+alpha[\d.-]* · web$/.test(profile.versionLabel)
+      /^Axom Alpha 1 · v[\d.-]+alpha[\d.-]* · web$/.test(profile.versionLabel)
     ) {
       profile.versionLabel = APP_VERSION_LABEL;
     }
@@ -1182,11 +1182,29 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
     s.ankiCards = Array.isArray(s.ankiCards) ? s.ankiCards : [];
     s.cardReviews = Array.isArray(s.cardReviews) ? s.cardReviews : [];
   }
+  if (fromVersion < 28) {
+    // Rebrand: Noctyrium → Axom. Only cosmetic profile fields change; user
+    // names, data, and every storage key stay exactly as they are.
+    const profile = isRecord(s.profile) ? s.profile : {};
+    if (isPlaceholderProfileName(profile.name)) profile.name = "Axom";
+    if (typeof profile.versionLabel !== "string" || profile.versionLabel.includes("Noctyrium")) {
+      profile.versionLabel = APP_VERSION_LABEL;
+    }
+    if (profile.tagline === "Designed for execution, not decoration.") {
+      profile.tagline = BRAND.tagline;
+    }
+    s.profile = normalizeProfile(profile);
+  }
   return s as unknown as NoctyriumState;
 }
 
 
 type AnyRecord = Record<string, unknown>;
+
+/** Seed placeholder display names (old + new brand) that mean "not set yet". */
+function isPlaceholderProfileName(name: unknown): boolean {
+  return typeof name === "string" && /^(axom|noctyrium)$/i.test(name.trim());
+}
 
 /** Convert a track's blueprint into live Term/Course/TrackerItem arrays. */
 function buildTrackStructure(track: EducationTrack): { terms: Term[]; courses: Course[]; tracker: TrackerItem[] } {

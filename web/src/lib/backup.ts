@@ -118,7 +118,7 @@ function mergeById(
 export function parseImport(text: string): NoctyriumState {
   const data = JSON.parse(text);
   if (!data || typeof data !== "object" || !Array.isArray(data.terms)) {
-    throw new Error("This file doesn't look like a Noctyrium backup.");
+    throw new Error("This file doesn't look like an Axom backup.");
   }
   // accept the file even if schemaVersion is missing/older — fill the gaps
   const profile = data.profile && typeof data.profile === "object"

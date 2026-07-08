@@ -8,16 +8,24 @@
 // ===========================================================================
 
 export const BRAND = {
-  /** Working title only — not the final product name. */
-  productName: "Noctyrium",
-  tagline: "Designed for execution, not decoration.",
+  productName: "Axom",
+  /** The brand descriptor from the identity guide. */
+  tagline: "Private academic operating system",
   /** Short descriptor used in update notices and About copy. */
-  productKind: "local-first academic command center",
+  productKind: "private academic operating system",
   /** Release channel shown next to versions. */
   channel: "alpha",
   /** Public URLs (hosted preview, changelog). */
   hostedUrl: "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard",
   changelogRoute: "about",
+} as const;
+
+/** Axom identity palette (06 · color palette in the brand guide). */
+export const BRAND_COLORS = {
+  ink: "#0d0d0e", // near-black ground
+  graphite: "#1c1c1e", // dark surface
+  bone: "#e6e2d6", // ivory foreground / light mark
+  gold: "#c8a96a", // muted gold accent
 } as const;
 
 /** FROZEN storage identifiers — never rename (rebrand-safe persistence). */

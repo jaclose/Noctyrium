@@ -39,7 +39,7 @@ export function AnkiConnectPanel() {
     webCorsOriginList: ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin],
   }, null, 2);
   const localAppUrl = "http://127.0.0.1:5173/#integrations";
-  const localLaunchCommand = "cd /Users/jd/Developer/Noctyrium/web && npm run dev -- --host 127.0.0.1";
+  const localLaunchCommand = "cd /Users/jd/Developer/Axom/web && npm run dev -- --host 127.0.0.1";
 
   async function copyText(text: string, label: string) {
     try {
@@ -130,8 +130,8 @@ export function AnkiConnectPanel() {
         <b>{mixedContentRisk ? "Hosted browser path" : "Local browser path"}</b>
         <span>
           {mixedContentRisk
-            ? "This can be blocked by Chrome before AnkiConnect ever answers. For reliable sync, run Noctyrium locally and connect from 127.0.0.1."
-            : "This is the supported path: Noctyrium and AnkiConnect are both local, so the browser can reach the bridge directly."}
+            ? "This can be blocked by Chrome before AnkiConnect ever answers. For reliable sync, run Axom locally and connect from 127.0.0.1."
+            : "This is the supported path: Axom and AnkiConnect are both local, so the browser can reach the bridge directly."}
         </span>
       </div>
 

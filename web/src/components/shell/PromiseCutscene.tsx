@@ -23,7 +23,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   const store = useStore();
   const [stage, setStage] = useState<"reveal" | "sign" | "sealed">("reveal");
   const [shown, setShown] = useState(0);
-  const [name, setName] = useState(store.profile.name && store.profile.name !== "Noctyrium" ? store.profile.name : "");
+  const [name, setName] = useState(store.profile.name && !/^(axom|noctyrium)$/i.test(store.profile.name) ? store.profile.name : "");
   const [agreed, setAgreed] = useState(false);
   const scrimRef = useRef<HTMLDivElement>(null);
 
@@ -108,7 +108,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
         </div>
       ) : (
         <div className="promise-sealed">
-          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="Noctyrium" /></div>
+          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="Axom" /></div>
           <div className="promise-sealed-title">Promise made.</div>
           <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
           <div className="promise-sealed-sub">Begin.</div>

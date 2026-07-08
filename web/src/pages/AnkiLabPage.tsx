@@ -109,7 +109,7 @@ function PromptStudio() {
     setSaved(true); setTimeout(() => setSaved(false), 1400);
   }
   function downloadTxt() {
-    download(`noctyrium-anki-prompt.txt`, prompt, "text/plain");
+    download(`axom-anki-prompt.txt`, prompt, "text/plain");
   }
   function generateLocalCards() {
     const result = makeLocalCards({
@@ -139,10 +139,10 @@ function PromptStudio() {
     return cardsToTsv(filtered, customFields);
   }
   function exportTsv(filter?: "Cloze" | "Basic") {
-    download(`noctyrium-anki-${filter ? filter.toLowerCase().replace(/\s+/g, "-") : "review"}-import.txt`, tsvBody(filter), "text/plain");
+    download(`axom-anki-${filter ? filter.toLowerCase().replace(/\s+/g, "-") : "review"}-import.txt`, tsvBody(filter), "text/plain");
   }
   function exportCsv(filter?: "Cloze" | "Basic") {
-    download(`noctyrium-anki-${filter ? filter.toLowerCase().replace(/\s+/g, "-") : "review"}-import.csv`, tsvToCsv(tsvBody(filter)), "text/csv");
+    download(`axom-anki-${filter ? filter.toLowerCase().replace(/\s+/g, "-") : "review"}-import.csv`, tsvToCsv(tsvBody(filter)), "text/csv");
   }
   const clozeCount = localCards.filter((card) => card.noteType === "Cloze").length;
   const basicCount = localCards.filter((card) => card.noteType !== "Cloze").length;
@@ -256,7 +256,7 @@ function PromptStudio() {
 
       <GlassCard pad>
         <PanelHeader title="5 · Your own card style & note types"
-          sub="Load the Noctyrium / MADCOW glass card style, or build a custom note type"
+          sub="Load the Axom / MADCOW glass card style, or build a custom note type"
           action={<a className="gbtn sm" href="https://drive.google.com/drive/u/0/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp" target="_blank" rel="noreferrer noopener"><FolderDown size={14} /> Get the Anki style</a>} />
         <div className="anki-guide">
           <div className="anki-guide-col">
@@ -500,7 +500,7 @@ function makeLocalCards({
   topic: string; system: string; maxCards: number; styles: Set<CardStyle>; noteType: NoteType; content: string;
 }): { cards: DraftCard[]; warnings: string[] } {
   const analysis = analyzeContent(content, system, topic);
-  const tag = tagify(analysis.correctedSystem || system || topic || "Noctyrium");
+  const tag = tagify(analysis.correctedSystem || system || topic || "Axom");
   const seen = new Set<string>();
   const candidates: DraftCard[] = [...conceptCards(content, styles, tag, topic)];
   const lines = preprocessLectureText(content);
@@ -541,7 +541,7 @@ function makeLocalCards({
 }
 
 function tagify(value: string): string {
-  return value.trim().replace(/\s+/g, "::").replace(/[^\w:-]/g, "") || "Noctyrium";
+  return value.trim().replace(/\s+/g, "::").replace(/[^\w:-]/g, "") || "Axom";
 }
 
 function cardsToTsv(cards: DraftCard[], customFields: string): string {
@@ -572,7 +572,7 @@ function cardsToTsv(cards: DraftCard[], customFields: string): string {
 
 /** Convert "Front : Back" / cloze lines into tab-separated Anki import text. */
 function toTsv(text: string, system: string): string {
-  const tag = tagify(system || "Noctyrium");
+  const tag = tagify(system || "Axom");
   return text.split("\n").map((l) => l.trim()).filter(Boolean).map((line) => {
     const idx = line.indexOf(" : ");
     if (idx > -1) return `${cleanField(line.slice(0, idx))}\t${cleanField(line.slice(idx + 3))}\t${tag}\tAI paste\tMedium\tBasic`;

@@ -45,7 +45,7 @@ export const NAV: NavItem[] = [
   { id: "leaderboards", label: "Leaderboards", subtitle: "Opt-in, friendly accountability (coming soon)", icon: Trophy },
   { id: "activity", label: "Activity History", subtitle: "Full local study ledger with filters and export", icon: Calendar },
   // After Tools
-  { id: "about", label: "About", subtitle: "What Noctyrium is, where it is headed, and the live project preview", icon: Info },
+  { id: "about", label: "About", subtitle: "What Axom is, where it is headed, and the live project preview", icon: Info },
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
   // Footer (Help is a page; Settings + Account open the modal)
   { id: "help", label: "Help", subtitle: "Guided tour, master guide, Anki import, and feedback", icon: LifeBuoy },

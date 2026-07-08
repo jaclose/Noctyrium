@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
 import { useStore } from "../../lib/store";
+import { AxomMark, AxomWordmark } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
 
 export function Sidebar({
@@ -70,9 +71,9 @@ export function Sidebar({
     <>
       <div className={`sidebar ${collapsed ? "open" : ""}`}>
         <button type="button" className="server-header" onClick={() => onOpenSettings("general")} title="Profile & settings">
-          <span className="server-logo"><img src="./icon-192.png" alt="" /></span>
+          <span className="server-logo"><AxomMark size={19} /></span>
           <span className="server-meta">
-            <span className="server-name">Noctyrium</span>
+            <span className="server-name"><AxomWordmark /></span>
             <span className="server-ver mono">{profile.versionLabel}</span>
           </span>
           <ChevronDown size={16} className="server-caret" />
@@ -147,7 +148,7 @@ export function Sidebar({
             </button>
           )}
           <a className="nav-item footer-action" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-            <MessageCircle size={17} /><span>Noctyrium Discord Channel</span>
+            <MessageCircle size={17} /><span>Axom Discord Channel</span>
           </a>
           <div className="user-panel">
             <button type="button" className="user-id" onClick={() => onOpenSettings("general")} title="Profile & settings">

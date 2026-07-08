@@ -38,7 +38,7 @@ export function heatColor(minutes: number, cards: number): string {
 }
 
 /**
- * Legacy Noctyrium study-day key: the calendar day shifted back 4 hours.
+ * Legacy Axom study-day key: the calendar day shifted back 4 hours.
  * New dashboard rollover uses plain local calendar dates via isoDate().
  */
 export function dayKey(date: Date = new Date()): string {

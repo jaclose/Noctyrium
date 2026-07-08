@@ -1,5 +1,5 @@
 // ===========================================================================
-// Noctyrium data model. Everything here is user-owned, editable, and persisted
+// Axom data model. Everything here is user-owned, editable, and persisted
 // in the browser. Nothing is hard-coded into the UI — the seed (seed.ts) merely
 // provides a starting point that the user can fully reshape.
 // ===========================================================================
@@ -235,7 +235,7 @@ export interface ProductivityTracker {
 /** One study event — minutes and/or cards logged on a given study day. */
 export interface StudyLog {
   id: ID;
-  dayKey: string; // yyyy-MM-dd (Noctyrium 4am-shifted study day)
+  dayKey: string; // yyyy-MM-dd (Axom 4am-shifted study day)
   ts: string; // ISO datetime
   type: string; // "Lecture", "Anki", "Deep Study", "Manual"
   minutes: number;

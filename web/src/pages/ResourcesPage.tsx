@@ -229,7 +229,7 @@ function compareResources(sort: string) {
 
 function confirmRemoveResource(resource: Resource): boolean {
   const personal = resourceAudience(resource) === "Personal" ? "personal " : "";
-  return confirm(`Remove the ${personal}resource “${resource.title}”? This only removes the shortcut from Noctyrium; it does not delete the remote drive or file.`);
+  return confirm(`Remove the ${personal}resource “${resource.title}”? This only removes the shortcut from Axom; it does not delete the remote drive or file.`);
 }
 
 function ResourceEditor({ resource, defaultCategory, onClose }: { resource: Resource | null; defaultCategory?: string; onClose: () => void }) {
