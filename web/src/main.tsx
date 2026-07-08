@@ -8,6 +8,7 @@ import "./styles/shell.css";
 import "./styles/pages.css";
 import "./styles/motion.css";
 import "./styles/tour.css";
+import "./styles/loop.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -3,6 +3,7 @@
 // ===========================================================================
 import type { NoctyriumState } from "./types";
 import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
+import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { resolveTrack } from "./tracks";
@@ -11,6 +12,7 @@ const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
+  "sessions", "closeouts", "recoveryPlans", "questions", "ankiCards", "cardReviews",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -22,7 +24,7 @@ export function toPortableState(state: NoctyriumState): NoctyriumState {
 
 export function exportState(state: NoctyriumState) {
   const payload: Record<string, unknown> = {
-    _app: "Noctyrium",
+    _app: BRAND.productName,
     _exported: new Date().toISOString(),
     ...toPortableState(state),
   };
@@ -32,9 +34,85 @@ export function exportState(state: NoctyriumState) {
   const a = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `noctyrium-backup-${stamp}.json`;
+  a.download = `${BRAND.productName.toLowerCase()}-backup-${stamp}.json`;
   a.click();
   URL.revokeObjectURL(url);
+  markBackupDone();
+}
+
+/** Record when the user last exported, for the data-health panel. */
+export function markBackupDone(at: Date = new Date()) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.lastBackupAt, at.toISOString());
+  } catch { /* best effort */ }
+}
+
+export function lastBackupAt(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.lastBackupAt);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge an imported backup into the current state instead of replacing it.
+ * Record lists are unioned by id; when the same id exists on both sides the
+ * one with the later updated/created timestamp wins. Profile and day-cursor
+ * fields keep the CURRENT values — merge never silently changes who you are
+ * or what day it is. Use replace (with explicit confirmation) for full restore.
+ */
+export function mergeStates(current: NoctyriumState, imported: NoctyriumState): NoctyriumState {
+  const listKeys = [
+    "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
+    "premedExperiences", "prompts", "folders", "logs", "boardPrep" /* handled below */, "blueprintInstalls",
+    "dayPlans", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
+    "sessions", "closeouts", "recoveryPlans", "questions", "ankiCards", "cardReviews",
+  ] as const;
+
+  const merged: Record<string, unknown> = { ...toPortableState(current) };
+  const cur = current as unknown as Record<string, unknown>;
+  const imp = imported as unknown as Record<string, unknown>;
+
+  for (const key of listKeys) {
+    if (key === "boardPrep") continue;
+    const a = Array.isArray(cur[key]) ? cur[key] as Array<Record<string, unknown>> : [];
+    const b = Array.isArray(imp[key]) ? imp[key] as Array<Record<string, unknown>> : [];
+    merged[key] = mergeById(a, b, key === "dayPlans" ? "dayKey" : key === "dailyArchives" ? "date" : "id");
+  }
+  // boardPrep is a keyed map — imported lanes fill gaps, current lanes win ties by `updated`.
+  const curPrep = (cur.boardPrep ?? {}) as Record<string, { updated?: string } | undefined>;
+  const impPrep = (imp.boardPrep ?? {}) as Record<string, { updated?: string } | undefined>;
+  const prep: Record<string, unknown> = { ...impPrep };
+  for (const [lane, value] of Object.entries(curPrep)) {
+    const other = impPrep[lane];
+    prep[lane] = !other || String(value?.updated ?? "") >= String(other.updated ?? "") ? value : other;
+  }
+  merged.boardPrep = prep;
+  return merged as unknown as NoctyriumState;
+}
+
+function mergeById(
+  current: Array<Record<string, unknown>>,
+  imported: Array<Record<string, unknown>>,
+  idKey: string,
+): Array<Record<string, unknown>> {
+  const stamp = (r: Record<string, unknown>) =>
+    String(r.updatedAt ?? r.updated ?? r.createdAt ?? r.created ?? "");
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const record of imported) {
+    const id = String(record[idKey] ?? "");
+    if (id) byId.set(id, record);
+  }
+  for (const record of current) {
+    const id = String(record[idKey] ?? "");
+    if (!id) continue;
+    const other = byId.get(id);
+    byId.set(id, !other || stamp(record) >= stamp(other) ? record : other);
+  }
+  // Keep unkeyed records from both sides rather than dropping them.
+  const unkeyed = [...current, ...imported].filter((r) => !String(r[idKey] ?? ""));
+  return [...byId.values(), ...unkeyed];
 }
 
 export function parseImport(text: string): NoctyriumState {
@@ -119,6 +197,12 @@ export function parseImport(text: string): NoctyriumState {
     energyFactors: Array.isArray(data.energyFactors) ? data.energyFactors : [],
     habits: Array.isArray(data.habits) ? data.habits : [],
     habitEntries: Array.isArray(data.habitEntries) ? data.habitEntries : [],
+    sessions: Array.isArray(data.sessions) ? data.sessions : [],
+    closeouts: Array.isArray(data.closeouts) ? data.closeouts : [],
+    recoveryPlans: Array.isArray(data.recoveryPlans) ? data.recoveryPlans : [],
+    questions: Array.isArray(data.questions) ? data.questions : [],
+    ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
+    cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
   } as NoctyriumState;
 }
 

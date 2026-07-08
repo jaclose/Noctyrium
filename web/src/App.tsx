@@ -9,8 +9,10 @@ import { StandupWatcher } from "./components/shell/StandupWatcher";
 import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
 import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
+import { SessionOverlay } from "./components/session/SessionOverlay";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
+import { useUi } from "./lib/uiStore";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -32,11 +34,15 @@ import { ApplicationCheckerPage } from "./pages/ApplicationCheckerPage";
 import { LeaderboardsPage } from "./pages/LeaderboardsPage";
 import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
+import { QuestionWorkspacePage } from "./pages/QuestionWorkspacePage";
+import { StudyMethodsPage } from "./pages/StudyMethodsPage";
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
   courses: CoursesPage,
   tracker: CourseTrackerPage,
+  questions: QuestionWorkspacePage,
+  methods: StudyMethodsPage,
   anki: AnkiLabPage,
   resources: ResourcesPage,
   step: () => <StepPage initialLane="step1" />,
@@ -91,6 +97,15 @@ export default function App() {
       window.removeEventListener("popstate", onHash);
     };
   }, []);
+
+  // Pages can request the Settings modal on a specific tab (e.g. "ai").
+  const settingsRequest = useUi((u) => u.settingsRequest);
+  useEffect(() => {
+    if (!settingsRequest) return;
+    setSettingsTab(settingsRequest as SettingsTab);
+    setSettings(true);
+    useUi.getState().clearSettingsRequest();
+  }, [settingsRequest]);
 
   function go(id: string) {
     try {
@@ -171,6 +186,7 @@ export default function App() {
       <UpdateAvailableWatcher />
       <PomodoroFx />
       <StandupWatcher />
+      <SessionOverlay />
       <Toaster />
     </div>
   );

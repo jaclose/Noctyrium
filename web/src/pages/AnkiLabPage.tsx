@@ -1,8 +1,13 @@
 import { useMemo, useState } from "react";
 import { Wand2, Copy, Check, Download, Save, Sparkles, Layers, FolderDown } from "lucide-react";
 import { useStore } from "../lib/store";
+import { useUi } from "../lib/uiStore";
+import { dueCards } from "../lib/ankiCards";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Field, SelectField, TextAreaField } from "../components/ui/Modal";
+import { CardVault } from "../components/anki/CardVault";
+import { CardReviewMode } from "../components/anki/CardReviewMode";
+import { AiCardGenerator } from "../components/anki/AiCardGenerator";
 
 type CardStyle = "cloze" | "qa" | "image";
 type NoteType = "Basic" | "Basic and reversed" | "Cloze" | "Custom";
@@ -24,7 +29,44 @@ const STYLE_LABEL: Record<CardStyle, string> = {
   cloze: "Cloze (facts)", qa: "Q&A (concepts)", image: "Image occlusion (diagrams)",
 };
 
+type LabTab = "vault" | "review" | "generate" | "prompt";
+
 export function AnkiLabPage() {
+  const [tab, setTab] = useState<LabTab>("vault");
+  const dueCount = useStore((st) => dueCards(st.ankiCards ?? []).length);
+  const cardCount = useStore((st) => (st.ankiCards ?? []).length);
+
+  return (
+    <>
+      <GlassCard pad>
+        <div className="row gap12" style={{ alignItems: "center" }}>
+          <span className="folder-icon" style={{ color: "var(--purple)" }}><Wand2 size={20} /></span>
+          <div className="grow">
+            <div style={{ fontSize: 18, fontWeight: 800 }}>Anki Lab</div>
+            <div className="sub">Persistent card vault, in-app spaced review, reviewed AI generation, and the classic prompt studio.</div>
+          </div>
+          <Tag tone={dueCount ? "orange" : "green"}>{dueCount ? `${dueCount} due` : `${cardCount} cards`}</Tag>
+        </div>
+        <div className="row" style={{ flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          {([
+            ["vault", "Card vault"],
+            ["review", `Review${dueCount ? ` (${dueCount})` : ""}`],
+            ["generate", "AI generate"],
+            ["prompt", "Prompt studio"],
+          ] as Array<[LabTab, string]>).map(([id, label]) => (
+            <button key={id} className={`filter-pill ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>{label}</button>
+          ))}
+        </div>
+      </GlassCard>
+      {tab === "vault" && <CardVault />}
+      {tab === "review" && <CardReviewMode />}
+      {tab === "generate" && <AiCardGenerator onOpenAiSettings={() => useUi.getState().requestSettings("ai")} />}
+      {tab === "prompt" && <PromptStudio />}
+    </>
+  );
+}
+
+function PromptStudio() {
   const s = useStore();
   const [sourceItem, setSourceItem] = useState("");
   const [topic, setTopic] = useState("");
@@ -107,17 +149,6 @@ export function AnkiLabPage() {
 
   return (
     <>
-      <GlassCard pad>
-        <div className="row gap12" style={{ alignItems: "center" }}>
-          <span className="folder-icon" style={{ color: "var(--purple)" }}><Wand2 size={20} /></span>
-          <div className="grow">
-            <div style={{ fontSize: 18, fontWeight: 800 }}>Anki Lab</div>
-            <div className="sub">Turn a lecture, DLA, or slide text into high-yield Anki cards with AI — then import them into Anki.</div>
-          </div>
-          <Tag tone="green">No backend needed</Tag>
-        </div>
-      </GlassCard>
-
       <div className="grid grid-2">
         <GlassCard pad>
           <PanelHeader title="1 · Describe the source" sub="High-yield, not exhaustive — a sane deck beats a 500-card dump" />

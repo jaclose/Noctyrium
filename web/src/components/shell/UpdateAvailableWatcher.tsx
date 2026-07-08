@@ -1,11 +1,34 @@
+// ===========================================================================
+// Update detection (directive §6). Polls the deployed version manifest and
+// shows a calm notice: local progress is never touched, reload is never forced,
+// and the notice stays quiet while a study session is running. "Later" defers
+// that version until the next app load.
+// ===========================================================================
 import { useEffect } from "react";
-import { APP_RELEASE_VERSION } from "../../lib/seed";
+import { useStore } from "../../lib/store";
+import { findLiveSession } from "../../lib/sessions";
+import { APP_RELEASE_VERSION, BRAND, STORAGE_KEYS, isNewerVersion } from "../../lib/brand";
 import { pushToast } from "../../lib/toast";
 
 interface VersionManifest {
   version?: string;
   channel?: string;
   updatedAt?: string;
+  notes?: string[];
+}
+
+function deferredVersion(): string | null {
+  try {
+    return sessionStorage.getItem(STORAGE_KEYS.updateDeferredVersion);
+  } catch {
+    return null;
+  }
+}
+
+function deferVersion(version: string) {
+  try {
+    sessionStorage.setItem(STORAGE_KEYS.updateDeferredVersion, version);
+  } catch { /* best effort */ }
 }
 
 export function UpdateAvailableWatcher() {
@@ -13,17 +36,24 @@ export function UpdateAvailableWatcher() {
     let stopped = false;
 
     async function check() {
+      // Never interrupt an active session with update chrome; the next poll
+      // (or reopen) will catch it once the session is closed.
+      if (findLiveSession(useStore.getState().sessions ?? [])) return;
       try {
         const res = await fetch(`./version.json?t=${Date.now()}`, { cache: "no-store" });
         if (!res.ok) return;
         const manifest = await res.json() as VersionManifest;
-        if (stopped || !manifest.version || manifest.version === APP_RELEASE_VERSION) return;
+        if (stopped || !manifest.version) return;
+        if (!isNewerVersion(manifest.version, APP_RELEASE_VERSION)) return;
+        if (deferredVersion() === manifest.version) return;
+        const notes = (manifest.notes ?? []).slice(0, 3).join(" · ");
+        deferVersion(manifest.version); // shown once per app load; reload re-offers
         pushToast({
-          title: "Update available",
-          body: `Noctyrium ${manifest.version} is available. Export or finish active work, then refresh when ready.`,
-          tone: "warn",
-          actionLabel: "Refresh",
-          duration: 12000,
+          title: `Update available — v${manifest.version}`,
+          body: `Your local progress will remain intact.${notes ? ` What's new: ${notes}` : ""} Full changelog is on the About page. Dismiss to update later.`,
+          tone: "info",
+          actionLabel: "Update now",
+          duration: 0,
           dedupe: `app-update-${manifest.version}`,
           onAction: () => window.location.reload(),
         });
@@ -42,3 +72,6 @@ export function UpdateAvailableWatcher() {
 
   return null;
 }
+
+/** Exposed for the About page: what channel/product this build is. */
+export const UPDATE_CHANNEL = BRAND.channel;

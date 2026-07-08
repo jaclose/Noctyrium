@@ -36,7 +36,13 @@ function state(patch: Partial<NoctyriumState> = {}): NoctyriumState {
     energyFactors: [],
     habits: [],
     habitEntries: [],
-    schemaVersion: 26,
+    sessions: [],
+    closeouts: [],
+    recoveryPlans: [],
+    questions: [],
+    ankiCards: [],
+    cardReviews: [],
+    schemaVersion: 27,
     ...patch,
   };
 }

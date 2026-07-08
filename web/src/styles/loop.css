@@ -1,0 +1,272 @@
+/* ===========================================================================
+   Daily academic loop styles: Command Brief, sessions, closeout, recovery,
+   Question Workspace, Anki card vault, study methods, data health.
+   Calm graphite surfaces, restrained accents, visible controls.
+   =========================================================================== */
+
+/* --- Command Brief --------------------------------------------------------- */
+.brief { width: 100%; }
+.brief-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 16px;
+}
+@media (max-width: 860px) {
+  .brief-body { grid-template-columns: 1fr; }
+}
+.brief-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-45);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.brief-kicker.as-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-45);
+}
+.brief-kicker.as-button:hover { color: var(--text-80); }
+.brief-move {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.028);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.brief-title { font-size: 19px; font-weight: 800; line-height: 1.25; }
+.brief-meta { font-size: 12.5px; color: var(--text-60); }
+.brief-why { font-size: 13px; line-height: 1.5; margin-top: 4px; }
+.brief-why b { color: var(--text-80); font-weight: 700; }
+.brief-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.brief-mvw {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.brief-mvw-title { font-weight: 700; font-size: 14px; }
+.brief-changes { display: flex; flex-direction: column; gap: 6px; }
+.brief-change-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.brief-change { display: flex; gap: 8px; font-size: 12.5px; align-items: baseline; }
+.brief-change-label {
+  flex-shrink: 0;
+  min-width: 88px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-45);
+}
+.brief-change.good { color: var(--grade-green, #46d27e); }
+.brief-change.watch { color: var(--grade-orange, #ff9f43); }
+.brief-change.neutral { color: var(--text-80); }
+
+/* --- Session bar + focus mode ---------------------------------------------- */
+.session-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(720px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(16, 18, 26, 0.92);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.session-clock { font-size: 22px; font-weight: 800; min-width: 74px; }
+.session-quicklog-wrap { position: relative; }
+.session-quicklog-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 22, 32, 0.98);
+  overflow: hidden;
+  z-index: 61;
+}
+.session-quicklog-item {
+  background: none;
+  border: none;
+  color: var(--text-80);
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.session-quicklog-item:hover { background: rgba(255, 255, 255, 0.06); }
+.focus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(9, 10, 16, 0.97);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.focus-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  max-width: 560px;
+  padding: 0 24px 80px;
+}
+.focus-clock { font-size: 64px; font-weight: 800; letter-spacing: 0.02em; }
+.focus-task { font-size: 20px; font-weight: 700; }
+.focus-reason { font-size: 13px; color: var(--text-60); line-height: 1.5; }
+.session-bar.in-focus { bottom: 26px; }
+
+/* --- Recovery -------------------------------------------------------------- */
+.recovery-step { font-size: 13px; gap: 8px; cursor: pointer; }
+.recovery-step input { accent-color: var(--cyan); }
+.recovery-item { font-size: 13px; gap: 8px; }
+.recovery-bucket-select { width: auto; max-width: 170px; padding: 4px 8px; font-size: 12px; }
+
+/* --- Question workspace ----------------------------------------------------- */
+.intake-warnings {
+  margin: 0;
+  padding: 10px 14px 10px 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 159, 67, 0.35);
+  background: rgba(255, 159, 67, 0.07);
+  font-size: 12.5px;
+  color: var(--text-80);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.visually-hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.option-key {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+  font-weight: 700;
+}
+.question-row, .card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  text-align: left;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.question-row:hover, .card-row:hover { border-color: rgba(255, 255, 255, 0.16); }
+.card-row { cursor: default; }
+.card-row-main { background: none; border: none; color: inherit; text-align: left; cursor: pointer; gap: 2px; padding: 0; min-width: 0; }
+.card-row.suspended { opacity: 0.5; }
+.question-stem { font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; }
+.question-explanation {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  border-left: 3px solid var(--cyan);
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+}
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  text-align: left;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.option-row:disabled { cursor: default; }
+.option-row.picked { border-color: var(--cyan); background: rgba(56, 189, 248, 0.08); }
+.option-row.correct { border-color: var(--grade-green, #46d27e); background: rgba(70, 210, 126, 0.1); }
+.option-row.wrong { border-color: var(--grade-red, #ff5563); background: rgba(255, 85, 99, 0.09); }
+
+/* --- Card review ------------------------------------------------------------ */
+.review-face {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 24px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+.review-front { font-size: 17px; font-weight: 700; line-height: 1.5; white-space: pre-wrap; }
+.review-back {
+  font-size: 14.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+  color: var(--text-80);
+}
+
+/* --- Settings: AI + data health ---------------------------------------------- */
+.setup-steps {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.setup-steps ol { margin: 4px 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.data-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+.data-health-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+}
+.data-health-cell b { font-size: 16px; }
+
+/* --- Study methods ------------------------------------------------------------ */
+.method-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; line-height: 1.5; }

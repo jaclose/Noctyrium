@@ -1,7 +1,8 @@
 import type { StateStorage } from "zustand/middleware";
 import { userIdFromName } from "./userIdentity";
+import { STORAGE_KEYS } from "./brand";
 
-const DB_NAME = "noctyrium-local-vault";
+const DB_NAME = STORAGE_KEYS.vaultDb;
 const STORE_NAME = "state";
 const activeUserKey = (name: string) => `${name}:active-user`;
 const scopedStateKey = (name: string, userId: string) => `${name}:user:${userId}`;

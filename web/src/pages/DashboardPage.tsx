@@ -26,6 +26,7 @@ import { AnimatedProgressBar } from "../components/ui/motion";
 import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Pomodoro } from "../components/productivity/Pomodoro";
+import { CommandBrief } from "../components/brief/CommandBrief";
 import { runAi } from "../services/aiClient";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
@@ -138,6 +139,8 @@ export function DashboardPage() {
         energyScore={readiness.selfReportedEnergy.score}
         readinessScore={readiness.estimatedReadiness}
       />
+
+      <CommandBrief />
 
       <StandupPrompt />
 

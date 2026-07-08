@@ -11,6 +11,10 @@ interface UiState {
   journalDay: string | null;
   remediateStandup: (dayKey: string) => void;
   clearJournalDay: () => void;
+  // A page-initiated request to open the Settings modal on a given tab.
+  settingsRequest: string | null;
+  requestSettings: (tab: string) => void;
+  clearSettingsRequest: () => void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -20,6 +24,9 @@ export const useUi = create<UiState>((set) => ({
   journalDay: null,
   remediateStandup: (dayKey) => set({ journalDay: dayKey }),
   clearJournalDay: () => set({ journalDay: null }),
+  settingsRequest: null,
+  requestSettings: (tab) => set({ settingsRequest: tab }),
+  clearSettingsRequest: () => set({ settingsRequest: null }),
 }));
 
 /** Navigate to the Course Tracker focused on a specific item. */

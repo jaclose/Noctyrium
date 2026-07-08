@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
   BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info, CalendarCheck,
+  HelpCircle, BookOpenCheck,
 } from "lucide-react";
 
 export interface NavItem {
@@ -18,6 +19,8 @@ export const NAV: NavItem[] = [
   { id: "dashboard", label: "Dashboard", subtitle: "Your command center at a glance", icon: LayoutGrid },
   { id: "courses", label: "Courses", subtitle: "Term-based course map with module-level folders", icon: BookOpen },
   { id: "tracker", label: "Course Tracker", subtitle: "Lecture, DLA, and PQ completion map", icon: BadgeCheck },
+  { id: "questions", label: "Question Workspace", subtitle: "Practice questions, error log, weak topics, and repair cards", icon: HelpCircle },
+  { id: "methods", label: "Study Methods", subtitle: "Evidence-informed technique templates with honest trade-offs", icon: BookOpenCheck },
   { id: "productivity", label: "Productivity", subtitle: "Study time, Anki cards, lecture blocks, day usefulness", icon: Calendar },
   { id: "journal", label: "Journal", subtitle: "Daily standups, intention follow-up, blockers, and tomorrow's plan", icon: BookText },
   { id: "reports", label: "Reports", subtitle: "Traceable statistics, energy, and performance vs. your goals", icon: LineChart },
@@ -52,10 +55,10 @@ export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id
 
 // Sidebar order (Alpha 2). Tools is a collapsible folder.
 export const SIDEBAR_TOP = [
-  "dashboard", "courses", "tracker", "productivity", "journal", "reports",
+  "dashboard", "courses", "tracker", "questions", "anki", "productivity", "journal", "reports",
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
-export const SIDEBAR_TOOLS = ["tasks", "habits", "resources", "anki", "prompts", "integrations", "leaderboards"];
+export const SIDEBAR_TOOLS = ["tasks", "habits", "methods", "resources", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);

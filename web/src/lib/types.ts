@@ -548,6 +548,14 @@ export interface Profile {
   pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
 }
 
+// New daily-loop record types live in their own modules (kept out of this file
+// so domains stay composable); the state shape references them here.
+import type { StudySession } from "./sessions";
+import type { DailyCloseout } from "./closeout";
+import type { RecoveryPlan } from "./recovery";
+import type { QuestionRecord } from "./questions";
+import type { AnkiCard, CardReviewLog } from "./ankiCards";
+
 export interface NoctyriumState {
   profile: Profile;
   terms: Term[];
@@ -573,5 +581,12 @@ export interface NoctyriumState {
   energyFactors: EnergyFactor[];
   habits: Habit[];
   habitEntries: HabitEntry[];
+  // Daily academic loop (schema v27)
+  sessions: StudySession[];
+  closeouts: DailyCloseout[];
+  recoveryPlans: RecoveryPlan[];
+  questions: QuestionRecord[];
+  ankiCards: AnkiCard[];
+  cardReviews: CardReviewLog[];
   schemaVersion: number;
 }

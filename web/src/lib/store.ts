@@ -46,6 +46,18 @@ interface ApplyTrackOptions {
 }
 import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
 import { normalizeResourceUrl } from "./resourceUtils";
+import { STORAGE_KEYS } from "./brand";
+import {
+  closeOpenSegment, findLiveSession, openNewSegment, restoreSession, sessionElapsedMinutes,
+  type SessionCapture, type SessionLink, type SessionQuickLog, type StudySession,
+} from "./sessions";
+import type { DailyCloseout } from "./closeout";
+import type { RecoveryPlan } from "./recovery";
+import { applyAttempt, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
+import {
+  nextSchedule, validateAnkiCard,
+  type AnkiCard, type CardReviewLog, type ReviewRating,
+} from "./ankiCards";
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -150,6 +162,35 @@ interface Actions {
   removeBlueprintInstall: (installId: string) => void;
   updateBlueprintNode: (installId: string, nodeId: string, patch: Partial<InstalledBlueprintNode>) => void;
   reconcileBlueprintInstall: (installId: string) => void;
+
+  // study sessions (daily loop §2) — timestamp-segment based, reload-safe
+  startSession: (input: { title: string; link: SessionLink; plannedMinutes?: number; resources?: string[]; reason?: string; source: StudySession["source"] }) => string;
+  pauseSession: (id: string) => void;
+  resumeSession: (id: string) => void;
+  quickLogSession: (id: string, log: SessionQuickLog, note?: string) => void;
+  completeSession: (id: string, capture: SessionCapture) => void;
+  abandonSession: (id: string) => void;
+  /** Re-normalize live sessions after reload (caps stale open segments). */
+  restoreLiveSessions: () => void;
+
+  // daily closeout (§3) — one per study day, upserted
+  saveCloseout: (closeout: Omit<DailyCloseout, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
+
+  // recovery protocol (§4)
+  saveRecoveryPlan: (plan: RecoveryPlan) => void;
+  updateRecoveryPlan: (id: string, patch: Partial<RecoveryPlan>) => void;
+
+  // question workspace (Phase 4) — records are validated at the boundary
+  addQuestion: (input: unknown) => { ok: boolean; errors: string[]; id?: string };
+  updateQuestion: (id: string, patch: Partial<QuestionRecord>) => void;
+  removeQuestion: (id: string) => void;
+  recordQuestionAttempt: (id: string, attempt: Omit<QuestionAttempt, "at">) => void;
+
+  // anki card vault (Phase 5) — validated + reviewed before save
+  addAnkiCards: (inputs: unknown[]) => { saved: number; errors: string[] };
+  updateAnkiCard: (id: string, patch: Partial<AnkiCard>) => void;
+  removeAnkiCard: (id: string) => void;
+  reviewAnkiCard: (id: string, rating: ReviewRating, msToAnswer?: number) => void;
 
   // data management
   replaceAll: (state: NoctyriumState) => void;
@@ -680,6 +721,175 @@ export const useStore = create<Store>()(
           return { blueprintInstalls: s.blueprintInstalls.map((i) => (i.id === installId ? reconcileBlueprint(i, entry) : i)) };
         }),
 
+      // study sessions (§2) — one live session at a time; starting a new one
+      // pauses whatever was running so no minutes are double-counted.
+      startSession: ({ title, link, plannedMinutes, resources, reason, source }) => {
+        const id = uid();
+        const at = new Date();
+        set((s) => {
+          const sessions = (s.sessions ?? []).map((session) =>
+            session.status === "active"
+              ? { ...session, status: "paused" as const, segments: closeOpenSegment(session.segments, at) }
+              : session);
+          const session: StudySession = {
+            id,
+            title: title.trim() || link.label || "Study session",
+            link,
+            plannedMinutes,
+            resources,
+            reason,
+            segments: [{ startedAt: at.toISOString() }],
+            status: "active",
+            quickLogs: [],
+            source,
+            dayKey: s.activeDayKey,
+            createdAt: at.toISOString(),
+          };
+          return { sessions: [session, ...sessions] };
+        });
+        return id;
+      },
+      pauseSession: (id) =>
+        set((s) => ({
+          sessions: (s.sessions ?? []).map((session) =>
+            session.id === id && session.status === "active"
+              ? { ...session, status: "paused", segments: closeOpenSegment(session.segments) }
+              : session),
+        })),
+      resumeSession: (id) =>
+        set((s) => {
+          const at = new Date();
+          return {
+            sessions: (s.sessions ?? []).map((session) => {
+              if (session.id === id && session.status === "paused") {
+                return { ...session, status: "active", segments: openNewSegment(session.segments, at) };
+              }
+              // Only one active session at a time.
+              if (session.status === "active") {
+                return { ...session, status: "paused", segments: closeOpenSegment(session.segments, at) };
+              }
+              return session;
+            }),
+          };
+        }),
+      quickLogSession: (id, log, note) =>
+        set((s) => ({
+          sessions: (s.sessions ?? []).map((session) =>
+            session.id === id
+              ? { ...session, quickLogs: [...session.quickLogs, { at: now(), log, note }] }
+              : session),
+        })),
+      completeSession: (id, capture) => {
+        const at = new Date();
+        const session = (get().sessions ?? []).find((item) => item.id === id);
+        if (!session || session.status === "completed" || session.status === "abandoned") return;
+        const closedSegments = closeOpenSegment(session.segments, at);
+        const minutes = sessionElapsedMinutes({ segments: closedSegments }, at);
+        set((s) => ({
+          sessions: (s.sessions ?? []).map((item) =>
+            item.id === id
+              ? { ...item, status: "completed" as const, segments: closedSegments, capture, endedAt: at.toISOString() }
+              : item),
+        }));
+        // Completed focus time feeds the study day like any other logged work.
+        if (minutes > 0) {
+          get().logStudy({
+            type: "Session",
+            minutes,
+            note: `Session: ${session.title}${capture.takeaway ? ` — ${capture.takeaway}` : ""}`,
+          });
+        }
+        // A completed task-linked session closes its task.
+        if (capture.outcome === "completed" && session.link.kind === "task" && session.link.id) {
+          const task = get().tasks.find((t) => t.id === session.link.id);
+          if (task && !task.done) get().toggleTask(task.id);
+        }
+      },
+      abandonSession: (id) =>
+        set((s) => ({
+          sessions: (s.sessions ?? []).map((session) =>
+            session.id === id && (session.status === "active" || session.status === "paused")
+              ? { ...session, status: "abandoned", segments: closeOpenSegment(session.segments), endedAt: now() }
+              : session),
+        })),
+      restoreLiveSessions: () =>
+        set((s) => {
+          const live = findLiveSession(s.sessions ?? []);
+          if (!live) return {};
+          const restored = restoreSession(live);
+          if (restored === live) return {};
+          return { sessions: (s.sessions ?? []).map((session) => (session.id === live.id ? restored : session)) };
+        }),
+
+      saveCloseout: (closeout) =>
+        set((s) => {
+          const existing = (s.closeouts ?? []).find((c) => c.dayKey === closeout.dayKey);
+          const record: DailyCloseout = {
+            ...closeout,
+            id: existing?.id ?? closeout.id ?? uid(),
+            createdAt: existing?.createdAt ?? now(),
+            updatedAt: now(),
+          };
+          return { closeouts: [record, ...(s.closeouts ?? []).filter((c) => c.dayKey !== closeout.dayKey)] };
+        }),
+
+      saveRecoveryPlan: (plan) =>
+        set((s) => ({ recoveryPlans: [plan, ...(s.recoveryPlans ?? []).filter((p) => p.id !== plan.id)] })),
+      updateRecoveryPlan: (id, patch) =>
+        set((s) => ({
+          recoveryPlans: (s.recoveryPlans ?? []).map((p) =>
+            p.id === id ? { ...p, ...patch, updatedAt: now() } : p),
+        })),
+
+      addQuestion: (input) => {
+        const result = validateQuestionRecord(input);
+        if (!result.ok || !result.value) return { ok: false, errors: result.errors };
+        const record = result.value;
+        set((s) => ({ questions: [record, ...(s.questions ?? [])] }));
+        return { ok: true, errors: [], id: record.id };
+      },
+      updateQuestion: (id, patch) =>
+        set((s) => ({
+          questions: (s.questions ?? []).map((q) => (q.id === id ? { ...q, ...patch, updatedAt: now() } : q)),
+        })),
+      removeQuestion: (id) => set((s) => ({ questions: (s.questions ?? []).filter((q) => q.id !== id) })),
+      recordQuestionAttempt: (id, attempt) =>
+        set((s) => ({
+          questions: (s.questions ?? []).map((q) => (q.id === id ? applyAttempt(q, attempt) : q)),
+        })),
+
+      addAnkiCards: (inputs) => {
+        const errors: string[] = [];
+        const cards: AnkiCard[] = [];
+        for (const input of inputs) {
+          const result = validateAnkiCard(input);
+          if (result.ok && result.value) cards.push(result.value);
+          else errors.push(...result.errors);
+        }
+        if (cards.length) set((s) => ({ ankiCards: [...cards, ...(s.ankiCards ?? [])] }));
+        return { saved: cards.length, errors };
+      },
+      updateAnkiCard: (id, patch) =>
+        set((s) => ({
+          ankiCards: (s.ankiCards ?? []).map((c) => (c.id === id ? { ...c, ...patch, updatedAt: now() } : c)),
+        })),
+      removeAnkiCard: (id) =>
+        set((s) => ({
+          ankiCards: (s.ankiCards ?? []).filter((c) => c.id !== id),
+          cardReviews: (s.cardReviews ?? []).filter((r) => r.cardId !== id),
+        })),
+      reviewAnkiCard: (id, rating, msToAnswer) =>
+        set((s) => {
+          const card = (s.ankiCards ?? []).find((c) => c.id === id);
+          if (!card) return {};
+          const review: CardReviewLog = { id: uid(), cardId: id, at: now(), rating, msToAnswer };
+          return {
+            ankiCards: (s.ankiCards ?? []).map((c) =>
+              c.id === id ? { ...c, schedule: nextSchedule(c.schedule, rating), updatedAt: now() } : c),
+            cardReviews: [review, ...(s.cardReviews ?? [])].slice(0, 5000),
+          };
+        }),
+
       replaceAll: (state) => set(() => ({ ...state })),
       resetToSeed: () => set(() => ({ ...makeSeed() })),
       startFresh: () =>
@@ -690,6 +900,7 @@ export const useStore = create<Store>()(
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
           habits: [], habitEntries: [],
+          sessions: [], closeouts: [], recoveryPlans: [], questions: [], ankiCards: [], cardReviews: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -705,247 +916,273 @@ export const useStore = create<Store>()(
       name: "noctyrium-state",
       version: SCHEMA_VERSION,
       storage: createJSONStorage(() => localVaultStorage),
-      // Forward-migrate older saved data so existing users don't lose anything
-      // when the schema grows (v1 had no resources / kind / day targets).
-      migrate: (persisted, fromVersion) => {
-        const s = (persisted ?? {}) as Record<string, unknown>;
-        if (fromVersion < 2) {
-          s.resources = s.resources ?? [];
-          const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
-          s.tracker = tracker.map((t) => ({
-            ...t,
-            kind: t.kind ?? t.type ?? "Lecture",
-          }));
-          const profile = (s.profile as Record<string, unknown>) ?? {};
-          s.profile = { dailyCardTarget: 120, dailyMinuteTarget: 240, ...profile };
-        }
-        if (fromVersion < 3) {
-          // status/quality → passes / ankiPasses / yield
-          const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
-          const fromStatus = (st: unknown) =>
-            st === "mature" ? 3 : st === "working" ? 2 : st === "anki" ? 1 : 0;
-          s.tracker = tracker.map((t) => ({
-            id: t.id, path: t.path, label: t.label, kind: t.kind ?? "Lecture",
-            passes: typeof t.passes === "number" ? t.passes : fromStatus(t.status),
-            ankiPasses: typeof t.ankiPasses === "number" ? t.ankiPasses : (t.status === "anki" ? 1 : 0),
-            yield: t.yield ?? "none",
-            note: t.note, updated: t.updated ?? new Date().toISOString(),
-          }));
-        }
-        if (fromVersion < 4) {
-          const tasks = (s.tasks as Array<Record<string, unknown>>) ?? [];
-          s.tasks = tasks.map((t) => ({
-            ...t,
-            archived: typeof t.archived === "boolean" ? t.archived : Boolean(t.done),
-          }));
-          const folders = (s.folders as Array<Record<string, unknown>>) ?? [];
-          s.folders = folders.map((f) => ({
-            ...f,
-            localPath: f.localPath ?? "",
-          }));
-        }
-        if (fromVersion < 5) {
-          normalizeAcademicMap(s);
-        }
-        if (fromVersion < 6) {
-          const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
-          s.profile = profile;
-        }
-        if (fromVersion < 7) {
-          s.boardPrep = normalizeBoardPrep(s.boardPrep);
-        }
-        if (fromVersion < 8) {
-          // Win-the-day plans + curated SGU drives that ship for everyone.
-          s.dayPlans = s.dayPlans ?? [];
-          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
-          const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
-          for (const d of SGU_DRIVES) {
-            if (!urls.has(normalizeResourceUrl(d.url))) {
-              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
-            }
-          }
-          s.resources = dedupeResourceRecords(resources);
-        }
-        if (fromVersion < 9) {
-          const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
-          s.profile = profile;
-          s.resources = normalizeResourceLinks(s.resources);
-          s.dayPlans = s.dayPlans ?? [];
-        }
-        if (fromVersion < 10) {
-          const profile = normalizeProfile(s.profile);
-          if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) || profile.versionLabel === "v0.10.0 · web") {
-            profile.versionLabel = APP_VERSION_LABEL;
-          }
-          s.profile = profile;
-        }
-        if (fromVersion < 11) {
-          s.boardPrep = normalizeBoardPrep(s.boardPrep);
-        }
-        if (fromVersion < 12) {
-          const profile = normalizeProfile(s.profile);
-          if (
-            /^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) ||
-            profile.versionLabel === "v0.10.0 · web" ||
-            profile.versionLabel === "alpha 1 · web" ||
-            /^Noctyrium Alpha 1 · v[\d.-]+alpha[\d.-]* · web$/.test(profile.versionLabel)
-          ) {
-            profile.versionLabel = APP_VERSION_LABEL;
-          }
-          s.profile = profile;
-        }
-        if (fromVersion < 13) {
-          // Anyone upgrading from an earlier schema already has a workspace —
-          // never show the first-launch onboarding wizard to them.
-          const profile = normalizeProfile(s.profile);
-          profile.onboarded = true;
-          s.profile = profile;
-        }
-        if (fromVersion < 14) {
-          normalizeAcademicMap(s);
-          s.boardPrep = normalizeBoardPrep(s.boardPrep);
-          const profile = normalizeProfile(s.profile);
-          profile.onboarded = true;
-          s.profile = profile;
-        }
-        if (fromVersion < 15) {
-          // Refresh the curated drive set (My Drive + MADCOW + SGU shared) with
-          // personal usefulness ratings. Adds any missing by URL; keeps user drives.
-          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
-          const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
-          for (const d of SGU_DRIVES) {
-            if (!urls.has(normalizeResourceUrl(d.url))) {
-              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
-            }
-          }
-          s.resources = dedupeResourceRecords(resources);
-        }
-        if (fromVersion < 16) {
-          s.profile = normalizeProfile(s.profile);
-          s.resources = normalizeResourceLinks(s.resources);
-          const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
-          s.tracker = tracker.map((t) => ({ ...t, path: normalizeTrackerPath(String(t.path ?? "")) }));
-        }
-        if (fromVersion < 17) {
-          // Correct curated drive labels/categories/ratings to the canonical set
-          // (fixes "Claudfather"↔"My Drive" mislabel + placeholder SGU names; adds
-          // Mehlman + White Coat). Matches by normalized URL; injects any missing.
-          const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
-          const byUrl = new Map(resources.map((r) => [normalizeResourceUrl(String(r.url ?? "")), r]));
-          for (const d of SGU_DRIVES) {
-            const fields = driveResourceFields(d);
-            const existing = byUrl.get(normalizeResourceUrl(d.url));
-            if (existing) {
-              existing.title = fields.title;
-              existing.url = fields.url;
-              existing.category = "Drives";
-              existing.tags = fields.tags;
-              existing.rating = fields.rating;
-              existing.ratingReason = fields.ratingReason;
-              if (fields.note !== undefined) existing.note = fields.note;
-            } else {
-              resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...fields });
-            }
-          }
-          s.resources = dedupeResourceRecords(resources);
-        }
-        if (fromVersion < 18) {
-          // Introduce the education-track layer. Existing installs have been
-          // SGU-centric, so infer their track from focus and keep SGU drives on.
-          const profile = isRecord(s.profile) ? s.profile : {};
-          if (typeof profile.educationTrack !== "string") {
-            profile.educationTrack = inferTrackFromFocus(
-              Array.isArray(profile.focusSubscriptions) ? profile.focusSubscriptions.map(String) : [],
-            );
-          }
-          if (typeof profile.showSguResources !== "boolean") {
-            profile.showSguResources = profile.educationTrack === "sgu";
-          }
-          s.profile = normalizeProfile(profile);
-        }
-        if (fromVersion < 19) {
-          s.profile = normalizeProfile(s.profile);
-        }
-        if (fromVersion < 20) {
-          s.premedExperiences = s.premedExperiences ?? [];
-          const profile = isRecord(s.profile) ? s.profile : {};
-          profile.hiddenDashboardWidgets = mergeStringLists(
-            profile.hiddenDashboardWidgets,
-            DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
-          );
-          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
-          s.profile = normalizeProfile(profile);
-        }
-        if (fromVersion < 21) {
-          s.boardPrep = normalizeBoardPrep(s.boardPrep);
-          const profile = isRecord(s.profile) ? s.profile : {};
-          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
-          s.profile = normalizeProfile(profile);
-        }
-        if (fromVersion < 22) {
-          // Introduce installable blueprint containers; existing data is untouched.
-          s.blueprintInstalls = Array.isArray(s.blueprintInstalls) ? s.blueprintInstalls : [];
-        }
-        if (fromVersion < 23) {
-          // Add direct Blueprint lane routes without flooding existing sidebars.
-          const profile = isRecord(s.profile) ? s.profile : {};
-          profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
-          s.profile = normalizeProfile(profile);
-        }
-        if (fromVersion < 24) {
-          s.activeDayKey = typeof s.activeDayKey === "string" && s.activeDayKey ? s.activeDayKey : isoDate(new Date());
-          s.lastActiveLocalDate = typeof s.lastActiveLocalDate === "string" && s.lastActiveLocalDate
-            ? s.lastActiveLocalDate
-            : String(s.activeDayKey);
-          s.lastTimezoneOffset = typeof s.lastTimezoneOffset === "number" ? s.lastTimezoneOffset : new Date().getTimezoneOffset();
-          s.dailyArchives = Array.isArray(s.dailyArchives) ? s.dailyArchives : [];
-          s.dailyRolloverEvents = Array.isArray(s.dailyRolloverEvents) ? s.dailyRolloverEvents : [];
-          s.productivityTrackers = normalizeProductivityTrackers(s.productivityTrackers);
-          s.logs = arrayOfRecords(s.logs).map((log) => ({
-            ...log,
-            academic: typeof log.academic === "boolean" ? log.academic : true,
-            productive: typeof log.productive === "boolean" ? log.productive : true,
-            unitType: typeof log.unitType === "string" ? log.unitType : "minutes",
-            quantity: typeof log.quantity === "number" ? log.quantity : Number(log.minutes ?? 0),
-          }));
-          s.folders = normalizeFolders(s.folders);
-        }
-        if (fromVersion < 25) {
-          s.energyFactors = normalizeEnergyFactors(s.energyFactors);
-          s.dailyArchives = arrayOfRecords(s.dailyArchives).map((archive) => ({
-            ...archive,
-            energyFactorIds: Array.isArray(archive.energyFactorIds)
-              ? archive.energyFactorIds.filter((id): id is string => typeof id === "string")
-              : [],
-          }));
-        }
-        if (fromVersion < 26) {
-          // Habit tracker (experimental). New arrays only — no existing data touched.
-          s.habits = Array.isArray(s.habits) ? s.habits : [];
-          s.habitEntries = Array.isArray(s.habitEntries) ? s.habitEntries : [];
-        }
-        return s as unknown as NoctyriumState;
-      },
+      migrate: (persisted, fromVersion) => migratePersistedState(persisted, fromVersion),
       partialize: (s) => {
         // persist data only — strip the action functions
         const {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, ankiCards, cardReviews, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, ankiCards, cardReviews, schemaVersion,
         } as NoctyriumState;
       },
     },
   ),
 );
+
+// ===========================================================================
+// Forward-migrate older saved data so existing users never lose anything as
+// the schema grows. Exported for tests. A pre-migration snapshot is written
+// first (best-effort) so a bad migration is always recoverable.
+// ===========================================================================
+export function migratePersistedState(persisted: unknown, fromVersion: number): NoctyriumState {
+  const s = (persisted ?? {}) as Record<string, unknown>;
+  if (fromVersion < SCHEMA_VERSION) {
+    try {
+      localStorage.setItem(
+        STORAGE_KEYS.preMigrationSnapshot,
+        JSON.stringify({ fromVersion, savedAt: new Date().toISOString(), state: s }),
+      );
+    } catch {
+      /* snapshot is best-effort; the primary copy is untouched */
+    }
+  }
+  if (fromVersion < 2) {
+    s.resources = s.resources ?? [];
+    const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
+    s.tracker = tracker.map((t) => ({
+      ...t,
+      kind: t.kind ?? t.type ?? "Lecture",
+    }));
+    const profile = (s.profile as Record<string, unknown>) ?? {};
+    s.profile = { dailyCardTarget: 120, dailyMinuteTarget: 240, ...profile };
+  }
+  if (fromVersion < 3) {
+    // status/quality → passes / ankiPasses / yield
+    const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
+    const fromStatus = (st: unknown) =>
+      st === "mature" ? 3 : st === "working" ? 2 : st === "anki" ? 1 : 0;
+    s.tracker = tracker.map((t) => ({
+      id: t.id, path: t.path, label: t.label, kind: t.kind ?? "Lecture",
+      passes: typeof t.passes === "number" ? t.passes : fromStatus(t.status),
+      ankiPasses: typeof t.ankiPasses === "number" ? t.ankiPasses : (t.status === "anki" ? 1 : 0),
+      yield: t.yield ?? "none",
+      note: t.note, updated: t.updated ?? new Date().toISOString(),
+    }));
+  }
+  if (fromVersion < 4) {
+    const tasks = (s.tasks as Array<Record<string, unknown>>) ?? [];
+    s.tasks = tasks.map((t) => ({
+      ...t,
+      archived: typeof t.archived === "boolean" ? t.archived : Boolean(t.done),
+    }));
+    const folders = (s.folders as Array<Record<string, unknown>>) ?? [];
+    s.folders = folders.map((f) => ({
+      ...f,
+      localPath: f.localPath ?? "",
+    }));
+  }
+  if (fromVersion < 5) {
+    normalizeAcademicMap(s);
+  }
+  if (fromVersion < 6) {
+    const profile = normalizeProfile(s.profile);
+    if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
+    s.profile = profile;
+  }
+  if (fromVersion < 7) {
+    s.boardPrep = normalizeBoardPrep(s.boardPrep);
+  }
+  if (fromVersion < 8) {
+    // Win-the-day plans + curated SGU drives that ship for everyone.
+    s.dayPlans = s.dayPlans ?? [];
+    const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+    const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
+    for (const d of SGU_DRIVES) {
+      if (!urls.has(normalizeResourceUrl(d.url))) {
+        resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
+      }
+    }
+    s.resources = dedupeResourceRecords(resources);
+  }
+  if (fromVersion < 9) {
+    const profile = normalizeProfile(s.profile);
+    if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel)) profile.versionLabel = APP_VERSION_LABEL;
+    s.profile = profile;
+    s.resources = normalizeResourceLinks(s.resources);
+    s.dayPlans = s.dayPlans ?? [];
+  }
+  if (fromVersion < 10) {
+    const profile = normalizeProfile(s.profile);
+    if (/^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) || profile.versionLabel === "v0.10.0 · web") {
+      profile.versionLabel = APP_VERSION_LABEL;
+    }
+    s.profile = profile;
+  }
+  if (fromVersion < 11) {
+    s.boardPrep = normalizeBoardPrep(s.boardPrep);
+  }
+  if (fromVersion < 12) {
+    const profile = normalizeProfile(s.profile);
+    if (
+      /^v0\.\d+\.\d+ · web$/.test(profile.versionLabel) ||
+      profile.versionLabel === "v0.10.0 · web" ||
+      profile.versionLabel === "alpha 1 · web" ||
+      /^Noctyrium Alpha 1 · v[\d.-]+alpha[\d.-]* · web$/.test(profile.versionLabel)
+    ) {
+      profile.versionLabel = APP_VERSION_LABEL;
+    }
+    s.profile = profile;
+  }
+  if (fromVersion < 13) {
+    // Anyone upgrading from an earlier schema already has a workspace —
+    // never show the first-launch onboarding wizard to them.
+    const profile = normalizeProfile(s.profile);
+    profile.onboarded = true;
+    s.profile = profile;
+  }
+  if (fromVersion < 14) {
+    normalizeAcademicMap(s);
+    s.boardPrep = normalizeBoardPrep(s.boardPrep);
+    const profile = normalizeProfile(s.profile);
+    profile.onboarded = true;
+    s.profile = profile;
+  }
+  if (fromVersion < 15) {
+    // Refresh the curated drive set (My Drive + MADCOW + SGU shared) with
+    // personal usefulness ratings. Adds any missing by URL; keeps user drives.
+    const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+    const urls = new Set(resources.map((r) => normalizeResourceUrl(String(r.url ?? ""))));
+    for (const d of SGU_DRIVES) {
+      if (!urls.has(normalizeResourceUrl(d.url))) {
+        resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...driveResourceFields(d) });
+      }
+    }
+    s.resources = dedupeResourceRecords(resources);
+  }
+  if (fromVersion < 16) {
+    s.profile = normalizeProfile(s.profile);
+    s.resources = normalizeResourceLinks(s.resources);
+    const tracker = (s.tracker as Array<Record<string, unknown>>) ?? [];
+    s.tracker = tracker.map((t) => ({ ...t, path: normalizeTrackerPath(String(t.path ?? "")) }));
+  }
+  if (fromVersion < 17) {
+    // Correct curated drive labels/categories/ratings to the canonical set
+    // (fixes "Claudfather"↔"My Drive" mislabel + placeholder SGU names; adds
+    // Mehlman + White Coat). Matches by normalized URL; injects any missing.
+    const resources = (s.resources as Array<Record<string, unknown>>) ?? [];
+    const byUrl = new Map(resources.map((r) => [normalizeResourceUrl(String(r.url ?? "")), r]));
+    for (const d of SGU_DRIVES) {
+      const fields = driveResourceFields(d);
+      const existing = byUrl.get(normalizeResourceUrl(d.url));
+      if (existing) {
+        existing.title = fields.title;
+        existing.url = fields.url;
+        existing.category = "Drives";
+        existing.tags = fields.tags;
+        existing.rating = fields.rating;
+        existing.ratingReason = fields.ratingReason;
+        if (fields.note !== undefined) existing.note = fields.note;
+      } else {
+        resources.unshift({ id: crypto.randomUUID(), created: new Date().toISOString(), ...fields });
+      }
+    }
+    s.resources = dedupeResourceRecords(resources);
+  }
+  if (fromVersion < 18) {
+    // Introduce the education-track layer. Existing installs have been
+    // SGU-centric, so infer their track from focus and keep SGU drives on.
+    const profile = isRecord(s.profile) ? s.profile : {};
+    if (typeof profile.educationTrack !== "string") {
+      profile.educationTrack = inferTrackFromFocus(
+        Array.isArray(profile.focusSubscriptions) ? profile.focusSubscriptions.map(String) : [],
+      );
+    }
+    if (typeof profile.showSguResources !== "boolean") {
+      profile.showSguResources = profile.educationTrack === "sgu";
+    }
+    s.profile = normalizeProfile(profile);
+  }
+  if (fromVersion < 19) {
+    s.profile = normalizeProfile(s.profile);
+  }
+  if (fromVersion < 20) {
+    s.premedExperiences = s.premedExperiences ?? [];
+    const profile = isRecord(s.profile) ? s.profile : {};
+    profile.hiddenDashboardWidgets = mergeStringLists(
+      profile.hiddenDashboardWidgets,
+      DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+    );
+    profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+    s.profile = normalizeProfile(profile);
+  }
+  if (fromVersion < 21) {
+    s.boardPrep = normalizeBoardPrep(s.boardPrep);
+    const profile = isRecord(s.profile) ? s.profile : {};
+    profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+    s.profile = normalizeProfile(profile);
+  }
+  if (fromVersion < 22) {
+    // Introduce installable blueprint containers; existing data is untouched.
+    s.blueprintInstalls = Array.isArray(s.blueprintInstalls) ? s.blueprintInstalls : [];
+  }
+  if (fromVersion < 23) {
+    // Add direct Blueprint lane routes without flooding existing sidebars.
+    const profile = isRecord(s.profile) ? s.profile : {};
+    profile.hiddenNav = mergeStringLists(profile.hiddenNav, defaultHiddenNavForTrack(String(profile.educationTrack ?? "")));
+    s.profile = normalizeProfile(profile);
+  }
+  if (fromVersion < 24) {
+    s.activeDayKey = typeof s.activeDayKey === "string" && s.activeDayKey ? s.activeDayKey : isoDate(new Date());
+    s.lastActiveLocalDate = typeof s.lastActiveLocalDate === "string" && s.lastActiveLocalDate
+      ? s.lastActiveLocalDate
+      : String(s.activeDayKey);
+    s.lastTimezoneOffset = typeof s.lastTimezoneOffset === "number" ? s.lastTimezoneOffset : new Date().getTimezoneOffset();
+    s.dailyArchives = Array.isArray(s.dailyArchives) ? s.dailyArchives : [];
+    s.dailyRolloverEvents = Array.isArray(s.dailyRolloverEvents) ? s.dailyRolloverEvents : [];
+    s.productivityTrackers = normalizeProductivityTrackers(s.productivityTrackers);
+    s.logs = arrayOfRecords(s.logs).map((log) => ({
+      ...log,
+      academic: typeof log.academic === "boolean" ? log.academic : true,
+      productive: typeof log.productive === "boolean" ? log.productive : true,
+      unitType: typeof log.unitType === "string" ? log.unitType : "minutes",
+      quantity: typeof log.quantity === "number" ? log.quantity : Number(log.minutes ?? 0),
+    }));
+    s.folders = normalizeFolders(s.folders);
+  }
+  if (fromVersion < 25) {
+    s.energyFactors = normalizeEnergyFactors(s.energyFactors);
+    s.dailyArchives = arrayOfRecords(s.dailyArchives).map((archive) => ({
+      ...archive,
+      energyFactorIds: Array.isArray(archive.energyFactorIds)
+        ? archive.energyFactorIds.filter((id): id is string => typeof id === "string")
+        : [],
+    }));
+  }
+  if (fromVersion < 26) {
+    // Habit tracker (experimental). New arrays only — no existing data touched.
+    s.habits = Array.isArray(s.habits) ? s.habits : [];
+    s.habitEntries = Array.isArray(s.habitEntries) ? s.habitEntries : [];
+  }
+  if (fromVersion < 27) {
+    // Daily academic loop: sessions, closeouts, recovery plans, question
+    // workspace, anki card vault. Additive arrays only — nothing touched.
+    s.sessions = Array.isArray(s.sessions) ? s.sessions : [];
+    s.closeouts = Array.isArray(s.closeouts) ? s.closeouts : [];
+    s.recoveryPlans = Array.isArray(s.recoveryPlans) ? s.recoveryPlans : [];
+    s.questions = Array.isArray(s.questions) ? s.questions : [];
+    s.ankiCards = Array.isArray(s.ankiCards) ? s.ankiCards : [];
+    s.cardReviews = Array.isArray(s.cardReviews) ? s.cardReviews : [];
+  }
+  return s as unknown as NoctyriumState;
+}
+
 
 type AnyRecord = Record<string, unknown>;
 

@@ -7,8 +7,10 @@ import {
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
-import { exportState, parseImport } from "../../lib/backup";
+import { exportState, mergeStates, parseImport } from "../../lib/backup";
 import { AccountSyncPanel } from "./AccountSyncPanel";
+import { AiSettingsPanel } from "./AiSettingsPanel";
+import { DataHealthPanel } from "./DataHealthPanel";
 import { PromiseCutscene } from "./PromiseCutscene";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
 import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
@@ -16,12 +18,13 @@ import { prettyDate } from "../../lib/scoring";
 import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
 import { HardDrive } from "lucide-react";
 
-export type SettingsTab = "general" | "personalization" | "backup" | "account";
+export type SettingsTab = "general" | "personalization" | "ai" | "backup" | "account";
 
 export function SettingsModal({ onClose, initialTab = "general" }: { onClose: () => void; initialTab?: SettingsTab }) {
   const store = useStore();
   const { profile } = store;
   const fileRef = useRef<HTMLInputElement>(null);
+  const mergeRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
   const [tab, setTab] = useState<SettingsTab>(initialTab);
@@ -37,6 +40,10 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       title: "Personalization",
       body: "Choose the academic lanes you want Noctyrium to prioritize in the dashboard, suggestions, and sidebar.",
     },
+    ai: {
+      title: "AI providers",
+      body: "Local-first AI through Ollama (free, no key), optional cloud later via a secure proxy, or a labeled demo mode. Off by default.",
+    },
     backup: {
       title: "Backup & restore",
       body: "Your work autosaves locally. Backups are your portable safety copy before browsers, devices, or domains change.",
@@ -47,21 +54,32 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
     },
   };
 
-  function doImport(file: File) {
+  function doImport(file: File, mode: "replace" | "merge") {
     const reader = new FileReader();
     reader.onload = () => {
       try {
         const next = parseImport(String(reader.result));
-        if (!confirm("Restore this backup? It replaces the current data on this device. Download a backup first if you want to keep both.")) {
-          setMsg("Restore cancelled. No data changed.");
-          return;
+        if (mode === "replace") {
+          if (!confirm("Restore this backup? It REPLACES the current data on this device. Download a backup first if you want to keep both.")) {
+            setMsg("Restore cancelled. No data changed.");
+            return;
+          }
+          store.replaceAll(next);
+          setMsg(`Restored from ${file.name}. Your data is back.`);
+        } else {
+          const merged = mergeStates(store, next);
+          if (!confirm("Merge this backup into the current data? Records are combined by id (newer wins); your profile and current day stay as they are. Nothing is deleted.")) {
+            setMsg("Merge cancelled. No data changed.");
+            return;
+          }
+          store.replaceAll(merged);
+          setMsg(`Merged ${file.name} into this device's data.`);
         }
-        store.replaceAll(next);
-        setMsg(`Restored from ${file.name}. Your data is back.`);
       } catch (e) {
         setMsg((e as Error).message);
       }
       if (fileRef.current) fileRef.current.value = "";
+      if (mergeRef.current) mergeRef.current.value = "";
     };
     reader.readAsText(file);
   }
@@ -89,6 +107,9 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
         </button>
         <button className={`filter-pill ${tab === "personalization" ? "on" : ""}`} onClick={() => setTab("personalization")}>
           <Sparkles size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Personalization
+        </button>
+        <button className={`filter-pill ${tab === "ai" ? "on" : ""}`} onClick={() => setTab("ai")}>
+          <Sparkles size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> AI
         </button>
         <button className={`filter-pill ${tab === "backup" ? "on" : ""}`} onClick={() => setTab("backup")}>
           <FileJson size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Backup &amp; Restore
@@ -160,6 +181,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
       {tab === "personalization" && <PersonalizationPanel />}
 
+      {tab === "ai" && <AiSettingsPanel />}
+
       {tab === "backup" && (
         <div className="backup-center">
           <div className="sub" style={{ marginBottom: 4 }}>
@@ -206,15 +229,28 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                 <Download size={15} /> Download backup
               </GButton>
               <GButton size="sm" onClick={() => fileRef.current?.click()}>
-                <Upload size={15} /> Restore backup
+                <Upload size={15} /> Restore (replace)
+              </GButton>
+              <GButton size="sm" onClick={() => mergeRef.current?.click()}>
+                <Upload size={15} /> Merge import
               </GButton>
               <input ref={fileRef} type="file" accept="application/json,.json" hidden
-                onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])} />
+                onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0], "replace")} />
+              <input ref={mergeRef} type="file" accept="application/json,.json" hidden
+                onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0], "merge")} />
             </div>
             <div className="backup-note">
               <ShieldCheck size={15} />
-              <span>Restoring replaces the current data on this device. Download a backup first if you want to keep both.</span>
+              <span>Restore replaces this device's data (asks first). Merge combines records by id — newer wins, nothing is deleted.</span>
             </div>
+          </div>
+
+          <div className="backup-actions-panel">
+            <div>
+              <div className="sync-title">Local data health</div>
+              <div className="sub">Where your data lives right now and how safe it is.</div>
+            </div>
+            <DataHealthPanel />
           </div>
 
           <div className="backup-actions-panel danger-zone">
