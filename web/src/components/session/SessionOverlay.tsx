@@ -34,11 +34,13 @@ export function SessionOverlay() {
 
   // The visible clock re-derives from timestamps every second; the interval is
   // display-only and never the source of truth.
+  const sessionId = session?.id;
+  const sessionStatus = session?.status;
   useEffect(() => {
-    if (!session || session.status !== "active") return;
+    if (sessionStatus !== "active") return;
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [session?.id, session?.status]);
+  }, [sessionId, sessionStatus]);
 
   const elapsedMs = useMemo(
     () => (session ? sessionElapsedMs(session, new Date(nowMs)) : 0),

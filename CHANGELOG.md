@@ -1,5 +1,57 @@
 # Noctyrium Changelog
 
+## 0.2.0-alpha.1 — 2026-07-08 (the daily academic loop)
+
+Alpha 2 rehaul: the app's center of gravity moves from a widget dashboard to a daily
+operating loop — open → orient → commit → study → capture → review → recover → return.
+
+- **Command Brief** now leads the dashboard: one operating mode (Maintain / Catch-Up /
+  Recovery / Sprint / Exam Week) with a plain-language reason, exactly **one Next Best Move**
+  with "why this now" + expected outcome + **Begin Session**, a **Minimum Viable Win** fallback
+  for low-energy days, and a factual "since yesterday" delta. Transparent rules over your own
+  data (`lib/commandBrief.ts`), fully tested.
+- **Real study sessions**: Begin Session starts a task-linked session timed by absolute
+  timestamp segments — accurate across tab switches, laptop sleep, refresh, and updates
+  (never a ticking counter). Persistent bottom bar with pause/resume, quick logs
+  (completed / partial / blocked / rescheduled / too difficult / misunderstood / needs review),
+  a distraction-free focus mode, and a completion capture (confidence, takeaway, blocker,
+  energy). Stale overnight timers are capped, visibly, never silently credited.
+- **Daily Closeout** (30–90s): what got done, what remains, blocker, tomorrow's first task,
+  energy vs morning, and tomorrow's mode (or auto). Tomorrow's brief honors it.
+- **Recovery Protocol** as a core feature: calm trigger detection (missed days, carried tasks,
+  overdue work, exam pressure), an honest gap estimate, triage into non-negotiable /
+  high-yield / deferrable / safe-to-drop (user-editable), and 24-hour restart + 72-hour
+  stabilization plans. Accept / edit / defer / reset. No shame language anywhere.
+- **Question Workspace** (new pillar page): paste → extract → review → save intake with honest
+  extraction confidence (never invents answers), screenshot/PDF attachment with provenance
+  metadata (OCR extension point, no fake OCR), answer/reveal/attempt flow with a 12-type
+  error taxonomy, review scheduling for misses, weak-topic + error-pattern insights,
+  study modes (incorrects-only, guessed-correctly, changed-answer, repeat-offenders, weakness…),
+  one-tap **error-repair cards**, and a hedged **Faculty Style Analyzer**.
+- **Anki Lab rebuilt around a persistent Card Vault**: 11 typed card kinds, in-app spaced
+  review (SM-2-flavored), a quality-check layer (duplicates, too-long, multi-fact, dangling
+  pronouns, absolute claims, weak cloze, missing sources), Anki-compatible TSV export, and
+  **AI card generation behind a review gate** — small batches, editable drafts, per-draft
+  approve/reject, provenance recorded. The classic prompt studio remains as a tab.
+- **AI provider layer** (`lib/ai/`): local-first **Ollama** support with live detection, model
+  picker, and in-app setup steps — free, private, no API key. Cloud BYOK is a configuration
+  surface only until a secure server proxy exists (no key field ships in the client, by design).
+  A clearly-labeled deterministic Demo mode for previewing flows. All model output is
+  schema-validated and nothing mutates your plan without review.
+- **Study Methods** library: 14 evidence-informed techniques, each with when-to-use,
+  when-NOT-to-use, materials, exact steps, and common mistakes; a rules-based recommender
+  (energy × time × exam distance × recovery state); add-to-today or begin a session directly.
+- **Data safety**: schema v27 (additive only), an automatic **pre-migration snapshot** before
+  any upgrade, **merge import** alongside replace-restore, last-backup age tracking, and a
+  visible **Local data health** panel (storage driver, record counts, migration state).
+- **Update flow**: semver-aware notice with release notes that never fires during an active
+  session and never forces a reload; "your local progress will remain intact."
+- **Rebrand readiness**: all brand strings/versions centralized in `lib/brand.ts`; storage keys
+  frozen as legacy identifiers so a future rename can't strand anyone's data.
+- 60+ new focused tests (173 total): migrations, session restoration, brief priority rules,
+  recovery triggers and tone, question/card schema validation, parser honesty, AI detection
+  and output validation, and update version comparison.
+
 ## 0.1.0-alpha.1 — 2026-06-16 (final polish)
 
 Pre-release polish patch: consumer-facing wording, resource corrections, Help, and Anki guide.

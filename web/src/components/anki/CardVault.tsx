@@ -16,9 +16,11 @@ import { pushToast } from "../../lib/toast";
 
 const CARD_TYPES = Object.keys(CARD_TYPE_LABEL) as AnkiCardType[];
 
+const NO_CARDS: AnkiCard[] = [];
+
 export function CardVault() {
   const s = useStore();
-  const cards = s.ankiCards ?? [];
+  const cards = s.ankiCards ?? NO_CARDS;
   const [editing, setEditing] = useState<AnkiCard | null>(null);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<"all" | "due" | "ai" | "flagged" | "suspended">("all");

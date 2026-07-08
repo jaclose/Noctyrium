@@ -945,10 +945,12 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
   const s = (persisted ?? {}) as Record<string, unknown>;
   if (fromVersion < SCHEMA_VERSION) {
     try {
-      localStorage.setItem(
-        STORAGE_KEYS.preMigrationSnapshot,
-        JSON.stringify({ fromVersion, savedAt: new Date().toISOString(), state: s }),
-      );
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(
+          STORAGE_KEYS.preMigrationSnapshot,
+          JSON.stringify({ fromVersion, savedAt: new Date().toISOString(), state: s }),
+        );
+      }
     } catch {
       /* snapshot is best-effort; the primary copy is untouched */
     }
