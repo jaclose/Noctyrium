@@ -554,6 +554,7 @@ import type { StudySession } from "./sessions";
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import type { QuestionRecord } from "./questions";
+import type { QuizSession } from "./quiz";
 import type { AnkiCard, CardReviewLog } from "./ankiCards";
 
 export interface NoctyriumState {
@@ -586,6 +587,7 @@ export interface NoctyriumState {
   closeouts: DailyCloseout[];
   recoveryPlans: RecoveryPlan[];
   questions: QuestionRecord[];
+  quizSessions: QuizSession[]; // schema v29
   ankiCards: AnkiCard[];
   cardReviews: CardReviewLog[];
   schemaVersion: number;

@@ -1,4 +1,38 @@
-# Noctyrium Changelog
+# AXOM Changelog
+
+## 0.0.1-prebeta — 2026-07-08 (AXOM pre-beta: question bank + persistence)
+
+The version line resets to pre-beta under the AXOM identity. Persistence keys stay
+frozen (`noctyrium-*`) so every existing install upgrades in place.
+
+- **AXOM rebrand**: new mark (SVG, tintable) + Poppins wordmark, graphite/bone/gold
+  identity palette across the shell, icon set regenerated from the brand asset,
+  placeholder profile names rebranded by migration (real names untouched), storage
+  keys frozen for data safety. Repo/package names intentionally remain internal.
+- **Version/schema unification**: one source of truth in `web/src/lib/brand.ts`
+  (`0.0.1-prebeta`, channel pre-beta); `version.json`, service-worker cache
+  (`axom-v0.0.1-prebeta`), `api/health.ts`, and Tauri metadata now agree. Update
+  notice fires on any deployed-version difference (survives version-line resets),
+  never during an active session, never destructive.
+- **Question bank flagship**: banks/sets, categories, exam styles (IMCQ/ESOP/
+  board/MCAT/shelf/lecture), difficulty, marked flag; multi-question paste parsing
+  with metadata lines; TXT/Markdown/CSV/JSON file import with a mandatory review
+  screen (per-question include + inline editing); PDFs/images attach as provenance
+  only — stated honestly, no fake OCR.
+- **Tutor & exam modes**: tutor blocks with immediate feedback, error-type capture,
+  repair cards, and provider-gated AI actions (explain simply, why was I wrong,
+  memory hook); exam blocks with pool filters (unused/incorrect/marked/category/
+  style), optional timing, flagging, end-of-block review, retake-missed.
+- **Performance tracking**: persisted quiz sessions (schema v29, additive),
+  score by session and category, weakest-category surfacing, retry queue.
+- **AI layer**: question generation from topic/reference behind the review gate;
+  schema-validated outputs; mock/demo provider covers every new action for
+  keyless testing; backend `ensureSchema` aligned with SQL migrations (PIN auth
+  columns + `user_sessions`).
+- **Copy honesty pass**: About page states pre-beta status plainly — alpha cloud
+  sync/PIN, provenance-only PDF import, AnkiConnect needs local verification.
+- 12 new tests (185 total): block parsing, CSV/JSON import, quiz pools/scoring,
+  v29 migration, rebrand-migration safety.
 
 ## 0.2.0-alpha.1 — 2026-07-08 (the daily academic loop)
 

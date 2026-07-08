@@ -1,6 +1,6 @@
-// Noctyrium service worker — offline-first for the installable / downloadable app.
+// AXOM service worker — offline-first for the installable / downloadable app.
 // Cache name is bumped per build via the version query; old caches are purged.
-const CACHE = "noctyrium-v0.1.0-alpha.1";
+const CACHE = "axom-v0.0.1-prebeta";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png"];
 
 self.addEventListener("install", (e) => {

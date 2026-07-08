@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Noctyrium",
-  "version": "0.1.0-alpha.1",
+  "productName": "AXOM",
+  "version": "0.0.1-prebeta",
   "identifier": "com.noctyrium.alpha",
   "build": {
     "beforeDevCommand": "npm --prefix web run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Noctyrium",
+        "title": "AXOM",
         "width": 1440,
         "height": 940,
         "minWidth": 1080,

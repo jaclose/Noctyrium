@@ -12,7 +12,7 @@ const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-  "sessions", "closeouts", "recoveryPlans", "questions", "ankiCards", "cardReviews",
+  "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "ankiCards", "cardReviews",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -67,7 +67,7 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
     "premedExperiences", "prompts", "folders", "logs", "boardPrep" /* handled below */, "blueprintInstalls",
     "dayPlans", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-    "sessions", "closeouts", "recoveryPlans", "questions", "ankiCards", "cardReviews",
+    "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "ankiCards", "cardReviews",
   ] as const;
 
   const merged: Record<string, unknown> = { ...toPortableState(current) };
@@ -201,6 +201,7 @@ export function parseImport(text: string): NoctyriumState {
     closeouts: Array.isArray(data.closeouts) ? data.closeouts : [],
     recoveryPlans: Array.isArray(data.recoveryPlans) ? data.recoveryPlans : [],
     questions: Array.isArray(data.questions) ? data.questions : [],
+    quizSessions: Array.isArray(data.quizSessions) ? data.quizSessions : [],
     ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
     cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
   } as NoctyriumState;

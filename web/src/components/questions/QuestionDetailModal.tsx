@@ -101,10 +101,15 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     >
       <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
         <Tag tone="neutral">{question.status}</Tag>
+        {question.category && <Tag tone="neutral">{question.category}</Tag>}
         {question.system && <Tag tone="neutral">{question.system}</Tag>}
+        {question.bank && <Tag tone="neutral">{question.bank}</Tag>}
         {question.ai?.generated && <Tag tone="purple">AI-generated</Tag>}
         {question.extraction && !question.extraction.reviewed && <Tag tone="orange">Extraction unreviewed</Tag>}
         {question.citation && <span className="sub">{question.citation}</span>}
+        <button className={`filter-pill ${question.marked ? "on" : ""}`} onClick={() => s.toggleQuestionMarked(question.id)}>
+          {question.marked ? "Marked ✓" : "Mark for review"}
+        </button>
       </div>
 
       <div className="question-stem">{question.stem}</div>

@@ -17,6 +17,29 @@ export type QuestionStatus =
 
 export type QuestionSource = "pasted" | "screenshot" | "image" | "pdf" | "imported" | "manual" | "ai-generated";
 
+/** Broad exam-style buckets for filtering and exam-mode pools. */
+export type QuestionExamType = "imcq" | "esop" | "board" | "mcat" | "shelf" | "lecture" | "custom";
+
+export const EXAM_TYPE_LABEL: Record<QuestionExamType, string> = {
+  imcq: "IMCQ",
+  esop: "ESOP",
+  board: "Board-style",
+  mcat: "MCAT-style",
+  shelf: "Shelf-style",
+  lecture: "Lecture-based",
+  custom: "Custom",
+};
+
+export type QuestionDifficulty = "easy" | "medium" | "hard";
+
+/** Suggested category vocabulary — users can type anything; these seed the pickers. */
+export const QUESTION_CATEGORIES = [
+  "Ethics", "Immunology", "Microbiology", "Pathology", "Physiology", "Pharmacology",
+  "Anatomy", "Biochemistry", "Behavioral science", "Public health", "Biostatistics",
+  "Clinical reasoning", "MCAT biology", "MCAT chemistry", "MCAT physics",
+  "MCAT psych/soc", "Custom",
+] as const;
+
 /** Structured error taxonomy (directive §9) — why a question was missed. */
 export type QuestionErrorType =
   | "knowledge-gap"
@@ -84,6 +107,14 @@ export interface QuestionRecord {
   system?: string;
   topic?: string;
   objective?: string;
+  /** Named question bank / set this question belongs to (user-defined). */
+  bank?: string;
+  category?: string;
+  subcategory?: string;
+  examType?: QuestionExamType;
+  difficulty?: QuestionDifficulty;
+  /** User-marked for review — independent of status. */
+  marked?: boolean;
   tags: string[];
   errorType?: QuestionErrorType;
   notes?: string;
@@ -179,6 +210,16 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       system: cleanString(input.system),
       topic: cleanString(input.topic),
       objective: cleanString(input.objective),
+      bank: cleanString(input.bank),
+      category: cleanString(input.category),
+      subcategory: cleanString(input.subcategory),
+      examType: (Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[]).includes(input.examType as QuestionExamType)
+        ? input.examType as QuestionExamType
+        : undefined,
+      difficulty: (["easy", "medium", "hard"] as const).includes(input.difficulty as QuestionDifficulty)
+        ? input.difficulty as QuestionDifficulty
+        : undefined,
+      marked: input.marked === true,
       tags: Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === "string" && !!t.trim()).map((t) => t.trim()) : [],
       errorType,
       notes: cleanString(input.notes),

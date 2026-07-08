@@ -1,20 +1,23 @@
 // ===========================================================================
-// Question Workspace (directive Phase 4) — a central product pillar. Intake
-// (paste/upload → review → save), study/review modes over typed records, the
-// error-pattern insights, and the faculty style analyzer. The page stays slim;
-// the flows live in components/questions/*.
+// Question Workspace — the question-bank flagship (pre-beta §4–8). Import
+// (paste / file / AI, all review-gated), tutor & exam blocks with persisted
+// results, bank browsing with mode filters, performance summaries, error
+// patterns, and the hedged faculty-style analyzer.
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { HelpCircle, ListFilter, Microscope } from "lucide-react";
+import { HelpCircle, ListFilter, Microscope, Play, Timer } from "lucide-react";
 import { useStore } from "../lib/store";
 import {
   analyzeQuestionStyle, dueQuestions, errorPatterns, filterForMode, weakTopics,
   ERROR_TYPE_LABEL, MODE_META,
   type QuestionMode, type QuestionRecord,
 } from "../lib/questions";
-import { GlassCard, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
+import type { QuizMode } from "../lib/quiz";
+import { GlassCard, PanelHeader, Tag, EmptyState, GButton } from "../components/ui/primitives";
 import { StatCard } from "../components/ui/StatCard";
-import { QuestionIntake } from "../components/questions/QuestionIntake";
+import { ImportPanel } from "../components/questions/ImportPanel";
+import { ExamRunner } from "../components/questions/ExamRunner";
+import { PerformancePanel } from "../components/questions/PerformancePanel";
 import { QuestionDetailModal } from "../components/questions/QuestionDetailModal";
 
 const MODES = Object.keys(MODE_META) as QuestionMode[];
@@ -24,6 +27,7 @@ export function QuestionWorkspacePage() {
   const [mode, setMode] = useState<QuestionMode | "all">("all");
   const [open, setOpen] = useState<QuestionRecord | null>(null);
   const [showStyle, setShowStyle] = useState(false);
+  const [runner, setRunner] = useState<{ mode: QuizMode; retakeIds?: string[] } | null>(null);
 
   const due = useMemo(() => dueQuestions(questions), [questions]);
   const incorrect = questions.filter((q) => q.status === "incorrect");
@@ -31,20 +35,39 @@ export function QuestionWorkspacePage() {
   const weak = useMemo(() => weakTopics(questions, 5), [questions]);
   const patterns = useMemo(() => errorPatterns(questions).slice(0, 5), [questions]);
   const style = useMemo(() => (showStyle ? analyzeQuestionStyle(questions) : null), [showStyle, questions]);
+  const runnable = questions.filter((q) => q.options.length >= 2).length;
 
   return (
     <>
       <div className="grid grid-stats">
-        <StatCard icon={<HelpCircle size={17} />} title="Questions" value={String(questions.length)} note="in your workspace" />
+        <StatCard icon={<HelpCircle size={17} />} title="Question bank" value={String(questions.length)} note={`${runnable} runnable in blocks`} />
         <StatCard icon={<ListFilter size={17} />} title="Due for review" value={String(due.length)} note="misses resurface automatically" />
         <StatCard icon={<Microscope size={17} />} title="Incorrect" value={String(incorrect.length)} note="each one is a future asset" />
         <StatCard icon={<Microscope size={17} />} title="Weak topics" value={String(weak.length)} note={weak[0] ? `worst: ${weak[0].topic}` : "none identified yet"} />
       </div>
 
-      <QuestionIntake />
+      <GlassCard>
+        <PanelHeader
+          title="Run a block"
+          sub="Tutor gives feedback after every question; Exam holds explanations until the end and can be timed."
+          action={
+            <div className="row">
+              <GButton size="sm" variant="primary" disabled={!runnable} onClick={() => setRunner({ mode: "tutor" })}>
+                <Play size={14} /> Tutor block
+              </GButton>
+              <GButton size="sm" disabled={!runnable} onClick={() => setRunner({ mode: "exam" })}>
+                <Timer size={14} /> Exam block
+              </GButton>
+            </div>
+          }
+        />
+        {!runnable && <div className="sub">Import questions with at least two answer options to run blocks.</div>}
+      </GlassCard>
+
+      <ImportPanel />
 
       <GlassCard>
-        <PanelHeader title="Work the questions" sub="Modes filter by what each attempt recorded — status, guesses, answer changes, repeat misses." />
+        <PanelHeader title="Browse the bank" sub="Modes filter by what each attempt recorded — status, guesses, answer changes, repeat misses." />
         <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
           <button className={`filter-pill ${mode === "all" ? "on" : ""}`} onClick={() => setMode("all")}>
             All ({questions.length})
@@ -70,15 +93,17 @@ export function QuestionWorkspacePage() {
           <EmptyState
             title={questions.length === 0 ? "No questions yet" : "Nothing in this mode right now"}
             hint={questions.length === 0
-              ? "Paste your first practice question above — misses become review items and repair cards."
-              : "That's not a failure state. Pick another mode or add new questions."}
+              ? "Import your first questions above — misses become review items and repair cards."
+              : "That's not a failure state. Pick another mode or import more questions."}
           />
         ) : (
           <div className="stack gap6">
             {filtered.slice(0, 50).map((q) => (
               <button key={q.id} className="question-row" onClick={() => setOpen(q)}>
                 <span className="grow truncate">{q.stem}</span>
-                {q.topic && <Tag tone="neutral">{q.topic}</Tag>}
+                {q.marked && <Tag tone="purple">marked</Tag>}
+                {q.category && <Tag tone="neutral">{q.category}</Tag>}
+                {!q.category && q.topic && <Tag tone="neutral">{q.topic}</Tag>}
                 <Tag tone={q.status === "correct" ? "green" : q.status === "incorrect" ? "red" : q.status === "unseen" ? "cyan" : "orange"}>
                   {q.status}
                 </Tag>
@@ -90,6 +115,8 @@ export function QuestionWorkspacePage() {
       </GlassCard>
 
       <div className="grid grid-2">
+        <PerformancePanel onRetakeMissed={(ids) => setRunner({ mode: "tutor", retakeIds: ids })} />
+
         <GlassCard>
           <PanelHeader title="Error patterns" sub="Why you miss, not just how often — the taxonomy surfaces repeat behavior." />
           {patterns.length === 0 ? (
@@ -110,30 +137,31 @@ export function QuestionWorkspacePage() {
             </div>
           )}
         </GlassCard>
-
-        <GlassCard>
-          <PanelHeader
-            title="Faculty style analyzer"
-            sub="Broad structural patterns of this question set — hedged observations, never claims about intent."
-            action={<button className="filter-pill" onClick={() => setShowStyle((v) => !v)}>{showStyle ? "Hide" : "Analyze"}</button>}
-          />
-          {!showStyle && <div className="sub">Runs locally over your saved questions.</div>}
-          {style && (
-            <div className="stack gap6">
-              <div className="sub">Sample: {style.sampleSize} questions{style.reliable ? "" : " (small — treat as hints)"}</div>
-              {style.findings.map((f, i) => (
-                <div key={i} className="stack" style={{ gap: 2 }}>
-                  <b style={{ fontSize: 13 }}>{f.observation}</b>
-                  <span className="sub">{f.detail}</span>
-                </div>
-              ))}
-              <div className="sub">{style.suggestion}</div>
-            </div>
-          )}
-        </GlassCard>
       </div>
 
+      <GlassCard>
+        <PanelHeader
+          title="Faculty style analyzer"
+          sub="Broad structural patterns of this question set — hedged observations, never claims about intent."
+          action={<button className="filter-pill" onClick={() => setShowStyle((v) => !v)}>{showStyle ? "Hide" : "Analyze"}</button>}
+        />
+        {!showStyle && <div className="sub">Runs locally over your saved questions.</div>}
+        {style && (
+          <div className="stack gap6">
+            <div className="sub">Sample: {style.sampleSize} questions{style.reliable ? "" : " (small — treat as hints)"}</div>
+            {style.findings.map((f, i) => (
+              <div key={i} className="stack" style={{ gap: 2 }}>
+                <b style={{ fontSize: 13 }}>{f.observation}</b>
+                <span className="sub">{f.detail}</span>
+              </div>
+            ))}
+            <div className="sub">{style.suggestion}</div>
+          </div>
+        )}
+      </GlassCard>
+
       {open && <QuestionDetailModal question={open} onClose={() => setOpen(null)} />}
+      {runner && <ExamRunner mode={runner.mode} retakeIds={runner.retakeIds} onClose={() => setRunner(null)} />}
     </>
   );
 }

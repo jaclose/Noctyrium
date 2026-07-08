@@ -80,6 +80,18 @@ describe("v26 → v27 migration", () => {
     expect(snapshot.state.tasks[0].title).toBe("Old task");
   });
 
+  it("v28→v29 adds quiz sessions; the v28 rebrand touches only placeholder names", () => {
+    // Upgrading from 28: only the additive quizSessions array appears.
+    const from28 = migratePersistedState(structuredClone({ ...v26State(), schemaVersion: 28 }), 28);
+    expect(from28.quizSessions).toEqual([]);
+    // Upgrading from 27 with the old placeholder name: rebranded to the product name.
+    const legacy = { ...v26State(), schemaVersion: 27, profile: { ...v26State().profile, name: "Noctyrium" } };
+    expect(migratePersistedState(structuredClone(legacy), 27).profile.name).toBe("AXOM");
+    // A real user name is never touched by the rebrand.
+    const named = { ...legacy, profile: { ...legacy.profile, name: "JD" } };
+    expect(migratePersistedState(structuredClone(named), 27).profile.name).toBe("JD");
+  });
+
   it("survives a deep-legacy (v1-era) payload without throwing", () => {
     const ancient = {
       profile: { name: "Old" },

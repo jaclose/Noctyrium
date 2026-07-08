@@ -54,6 +54,7 @@ import {
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
+import type { QuizSession } from "./quiz";
 import {
   nextSchedule, validateAnkiCard,
   type AnkiCard, type CardReviewLog, type ReviewRating,
@@ -185,6 +186,10 @@ interface Actions {
   updateQuestion: (id: string, patch: Partial<QuestionRecord>) => void;
   removeQuestion: (id: string) => void;
   recordQuestionAttempt: (id: string, attempt: Omit<QuestionAttempt, "at">) => void;
+
+  // quiz sessions (tutor/exam blocks, schema v29)
+  saveQuizSession: (session: QuizSession) => void;
+  toggleQuestionMarked: (id: string) => void;
 
   // anki card vault (Phase 5) — validated + reviewed before save
   addAnkiCards: (inputs: unknown[]) => { saved: number; errors: string[] };
@@ -858,6 +863,15 @@ export const useStore = create<Store>()(
           questions: (s.questions ?? []).map((q) => (q.id === id ? applyAttempt(q, attempt) : q)),
         })),
 
+      saveQuizSession: (session) =>
+        set((s) => ({
+          quizSessions: [session, ...(s.quizSessions ?? []).filter((q) => q.id !== session.id)].slice(0, 500),
+        })),
+      toggleQuestionMarked: (id) =>
+        set((s) => ({
+          questions: (s.questions ?? []).map((q) => (q.id === id ? { ...q, marked: !q.marked, updatedAt: now() } : q)),
+        })),
+
       addAnkiCards: (inputs) => {
         const errors: string[] = [];
         const cards: AnkiCard[] = [];
@@ -900,7 +914,7 @@ export const useStore = create<Store>()(
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
           habits: [], habitEntries: [],
-          sessions: [], closeouts: [], recoveryPlans: [], questions: [], ankiCards: [], cardReviews: [],
+          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], ankiCards: [], cardReviews: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -923,13 +937,13 @@ export const useStore = create<Store>()(
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, ankiCards, cardReviews, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, ankiCards, cardReviews, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -1186,7 +1200,7 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
     // Rebrand: Noctyrium → Axom. Only cosmetic profile fields change; user
     // names, data, and every storage key stay exactly as they are.
     const profile = isRecord(s.profile) ? s.profile : {};
-    if (isPlaceholderProfileName(profile.name)) profile.name = "Axom";
+    if (isPlaceholderProfileName(profile.name)) profile.name = BRAND.productName;
     if (typeof profile.versionLabel !== "string" || profile.versionLabel.includes("Noctyrium")) {
       profile.versionLabel = APP_VERSION_LABEL;
     }
@@ -1194,6 +1208,11 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       profile.tagline = BRAND.tagline;
     }
     s.profile = normalizeProfile(profile);
+  }
+  if (fromVersion < 29) {
+    // Question bank upgrade: persisted quiz sessions (tutor/exam blocks).
+    // Additive array only; new question metadata fields are optional.
+    s.quizSessions = Array.isArray(s.quizSessions) ? s.quizSessions : [];
   }
   return s as unknown as NoctyriumState;
 }

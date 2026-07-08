@@ -87,6 +87,7 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(16, 18, 26, 0.92);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
@@ -216,6 +217,16 @@
 .option-row.picked { border-color: var(--cyan); background: rgba(56, 189, 248, 0.08); }
 .option-row.correct { border-color: var(--grade-green, #46d27e); background: rgba(70, 210, 126, 0.1); }
 .option-row.wrong { border-color: var(--grade-red, #ff5563); background: rgba(255, 85, 99, 0.09); }
+
+/* --- Question import review ---------------------------------------------------- */
+.import-draft {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+}
+.import-draft.excluded { opacity: 0.45; }
+.import-draft input[type="checkbox"] { accent-color: var(--cyan); }
 
 /* --- Card review ------------------------------------------------------------ */
 .review-face {

@@ -7,7 +7,7 @@
 import { useEffect } from "react";
 import { useStore } from "../../lib/store";
 import { findLiveSession } from "../../lib/sessions";
-import { APP_RELEASE_VERSION, BRAND, STORAGE_KEYS, isNewerVersion } from "../../lib/brand";
+import { APP_RELEASE_VERSION, BRAND, STORAGE_KEYS } from "../../lib/brand";
 import { pushToast } from "../../lib/toast";
 
 interface VersionManifest {
@@ -44,7 +44,10 @@ export function UpdateAvailableWatcher() {
         if (!res.ok) return;
         const manifest = await res.json() as VersionManifest;
         if (stopped || !manifest.version) return;
-        if (!isNewerVersion(manifest.version, APP_RELEASE_VERSION)) return;
+        // Any deployed version that differs from this running build is an
+        // update — deploy detection, not semver ordering, so version-line
+        // resets (e.g. alpha → pre-beta) still reach users.
+        if (manifest.version === APP_RELEASE_VERSION) return;
         if (deferredVersion() === manifest.version) return;
         const notes = (manifest.notes ?? []).slice(0, 3).join(" · ");
         deferVersion(manifest.version); // shown once per app load; reload re-offers

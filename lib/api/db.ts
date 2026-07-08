@@ -66,6 +66,30 @@ async function ensureSchema(sql: SqlClient) {
     WHERE backup_label IS NOT NULL
   `;
 
+  // PIN auth columns (002_pin_auth.sql) — kept in lockstep with migrations.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_hash text`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_salt text`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_iterations integer NOT NULL DEFAULT 210000`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_count integer NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until timestamptz`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash text NOT NULL UNIQUE,
+      device_label text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_seen_at timestamptz NOT NULL DEFAULT now(),
+      expires_at timestamptz NOT NULL
+    )
+  `;
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS user_sessions_user_idx
+    ON user_sessions(user_id, expires_at DESC)
+  `;
+
   await sql`
     CREATE TABLE IF NOT EXISTS sync_change_log (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

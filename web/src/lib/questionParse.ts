@@ -12,16 +12,26 @@ export interface ParsedQuestionDraft {
   options: QuestionOption[];
   correctKey?: string;
   explanation?: string;
+  /** Metadata lines detected in the block ("Topic:", "Source:", …). */
+  topic?: string;
+  system?: string;
+  sourceLabel?: string;
+  category?: string;
+  tags?: string[];
   confidence: ExtractionConfidence;
   warnings: string[];
 }
 
 /** Lines like "A. text", "B) text", "(C) text", "d - text". */
 const OPTION_RE = /^\s*\(?([A-Ha-h])[).:\-–]\s+(.*\S)\s*$/;
-/** "Answer: C", "Correct answer - B", "ANS: A". */
-const ANSWER_RE = /^\s*(?:correct\s+)?ans(?:wer)?\s*[:\-–]?\s*\(?([A-Ha-h])\)?\b/i;
+/** "Answer: C", "Correct answer - B", "ANS: A", "Correct: B". */
+const ANSWER_RE = /^\s*(?:(?:correct\s+)?ans(?:wer)?|correct)\s*[:\-–]?\s*\(?([A-Ha-h])\)?\s*$/i;
 /** "Explanation:", "Rationale:", "Discussion:". */
 const EXPLANATION_RE = /^\s*(explanation|rationale|discussion|why)\s*[:\-–]/i;
+/** Metadata lines: "Topic: Complement", "System: Immuno", "Source: SGU NB3", "Tags: a, b". */
+const META_RE = /^\s*(topic|system|source|category|subject|tags)\s*[:\-–]\s*(.+\S)\s*$/i;
+/** A numbered question start: "1. ", "12) ", "Q3: ", "Question 4." */
+const QUESTION_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,3})\s*[).:]\s+\S/i;
 
 export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const warnings: string[] = [];
@@ -30,6 +40,7 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const stemLines: string[] = [];
   const options: QuestionOption[] = [];
   const explanationLines: string[] = [];
+  const meta: Record<string, string> = {};
   let correctKey: string | undefined;
   let phase: "stem" | "options" | "explanation" = "stem";
 
@@ -37,7 +48,12 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     const optionMatch = line.match(OPTION_RE);
     const answerMatch = line.match(ANSWER_RE);
     const explanationMatch = line.match(EXPLANATION_RE);
+    const metaMatch = line.match(META_RE);
 
+    if (metaMatch && phase !== "stem") {
+      meta[metaMatch[1].toLowerCase()] = metaMatch[2].trim();
+      continue;
+    }
     if (explanationMatch) {
       phase = "explanation";
       const rest = line.replace(EXPLANATION_RE, "").trim();
@@ -92,7 +108,19 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     if (confidence === "high") confidence = "medium";
   }
 
-  return { stem, options, correctKey, explanation, confidence, warnings };
+  return {
+    stem,
+    options,
+    correctKey,
+    explanation,
+    topic: meta.topic,
+    system: meta.system,
+    sourceLabel: meta.source,
+    category: meta.category ?? meta.subject,
+    tags: meta.tags ? meta.tags.split(/[,;]/).map((t) => t.trim()).filter(Boolean) : undefined,
+    confidence,
+    warnings,
+  };
 }
 
 /** Options should start at A (or the next expected letter) — otherwise a line
@@ -100,4 +128,40 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
 function isLikelyFirstOption(letter: string, existing: QuestionOption[]): boolean {
   if (existing.length > 0) return true;
   return letter.toUpperCase() === "A";
+}
+
+/**
+ * Split a pasted block that may contain SEVERAL numbered questions
+ * ("1. …", "Q2) …") into per-question drafts. Falls back to treating the
+ * whole text as one question when no reliable boundaries are found.
+ */
+export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
+  const text = raw.replace(/\r\n?/g, "\n");
+  const lines = text.split("\n");
+  const starts: number[] = [];
+  lines.forEach((line, i) => {
+    if (QUESTION_START_RE.test(line)) starts.push(i);
+  });
+
+  // One (or zero) numbered starts → single-question parse of the whole text.
+  if (starts.length <= 1) {
+    const cleaned = starts.length === 1 ? stripLeadingNumber(text) : text;
+    const draft = parseQuestionText(cleaned);
+    return draft.stem || draft.options.length ? [draft] : [];
+  }
+
+  const drafts: ParsedQuestionDraft[] = [];
+  // Any preamble before the first numbered question is dropped with a warning.
+  for (let b = 0; b < starts.length; b++) {
+    const from = starts[b];
+    const to = b + 1 < starts.length ? starts[b + 1] : lines.length;
+    const block = stripLeadingNumber(lines.slice(from, to).join("\n"));
+    const draft = parseQuestionText(block);
+    if (draft.stem || draft.options.length) drafts.push(draft);
+  }
+  return drafts;
+}
+
+function stripLeadingNumber(block: string): string {
+  return block.replace(/^\s*(?:q(?:uestion)?\s*)?\d{1,3}\s*[).:]\s+/i, "");
 }

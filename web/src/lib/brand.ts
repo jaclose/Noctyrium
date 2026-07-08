@@ -8,13 +8,13 @@
 // ===========================================================================
 
 export const BRAND = {
-  productName: "Axom",
+  productName: "AXOM",
   /** The brand descriptor from the identity guide. */
   tagline: "Private academic operating system",
   /** Short descriptor used in update notices and About copy. */
   productKind: "private academic operating system",
   /** Release channel shown next to versions. */
-  channel: "alpha",
+  channel: "pre-beta",
   /** Public URLs (hosted preview, changelog). */
   hostedUrl: "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard",
   changelogRoute: "about",
@@ -40,8 +40,11 @@ export const STORAGE_KEYS = {
   updateDeferredVersion: "noctyrium-update-deferred",
 } as const;
 
-export const APP_RELEASE_VERSION = "0.2.0-alpha.1";
-export const APP_BUILD_LABEL = `${BRAND.productName} Alpha 2 · v${APP_RELEASE_VERSION}`;
+// Single source of truth for the release line. version.json, sw.js cache name,
+// and api/health.ts must be updated together with this (see release checklist
+// in docs/ALPHA-RELEASE.md).
+export const APP_RELEASE_VERSION = "0.0.1-prebeta";
+export const APP_BUILD_LABEL = `${BRAND.productName} Pre-Beta · v${APP_RELEASE_VERSION}`;
 export const APP_VERSION_LABEL = `${APP_BUILD_LABEL} · web`;
 
 /** True when `candidate` is a newer semver-ish version than `current`. */

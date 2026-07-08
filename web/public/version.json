@@ -1,12 +1,12 @@
 {
-  "app": "Noctyrium",
-  "version": "0.2.0-alpha.1",
-  "schemaVersion": 27,
-  "channel": "alpha",
-  "updatedAt": "2026-07-07T00:00:00.000Z",
+  "app": "AXOM",
+  "version": "0.0.1-prebeta",
+  "schemaVersion": 29,
+  "channel": "pre-beta",
+  "updatedAt": "2026-07-08T00:00:00.000Z",
   "notes": [
-    "Command Brief daily loop with sessions, closeout, and recovery",
-    "Question Workspace with error log and repair cards",
-    "Anki Lab card vault, in-app review, and local AI generation"
+    "AXOM rebrand: new mark, wordmark, and graphite/gold identity",
+    "Question bank: file + multi-question import, exam mode, session results",
+    "Version, schema, and update-safety unification for pre-beta"
   ]
 }

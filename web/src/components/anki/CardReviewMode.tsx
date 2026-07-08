@@ -6,8 +6,10 @@
 // ===========================================================================
 import { useMemo, useState } from "react";
 import { useStore } from "../../lib/store";
-import { dueCards, type ReviewRating } from "../../lib/ankiCards";
+import { dueCards, type AnkiCard, type ReviewRating } from "../../lib/ankiCards";
 import { GlassCard, GButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+
+const NO_CARDS: AnkiCard[] = [];
 
 const RATINGS: Array<{ rating: ReviewRating; label: string; hint: string }> = [
   { rating: "again", label: "Again", hint: "10 min" },
@@ -23,7 +25,7 @@ function clozeText(text: string, revealed: boolean): string {
 
 export function CardReviewMode() {
   const s = useStore();
-  const cards = s.ankiCards ?? [];
+  const cards = s.ankiCards ?? NO_CARDS;
   const [revealed, setRevealed] = useState(false);
   const [shownAt, setShownAt] = useState(() => Date.now());
   const [doneCount, setDoneCount] = useState(0);

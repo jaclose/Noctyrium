@@ -48,11 +48,17 @@ export function AboutPage() {
       <GlassCard pad className="about-hero-card">
         <div className="about-hero">
           <div>
-            <Tag tone="cyan"><Sparkles size={12} /> Alpha 1</Tag>
-            <h2>Axom</h2>
+            <Tag tone="cyan"><Sparkles size={12} /> Pre-Beta</Tag>
+            <h2>AXOM</h2>
             <p>
-              A local-first command surface for medical training: schoolwork, board prep, MCAT/pre-med planning,
-              productivity, reflection, and resources in one adaptable workspace.
+              A private academic operating system: question practice and review, Anki repair cards, weakness
+              tracking, course tracking, board/MCAT/pre-health prep, productivity logs, and daily planning —
+              stored locally on your device with JSON backup/export and optional local AI support.
+            </p>
+            <p className="sub">
+              Pre-beta honesty: cloud sync and PIN login are alpha conveniences, not production-secure auth.
+              PDF/image question imports store provenance only — there is no in-app OCR yet. Direct AnkiConnect
+              sync requires local verification on your machine.
             </p>
           </div>
           <div className="about-principles">
