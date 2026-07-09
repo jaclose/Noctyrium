@@ -167,3 +167,37 @@ export async function generateQuestionDrafts(
   }
   return { drafts: result.value.slice(0, count), warnings: result.errors, promptVersion: QUESTION_PROMPT_VERSION };
 }
+
+/**
+ * Question Intelligence (§AI enhancement): digest of what a question set
+ * tests, common pitfalls, and suggested review targets. Output is labeled
+ * with the provider and stored on the set only after the user opted in.
+ */
+export async function enhanceQuestionSet(
+  provider: AIProvider,
+  req: { title: string; questions: Array<{ stem: string; correct?: string; explanation?: string }> },
+): Promise<{ summary: string; pitfalls: string[]; suggestedReview: string[] }> {
+  const sample = req.questions.slice(0, 25);
+  const raw = await provider.completeJson({
+    system: [
+      "You analyze a set of practice questions for a medical student.",
+      "Identify what the set actually tests, the likely pitfalls (confusable pairs, misread patterns), and 2-4 concrete review targets.",
+      'Return JSON: {"summary": "...", "pitfalls": ["..."], "suggestedReview": ["..."]}. Be specific, never generic filler.',
+    ].join(" "),
+    prompt: [
+      `Set: ${req.title}`,
+      ...sample.map((q, i) => `Q${i + 1}: ${q.stem.slice(0, 400)}${q.correct ? ` [answer: ${q.correct}]` : ""}`),
+    ].join("\n"),
+    maxTokens: 900,
+  });
+  const record = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
+  const summary = typeof record.summary === "string" ? record.summary.trim() : "";
+  const pitfalls = Array.isArray(record.pitfalls)
+    ? record.pitfalls.filter((p): p is string => typeof p === "string" && !!p.trim()).slice(0, 6)
+    : [];
+  const suggestedReview = Array.isArray(record.suggestedReview)
+    ? record.suggestedReview.filter((p): p is string => typeof p === "string" && !!p.trim()).slice(0, 4)
+    : [];
+  if (!summary) throw new Error("The model returned no usable digest.");
+  return { summary, pitfalls, suggestedReview };
+}

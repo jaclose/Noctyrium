@@ -52,6 +52,13 @@ export function createMockProvider(): AIProvider {
           }],
         };
       }
+      if (/pitfalls/i.test(req.system ?? "")) {
+        return {
+          summary: "[DEMO] This set primarily tests complement deficiencies and infection-pattern recognition.",
+          pitfalls: ["[DEMO] Confusing terminal complement with C3 deficiency", "[DEMO] Misreading recurrent viral as bacterial infections"],
+          suggestedReview: ["[DEMO] Revisit T-cell vs B-cell deficiency patterns", "[DEMO] Create Anki cards from missed explanations"],
+        };
+      }
       if (/\{"text"/.test(req.system ?? "")) {
         return { text: "[DEMO] Canned explanation for development — connect a real provider for actual analysis." };
       }

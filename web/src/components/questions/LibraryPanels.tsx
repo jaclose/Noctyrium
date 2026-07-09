@@ -1,0 +1,176 @@
+// ===========================================================================
+// Source Library + Question Sets (layer 3). Documents and sets are separate
+// but linked: a document can be reference-only or feed question sets; a set
+// shows its accuracy, digest (when AI-enhanced), and can launch blocks or
+// generate more questions from its source document (review-gated).
+// ===========================================================================
+import { useMemo, useState } from "react";
+import { FileText, Play, Sparkles, Trash2, BookOpen } from "lucide-react";
+import { useStore } from "../../lib/store";
+import { setAccuracy, type QuestionSet, type SourceDocument } from "../../lib/library";
+import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
+import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+import { Modal } from "../ui/Modal";
+import { pushToast } from "../../lib/toast";
+import type { QuestionRecord } from "../../lib/questions";
+
+const NO_QUESTIONS: QuestionRecord[] = [];
+
+export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: SourceDocument) => void }) {
+  const s = useStore();
+  const documents = s.documents ?? [];
+  const [preview, setPreview] = useState<SourceDocument | null>(null);
+  const provider = useMemo(() => resolveActiveProvider(), []);
+
+  return (
+    <GlassCard>
+      <PanelHeader
+        title="Source Library"
+        sub="Every uploaded file, with its extracted text and linked question sets. Reference-only documents live here too."
+      />
+      {documents.length === 0 ? (
+        <EmptyState
+          icon={<FileText size={18} />}
+          title="No documents yet"
+          hint="Import a PDF, DOCX, or text file in the Import Center — choose 'library document' to keep it here even without questions."
+        />
+      ) : (
+        <div className="stack gap6">
+          {documents.map((doc) => (
+            <div key={doc.id} className="import-draft">
+              <div className="row" style={{ gap: 8 }}>
+                <button className="grow stack card-row-main" onClick={() => setPreview(doc)}>
+                  <span className="truncate" style={{ fontWeight: 600 }}>{doc.title}</span>
+                  <span className="sub truncate">
+                    {doc.fileType.toUpperCase()} · {Math.round(doc.sizeBytes / 1024)} KB · {doc.uploadedAt.slice(0, 10)}
+                    {doc.pageTexts?.length ? ` · ${doc.pageTexts.length} pages` : ""}
+                    · {doc.linkedQuestionSetIds.length ? `${doc.linkedQuestionSetIds.length} linked set${doc.linkedQuestionSetIds.length === 1 ? "" : "s"}` : "reference only"}
+                  </span>
+                </button>
+                {!doc.rawText && <Tag tone="orange">no text</Tag>}
+                {doc.rawText && provider && (
+                  <GhostButton title="Generate questions grounded in this document" onClick={() => onGenerateFrom(doc)}>
+                    <Sparkles size={13} /> Generate
+                  </GhostButton>
+                )}
+                <GhostButton aria-label={`Delete ${doc.title}`} onClick={() => {
+                  if (confirm(`Remove "${doc.title}" from the library? Its questions stay in the bank, unlinked.`)) s.removeDocument(doc.id);
+                }}>
+                  <Trash2 size={13} />
+                </GhostButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {preview && (
+        <Modal title={preview.title} onClose={() => setPreview(null)}>
+          <div className="sub">{preview.fileName} · uploaded {preview.uploadedAt.slice(0, 10)}</div>
+          {preview.rawText
+            ? <div className="question-stem" style={{ maxHeight: 360, overflowY: "auto" }}>{preview.rawText.slice(0, 20_000)}{preview.rawText.length > 20_000 ? "\n…" : ""}</div>
+            : <div className="sub">No extractable text — this file is stored as provenance only (scan/image; OCR isn't available in-app yet).</div>}
+        </Modal>
+      )}
+    </GlassCard>
+  );
+}
+
+export function QuestionSetList({ onRunSet }: { onRunSet: (set: QuestionSet) => void }) {
+  const s = useStore();
+  const sets = s.questionSets ?? [];
+  const questions = s.questions ?? NO_QUESTIONS;
+  const provider = useMemo(() => resolveActiveProvider(), []);
+  const [enhancing, setEnhancing] = useState<string | null>(null);
+
+  const attemptsByQuestion = useMemo(() => {
+    const map = new Map<string, { correct: number; total: number }>();
+    for (const q of questions) {
+      if (!q.attempts.length) continue;
+      const correct = q.attempts.filter((a) => a.status === "correct").length;
+      map.set(q.id, { correct, total: q.attempts.length });
+    }
+    return map;
+  }, [questions]);
+
+  async function enhance(set: QuestionSet) {
+    if (!provider) return;
+    setEnhancing(set.id);
+    try {
+      const byId = new Map(questions.map((q) => [q.id, q]));
+      const forDigest = set.questionIds
+        .map((id) => byId.get(id))
+        .filter((q): q is NonNullable<typeof q> => !!q)
+        .map((q) => ({ stem: q.stem, correct: q.options.find((o) => o.key === q.correctKey)?.text, explanation: q.explanation }));
+      const digest = await enhanceQuestionSet(provider, { title: set.title, questions: forDigest });
+      s.updateQuestionSet(set.id, {
+        aiEnhanced: true,
+        digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() },
+      });
+    } catch (err) {
+      pushToast({ title: "Enhancement failed", body: err instanceof Error ? err.message : "Unknown error.", tone: "warn" });
+    } finally {
+      setEnhancing(null);
+    }
+  }
+
+  return (
+    <GlassCard>
+      <PanelHeader
+        title="Question Sets"
+        sub="Parsed sets with accuracy, source links, and Question Intelligence digests."
+      />
+      {sets.length === 0 ? (
+        <EmptyState
+          icon={<BookOpen size={18} />}
+          title="No sets yet"
+          hint="Import questions in the Import Center and save them as a question set — they'll appear here with accuracy tracking."
+        />
+      ) : (
+        <div className="stack gap6">
+          {sets.map((set) => {
+            const acc = setAccuracy(set, attemptsByQuestion);
+            return (
+              <div key={set.id} className="import-draft">
+                <div className="row" style={{ gap: 8 }}>
+                  <div className="grow stack" style={{ gap: 2, minWidth: 0 }}>
+                    <span className="truncate" style={{ fontWeight: 600 }}>{set.title}</span>
+                    <span className="sub truncate">
+                      {set.questionIds.length} questions · {set.createdAt.slice(0, 10)}
+                      {acc.pct !== null ? ` · ${acc.pct}% accuracy (${acc.correct}/${acc.total})` : " · not attempted yet"}
+                      {set.tags.length ? ` · ${set.tags.join(", ")}` : ""}
+                    </span>
+                  </div>
+                  {set.aiEnhanced && <Tag tone="purple">AI digest</Tag>}
+                  <GButton size="sm" variant="primary" onClick={() => onRunSet(set)}><Play size={13} /> Run</GButton>
+                  {provider && !set.digest && (
+                    <GhostButton disabled={enhancing === set.id} onClick={() => void enhance(set)}>
+                      <Sparkles size={13} /> {enhancing === set.id ? "Analyzing…" : "Digest"}
+                    </GhostButton>
+                  )}
+                  <GhostButton aria-label={`Delete ${set.title}`} onClick={() => {
+                    if (confirm(`Remove the set "${set.title}"? Its questions stay in the bank, unlinked.`)) s.removeQuestionSet(set.id);
+                  }}>
+                    <Trash2 size={13} />
+                  </GhostButton>
+                </div>
+                {set.digest && (
+                  <div className="stack" style={{ gap: 6, marginTop: 10 }}>
+                    <div className="question-explanation">
+                      <b>{set.digest.generatedBy}:</b> {set.digest.summary}
+                    </div>
+                    {set.digest.pitfalls.length > 0 && (
+                      <div className="sub"><b>Pitfalls:</b> {set.digest.pitfalls.join(" · ")}</div>
+                    )}
+                    {set.digest.suggestedReview.length > 0 && (
+                      <div className="sub"><b>Review next:</b> {set.digest.suggestedReview.join(" · ")}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </GlassCard>
+  );
+}

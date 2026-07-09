@@ -1,4 +1,4 @@
-# Noctyrium — Alpha 1 Release Guide
+# AXOM — Alpha 1 Release Guide
 
 How to ship **`0.1.0-alpha.1`**: deploy the web app, build the downloadable
 packages, and publish a GitHub Release. Alpha 1 is **manual-update** for the
@@ -28,8 +28,8 @@ npm --prefix web run package
 
 `package` produces (and the repo ignores) both:
 
-- `web/Noctyrium-web-v0.1.0-alpha.1.zip` — static web bundle (unzip → open `index.html`).
-- `web/Noctyrium-mac-v0.1.0-alpha.1.zip` — double-clickable macOS wrapper (built only on
+- `web/AXOM-web-v0.1.0-alpha.1.zip` — static web bundle (unzip → open `index.html`).
+- `web/AXOM-mac-v0.1.0-alpha.1.zip` — double-clickable macOS wrapper (built only on
   macOS with `swiftc`; ad-hoc signed, not notarized).
 
 Confirm the zips do **not** appear in `git status` (they are gitignored).
@@ -78,14 +78,14 @@ Alpha 1 release assets remain the static web zip and lightweight macOS wrapper.
 ## 4. Draft a GitHub Release
 
 1. Tag: `v0.1.0-alpha.1` (annotated) on the release commit.
-2. Title: `Noctyrium 0.1.0-alpha.1`.
+2. Title: `AXOM 0.1.0-alpha.1`.
 3. Mark it as a **pre-release**.
 4. Body: paste the `0.1.0-alpha.1` section from [`CHANGELOG.md`](../CHANGELOG.md),
    plus the one-line update note: *“Web auto-updates via the hosted link; the Mac
    download is manual for Alpha 1.”*
 5. **Upload these assets:**
-   - `Noctyrium-web-v0.1.0-alpha.1.zip`
-   - `Noctyrium-mac-v0.1.0-alpha.1.zip`
+   - `AXOM-web-v0.1.0-alpha.1.zip`
+   - `AXOM-mac-v0.1.0-alpha.1.zip`
 6. Link the hosted Vercel URL in the release body as the recommended way to use it.
 
 > Distribution is via **GitHub Releases assets** — not GitHub Packages.
@@ -93,8 +93,8 @@ Alpha 1 release assets remain the static web zip and lightweight macOS wrapper.
 ## 5. What users do
 
 - **Easiest:** open the hosted Vercel link (auto-updates).
-- **Offline web:** download `Noctyrium-web-…zip`, unzip, open `index.html`.
-- **Mac app:** download `Noctyrium-mac-…zip`, unzip, right-click `Noctyrium.app`
+- **Offline web:** download `AXOM-web-…zip`, unzip, open `index.html`.
+- **Mac app:** download `AXOM-mac-…zip`, unzip, right-click `AXOM.app`
   → Open once (ad-hoc signed, not notarized).
 
 ## 6. Updating for Alpha 1
@@ -141,7 +141,7 @@ app bundle never overwrites user data.
 
 ## Remaining blockers before the GitHub Release
 
-- Push the release branch and annotated tag to `jaclose/Noctyrium`.
+- Push the release branch and annotated tag to `jaclose/AXOM`.
 - Decide the canonical hosted URL to advertise (a stable Vercel domain or custom domain).
 - Optional: notarize the Mac wrapper (Apple Developer account) to avoid the Gatekeeper prompt.
 - Optional: build/sign/notarize the Tauri bundle once the native shell graduates

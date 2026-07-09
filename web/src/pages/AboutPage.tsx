@@ -3,6 +3,7 @@ import {
   Brain, CheckCircle2, ExternalLink, LineChart, Loader, ShieldCheck, Sparkles, CircleDashed,
 } from "lucide-react";
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
+import { AxomMark, AxomWordmark } from "../components/ui/BrandMark";
 
 const WEBSITE_URL = "https://www.jafardabbagh.com/";
 
@@ -49,7 +50,7 @@ export function AboutPage() {
         <div className="about-hero">
           <div>
             <Tag tone="cyan"><Sparkles size={12} /> Pre-Beta</Tag>
-            <h2>AXOM</h2>
+            <h2 className="row" style={{ gap: 12 }}><AxomMark size={26} /> <AxomWordmark /></h2>
             <p>
               A private academic operating system: question practice and review, Anki repair cards, weakness
               tracking, course tracking, board/MCAT/pre-health prep, productivity logs, and daily planning —

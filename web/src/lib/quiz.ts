@@ -19,6 +19,22 @@ export interface QuizFilters {
   difficulties?: QuestionDifficulty[];
   banks?: string[];
   topics?: string[];
+  /** Restrict to specific question sets / source documents (Block Builder). */
+  setIds?: string[];
+  documentIds?: string[];
+  /** Keep document order instead of shuffling. */
+  ordered?: boolean;
+}
+
+/** A saved, re-runnable custom block definition (Block Builder). */
+export interface QuizBlock {
+  id: ID;
+  title: string;
+  mode: QuizMode;
+  timed: boolean;
+  filters: QuizFilters;
+  createdAt: string;
+  lastRunAt?: string;
 }
 
 export interface QuizAnswer {
@@ -71,7 +87,18 @@ export function buildQuizPool(questions: QuestionRecord[], filters: QuizFilters)
     const set = new Set(filters.topics.map((t) => t.toLowerCase()));
     pool = pool.filter((q) => q.topic && set.has(q.topic.toLowerCase()));
   }
-  return shuffle(pool).slice(0, Math.max(1, filters.count));
+  if (filters.setIds?.length) {
+    const set = new Set(filters.setIds);
+    pool = pool.filter((q) => q.setId && set.has(q.setId));
+  }
+  if (filters.documentIds?.length) {
+    const set = new Set(filters.documentIds);
+    pool = pool.filter((q) => q.sourceDocumentId && set.has(q.sourceDocumentId));
+  }
+  const picked = filters.ordered
+    ? [...pool].sort((a, b) => (a.questionNumber ?? 0) - (b.questionNumber ?? 0))
+    : shuffle(pool);
+  return picked.slice(0, Math.max(1, filters.count));
 }
 
 /** Deterministic-enough Fisher–Yates; callers wanting stable order can sort after. */

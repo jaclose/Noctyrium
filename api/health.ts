@@ -8,6 +8,6 @@ export default withApi(["GET"], async (_req, res) => {
     version: "0.0.1-prebeta",
     databaseConfigured: hasDatabase(),
     aiProvider: process.env.AI_PROVIDER || "mock",
-    schemaVersion: Number(process.env.APP_SCHEMA_VERSION || 29),
+    schemaVersion: Number(process.env.APP_SCHEMA_VERSION || 30),
   });
 }, { rateLimit: 120 });

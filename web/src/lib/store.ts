@@ -54,7 +54,8 @@ import {
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
-import type { QuizSession } from "./quiz";
+import type { QuizBlock, QuizSession } from "./quiz";
+import type { QuestionSet, SourceDocument } from "./library";
 import {
   nextSchedule, validateAnkiCard,
   type AnkiCard, type CardReviewLog, type ReviewRating,
@@ -190,6 +191,17 @@ interface Actions {
   // quiz sessions (tutor/exam blocks, schema v29)
   saveQuizSession: (session: QuizSession) => void;
   toggleQuestionMarked: (id: string) => void;
+
+  // question-bank library (schema v30) — documents, sets, saved blocks
+  addDocument: (doc: SourceDocument) => void;
+  updateDocument: (id: string, patch: Partial<SourceDocument>) => void;
+  removeDocument: (id: string) => void;
+  addQuestionSet: (set: QuestionSet) => void;
+  updateQuestionSet: (id: string, patch: Partial<QuestionSet>) => void;
+  /** Remove a set; its questions stay in the bank, unlinked (never silent data loss). */
+  removeQuestionSet: (id: string) => void;
+  saveQuizBlock: (block: QuizBlock) => void;
+  removeQuizBlock: (id: string) => void;
 
   // anki card vault (Phase 5) — validated + reviewed before save
   addAnkiCards: (inputs: unknown[]) => { saved: number; errors: string[] };
@@ -872,6 +884,38 @@ export const useStore = create<Store>()(
           questions: (s.questions ?? []).map((q) => (q.id === id ? { ...q, marked: !q.marked, updatedAt: now() } : q)),
         })),
 
+      addDocument: (doc) =>
+        set((s) => ({ documents: [doc, ...(s.documents ?? []).filter((d) => d.id !== doc.id)] })),
+      updateDocument: (id, patch) =>
+        set((s) => ({ documents: (s.documents ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+      removeDocument: (id) =>
+        set((s) => ({
+          documents: (s.documents ?? []).filter((d) => d.id !== id),
+          questionSets: (s.questionSets ?? []).map((qs) => ({
+            ...qs,
+            sourceDocumentIds: qs.sourceDocumentIds.filter((did) => did !== id),
+          })),
+          questions: (s.questions ?? []).map((q) =>
+            q.sourceDocumentId === id ? { ...q, sourceDocumentId: undefined } : q),
+        })),
+      addQuestionSet: (qset) =>
+        set((s) => ({ questionSets: [qset, ...(s.questionSets ?? []).filter((x) => x.id !== qset.id)] })),
+      updateQuestionSet: (id, patch) =>
+        set((s) => ({ questionSets: (s.questionSets ?? []).map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      removeQuestionSet: (id) =>
+        set((s) => ({
+          questionSets: (s.questionSets ?? []).filter((x) => x.id !== id),
+          documents: (s.documents ?? []).map((d) => ({
+            ...d,
+            linkedQuestionSetIds: d.linkedQuestionSetIds.filter((sid) => sid !== id),
+          })),
+          questions: (s.questions ?? []).map((q) => (q.setId === id ? { ...q, setId: undefined } : q)),
+        })),
+      saveQuizBlock: (block) =>
+        set((s) => ({ quizBlocks: [block, ...(s.quizBlocks ?? []).filter((b) => b.id !== block.id)].slice(0, 200) })),
+      removeQuizBlock: (id) =>
+        set((s) => ({ quizBlocks: (s.quizBlocks ?? []).filter((b) => b.id !== id) })),
+
       addAnkiCards: (inputs) => {
         const errors: string[] = [];
         const cards: AnkiCard[] = [];
@@ -914,7 +958,7 @@ export const useStore = create<Store>()(
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
           habits: [], habitEntries: [],
-          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], ankiCards: [], cardReviews: [],
+          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], documents: [], questionSets: [], quizBlocks: [], ankiCards: [], cardReviews: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -937,13 +981,13 @@ export const useStore = create<Store>()(
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -1213,6 +1257,14 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
     // Question bank upgrade: persisted quiz sessions (tutor/exam blocks).
     // Additive array only; new question metadata fields are optional.
     s.quizSessions = Array.isArray(s.quizSessions) ? s.quizSessions : [];
+  }
+  if (fromVersion < 30) {
+    // Import rehaul: source-document library, formal question sets, saved
+    // quiz blocks. Additive arrays only — existing questions keep working
+    // unlinked and can be attached to sets later.
+    s.documents = Array.isArray(s.documents) ? s.documents : [];
+    s.questionSets = Array.isArray(s.questionSets) ? s.questionSets : [];
+    s.quizBlocks = Array.isArray(s.quizBlocks) ? s.quizBlocks : [];
   }
   return s as unknown as NoctyriumState;
 }

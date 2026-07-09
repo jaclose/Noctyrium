@@ -92,6 +92,15 @@ describe("v26 → v27 migration", () => {
     expect(migratePersistedState(structuredClone(named), 27).profile.name).toBe("JD");
   });
 
+  it("v29→v30 adds the library arrays without touching questions", () => {
+    const state = { ...v26State(), schemaVersion: 29, questions: [{ id: "q1", stem: "s" }] };
+    const result = migratePersistedState(structuredClone(state), 29);
+    expect(result.documents).toEqual([]);
+    expect(result.questionSets).toEqual([]);
+    expect(result.quizBlocks).toEqual([]);
+    expect(result.questions).toEqual([{ id: "q1", stem: "s" }]);
+  });
+
   it("survives a deep-legacy (v1-era) payload without throwing", () => {
     const ancient = {
       profile: { name: "Old" },

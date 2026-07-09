@@ -107,8 +107,14 @@ export interface QuestionRecord {
   system?: string;
   topic?: string;
   objective?: string;
-  /** Named question bank / set this question belongs to (user-defined). */
+  /** Named question bank / set this question belongs to (user-defined label). */
   bank?: string;
+  /** Formal links into the library (schema v30): set + source document. */
+  setId?: ID;
+  sourceDocumentId?: ID;
+  /** The source document's own numbering and page, when known. */
+  questionNumber?: number;
+  sourcePage?: number;
   category?: string;
   subcategory?: string;
   examType?: QuestionExamType;
@@ -211,6 +217,10 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       topic: cleanString(input.topic),
       objective: cleanString(input.objective),
       bank: cleanString(input.bank),
+      setId: typeof input.setId === "string" && input.setId ? input.setId : undefined,
+      sourceDocumentId: typeof input.sourceDocumentId === "string" && input.sourceDocumentId ? input.sourceDocumentId : undefined,
+      questionNumber: typeof input.questionNumber === "number" && input.questionNumber > 0 ? Math.floor(input.questionNumber) : undefined,
+      sourcePage: typeof input.sourcePage === "number" && input.sourcePage > 0 ? Math.floor(input.sourcePage) : undefined,
       category: cleanString(input.category),
       subcategory: cleanString(input.subcategory),
       examType: (Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[]).includes(input.examType as QuestionExamType)

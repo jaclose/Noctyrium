@@ -1,10 +1,10 @@
-# Noctyrium — Web
+# AXOM — Web
 
 A premium, **local-first** command center for medical-school execution — courses,
 mastery tracking, productivity logging, daily standups, journal, prompt library,
 modular folders, tasks, reports, and STEP 1 prep — rebuilt as a **deployable web app**.
 
-This is the web port of the original SwiftUI/macOS Noctyrium. It runs in VS Code
+This is the web port of the original SwiftUI/macOS AXOM. It runs in VS Code
 via a dev server, builds to a static bundle you can host or hand out as a download,
 and can also be wrapped into a double-clickable macOS app package.
 
@@ -54,7 +54,7 @@ That's the whole dev loop — no Xcode, no native build, nothing installed on th
 
 ## Optional cloud backend
 
-Noctyrium keeps the Local Vault as the default persistence layer. The backend is
+AXOM keeps the Local Vault as the default persistence layer. The backend is
 an optional sync layer for name-only accounts, full JSON snapshots, manual cloud
 backups, restore, and mock AI endpoints.
 
@@ -129,7 +129,7 @@ npm run preview      # serve the build locally to sanity-check
 `vite.config.ts` sets `base: "./"`, so the same `dist/` works when **served at any
 path**, **embedded in an iframe**, or **opened from `file://`** after unzipping.
 
-## Three ways to put it on the Noctyrium website
+## Three ways to put it on the AXOM website
 
 ### 1. Standalone page / hyperlink
 Host the contents of `web/dist/` at e.g. `noctyrium.<yoursite>.com` or
@@ -140,7 +140,7 @@ Host the contents of `web/dist/` at e.g. `noctyrium.<yoursite>.com` or
 Drop an iframe in:
 
 ```html
-<iframe src="/noctyrium/" title="Noctyrium" loading="lazy" allow="clipboard-write"
+<iframe src="/noctyrium/" title="AXOM" loading="lazy" allow="clipboard-write"
         style="width:100%;height:760px;border:0;border-radius:22px;background:#05060d"></iframe>
 ```
 
@@ -153,8 +153,8 @@ npm run package
 ```
 This builds and zips:
 
-- `Noctyrium-web-v<version>.zip` — portable static web app. Unzip and open `index.html`.
-- `Noctyrium-mac-v<version>.zip` — double-clickable macOS app. Unzip and open `Noctyrium.app`.
+- `AXOM-web-v<version>.zip` — portable static web app. Unzip and open `index.html`.
+- `AXOM-mac-v<version>.zip` — double-clickable macOS app. Unzip and open `AXOM.app`.
 
 Neither package requires npm, Vite, or localhost. The Mac app is ad-hoc signed for
 local use, not notarized; if macOS blocks it after download, right-click the app

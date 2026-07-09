@@ -1,4 +1,4 @@
-# Noctyrium — Update Policy
+# AXOM — Update Policy
 
 The one rule: **app code is disposable; user data is sacred.** Updates replace
 the app, never the data.
@@ -8,8 +8,8 @@ the app, never the data.
 | Channel | How it updates | Auto? |
 |---|---|---|
 | **Hosted web (Vercel)** | Push to the default branch → Vercel redeploys → the service worker refreshes the cached app shell on the user's next load. | ✅ Automatic |
-| **Downloadable web zip** | User re-downloads the newer `Noctyrium-web-*.zip` and replaces their unzipped copy. | ❌ Manual |
-| **Downloadable Mac wrapper** | User re-downloads the newer `Noctyrium-mac-*.zip` from the GitHub Release. | ❌ Manual (Alpha 1) |
+| **Downloadable web zip** | User re-downloads the newer `AXOM-web-*.zip` and replaces their unzipped copy. | ❌ Manual |
+| **Downloadable Mac wrapper** | User re-downloads the newer `AXOM-mac-*.zip` from the GitHub Release. | ❌ Manual (Alpha 1) |
 | **Experimental Tauri shell** | Scaffold only for now; future release assets should come from signed Tauri bundles on GitHub Releases. | ❌ Manual / unreleased |
 
 There is **no in-app auto-updater in Alpha 1**, and we do **not** ship a fake one.
@@ -46,7 +46,7 @@ The repository now has the start of the real desktop shell. The production plan 
 - **Tauri v2 updater** checking a static `latest.json` (or GitHub Releases) for
   signed update artifacts; app downloads, verifies signature, installs, restarts.
 - User data stays in the OS app-data directory (e.g.
-  `~/Library/Application Support/Noctyrium/`), never inside the app bundle, so
+  `~/Library/Application Support/AXOM/`), never inside the app bundle, so
   installs/updates never disturb progress.
 - SQLite is only introduced **with** that real Tauri shell — not before.
 - SQLite snapshots are now scaffolded in `src-tauri/`; automatic native updates

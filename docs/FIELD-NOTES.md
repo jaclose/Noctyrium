@@ -2,7 +2,7 @@
 
 ## Live Deployment
 
-Noctyrium Alpha has a hosted web instance for demos, testing, and website embedding:
+AXOM Alpha has a hosted web instance for demos, testing, and website embedding:
 
 - **Hosted Alpha:** https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard
 - **Package download:** pending GitHub release/package link

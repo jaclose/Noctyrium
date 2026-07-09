@@ -12,7 +12,7 @@ const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-  "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "ankiCards", "cardReviews",
+  "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
 ] as const;
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
@@ -67,7 +67,7 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
     "premedExperiences", "prompts", "folders", "logs", "boardPrep" /* handled below */, "blueprintInstalls",
     "dayPlans", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-    "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "ankiCards", "cardReviews",
+    "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
   ] as const;
 
   const merged: Record<string, unknown> = { ...toPortableState(current) };
@@ -202,6 +202,9 @@ export function parseImport(text: string): NoctyriumState {
     recoveryPlans: Array.isArray(data.recoveryPlans) ? data.recoveryPlans : [],
     questions: Array.isArray(data.questions) ? data.questions : [],
     quizSessions: Array.isArray(data.quizSessions) ? data.quizSessions : [],
+    documents: Array.isArray(data.documents) ? data.documents : [],
+    questionSets: Array.isArray(data.questionSets) ? data.questionSets : [],
+    quizBlocks: Array.isArray(data.quizBlocks) ? data.quizBlocks : [],
     ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
     cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
   } as NoctyriumState;

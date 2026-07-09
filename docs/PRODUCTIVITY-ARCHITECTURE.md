@@ -2,7 +2,7 @@
 
 Status notes + a careful plan for the "one file per study day" work that
 v0.03.01.5's CHANGELOG flagged as *"not functional yet."* This is the fragile
-core of Noctyrium — **change it conservatively, prove each step, never cut over blind.**
+core of AXOM — **change it conservatively, prove each step, never cut over blind.**
 
 ## Current state (mapped 2026-06)
 
@@ -11,10 +11,10 @@ Files (all live under `~/Medical School/09 Admin/App Data/`, outside the code re
 | File | Header / shape | Role |
 |---|---|---|
 | `productivity_log.csv` | `date,type,minutes,cards,note` | Append-only event log (all study events ever) |
-| `Noctyrium/Productivity/Days/<YYYY-MM-DD>.csv` | `timestamp,type,minutes,cards,note` | **Per-day files — partially populated.** The intended source of truth per day |
-| `Noctyrium/Productivity/active_study_day.txt` | `YYYY-MM-DD` | Pointer to the current study day (fallback: `manual_study_day.txt`) |
-| `Noctyrium/Productivity/productivity_day_archive.csv` | `date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_*,energy,rating,updated` | One row appended per "Start New Study Day" |
-| `Noctyrium/Productivity/productivity_day_offset.csv` | `base_minutes,base_anki,updated` | Per-day baseline offset |
+| `AXOM/Productivity/Days/<YYYY-MM-DD>.csv` | `timestamp,type,minutes,cards,note` | **Per-day files — partially populated.** The intended source of truth per day |
+| `AXOM/Productivity/active_study_day.txt` | `YYYY-MM-DD` | Pointer to the current study day (fallback: `manual_study_day.txt`) |
+| `AXOM/Productivity/productivity_day_archive.csv` | `date_key,study_minutes,anki_cards,completed_tasks,open_tasks,standup_*,energy,rating,updated` | One row appended per "Start New Study Day" |
+| `AXOM/Productivity/productivity_day_offset.csv` | `base_minutes,base_anki,updated` | Per-day baseline offset |
 
 **External dependency:** stats shown on the Dashboard are computed by a shell
 script the app shells out to at runtime —

@@ -1,8 +1,13 @@
-# Noctyrium
+# AXOM
 
-Noctyrium is a premium, local-first medical school command center for SGU and
-medical students. Alpha 1 is centered on the deployable Vite/React web app in
-[`web/`](web/) with optional Vercel serverless backend sync.
+AXOM is a private academic operating system for high-pressure learners — a
+local-first question bank, study engine, and command center. The pre-beta is
+centered on the deployable Vite/React web app in [`web/`](web/) with optional
+Vercel serverless backend sync.
+
+> Note: the repository folder, npm package names, and all persisted storage
+> keys intentionally remain `noctyrium-*` — they are frozen legacy identifiers
+> so every existing install keeps its data across the rebrand.
 
 The app combines:
 
@@ -113,8 +118,8 @@ npm --prefix web run package
 
 This creates:
 
-- `web/Noctyrium-web-v0.1.0-alpha.1.zip`
-- `web/Noctyrium-mac-v0.1.0-alpha.1.zip` on macOS with `swiftc`
+- `web/AXOM-web-v0.1.0-alpha.1.zip`
+- `web/AXOM-mac-v0.1.0-alpha.1.zip` on macOS with `swiftc`
 
 Generated packages, `dist/`, cache files, and personal study folders are ignored
 and should not be committed.
@@ -152,7 +157,7 @@ release steps: [`docs/ALPHA-RELEASE.md`](docs/ALPHA-RELEASE.md).
 The original SwiftUI/macOS source is still present in:
 
 - [`Package.swift`](Package.swift)
-- [`Sources/Noctyrium/MedicalSchoolHub.swift`](Sources/Noctyrium/MedicalSchoolHub.swift)
+- [`Sources/AXOM/MedicalSchoolHub.swift`](Sources/AXOM/MedicalSchoolHub.swift)
 - [`scripts/build_app.sh`](scripts/build_app.sh)
 
 That Swift native app is legacy for now. Alpha 1 development and deployment

@@ -1,9 +1,10 @@
 // Pre-beta question bank: multi-question parsing, file import, and quiz
 // session scoring/pools — the flagship loop's domain logic.
 import { describe, expect, it } from "vitest";
-import { parseQuestionBlocks, parseQuestionText } from "./questionParse";
+import { parseQuestionBlocks, parseQuestionText, splitAnswerKeySection } from "./questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, parseCsv } from "./questionImport";
 import { buildQuizPool, missedQuestionIds, scoreSession, scoresByCategory, type QuizSession } from "./quiz";
+import { setAccuracy, type QuestionSet } from "./library";
 import type { QuestionRecord } from "./questions";
 
 function makeQuestion(patch: Partial<QuestionRecord> = {}): QuestionRecord {
@@ -47,6 +48,91 @@ describe("multi-question paste parsing", () => {
     expect(draft.topic).toBe("Complement");
     expect(draft.sourceLabel).toBe("SGU NB3");
     expect(draft.tags).toEqual(["immuno", "hy"]);
+  });
+
+  it("retains the document's question numbers", () => {
+    const drafts = parseQuestionBlocks("7. Stem seven?\nA. x\nB. y\n\n8) Stem eight?\nA. x\nB. y");
+    expect(drafts.map((d) => d.questionNumber)).toEqual([7, 8]);
+  });
+});
+
+describe("answer-key section mapping", () => {
+  it("parses key formats: '1. C', '2-B', '3) D', 'Question 4: A'", () => {
+    const { answerKey } = splitAnswerKeySection("body\nAnswer Key\n1. C\n2-B\n3) D\nQuestion 4: A");
+    expect(answerKey.get(1)).toBe("C");
+    expect(answerKey.get(2)).toBe("B");
+    expect(answerKey.get(3)).toBe("D");
+    expect(answerKey.get(4)).toBe("A");
+  });
+
+  it("parses the inline form 'Answers: 1C, 2B, 3D'", () => {
+    const { answerKey, body } = splitAnswerKeySection("Question body here\nAnswers: 1C, 2B, 3D");
+    expect([...answerKey.entries()]).toEqual([[1, "C"], [2, "B"], [3, "D"]]);
+    expect(body).not.toMatch(/Answers:/);
+  });
+
+  it("maps a trailing key onto numbered questions and clears the missing-answer warning", () => {
+    const drafts = parseQuestionBlocks([
+      "1. First?", "A. x", "B. y", "C. z", "",
+      "2. Second?", "A. x", "B. y", "C. z", "",
+      "Answer key:", "1. B", "2. C",
+    ].join("\n"));
+    expect(drafts[0].correctKey).toBe("B");
+    expect(drafts[1].correctKey).toBe("C");
+    expect(drafts[0].warnings.join(" ")).not.toMatch(/no correct answer/i);
+  });
+
+  it("flags conflicting or impossible key entries instead of guessing", () => {
+    const conflicted = parseQuestionBlocks([
+      "1. First?", "A. x", "B. y", "",
+      "Answer key:", "1. A", "1. B",
+    ].join("\n"));
+    expect(conflicted[0].correctKey).toBeUndefined();
+    expect(conflicted[0].warnings.join(" ")).toMatch(/conflicting/i);
+
+    const impossible = parseQuestionBlocks([
+      "1. First?", "A. x", "B. y", "",
+      "Answer key:", "1. F",
+    ].join("\n"));
+    expect(impossible[0].correctKey).toBeUndefined();
+    expect(impossible[0].warnings.join(" ")).toMatch(/no such option/i);
+  });
+
+  it("an explicit in-question answer wins over the key", () => {
+    const drafts = parseQuestionBlocks([
+      "1. First?", "A. x", "B. y", "Answer: A", "",
+      "2. Second?", "A. x", "B. y", "",
+      "Answer key:", "1. B", "2. B",
+    ].join("\n"));
+    expect(drafts[0].correctKey).toBe("A");
+    expect(drafts[1].correctKey).toBe("B");
+  });
+});
+
+describe("library links", () => {
+  it("pools by setId and documentId, and honors ordered mode", () => {
+    const qs = [
+      makeQuestion({ id: "a", setId: "set1", questionNumber: 2 }),
+      makeQuestion({ id: "b", setId: "set1", questionNumber: 1 }),
+      makeQuestion({ id: "c", setId: "set2", sourceDocumentId: "doc9" }),
+    ];
+    expect(buildQuizPool(qs, { count: 10, status: "all", setIds: ["set1"] })).toHaveLength(2);
+    expect(buildQuizPool(qs, { count: 10, status: "all", documentIds: ["doc9"] }).map((q) => q.id)).toEqual(["c"]);
+    const ordered = buildQuizPool(qs, { count: 10, status: "all", setIds: ["set1"], ordered: true });
+    expect(ordered.map((q) => q.id)).toEqual(["b", "a"]);
+  });
+
+  it("computes set accuracy from attempt history", () => {
+    const set: QuestionSet = {
+      id: "s1", title: "Set", sourceDocumentIds: [], createdAt: "t",
+      questionIds: ["a", "b", "never"], tags: [], aiEnhanced: false, parserWarnings: [],
+    };
+    const attempts = new Map([
+      ["a", { correct: 2, total: 2 }],
+      ["b", { correct: 0, total: 2 }],
+    ]);
+    expect(setAccuracy(set, attempts)).toEqual({ correct: 2, total: 4, pct: 50 });
+    expect(setAccuracy({ ...set, questionIds: ["never"] }, attempts).pct).toBeNull();
   });
 });
 

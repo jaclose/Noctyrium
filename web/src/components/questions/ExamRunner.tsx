@@ -26,22 +26,27 @@ const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
 
 type Stage = "setup" | "running" | "results";
 
-export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
+export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClose }: {
   mode: QuizMode;
   /** When set, skips setup and runs exactly these questions (retake missed). */
   retakeIds?: string[];
+  /** Pre-fill the setup (run-from-set, saved blocks). */
+  presetFilters?: Partial<QuizFilters>;
   onClose: () => void;
 }) {
   const s = useStore();
   const questions = s.questions ?? [];
+  const questionSets = s.questionSets ?? [];
   const [mode, setMode] = useState<QuizMode>(initialMode);
   const [stage, setStage] = useState<Stage>(retakeIds?.length ? "running" : "setup");
 
   // --- setup state
-  const [count, setCount] = useState(10);
-  const [status, setStatus] = useState<QuizFilters["status"]>("all");
-  const [category, setCategory] = useState("");
-  const [examType, setExamType] = useState<QuestionExamType | "">("");
+  const [count, setCount] = useState(presetFilters?.count ?? 10);
+  const [status, setStatus] = useState<QuizFilters["status"]>(presetFilters?.status ?? "all");
+  const [category, setCategory] = useState(presetFilters?.categories?.[0] ?? "");
+  const [examType, setExamType] = useState<QuestionExamType | "">(presetFilters?.examTypes?.[0] ?? "");
+  const [setIds, setSetIds] = useState<string[]>(presetFilters?.setIds ?? []);
+  const [ordered, setOrdered] = useState(presetFilters?.ordered ?? false);
   const [timed, setTimed] = useState(false);
   const [minutesPerQ] = useState(1.5);
 
@@ -78,13 +83,33 @@ export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, stage, timed]);
 
-  function begin() {
-    const filters: QuizFilters = {
+  function currentFilters(): QuizFilters {
+    return {
       count,
       status,
       categories: category ? [category] : undefined,
       examTypes: examType ? [examType] : undefined,
+      setIds: setIds.length ? setIds : undefined,
+      ordered: ordered || undefined,
     };
+  }
+
+  function saveAsBlock() {
+    const title = prompt("Name this block (it appears in Block Builder):", "");
+    if (!title?.trim()) return;
+    s.saveQuizBlock({
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      mode,
+      timed,
+      filters: currentFilters(),
+      createdAt: new Date().toISOString(),
+    });
+    pushToast({ title: "Block saved", body: "Rerun it any time from Block Builder.", tone: "success" });
+  }
+
+  function begin() {
+    const filters = currentFilters();
     const built = buildQuizPool(questions, filters);
     if (built.length === 0) {
       pushToast({ title: "No questions match", body: "Loosen the filters or import more questions first.", tone: "warn" });
@@ -152,7 +177,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
       endedAt: new Date().toISOString(),
       timed,
       timeLimitSeconds,
-      filters: { count, status, categories: category ? [category] : undefined, examTypes: examType ? [examType] : undefined },
+      filters: currentFilters(),
       questionIds: pool.map((q) => q.id),
       answers: answerList,
       score: scoreSession(answerList),
@@ -230,7 +255,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
   if (stage === "setup") {
     return (
       <Modal title={mode === "exam" ? "Set up an exam block" : "Set up a tutor block"} onClose={onClose}
-        footer={<GButton variant="primary" onClick={begin}><Play size={14} /> Start {mode} block</GButton>}>
+        footer={
+          <>
+            <GhostButton onClick={saveAsBlock}>Save as block</GhostButton>
+            <GButton variant="primary" onClick={begin}><Play size={14} /> Start {mode} block</GButton>
+          </>
+        }>
         <div className="row" style={{ gap: 6 }}>
           {(["tutor", "exam"] as QuizMode[]).map((m) => (
             <button key={m} className={`filter-pill ${mode === m ? "on" : ""}`} onClick={() => setMode(m)}>
@@ -238,6 +268,19 @@ export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
             </button>
           ))}
         </div>
+        {questionSets.length > 0 && (
+          <div className="stack gap6">
+            <span className="field-label">Question sets (none selected = whole bank)</span>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              {questionSets.map((qset) => (
+                <button key={qset.id} className={`filter-pill ${setIds.includes(qset.id) ? "on" : ""}`}
+                  onClick={() => setSetIds((prev) => prev.includes(qset.id) ? prev.filter((x) => x !== qset.id) : [...prev, qset.id])}>
+                  {qset.title} ({qset.questionIds.length})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="stack gap6">
           <span className="field-label">How many questions</span>
           <div className="row" style={{ flexWrap: "wrap" }}>
@@ -264,6 +307,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, onClose }: {
             {EXAM_TYPES.map((t) => <option key={t} value={t}>{EXAM_TYPE_LABEL[t]}</option>)}
           </SelectField>
         </div>
+        <label className="row" style={{ gap: 8, cursor: "pointer" }}>
+          <input type="checkbox" checked={ordered} onChange={() => setOrdered((v) => !v)} />
+          <span>Keep document order (instead of shuffling)</span>
+        </label>
         {mode === "exam" && (
           <label className="row" style={{ gap: 8, cursor: "pointer" }}>
             <input type="checkbox" checked={timed} onChange={() => setTimed((v) => !v)} />

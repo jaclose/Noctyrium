@@ -18,6 +18,10 @@ export interface ParsedQuestionDraft {
   sourceLabel?: string;
   category?: string;
   tags?: string[];
+  /** The document's own question number, when present ("12." → 12). */
+  questionNumber?: number;
+  /** Page in the source document this question came from (PDF imports). */
+  sourcePage?: number;
   confidence: ExtractionConfidence;
   warnings: string[];
 }
@@ -132,36 +136,112 @@ function isLikelyFirstOption(letter: string, existing: QuestionOption[]): boolea
 
 /**
  * Split a pasted block that may contain SEVERAL numbered questions
- * ("1. …", "Q2) …") into per-question drafts. Falls back to treating the
- * whole text as one question when no reliable boundaries are found.
+ * ("1. …", "Q2) …") into per-question drafts, then map any trailing answer-key
+ * section ("Answer key: 1. C  2. B", "1-C", "Answers: 1C, 2B") back onto the
+ * questions by number. Ambiguous keys are flagged, never invented.
  */
 export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
-  const text = raw.replace(/\r\n?/g, "\n");
-  const lines = text.split("\n");
+  const { body, answerKey } = splitAnswerKeySection(raw.replace(/\r\n?/g, "\n"));
+  const lines = body.split("\n");
   const starts: number[] = [];
   lines.forEach((line, i) => {
     if (QUESTION_START_RE.test(line)) starts.push(i);
   });
 
+  let drafts: ParsedQuestionDraft[];
   // One (or zero) numbered starts → single-question parse of the whole text.
   if (starts.length <= 1) {
-    const cleaned = starts.length === 1 ? stripLeadingNumber(text) : text;
+    const number = starts.length === 1 ? leadingNumber(body) : undefined;
+    const cleaned = starts.length === 1 ? stripLeadingNumber(body) : body;
     const draft = parseQuestionText(cleaned);
-    return draft.stem || draft.options.length ? [draft] : [];
+    draft.questionNumber = number;
+    drafts = draft.stem || draft.options.length ? [draft] : [];
+  } else {
+    drafts = [];
+    // Any preamble before the first numbered question is dropped.
+    for (let b = 0; b < starts.length; b++) {
+      const from = starts[b];
+      const to = b + 1 < starts.length ? starts[b + 1] : lines.length;
+      const block = lines.slice(from, to).join("\n");
+      const draft = parseQuestionText(stripLeadingNumber(block));
+      draft.questionNumber = leadingNumber(block);
+      if (draft.stem || draft.options.length) drafts.push(draft);
+    }
+    const numbers = drafts.map((d) => d.questionNumber).filter((n): n is number => n !== undefined);
+    if (new Set(numbers).size !== numbers.length) {
+      for (const d of drafts) d.warnings.push("Duplicate question numbers in this document — check the split.");
+    }
   }
 
-  const drafts: ParsedQuestionDraft[] = [];
-  // Any preamble before the first numbered question is dropped with a warning.
-  for (let b = 0; b < starts.length; b++) {
-    const from = starts[b];
-    const to = b + 1 < starts.length ? starts[b + 1] : lines.length;
-    const block = stripLeadingNumber(lines.slice(from, to).join("\n"));
-    const draft = parseQuestionText(block);
-    if (draft.stem || draft.options.length) drafts.push(draft);
-  }
-  return drafts;
+  return answerKey.size ? applyAnswerKey(drafts, answerKey) : drafts;
+}
+
+function leadingNumber(block: string): number | undefined {
+  const match = block.match(/^\s*(?:q(?:uestion)?\s*)?(\d{1,3})\s*[).:]\s+/i);
+  return match ? Number(match[1]) : undefined;
 }
 
 function stripLeadingNumber(block: string): string {
   return block.replace(/^\s*(?:q(?:uestion)?\s*)?\d{1,3}\s*[).:]\s+/i, "");
+}
+
+// --- answer-key section ---------------------------------------------------------
+
+const KEY_HEADER_RE = /^\s*(answer\s*key|answers)\s*[:\-–]?\s*$/im;
+/** Pairs like "1. C", "2-B", "3) D", "Question 4: A", "5C". */
+const KEY_PAIR_RE = /(?:question\s*)?(\d{1,3})\s*[).:\-–]?\s*\(?([A-Ha-h])\)?(?![a-z0-9])/gi;
+
+/**
+ * Detect a trailing answer-key section and parse number→letter pairs from it.
+ * Returns the body without the key plus the parsed map.
+ */
+export function splitAnswerKeySection(text: string): { body: string; answerKey: Map<number, string> } {
+  const answerKey = new Map<number, string>();
+  const headerMatch = text.match(KEY_HEADER_RE);
+  let body = text;
+  let keyText = "";
+
+  if (headerMatch && headerMatch.index !== undefined) {
+    keyText = text.slice(headerMatch.index + headerMatch[0].length);
+    body = text.slice(0, headerMatch.index);
+  } else {
+    // Inline form: "Answers: 1C, 2B, 3D" on a single line. Must contain real
+    // number→letter pairs — a per-question "Answer: B" line is NOT a key
+    // section and stays in the body for the single-question parser.
+    const inline = text.match(/^\s*answers?\s*[:\-–]\s*(.+\S)\s*$/im);
+    if (inline && inline.index !== undefined && /\d{1,3}\s*[).:\-–]?\s*\(?[A-Ha-h]\)?(?![a-z0-9])/.test(inline[1])) {
+      keyText = inline[1];
+      body = text.slice(0, inline.index) + text.slice(inline.index + inline[0].length);
+    }
+  }
+  if (!keyText) return { body: text, answerKey };
+
+  for (const match of keyText.matchAll(KEY_PAIR_RE)) {
+    const num = Number(match[1]);
+    const letter = match[2].toUpperCase();
+    // Conflicting duplicate entries poison that number — flag, don't guess.
+    if (answerKey.has(num) && answerKey.get(num) !== letter) answerKey.set(num, "?");
+    else if (!answerKey.has(num)) answerKey.set(num, letter);
+  }
+  return { body, answerKey };
+}
+
+function applyAnswerKey(drafts: ParsedQuestionDraft[], key: Map<number, string>): ParsedQuestionDraft[] {
+  return drafts.map((draft) => {
+    if (draft.correctKey || draft.questionNumber === undefined) return draft;
+    const mapped = key.get(draft.questionNumber);
+    if (!mapped) return draft;
+    if (mapped === "?") {
+      return { ...draft, warnings: [...draft.warnings, "The answer key lists conflicting answers for this number — left unset."] };
+    }
+    if (!draft.options.some((o) => o.key === mapped)) {
+      return { ...draft, warnings: [...draft.warnings, `Answer key says "${mapped}" but no such option exists — left unset.`] };
+    }
+    return {
+      ...draft,
+      correctKey: mapped,
+      confidence: draft.confidence === "low" ? "low" : "high",
+      warnings: draft.warnings.filter((w) => !/no correct answer detected/i.test(w)),
+    };
+  });
 }

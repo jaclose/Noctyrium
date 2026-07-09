@@ -279,5 +279,17 @@
 }
 .data-health-cell b { font-size: 16px; }
 
+/* --- Import Center review rows -------------------------------------------------- */
+.import-draft {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+}
+.import-draft.excluded { opacity: 0.45; }
+
+/* Brand mark chip in onboarding */
+.onboarding-mark.axom { color: var(--bone); }
+
 /* --- Study methods ------------------------------------------------------------ */
 .method-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; line-height: 1.5; }
