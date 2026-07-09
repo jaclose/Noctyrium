@@ -17,6 +17,7 @@ import { extractDocxText, extractPdfText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { suggestCategory, normalizeTags } from "../../lib/taxonomy";
 import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
+import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
 import type { QuestionSource } from "../../lib/questions";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
@@ -195,7 +196,19 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
       if (batchAi && provider) {
         const forDigest = file.drafts.map((d) => ({ stem: d.stem, correct: d.options.find((o) => o.key === d.correctKey)?.text, explanation: d.explanation }));
         enhanceQuestionSet(provider, { title: qset.title, questions: forDigest })
-          .then((digest) => s.updateQuestionSet(setId, { aiEnhanced: true, digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() } }))
+          .then((digest) => {
+            s.updateQuestionSet(setId, { aiEnhanced: true, digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() } });
+            saveAiGeneration({
+              kind: "summary",
+              title: `${qset.title} digest`,
+              inputHash: hashGenerationInput({ kind: "mass-import-digest", setId, questionIds }),
+              sourceIds: [setId, docId],
+              model: provider.info.label,
+              promptVersion: "question-set-digest-v1",
+              content: digest,
+              metadata: { provider: provider.info.label, fileName: file.fileName, questionCount: questionIds.length },
+            });
+          })
           .catch(() => { /* enhancement is best-effort */ });
       }
     }

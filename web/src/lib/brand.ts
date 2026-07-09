@@ -38,6 +38,11 @@ export const STORAGE_KEYS = {
   lastBackupAt: "noctyrium-last-backup-at",
   preMigrationSnapshot: "noctyrium-premigration-snapshot",
   updateDeferredVersion: "noctyrium-update-deferred",
+  storageSchemaVersion: "axom.storage.schemaVersion",
+  lastSeenBuild: "axom.lastSeenBuild",
+  localBackupPrefix: "axom.backups.local.",
+  aiGenerations: "axom.ai.generations",
+  migrationFailure: "axom.storage.migrationFailure",
 } as const;
 
 // Single source of truth for the release line. version.json, sw.js cache name,

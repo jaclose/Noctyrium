@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
-import { AXOMMark, AXOMWordmark } from "../ui/BrandMark";
+import { AxomMark, AxomWordmark } from "../ui/BrandMark";
 import { Field } from "../ui/Modal";
 import { FOCUS_OPTIONS, focusOption } from "../../lib/experience";
 import { groupedTracks, resolveTrack } from "../../lib/tracks";
@@ -113,8 +113,8 @@ export function OnboardingWizard() {
 
         {step === 0 && (
           <div className="onboarding-body">
-            <div className="onboarding-mark axom"><AXOMMark size={30} /></div>
-            <h2>Personalize <AXOMWordmark /></h2>
+            <div className="onboarding-mark axom"><AxomMark size={30} /></div>
+            <h2>Personalize <AxomWordmark /></h2>
             <p className="onboarding-lede">
               Next you'll pick your program — SGU, US MD/DO, pre-med, MCAT, undergrad, nursing, or PA.
               That choice tailors your starter courses, the resources you see, and the study lanes on

@@ -15,6 +15,7 @@ import { newSchedule, reviewCardQuality, type CardQualityFlag } from "../../lib/
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
+import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
 
 const STYLES: Array<{ id: CardGenerationStyle; label: string }> = [
   { id: "concise", label: "Concise" },
@@ -54,11 +55,12 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
     if (!provider) return;
     setBusy(true);
     try {
+      const requestedMaxCards = Math.max(1, Math.min(12, Number(maxCards) || 6));
       const result = await generateCardDrafts(provider, {
         material,
         topic: topic || undefined,
         style,
-        maxCards: Math.max(1, Math.min(12, Number(maxCards) || 6)),
+        maxCards: requestedMaxCards,
         source: source || undefined,
       });
       const existing = s.ankiCards ?? [];
@@ -67,6 +69,21 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
         flags: reviewCardQuality({ type: d.type, front: d.front, back: d.back, source: d.source, aiGenerated: true }, existing),
         accepted: true,
       })));
+      saveAiGeneration({
+        kind: "flashcards",
+        title: topic.trim() || source.trim() || "AI flashcards",
+        inputHash: hashGenerationInput({ material, topic, source, style, maxCards: requestedMaxCards }),
+        model: settings.mode === "local" ? settings.localModel : provider.info.label,
+        promptVersion: result.promptVersion,
+        content: result.drafts,
+        metadata: {
+          provider: provider.info.label,
+          sourceReference: source || undefined,
+          topic: topic || undefined,
+          style,
+          warnings: result.warnings,
+        },
+      });
       if (result.warnings.length) {
         pushToast({ title: "Some drafts were dropped", body: result.warnings.slice(0, 2).join(" "), tone: "warn" });
       }

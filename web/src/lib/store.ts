@@ -53,7 +53,7 @@ import {
 } from "./sessions";
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
-import { applyAttempt, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
+import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
 import {
@@ -1305,6 +1305,15 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
     s.documents = Array.isArray(s.documents) ? s.documents : [];
     s.questionSets = Array.isArray(s.questionSets) ? s.questionSets : [];
     s.quizBlocks = Array.isArray(s.quizBlocks) ? s.quizBlocks : [];
+  }
+  if (fromVersion < 31) {
+    // Question-bank taxonomy support. Existing question records stay valid:
+    // legacy fields (system/topic/category/errorType) seed an optional taxonomy
+    // object, and records with no taxonomy simply get an empty object.
+    s.questions = arrayOfRecords(s.questions).map((question) => ({
+      ...question,
+      taxonomy: normalizeQuestionTaxonomy(question.taxonomy, question) ?? {},
+    }));
   }
   return s as unknown as NoctyriumState;
 }

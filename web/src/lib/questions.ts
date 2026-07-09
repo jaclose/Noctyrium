@@ -32,6 +32,15 @@ export const EXAM_TYPE_LABEL: Record<QuestionExamType, string> = {
 
 export type QuestionDifficulty = "easy" | "medium" | "hard";
 
+export interface QuestionTaxonomy {
+  system?: string;
+  discipline?: string;
+  topic?: string;
+  subtopic?: string;
+  facultyStyle?: string;
+  errorPattern?: string;
+}
+
 /** Suggested category vocabulary — users can type anything; these seed the pickers. */
 // Restrained USMLE-style buckets (see lib/taxonomy.ts for the canonical set +
 // the keyless auto-categorizer). Kept here as the picker vocabulary.
@@ -125,6 +134,7 @@ export interface QuestionRecord {
   sourcePage?: number;
   category?: string;
   subcategory?: string;
+  taxonomy?: QuestionTaxonomy;
   examType?: QuestionExamType;
   difficulty?: QuestionDifficulty;
   /** User-marked for review — independent of status. */
@@ -237,6 +247,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       sourcePage: typeof input.sourcePage === "number" && input.sourcePage > 0 ? Math.floor(input.sourcePage) : undefined,
       category: cleanString(input.category),
       subcategory: cleanString(input.subcategory),
+      taxonomy: normalizeQuestionTaxonomy(input.taxonomy, input),
       examType: (Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[]).includes(input.examType as QuestionExamType)
         ? input.examType as QuestionExamType
         : undefined,
@@ -276,6 +287,30 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
 function cleanString(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
+
+export function normalizeQuestionTaxonomy(
+  value: unknown,
+  fallback: {
+    system?: unknown;
+    topic?: unknown;
+    category?: unknown;
+    subcategory?: unknown;
+    errorType?: unknown;
+  } = {},
+): QuestionTaxonomy | undefined {
+  const record = isRecord(value) ? value : {};
+  const taxonomy: QuestionTaxonomy = {
+    system: cleanString(record.system) ?? cleanString(fallback.system),
+    discipline: cleanString(record.discipline) ?? cleanString(fallback.category),
+    topic: cleanString(record.topic) ?? cleanString(fallback.topic),
+    subtopic: cleanString(record.subtopic) ?? cleanString(fallback.subcategory),
+    facultyStyle: cleanString(record.facultyStyle),
+    errorPattern: cleanString(record.errorPattern) ?? cleanString(fallback.errorType),
+  };
+  const entries = Object.entries(taxonomy).filter(([, field]) => Boolean(field));
+  return entries.length ? Object.fromEntries(entries) as QuestionTaxonomy : undefined;
+}
+
 function isConfidence(v: unknown): v is 1 | 2 | 3 | 4 | 5 {
   return typeof v === "number" && [1, 2, 3, 4, 5].includes(v);
 }

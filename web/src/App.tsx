@@ -13,6 +13,8 @@ import { SessionOverlay } from "./components/session/SessionOverlay";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
 import { useUi } from "./lib/uiStore";
+import { pushToast } from "./lib/toast";
+import type { StorageMigrationResult } from "./lib/storageMigrations";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -70,7 +72,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   leaderboards: LeaderboardsPage,
 };
 
-export default function App() {
+export default function App({ startupStatus }: { startupStatus?: StorageMigrationResult }) {
   // route via the URL hash so deep-links + the standalone page work
   const [route, setRoute] = useState<string>(() => location.hash.replace("#", "") || "dashboard");
   const [drawer, setDrawer] = useState(false);
@@ -82,6 +84,30 @@ export default function App() {
   const updateProfile = useStore((s) => s.updateProfile);
   // Show the tour once after onboarding; "Replay tour" simply clears tourDone.
   const showTour = onboarded && !tourDone;
+
+  useEffect(() => {
+    if (!startupStatus) return;
+    if (startupStatus.ok && startupStatus.buildChanged) {
+      pushToast({
+        title: "Updated to latest build",
+        body: "Your local data was preserved.",
+        tone: "success",
+        dedupe: `build-applied-${startupStatus.currentBuild.commitSha}-${startupStatus.currentBuild.version}`,
+      });
+      return;
+    }
+    if (!startupStatus.ok) {
+      pushToast({
+        title: "Local data needs attention",
+        body: startupStatus.recoveryMessage,
+        tone: "warn",
+        duration: 0,
+        dedupe: `storage-migration-failed-${startupStatus.fromVersion}-${startupStatus.toVersion}`,
+        actionLabel: "Open backups",
+        onAction: () => { setSettingsTab("backup"); setSettings(true); },
+      });
+    }
+  }, [startupStatus]);
 
   function endTour() {
     updateProfile({ tourDone: true });
@@ -143,6 +169,7 @@ export default function App() {
         <DailyRolloverWatcher />
         <UpdateAvailableWatcher />
         <OnboardingWizard />
+        <Toaster />
       </div>
     );
   }

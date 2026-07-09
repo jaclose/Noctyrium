@@ -68,7 +68,7 @@ describe("v26 → v27 migration", () => {
     };
     const result = migratePersistedState(structuredClone(state), 26);
     expect(result.sessions).toEqual([{ id: "s1" }]);
-    expect(result.questions).toEqual([{ id: "q1" }]);
+    expect(result.questions).toEqual([{ id: "q1", taxonomy: {} }]);
   });
 
   it("writes a recoverable pre-migration snapshot before migrating", () => {
@@ -98,7 +98,22 @@ describe("v26 → v27 migration", () => {
     expect(result.documents).toEqual([]);
     expect(result.questionSets).toEqual([]);
     expect(result.quizBlocks).toEqual([]);
-    expect(result.questions).toEqual([{ id: "q1", stem: "s" }]);
+    expect(result.questions).toEqual([{ id: "q1", stem: "s", taxonomy: {} }]);
+  });
+
+  it("v30→v31 seeds optional question taxonomy from legacy fields", () => {
+    const state = {
+      ...v26State(),
+      schemaVersion: 30,
+      questions: [{ id: "q1", stem: "s", system: "Cardio", topic: "Murmurs", category: "Physiology", errorType: "missed-clue" }],
+    };
+    const result = migratePersistedState(structuredClone(state), 30);
+    expect(result.questions[0].taxonomy).toEqual({
+      system: "Cardio",
+      discipline: "Physiology",
+      topic: "Murmurs",
+      errorPattern: "missed-clue",
+    });
   });
 
   it("survives a deep-legacy (v1-era) payload without throwing", () => {

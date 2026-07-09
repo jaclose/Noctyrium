@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Database, HardDrive, History, ShieldCheck } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { lastBackupAt } from "../../lib/backup";
+import { listLocalBackups } from "../../lib/localBackup";
 import { SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
 import { STORAGE_KEYS } from "../../lib/brand";
 import { Tag } from "../ui/primitives";
@@ -41,6 +42,7 @@ export function DataHealthPanel() {
   const [idbOk, setIdbOk] = useState<boolean | null>(null);
   const snapshot = readPreMigrationSnapshot();
   const backup = lastBackupAt();
+  const localBackups = listLocalBackups();
 
   useEffect(() => {
     let stopped = false;
@@ -96,6 +98,14 @@ export function DataHealthPanel() {
           {snapshot
             ? `A pre-migration snapshot from schema v${snapshot.fromVersion} (${snapshot.savedAt.slice(0, 10)}) is retained locally. If anything looks wrong after an update, export it before clearing browser data and report the issue.`
             : "No pre-migration snapshot present (none needed yet). One is written automatically before every schema upgrade."}
+        </span>
+      </div>
+      <div className="row" style={{ gap: 8 }}>
+        <History size={14} style={{ color: "var(--cyan)" }} />
+        <span className="sub">
+          {localBackups.length
+            ? `${localBackups.length} automatic local migration backup${localBackups.length === 1 ? "" : "s"} retained. Latest: ${localBackups[0].savedAt.slice(0, 10)}.`
+            : "No automatic local migration backups retained yet."}
         </span>
       </div>
       <div className="sub">{APP_BUILD_LABEL} · updates never wipe local progress; migrations are additive and snapshot first.</div>

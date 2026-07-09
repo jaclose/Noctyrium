@@ -17,6 +17,7 @@ import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "..
 import { EXAM_TYPE_LABEL, QUESTION_CATEGORIES, type QuestionDifficulty, type QuestionExamType, type QuestionSource } from "../../lib/questions";
 import { normalizeTags, suggestCategory } from "../../lib/taxonomy";
 import { checkProviderHealth, enhanceQuestionSet, generateQuestionDrafts, loadAiSettings, resolveActiveProvider } from "../../lib/ai";
+import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
@@ -199,6 +200,16 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
           s.updateQuestionSet(setId!, {
             aiEnhanced: true,
             digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() },
+          });
+          saveAiGeneration({
+            kind: "summary",
+            title: `${setTitle || "Question set"} digest`,
+            inputHash: hashGenerationInput({ kind: "question-set-digest", setId, questionIds }),
+            sourceIds: [setId!, ...(docId ? [docId] : [])],
+            model: provider.info.label,
+            promptVersion: "question-set-digest-v1",
+            content: digest,
+            metadata: { provider: provider.info.label, questionCount: questionIds.length },
           });
           pushToast({ title: "Question Intelligence ready", body: "The set's digest and pitfalls are on its card in Question Sets.", tone: "success" });
         })
@@ -584,6 +595,22 @@ function AiGenerateTab({ seedReference, onParsed }: {
         difficulty,
         count: Math.max(1, Math.min(10, Number(count) || 3)),
         reference: reference || undefined,
+      });
+      saveAiGeneration({
+        kind: "question-analysis",
+        title: topic.trim() || "AI question drafts",
+        inputHash: hashGenerationInput({ topic, category: genCategory, style, difficulty, count, reference }),
+        model: settings.mode === "local" ? settings.localModel : provider.info.label,
+        promptVersion: result.promptVersion,
+        content: result.drafts,
+        metadata: {
+          provider: provider.info.label,
+          category: genCategory || undefined,
+          style,
+          difficulty,
+          warnings: result.warnings,
+          sourceReference: seedReference?.title,
+        },
       });
       onParsed(
         result.drafts.map((d) => ({
