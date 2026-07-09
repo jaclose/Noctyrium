@@ -4,9 +4,37 @@ Living record of what is **built and working**. Update this whenever a feature s
 The companion file is [ROADMAP.md](ROADMAP.md) — in-progress and proposed work lives there,
 and items move from there to here when they ship.
 
-Last updated: 2026-07-08 · app v0.0.1-prebeta · data schema v30
+Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
 
 ## Question Bank (flagship)
+
+### Rehaul phase (2026-07-09)
+
+- **Layered parser** — L1 questions, L2 answer keys, **L3 explanation blocks**
+  (inline + "Answers and Explanations" sections mapped back by number), **L4
+  choice rationales** ("A is incorrect because…"), **L5 conflict detection**
+  (key vs prose vs rationale disagreement → flagged, unset, needs-review), **L6
+  confidence** (high only when number/options/answer/explanation align). Handles
+  "Correct Answer: C. …", "The answer is C because…", "1. C — explanation".
+- **Mass Import** — queue many PDFs/DOCX/text files, extract in a bounded-
+  concurrency pass, per-file status (extracting/parsing/ready/needs-review/
+  no-text/error) with question count + answer-key-detected, batch-save clean
+  files, inspect flagged ones in the full review screen.
+- **Review screen upgrades** — needs-review badge, explanation-found status
+  (inline vs answer-section), choice rationales, and **Show nearby source text**
+  (jump-to-source excerpt from the extracted document).
+- **Restrained USMLE taxonomy + keyless auto-categorizer** — 24 broad buckets,
+  keyword-scored with a confidence gate (high auto-assigns, medium suggests, low
+  leaves uncategorized); never invents a category. Applied on import.
+- **Bank Browser** — full-text search (stems/options/topics/tags), category
+  filter, multi-select, and **bulk category/tag editing**; rename/remove tag
+  store actions.
+- **Grounded AI** — Mapping Assist (suggest an answer ONLY with a quoted
+  evidence snippet, else needs-review), Weakness Coach (behavioral diagnosis of
+  misses + a targeted block suggestion), both review-gated with a local keyless
+  fallback insight.
+- **Quiz polish** — keyboard A–E to pick, Enter to submit/advance, F to flag;
+  a progress bar; source page + set shown on each question.
 
 - **Import Center** — one review-gated pipeline for every input path:
   - **PDF upload with real text extraction** (pdf.js, per-page; scanned PDFs are kept as
