@@ -98,14 +98,81 @@ describe("answer-key section mapping", () => {
     expect(impossible[0].warnings.join(" ")).toMatch(/no such option/i);
   });
 
-  it("an explicit in-question answer wins over the key", () => {
+  it("an in-question answer that disagrees with the key becomes a flagged conflict (L5)", () => {
     const drafts = parseQuestionBlocks([
       "1. First?", "A. x", "B. y", "Answer: A", "",
       "2. Second?", "A. x", "B. y", "",
       "Answer key:", "1. B", "2. B",
     ].join("\n"));
-    expect(drafts[0].correctKey).toBe("A");
+    // Q1: block says A, key says B → never guess; unset + needs review.
+    expect(drafts[0].correctKey).toBeUndefined();
+    expect(drafts[0].needsReview).toBe(true);
+    expect(drafts[0].warnings.join(" ")).toMatch(/conflict/i);
+    // Q2: only the key speaks → mapped normally.
     expect(drafts[1].correctKey).toBe("B");
+  });
+});
+
+describe("explanation mapping (L3–L6)", () => {
+  it("attaches per-number explanations from an 'Answers and Explanations' section", () => {
+    const drafts = parseQuestionBlocks([
+      "1. First stem?", "A. x", "B. y", "C. z", "",
+      "2. Second stem?", "A. x", "B. y", "C. z", "",
+      "Answers and Explanations:",
+      "1. C — Terminal complement deficiency predisposes to Neisseria.",
+      "2. A. Because the enzyme is rate-limiting.",
+    ].join("\n"));
+    expect(drafts[0].correctKey).toBe("C");
+    expect(drafts[0].explanation).toContain("Neisseria");
+    expect(drafts[0].explanationSource).toBe("answer-section");
+    expect(drafts[0].confidence).toBe("high");
+    expect(drafts[1].correctKey).toBe("A");
+    expect(drafts[1].explanation).toContain("rate-limiting");
+  });
+
+  it("handles 'Question 1: C. Explanation…' and 'Correct answer: C' entry forms", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Stem one?", "A. x", "B. y", "C. z", "",
+      "2. Stem two?", "A. x", "B. y", "C. z", "",
+      "Answer Key:",
+      "Question 1: C. The mechanism is complement-mediated lysis.",
+      "2. Correct answer: B",
+    ].join("\n"));
+    expect(drafts[0].correctKey).toBe("C");
+    expect(drafts[0].explanation).toContain("complement-mediated");
+    expect(drafts[1].correctKey).toBe("B");
+  });
+
+  it("parses inline 'Correct Answer: C' with a tail and prose-embedded answers", () => {
+    const withTail = parseQuestionText("Stem?\nA. x\nB. y\nC. z\nCorrect Answer: C. Because the pathway is terminal.");
+    expect(withTail.correctKey).toBe("C");
+    expect(withTail.explanation).toContain("terminal");
+
+    const prose = parseQuestionText("Stem?\nA. x\nB. y\nC. z\nExplanation: The correct answer is B because the clue is viral.");
+    expect(prose.correctKey).toBe("B");
+    expect(prose.warnings.join(" ")).toMatch(/inferred from explanation prose/i);
+    expect(prose.confidence).toBe("medium");
+  });
+
+  it("collects choice rationales and derives the answer from 'C is correct'", () => {
+    const draft = parseQuestionText([
+      "Stem?", "A. alpha", "B. beta", "C. gamma",
+      "Explanation:",
+      "A is incorrect because it is upstream.",
+      "B is incorrect because it is too broad.",
+      "C is correct because the enzyme is rate-limiting.",
+    ].join("\n"));
+    expect(draft.choiceRationales?.A).toContain("upstream");
+    expect(draft.choiceRationales?.B).toContain("too broad");
+    expect(draft.correctKey).toBe("C");
+  });
+
+  it("flags a conflict when the answer line and explanation prose disagree (L5)", () => {
+    const draft = parseQuestionText("Stem?\nA. x\nB. y\nC. z\nAnswer: C\nExplanation: The correct answer is B because of the infection type.");
+    expect(draft.correctKey).toBeUndefined();
+    expect(draft.needsReview).toBe(true);
+    expect(draft.confidence).toBe("low");
+    expect(draft.warnings.join(" ")).toMatch(/conflicting answers/i);
   });
 });
 

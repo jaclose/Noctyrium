@@ -12,7 +12,7 @@ const HEADER = {
 export async function exportActivityWorkbook(logs: StudyLog[]) {
   const XLSX = await import("xlsx-js-style");
   const wb = XLSX.utils.book_new();
-  wb.Props = { Title: "Axom Activity History", Author: "Axom", CreatedDate: new Date() };
+  wb.Props = { Title: "AXOM Activity History", Author: "AXOM", CreatedDate: new Date() };
 
   appendSheet(XLSX, wb, "Overview", overviewRows(logs), [14, 12, 12, 12]);
   appendSheet(XLSX, wb, "All Activity", detailRows(logs), [14, 20, 14, 12, 12, 42]);

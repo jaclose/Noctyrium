@@ -33,11 +33,15 @@ export const EXAM_TYPE_LABEL: Record<QuestionExamType, string> = {
 export type QuestionDifficulty = "easy" | "medium" | "hard";
 
 /** Suggested category vocabulary — users can type anything; these seed the pickers. */
+// Restrained USMLE-style buckets (see lib/taxonomy.ts for the canonical set +
+// the keyless auto-categorizer). Kept here as the picker vocabulary.
 export const QUESTION_CATEGORIES = [
-  "Ethics", "Immunology", "Microbiology", "Pathology", "Physiology", "Pharmacology",
-  "Anatomy", "Biochemistry", "Behavioral science", "Public health", "Biostatistics",
-  "Clinical reasoning", "MCAT biology", "MCAT chemistry", "MCAT physics",
-  "MCAT psych/soc", "Custom",
+  "Biochemistry", "Immunology", "Microbiology", "Pathology", "Pharmacology",
+  "Physiology", "Anatomy", "Behavioral Science", "Biostatistics / Epidemiology",
+  "Ethics", "Genetics", "Embryology", "Neuroscience", "Cardiovascular",
+  "Respiratory", "Renal", "Gastrointestinal", "Endocrine", "Reproductive",
+  "Hematology / Oncology", "Musculoskeletal / Dermatology", "Psychiatry",
+  "Public Health", "Custom",
 ] as const;
 
 /** Structured error taxonomy (directive §9) — why a question was missed. */
@@ -97,6 +101,10 @@ export interface QuestionRecord {
   options: QuestionOption[];
   correctKey?: string;
   explanation?: string;
+  /** Per-choice rationales ("A is incorrect because…"), keyed by letter. */
+  choiceRationales?: Record<string, string>;
+  /** Parser flagged an unresolved conflict/ambiguity — surfaces a review badge. */
+  needsReview?: boolean;
   /** Latest attempt state, denormalized for filtering. */
   userAnswerKey?: string;
   status: QuestionStatus;
@@ -207,6 +215,12 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       options,
       correctKey,
       explanation: typeof input.explanation === "string" && input.explanation.trim() ? input.explanation.trim() : undefined,
+      choiceRationales: isRecord(input.choiceRationales)
+        ? Object.fromEntries(Object.entries(input.choiceRationales)
+            .filter(([, v]) => typeof v === "string" && v.trim())
+            .map(([k, v]) => [k.toUpperCase(), String(v).trim()]))
+        : undefined,
+      needsReview: input.needsReview === true ? true : undefined,
       userAnswerKey: typeof input.userAnswerKey === "string" ? input.userAnswerKey.toUpperCase() : undefined,
       status,
       confidence: isConfidence(input.confidence) ? input.confidence : undefined,

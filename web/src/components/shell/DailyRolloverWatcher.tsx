@@ -14,7 +14,7 @@ export function DailyRolloverWatcher() {
         title: "New day ready",
         body: result.carriedTaskIds?.length
           ? `${result.carriedTaskIds.length} unfinished task${result.carriedTaskIds.length === 1 ? "" : "s"} carried forward.`
-          : "Axom advanced to your device-local date.",
+          : "AXOM advanced to your device-local date.",
         tone: "success",
         href: "#journal",
         actionLabel: "Review yesterday",

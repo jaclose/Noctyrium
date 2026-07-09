@@ -21,7 +21,7 @@ export async function saveNativeSnapshot(state: NoctyriumState, backupLabel?: st
     [
       crypto.randomUUID(),
       state.profile.userId,
-      state.profile.name || "Axom",
+      state.profile.name || "AXOM",
       state.profile.versionLabel,
       state.schemaVersion,
       JSON.stringify(payload),

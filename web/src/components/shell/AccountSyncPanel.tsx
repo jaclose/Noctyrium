@@ -380,10 +380,10 @@ export function AccountSyncPanel() {
   return (
     <div className="sync-panel account-lounge">
       <div className="account-hero">
-        <div className="account-avatar">{accountName.trim().slice(0, 1) || store.profile.name.slice(0, 1) || "N"}</div>
+        <div className="account-avatar">{accountName.trim().slice(0, 1) || store.profile.name.slice(0, 1) || "A"}</div>
         <div className="grow">
           <div className="account-kicker">Account &amp; Sync</div>
-          <div className="account-title">Your Axom Vault</div>
+          <div className="account-title">Your AXOM Vault</div>
           <div className="account-copy">
             Your work is saved locally in this browser today. The account vault is the planned path for creating a profile once, preserving that local vault, and restoring it on another device.
           </div>
@@ -405,7 +405,7 @@ export function AccountSyncPanel() {
           <div><UserPlus size={17} /><b>Create account</b><span>Name, email, or passkey creates the account shell.</span></div>
           <div><Sparkles size={17} /><b>Initialize profile</b><span>Your name, targets, promise, and preferences become the account profile.</span></div>
           <div><HardDrive size={17} /><b>Preserve local vault</b><span>The current browser data becomes the first recoverable snapshot.</span></div>
-          <div><CloudDownload size={17} /><b>Restore anywhere</b><span>A new device can load the saved Axom state after confirmation.</span></div>
+          <div><CloudDownload size={17} /><b>Restore anywhere</b><span>A new device can load the saved AXOM state after confirmation.</span></div>
         </div>
       </div>
 
@@ -491,7 +491,7 @@ export function AccountSyncPanel() {
 
         <div className="sync-flow">
           <div><b>1 · Local</b><span>This browser remains the source of truth until you choose otherwise.</span></div>
-          <div><b>2 · Save</b><span>Uploads this browser's current Axom state.</span></div>
+          <div><b>2 · Save</b><span>Uploads this browser's current AXOM state.</span></div>
           <div><b>3 · Load</b><span>Downloads cloud state into this browser after confirmation.</span></div>
           <div><b>4 · Backup</b><span>Creates restore points before risky replaces.</span></div>
         </div>

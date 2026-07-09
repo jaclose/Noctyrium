@@ -83,6 +83,30 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, stage, timed]);
 
+  // Keyboard shortcuts: A–E pick an option, Enter submits / advances, F flags.
+  useEffect(() => {
+    if (stage !== "running" || !question) return;
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const letter = e.key.toUpperCase();
+      if (/^[A-H]$/.test(letter) && question!.options.some((o) => o.key === letter)) {
+        if (!(mode === "tutor" && revealed)) setPicked(letter);
+        e.preventDefault();
+      } else if (e.key === "Enter") {
+        if (mode === "tutor") { if (!revealed && picked) submitTutor(); else if (revealed) nextQuestion(); }
+        else if (picked) submitExamAndNext();
+        e.preventDefault();
+      } else if (letter === "F") {
+        toggleFlag();
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, question?.id, revealed, picked, mode]);
+
   function currentFilters(): QuizFilters {
     return {
       count,
@@ -402,12 +426,17 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
           )
       }
     >
+      <div className="quiz-progress" aria-hidden="true">
+        <span className="quiz-progress-fill" style={{ width: `${Math.round(((index + (revealed ? 1 : 0)) / pool.length) * 100)}%` }} />
+      </div>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         {timed && timeLeft !== undefined && (
           <Tag tone={timeLeft < 60 ? "red" : "neutral"}>{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")} left</Tag>
         )}
         {question.category && <Tag tone="neutral">{question.category}</Tag>}
         {question.examType && <Tag tone="neutral">{EXAM_TYPE_LABEL[question.examType]}</Tag>}
+        {question.sourcePage && <Tag tone="neutral">p.{question.sourcePage}</Tag>}
+        {question.bank && <span className="sub truncate" style={{ maxWidth: 200 }}>{question.bank}</span>}
         <GhostButton onClick={toggleFlag} aria-label="Flag question">
           <Flag size={13} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
         </GhostButton>
@@ -427,6 +456,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
               onClick={() => setPicked(opt.key)}>
               <span className="mono option-key">{opt.key}</span>
               <span>{opt.text}</span>
+              <span className="option-hint">{opt.key}</span>
             </button>
           );
         })}

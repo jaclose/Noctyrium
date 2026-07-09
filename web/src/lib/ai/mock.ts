@@ -52,6 +52,15 @@ export function createMockProvider(): AIProvider {
           }],
         };
       }
+      if (/map the correct answer/i.test(req.system ?? "")) {
+        return { suggestedKey: null, evidence: null, confidence: 0.3, needsReview: true };
+      }
+      if (/study coach/i.test(req.system ?? "")) {
+        return {
+          diagnosis: "[DEMO] You aren't mainly missing these from knowledge gaps — you're over-picking broad answers when the stem hinges on one discriminating clue.",
+          suggestedBlock: "[DEMO] A 10-question tutor block on your weakest category, incorrect-only.",
+        };
+      }
       if (/pitfalls/i.test(req.system ?? "")) {
         return {
           summary: "[DEMO] This set primarily tests complement deficiencies and infection-pattern recognition.",

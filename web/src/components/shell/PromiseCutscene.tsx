@@ -75,7 +75,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
 
       {stage !== "sealed" ? (
         <div className={`promise-paper ${stage === "sign" ? "open" : ""}`}>
-          <div className="promise-seal-mark">N</div>
+          <div className="promise-seal-mark">A</div>
           <div className="promise-heading">Promise of Use</div>
           <div className="promise-lines">
             {LINES.map((line, idx) => (
@@ -108,7 +108,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
         </div>
       ) : (
         <div className="promise-sealed">
-          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="Axom" /></div>
+          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="AXOM" /></div>
           <div className="promise-sealed-title">Promise made.</div>
           <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
           <div className="promise-sealed-sub">Begin.</div>

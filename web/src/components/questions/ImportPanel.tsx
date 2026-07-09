@@ -15,6 +15,7 @@ import { detectImportFormat, importFromCsv, importFromJson, importFromText } fro
 import { extractDocxText, extractPdfText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { EXAM_TYPE_LABEL, QUESTION_CATEGORIES, type QuestionDifficulty, type QuestionExamType, type QuestionSource } from "../../lib/questions";
+import { normalizeTags, suggestCategory } from "../../lib/taxonomy";
 import { checkProviderHealth, enhanceQuestionSet, generateQuestionDrafts, loadAiSettings, resolveActiveProvider } from "../../lib/ai";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
@@ -42,23 +43,50 @@ interface PendingDocument {
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
 const uid = () => crypto.randomUUID();
 
-export function ImportPanel({ seedReference }: { seedReference?: { title: string; text: string } | null }) {
+/** Seed the Import Center from elsewhere: a reference doc (AI tab) or a set of
+ * already-parsed drafts to review (Mass Import "Inspect"). */
+export interface ImportSeed {
+  reference?: { title: string; text: string };
+  drafts?: ParsedQuestionDraft[];
+  rawText?: string;
+  fileName?: string;
+  title?: string;
+}
+
+export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
   const s = useStore();
-  const [tab, setTab] = useState<ImportTab>(seedReference ? "ai" : "file");
-  const [drafts, setDrafts] = useState<ReviewDraft[]>([]);
+  const [tab, setTab] = useState<ImportTab>(seed?.reference ? "ai" : "file");
+  const [drafts, setDrafts] = useState<ReviewDraft[]>(() =>
+    seed?.drafts ? seed.drafts.map((d) => ({ ...d, include: true, source: "imported" as QuestionSource })) : []);
   const [batchWarnings, setBatchWarnings] = useState<string[]>([]);
-  const [pendingDoc, setPendingDoc] = useState<PendingDocument | null>(null);
+  const [pendingDoc, setPendingDoc] = useState<PendingDocument | null>(() =>
+    seed?.drafts && seed.rawText != null
+      ? { title: seed.title ?? "Imported", fileName: seed.fileName ?? "import", fileType: "imported", sizeBytes: seed.rawText.length, rawText: seed.rawText }
+      : null);
   const [busyFile, setBusyFile] = useState<string | null>(null);
   // Save options (§save modes): radio for destination, checkbox for AI.
   const [saveMode, setSaveMode] = useState<SaveMode>("both");
   const [aiEnhance, setAiEnhance] = useState(false);
-  const [setTitle, setSetTitle] = useState("");
+  const [setTitle, setSetTitle] = useState(seed?.title ?? "");
   const [category, setCategory] = useState("");
   const [examType, setExamType] = useState<QuestionExamType | "">("");
   const [difficulty, setDifficulty] = useState<QuestionDifficulty | "">("");
 
   const provider = useMemo(() => resolveActiveProvider(), []);
   const reviewing = drafts.length > 0 || pendingDoc !== null;
+
+  // Auto-categorize only when the user hasn't set a batch category and the
+  // draft has none: high-confidence heuristic assigns, otherwise left blank.
+  const draftText = (d: ReviewDraft) => `${d.stem} ${d.options.map((o) => o.text).join(" ")} ${d.explanation ?? ""}`;
+  function resolveCategory(d: ReviewDraft): string | undefined {
+    if (d.category) return d.category;
+    if (category) return category;
+    const suggestion = suggestCategory(draftText(d));
+    return suggestion.autoAssign ? suggestion.category : undefined;
+  }
+  function autoTags(d: ReviewDraft): string[] {
+    return suggestCategory(draftText(d)).tags;
+  }
 
   function reset() {
     setDrafts([]);
@@ -100,9 +128,11 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
           options: d.options,
           correctKey: d.correctKey,
           explanation: d.explanation,
+          choiceRationales: d.choiceRationales,
+          needsReview: d.needsReview,
           topic: d.topic,
           system: d.system,
-          category: d.category || category || undefined,
+          category: resolveCategory(d),
           bank: setTitle || undefined,
           setId,
           sourceDocumentId: docId,
@@ -111,7 +141,7 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
           examType: (examType || undefined) as QuestionExamType | undefined,
           difficulty: (difficulty || undefined) as QuestionDifficulty | undefined,
           citation: d.sourceLabel ?? pendingDoc?.fileName,
-          tags: d.tags ?? [],
+          tags: normalizeTags([...(d.tags ?? []), ...autoTags(d)]),
           status: "unseen",
           ai: d.aiGenerated ? { generated: true, provider: provider?.info.label } : undefined,
           extraction: { confidence: d.confidence, reviewed: true },
@@ -206,7 +236,7 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
         />
       )}
       {!reviewing && tab === "ai" && (
-        <AiGenerateTab seedReference={seedReference} onParsed={(d, w) => loadDrafts(d, w, "ai-generated", null, true)} />
+        <AiGenerateTab seedReference={seed?.reference} onParsed={(d, w) => loadDrafts(d, w, "ai-generated", null, true)} />
       )}
 
       {reviewing && (
@@ -296,9 +326,11 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
                     </span>
                     <span className="sub truncate">
                       {d.options.length} options{d.correctKey ? ` · answer ${d.correctKey}` : " · no answer set"}
+                      {d.explanation ? ` · explanation${d.explanationSource === "answer-section" ? " (from answer section)" : ""}` : " · no explanation"}
                       {d.sourcePage ? ` · p.${d.sourcePage}` : ""}{d.topic ? ` · ${d.topic}` : ""}
                     </span>
                   </button>
+                  {d.needsReview && <Tag tone="red">needs review</Tag>}
                   <Tag tone={d.confidence === "high" ? "green" : d.confidence === "medium" ? "orange" : "red"}>{d.confidence}</Tag>
                   {d.aiGenerated && <Tag tone="purple">AI</Tag>}
                   {d.warnings.length > 0 && <Tag tone="orange">{d.warnings.length}⚠</Tag>}
@@ -332,6 +364,17 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
                     </div>
                     <TextAreaField label="Explanation" rows={2} value={d.explanation ?? ""}
                       onChange={(e) => updateDraft(i, { explanation: e.target.value || undefined })} />
+                    {d.choiceRationales && Object.keys(d.choiceRationales).length > 0 && (
+                      <div className="stack gap6">
+                        <span className="field-label">Choice rationales</span>
+                        {Object.entries(d.choiceRationales).map(([key, why]) => (
+                          <div key={key} className="sub"><b>{key}:</b> {why}</div>
+                        ))}
+                      </div>
+                    )}
+                    {pendingDoc?.rawText && d.stem && (
+                      <SourcePeek rawText={pendingDoc.rawText} stem={d.stem} />
+                    )}
                   </div>
                 )}
               </div>
@@ -340,6 +383,31 @@ export function ImportPanel({ seedReference }: { seedReference?: { title: string
         </div>
       )}
     </GlassCard>
+  );
+}
+
+// --- source peek ("show nearby extracted text") --------------------------------
+
+function SourcePeek({ rawText, stem }: { rawText: string; stem: string }) {
+  const [open, setOpen] = useState(false);
+  const needle = stem.slice(0, 40).trim();
+  const idx = needle.length >= 10 ? rawText.indexOf(needle) : -1;
+  const excerpt = idx >= 0
+    ? rawText.slice(Math.max(0, idx - 120), idx + 600)
+    : null;
+  return (
+    <div className="stack gap6">
+      <GhostButton onClick={() => setOpen((v) => !v)}>
+        {open ? "Hide source text" : excerpt ? "Show nearby source text" : "Show source text"}
+      </GhostButton>
+      {open && (
+        <div className="question-explanation" style={{ maxHeight: 220, overflowY: "auto", whiteSpace: "pre-wrap" }}>
+          {excerpt
+            ? <>…{excerpt}…</>
+            : rawText.slice(0, 800)}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -169,6 +169,74 @@ export async function generateQuestionDrafts(
 }
 
 /**
+ * AI Mapping Assist (rehaul phase 4.1). Given a question and the surrounding
+ * extracted document text, suggest the correct answer AND the evidence it used.
+ * Hard rule: if the model can't ground the answer in the provided text, it must
+ * return needsReview=true and NOT assert a key. Callers keep the answer unset
+ * on low confidence — the model never silently decides.
+ */
+export async function mapAnswerFromText(
+  provider: AIProvider,
+  req: { stem: string; options: Array<{ key: string; text: string }>; nearbyText: string },
+): Promise<{ suggestedKey?: string; evidence?: string; confidence: number; needsReview: boolean }> {
+  const raw = await provider.completeJson({
+    system: [
+      "You map the correct answer for a multiple-choice question using ONLY the provided source text.",
+      "You must quote the exact snippet you relied on as evidence.",
+      "If the source does not clearly indicate the answer, set needsReview=true and leave suggestedKey null.",
+      "Never guess. Never use outside knowledge to assert a key.",
+      'Return JSON: {"suggestedKey": "C" | null, "evidence": "quoted snippet or null", "confidence": 0..1, "needsReview": bool}.',
+    ].join(" "),
+    prompt: [
+      `Question: ${req.stem.slice(0, 1500)}`,
+      "Options:",
+      ...req.options.map((o) => `${o.key}. ${o.text}`),
+      "Source text:",
+      req.nearbyText.slice(0, 4000),
+    ].join("\n"),
+    maxTokens: 400,
+  });
+  const rec = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
+  const key = typeof rec.suggestedKey === "string" ? rec.suggestedKey.trim().toUpperCase() : undefined;
+  const validKey = key && req.options.some((o) => o.key === key) ? key : undefined;
+  const evidence = typeof rec.evidence === "string" && rec.evidence.trim() ? rec.evidence.trim() : undefined;
+  const needsReview = rec.needsReview === true || !validKey || !evidence;
+  return {
+    suggestedKey: needsReview ? undefined : validKey,
+    evidence,
+    confidence: typeof rec.confidence === "number" ? Math.min(1, Math.max(0, rec.confidence)) : 0.4,
+    needsReview,
+  };
+}
+
+/**
+ * AI Weakness Coach (rehaul phase 4.5). Looks at missed questions + their error
+ * types and explains the BEHAVIORAL pattern behind the misses, then suggests a
+ * targeted block. Grounded in the user's own attempt data.
+ */
+export async function coachWeakness(
+  provider: AIProvider,
+  req: { missed: Array<{ stem: string; category?: string; errorType?: string }> },
+): Promise<{ diagnosis: string; suggestedBlock: string }> {
+  const sample = req.missed.slice(0, 30);
+  const raw = await provider.completeJson({
+    system: [
+      "You are a study coach analyzing a medical student's missed questions and error types.",
+      "Explain the behavioral pattern behind the misses (e.g. misreading clues, over-picking broad answers),",
+      "not just the topics. Then suggest one concrete targeted block. Be specific and calm, never generic.",
+      'Return JSON: {"diagnosis": "...", "suggestedBlock": "..."}.',
+    ].join(" "),
+    prompt: sample.map((m, i) => `${i + 1}. [${m.category ?? "uncategorized"}${m.errorType ? ` / ${m.errorType}` : ""}] ${m.stem.slice(0, 200)}`).join("\n"),
+    maxTokens: 500,
+  });
+  const rec = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
+  const diagnosis = typeof rec.diagnosis === "string" ? rec.diagnosis.trim() : "";
+  const suggestedBlock = typeof rec.suggestedBlock === "string" ? rec.suggestedBlock.trim() : "";
+  if (!diagnosis) throw new Error("The model returned no usable coaching.");
+  return { diagnosis, suggestedBlock };
+}
+
+/**
  * Question Intelligence (§AI enhancement): digest of what a question set
  * tests, common pitfalls, and suggested review targets. Output is labeled
  * with the provider and stored on the set only after the user opted in.

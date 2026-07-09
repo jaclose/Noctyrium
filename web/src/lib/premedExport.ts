@@ -24,9 +24,9 @@ export async function exportPremedExperienceWorkbook(entries: PremedExperienceEn
   const XLSX = await import("xlsx-js-style");
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: "Axom Pre-Med Experience Log",
+    Title: "AXOM Pre-Med Experience Log",
     Subject: "Clinical, service, research, shadowing, and leadership evidence",
-    Author: "Axom",
+    Author: "AXOM",
     CreatedDate: new Date(),
   };
 

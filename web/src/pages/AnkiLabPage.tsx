@@ -541,7 +541,7 @@ function makeLocalCards({
 }
 
 function tagify(value: string): string {
-  return value.trim().replace(/\s+/g, "::").replace(/[^\w:-]/g, "") || "Axom";
+  return value.trim().replace(/\s+/g, "::").replace(/[^\w:-]/g, "") || "AXOM";
 }
 
 function cardsToTsv(cards: DraftCard[], customFields: string): string {

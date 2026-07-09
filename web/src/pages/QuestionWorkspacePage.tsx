@@ -8,25 +8,26 @@ import { useMemo, useState } from "react";
 import { HelpCircle, ListFilter, Microscope, Play, Timer } from "lucide-react";
 import { useStore } from "../lib/store";
 import {
-  analyzeQuestionStyle, dueQuestions, errorPatterns, filterForMode, weakTopics,
-  ERROR_TYPE_LABEL, MODE_META,
-  type QuestionMode, type QuestionRecord,
+  analyzeQuestionStyle, dueQuestions, errorPatterns, weakTopics,
+  ERROR_TYPE_LABEL,
+  type QuestionRecord,
 } from "../lib/questions";
 import type { QuizBlock, QuizFilters, QuizMode } from "../lib/quiz";
 import type { QuestionSet, SourceDocument } from "../lib/library";
-import { GlassCard, PanelHeader, Tag, EmptyState, GButton } from "../components/ui/primitives";
+import { GlassCard, PanelHeader, EmptyState, GButton } from "../components/ui/primitives";
 import { StatCard } from "../components/ui/StatCard";
-import { ImportPanel } from "../components/questions/ImportPanel";
+import { ImportPanel, type ImportSeed } from "../components/questions/ImportPanel";
+import { MassImport } from "../components/questions/MassImport";
 import { ExamRunner } from "../components/questions/ExamRunner";
 import { PerformancePanel } from "../components/questions/PerformancePanel";
 import { QuestionDetailModal } from "../components/questions/QuestionDetailModal";
 import { SourceLibrary, QuestionSetList } from "../components/questions/LibraryPanels";
 import { BlockBuilder } from "../components/questions/BlockBuilder";
+import { BankBrowser } from "../components/questions/BankBrowser";
 
-const MODES = Object.keys(MODE_META) as QuestionMode[];
 const NO_QUESTIONS: QuestionRecord[] = [];
 
-type BankTab = "import" | "sets" | "library" | "blocks" | "bank" | "insights";
+type BankTab = "import" | "mass" | "sets" | "library" | "blocks" | "bank" | "insights";
 
 interface RunnerLaunch {
   mode: QuizMode;
@@ -39,15 +40,13 @@ export function QuestionWorkspacePage() {
   const s = useStore();
   const questions = s.questions ?? NO_QUESTIONS;
   const [tab, setTab] = useState<BankTab>("import");
-  const [mode, setMode] = useState<QuestionMode | "all">("all");
   const [open, setOpen] = useState<QuestionRecord | null>(null);
   const [showStyle, setShowStyle] = useState(false);
   const [runner, setRunner] = useState<RunnerLaunch | null>(null);
-  const [seedReference, setSeedReference] = useState<{ title: string; text: string } | null>(null);
+  const [importSeed, setImportSeed] = useState<ImportSeed | null>(null);
 
   const due = useMemo(() => dueQuestions(questions), [questions]);
   const incorrect = questions.filter((q) => q.status === "incorrect");
-  const filtered = mode === "all" ? questions : filterForMode(questions, mode);
   const weak = useMemo(() => weakTopics(questions, 5), [questions]);
   const patterns = useMemo(() => errorPatterns(questions).slice(0, 5), [questions]);
   const style = useMemo(() => (showStyle ? analyzeQuestionStyle(questions) : null), [showStyle, questions]);
@@ -61,12 +60,13 @@ export function QuestionWorkspacePage() {
     setRunner({ mode: block.mode, presetFilters: block.filters, blockId: block.id });
   }
   function generateFrom(doc: SourceDocument) {
-    setSeedReference({ title: doc.title, text: doc.rawText });
+    setImportSeed({ reference: { title: doc.title, text: doc.rawText } });
     setTab("import");
   }
 
   const TABS: Array<[BankTab, string]> = [
     ["import", "Import Center"],
+    ["mass", "Mass Import"],
     ["sets", `Question Sets (${(s.questionSets ?? []).length})`],
     ["library", `Source Library (${(s.documents ?? []).length})`],
     ["blocks", `Block Builder (${(s.quizBlocks ?? []).length})`],
@@ -105,59 +105,18 @@ export function QuestionWorkspacePage() {
         </div>
       </GlassCard>
 
-      {tab === "import" && <ImportPanel key={seedReference?.title ?? "plain"} seedReference={seedReference} />}
+      {tab === "import" && <ImportPanel key={importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"} seed={importSeed} />}
+      {tab === "mass" && (
+        <MassImport onInspect={(payload) => {
+          setImportSeed({ drafts: payload.drafts, rawText: payload.rawText, fileName: payload.fileName, title: payload.title });
+          setTab("import");
+        }} />
+      )}
       {tab === "sets" && <QuestionSetList onRunSet={runSet} />}
       {tab === "library" && <SourceLibrary onGenerateFrom={generateFrom} />}
       {tab === "blocks" && <BlockBuilder onRunBlock={runBlock} onNewBlock={() => setRunner({ mode: "tutor" })} />}
 
-      {tab === "bank" && (
-        <GlassCard>
-          <PanelHeader title="Browse the bank" sub="Modes filter by what each attempt recorded — status, guesses, answer changes, repeat misses." />
-          <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-            <button className={`filter-pill ${mode === "all" ? "on" : ""}`} onClick={() => setMode("all")}>
-              All ({questions.length})
-            </button>
-            {MODES.map((m) => {
-              const meta = MODE_META[m];
-              const count = filterForMode(questions, m).length;
-              return (
-                <button
-                  key={m}
-                  className={`filter-pill ${mode === m ? "on" : ""}`}
-                  disabled={!meta.ready}
-                  title={meta.note}
-                  onClick={() => meta.ready && setMode(m)}
-                >
-                  {meta.label}{meta.ready ? ` (${count})` : " · soon"}
-                </button>
-              );
-            })}
-          </div>
-          {filtered.length === 0 ? (
-            <EmptyState
-              title={questions.length === 0 ? "No questions yet" : "Nothing in this mode right now"}
-              hint={questions.length === 0
-                ? "Import your first questions in the Import Center — misses become review items and repair cards."
-                : "That's not a failure state. Pick another mode or import more questions."}
-            />
-          ) : (
-            <div className="stack gap6">
-              {filtered.slice(0, 50).map((q) => (
-                <button key={q.id} className="question-row" onClick={() => setOpen(q)}>
-                  <span className="grow truncate">{q.stem}</span>
-                  {q.marked && <Tag tone="purple">marked</Tag>}
-                  {q.bank && <Tag tone="neutral">{q.bank}</Tag>}
-                  {!q.bank && (q.category || q.topic) && <Tag tone="neutral">{q.category ?? q.topic}</Tag>}
-                  <Tag tone={q.status === "correct" ? "green" : q.status === "incorrect" ? "red" : q.status === "unseen" ? "cyan" : "orange"}>
-                    {q.status}
-                  </Tag>
-                </button>
-              ))}
-              {filtered.length > 50 && <div className="sub">Showing 50 of {filtered.length}.</div>}
-            </div>
-          )}
-        </GlassCard>
-      )}
+      {tab === "bank" && <BankBrowser onOpen={setOpen} />}
 
       {tab === "insights" && (
         <>

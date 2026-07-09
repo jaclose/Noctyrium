@@ -231,7 +231,7 @@ function AlphaBuildBanner({
   energyScore: number;
   readinessScore: number;
 }) {
-  const displayName = profileName && profileName !== "Axom" ? profileName : "JD";
+  const displayName = profileName && !/^(axom|noctyrium)$/i.test(profileName) ? profileName : "JD";
   const quote = dailyDashboardMessage(activeDayKey);
   const date = new Date(`${activeDayKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: "long",

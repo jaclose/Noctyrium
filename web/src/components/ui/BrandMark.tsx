@@ -29,5 +29,5 @@ export function AxomMark({ size = 22, className = "" }: { size?: number; classNa
 }
 
 export function AxomWordmark({ className = "" }: { className?: string }) {
-  return <span className={`brand-wordmark ${className}`}>Axom</span>;
+  return <span className={`brand-wordmark ${className}`}>AXOM</span>;
 }

@@ -291,5 +291,27 @@
 /* Brand mark chip in onboarding */
 .onboarding-mark.axom { color: var(--bone); }
 
+/* Bank browser rows: selectable + openable halves */
+.question-row.selected { border-color: var(--cyan); background: rgba(200, 169, 106, 0.08); }
+.qrow-check {
+  background: none; border: none; padding: 0; display: inline-flex;
+  align-items: center; color: inherit; cursor: pointer; flex-shrink: 0;
+}
+.qrow-open {
+  background: none; border: none; padding: 0; color: inherit; text-align: left;
+  cursor: pointer; font: inherit;
+}
+
+/* Quiz option keyboard hint + progress bar */
+.option-row .option-hint {
+  margin-left: auto; font-size: 10px; font-weight: 700; color: var(--text-45);
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 5px; padding: 1px 5px;
+}
+.quiz-progress {
+  height: 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.08);
+  overflow: hidden; margin-bottom: 4px;
+}
+.quiz-progress-fill { display: block; height: 100%; background: var(--cyan); transition: width 0.25s ease; }
+
 /* --- Study methods ------------------------------------------------------------ */
 .method-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; line-height: 1.5; }

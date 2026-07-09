@@ -106,7 +106,7 @@ export function ReportsPage() {
         {performance.preliminary && (
           <div className="report-prelim">
             <AlertTriangle size={15} />
-            <span>Here are preliminary statistics. Axom needs about 5 days of use before the energy/performance rating becomes meaningfully personalized.</span>
+            <span>Here are preliminary statistics. AXOM needs about 5 days of use before the energy/performance rating becomes meaningfully personalized.</span>
           </div>
         )}
         <div className="report-insight-grid">

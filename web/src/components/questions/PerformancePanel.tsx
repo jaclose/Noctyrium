@@ -1,29 +1,69 @@
 // ===========================================================================
-// Question performance summaries (pre-beta §8) — useful numbers over charts:
-// recent blocks, weakest categories, and the retry queue. Reads persisted
-// QuizSession records; heavier analytics stay for a later pass.
+// Question performance summaries — useful numbers over charts: recent blocks,
+// weakest categories, error-behavior insight, the retry queue, and an optional
+// grounded AI Weakness Coach. Reads persisted QuizSession + question records.
 // ===========================================================================
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { scoresByCategory, sessionElapsedSeconds } from "../../lib/quiz";
-import { dueQuestions } from "../../lib/questions";
-import { GlassCard, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+import { dueQuestions, errorPatterns, ERROR_TYPE_LABEL, type QuestionRecord } from "../../lib/questions";
+import { coachWeakness, resolveActiveProvider } from "../../lib/ai";
+import { GlassCard, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+import { pushToast } from "../../lib/toast";
+
+const NO_QUESTIONS: QuestionRecord[] = [];
+
+/** Local, keyless behavioral read: the dominant error type across misses. */
+function localInsight(questions: QuestionRecord[]): string | null {
+  const patterns = errorPatterns(questions);
+  if (!patterns.length) return null;
+  const top = patterns[0];
+  if (top.share < 0.3) return null;
+  return `Most of your misses (${Math.round(top.share * 100)}%) are ${ERROR_TYPE_LABEL[top.errorType].toLowerCase()} — not spread evenly across topics. Target the behavior, not just the content.`;
+}
 
 export function PerformancePanel({ onRetakeMissed }: { onRetakeMissed: (ids: string[]) => void }) {
-  const questions = useStore((s) => s.questions ?? []);
+  const questions = useStore((s) => s.questions ?? NO_QUESTIONS);
   const sessions = useStore((s) => s.quizSessions ?? []);
+  const [coach, setCoach] = useState<{ diagnosis: string; suggestedBlock: string } | null>(null);
+  const [coaching, setCoaching] = useState(false);
+  const provider = useMemo(() => resolveActiveProvider(), []);
 
   const recent = sessions.slice(0, 5);
   const byCategory = useMemo(() => scoresByCategory(sessions, questions).slice(0, 5), [sessions, questions]);
   const due = useMemo(() => dueQuestions(questions).length, [questions]);
+  const insight = useMemo(() => localInsight(questions), [questions]);
   const incorrectIds = useMemo(
     () => questions.filter((q) => q.status === "incorrect").map((q) => q.id),
     [questions],
   );
 
+  async function runCoach() {
+    if (!provider) return;
+    setCoaching(true);
+    try {
+      const missed = questions
+        .filter((q) => q.status === "incorrect")
+        .slice(0, 30)
+        .map((q) => ({ stem: q.stem, category: q.category, errorType: q.errorType }));
+      setCoach(await coachWeakness(provider, { missed }));
+    } catch (err) {
+      pushToast({ title: "Coaching failed", body: err instanceof Error ? err.message : "Unknown error.", tone: "warn" });
+    } finally {
+      setCoaching(false);
+    }
+  }
+
   return (
     <GlassCard>
-      <PanelHeader title="Performance" sub="Session history, weakest categories, and what's due for another shot." />
+      <PanelHeader
+        title="Performance"
+        sub="Session history, weakest categories, error behavior, and what's due for another shot."
+        action={provider && incorrectIds.length >= 3
+          ? <GhostButton disabled={coaching} onClick={() => void runCoach()}><Sparkles size={13} /> {coaching ? "Analyzing…" : "Coach"}</GhostButton>
+          : undefined}
+      />
       {sessions.length === 0 ? (
         <EmptyState title="No blocks completed yet" hint="Run a tutor or exam block — results land here and feed weakness detection." />
       ) : (
@@ -54,6 +94,15 @@ export function PerformancePanel({ onRetakeMissed }: { onRetakeMissed: (ids: str
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+          {insight && !coach && (
+            <div className="question-explanation"><b>Pattern:</b> {insight}</div>
+          )}
+          {coach && (
+            <div className="stack gap6">
+              <div className="question-explanation"><b>{provider?.info.label}:</b> {coach.diagnosis}</div>
+              {coach.suggestedBlock && <div className="sub"><b>Try:</b> {coach.suggestedBlock}</div>}
             </div>
           )}
           <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>

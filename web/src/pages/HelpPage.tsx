@@ -17,7 +17,7 @@ const ANKI_STEPS = [
   { img: "fields.png", title: "Check fields", body: "Make sure fields match the CSV export: Front, Back, Tags, Source, and any optional image fields." },
   { img: "card-editor.png", title: "Paste templates / style", body: "Open Cards to paste or edit the front, back, and styling templates." },
   { img: "jd-anki-builds.png", title: "Find JD Anki Builds", body: "Use the JD Anki Builds folder for the card-style system and reference files." },
-  { img: "importing.png", title: "Import CSV", body: "Go to File → Import, select your Axom CSV, then map fields carefully." },
+  { img: "importing.png", title: "Import CSV", body: "Go to File → Import, select your AXOM CSV, then map fields carefully." },
   { img: null, title: "Review before studying", body: "Open the Browser and inspect a few cards before adding them to daily reviews." },
 ];
 
@@ -60,7 +60,7 @@ const FEATURE_GUIDES: GuideEntry[] = [
     start: "Use the card as a diagnostic only until the local connection is user-confirmed.",
     prerequisite: "Desktop Anki open, AnkiConnect installed, and browser local-network access allowed.",
     route: "integrations",
-    preview: "Local HTTP bridge to Anki. Hosted Vercel can still be blocked by browser local-network rules, so the supported path is local Axom plus local Anki.",
+    preview: "Local HTTP bridge to Anki. Hosted Vercel can still be blocked by browser local-network rules, so the supported path is local AXOM plus local Anki.",
   },
   {
     icon: Timer,
@@ -176,14 +176,14 @@ export function HelpPage() {
 
       <GlassCard pad>
         <PanelHeader title="Community and Feedback" sub="Bug reports, feature requests, and beta discussion without a noisy floating widget"
-          action={<a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener"><MessageCircle size={14} /> Axom Discord Channel</a>} />
+          action={<a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener"><MessageCircle size={14} /> AXOM Discord Channel</a>} />
         <div className="sub" style={{ marginTop: 6 }}>
           Use the Discord for quick community feedback. Use the form below for structured bug reports with app version and browser details.
         </div>
       </GlassCard>
 
       <GlassCard pad>
-        <PanelHeader title="Importing Axom cards into Anki" sub="Eight steps, from your generated CSV to graded reviews"
+        <PanelHeader title="Importing AXOM cards into Anki" sub="Eight steps, from your generated CSV to graded reviews"
           action={<a className="gbtn sm" href="https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp?usp=sharing" target="_blank" rel="noreferrer noopener"><Layers size={14} /> JD Anki Builds</a>} />
         <details className="help-compact-details">
           <summary>Show Anki import screenshots</summary>
@@ -277,9 +277,9 @@ function FeedbackForm() {
   return (
     <GlassCard pad className="feedback-card">
       <PanelHeader title="Suggest a feature · report a bug"
-        sub="Alpha 1 grows from your feedback. Send bugs, confusing moments, or feature ideas so Axom gets sharper with every release." />
+        sub="Alpha 1 grows from your feedback. Send bugs, confusing moments, or feature ideas so AXOM gets sharper with every release." />
       {state === "sent" ? (
-        <div className="feedback-done"><Check size={18} /> Sent. Thank you for helping improve Axom.</div>
+        <div className="feedback-done"><Check size={18} /> Sent. Thank you for helping improve AXOM.</div>
       ) : (
         <>
           <div className="row gap12 wrap">

@@ -191,6 +191,10 @@ interface Actions {
   // quiz sessions (tutor/exam blocks, schema v29)
   saveQuizSession: (session: QuizSession) => void;
   toggleQuestionMarked: (id: string) => void;
+  /** Bulk-apply category/tags to many questions (Question Bank bulk edit). */
+  bulkUpdateQuestions: (ids: string[], patch: { category?: string; tags?: string[]; addTags?: string[] }) => void;
+  renameTag: (from: string, to: string) => void;
+  removeTag: (tag: string) => void;
 
   // question-bank library (schema v30) — documents, sets, saved blocks
   addDocument: (doc: SourceDocument) => void;
@@ -882,6 +886,42 @@ export const useStore = create<Store>()(
       toggleQuestionMarked: (id) =>
         set((s) => ({
           questions: (s.questions ?? []).map((q) => (q.id === id ? { ...q, marked: !q.marked, updatedAt: now() } : q)),
+        })),
+      bulkUpdateQuestions: (ids, patch) =>
+        set((s) => {
+          const idSet = new Set(ids);
+          return {
+            questions: (s.questions ?? []).map((q) => {
+              if (!idSet.has(q.id)) return q;
+              const tags = patch.tags
+                ? [...patch.tags]
+                : patch.addTags
+                  ? [...new Set([...q.tags, ...patch.addTags])]
+                  : q.tags;
+              return {
+                ...q,
+                category: patch.category !== undefined ? patch.category || undefined : q.category,
+                tags,
+                updatedAt: now(),
+              };
+            }),
+          };
+        }),
+      renameTag: (from, to) =>
+        set((s) => {
+          const target = to.trim();
+          if (!from || !target) return {};
+          return {
+            questions: (s.questions ?? []).map((q) =>
+              q.tags.includes(from)
+                ? { ...q, tags: [...new Set(q.tags.map((t) => (t === from ? target : t)))], updatedAt: now() }
+                : q),
+          };
+        }),
+      removeTag: (tag) =>
+        set((s) => ({
+          questions: (s.questions ?? []).map((q) =>
+            q.tags.includes(tag) ? { ...q, tags: q.tags.filter((t) => t !== tag), updatedAt: now() } : q),
         })),
 
       addDocument: (doc) =>

@@ -148,14 +148,14 @@ export function Sidebar({
             </button>
           )}
           <a className="nav-item footer-action" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-            <MessageCircle size={17} /><span>Axom Discord Channel</span>
+            <MessageCircle size={17} /><span>AXOM Discord Channel</span>
           </a>
           <div className="user-panel">
             <button type="button" className="user-id" onClick={() => onOpenSettings("general")} title="Profile & settings">
               <span className="avatar sm">
                 {profile.avatarDataUrl
                   ? <img src={profile.avatarDataUrl} alt="" />
-                  : <span className="avatar-mono">{(profile.name || "N").slice(0, 1)}</span>}
+                  : <span className="avatar-mono">{(profile.name || "A").slice(0, 1)}</span>}
                 <span className="user-online" />
               </span>
               <span className="user-meta">

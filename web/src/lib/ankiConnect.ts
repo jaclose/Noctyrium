@@ -123,7 +123,7 @@ function classifyFetchFailure(err: unknown, endpoint: URL): AnkiError {
     return new AnkiError(`AnkiConnect did not answer within 8 seconds at ${endpoint}. Confirm Anki is open, then try Test endpoint.`, "endpoint-unreachable");
   }
   if (hostedLocal) {
-    return new AnkiError(`Chrome blocked this hosted page from reaching local AnkiConnect at ${endpoint}. Allow Local Network / Apps on device for ${origin}, or run Axom locally from http://127.0.0.1:5173.`, "local-network-blocked");
+    return new AnkiError(`Chrome blocked this hosted page from reaching local AnkiConnect at ${endpoint}. Allow Local Network / Apps on device for ${origin}, or run AXOM locally from http://127.0.0.1:5173.`, "local-network-blocked");
   }
   try {
     if (typeof window !== "undefined" && window.location.protocol === "https:" && endpoint.protocol === "http:" && !localHost) {
@@ -180,7 +180,7 @@ export async function fetchAnkiSnapshot(endpoint: string, onStep?: (id: AnkiDiag
   onStep?.("version", "running");
   const version = await ankiVersion(endpoint);
   if (typeof version !== "number" || version < 5) {
-    throw new AnkiError(`Unsupported AnkiConnect API version: ${String(version)}. Axom expects version 5 or newer.`, "api-incompatibility");
+    throw new AnkiError(`Unsupported AnkiConnect API version: ${String(version)}. AXOM expects version 5 or newer.`, "api-incompatibility");
   }
   onStep?.("version", "ok", `v${version}`);
   onStep?.("decks", "running");

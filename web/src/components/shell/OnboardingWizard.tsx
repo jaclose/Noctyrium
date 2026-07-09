@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
-import { AxomMark, AxomWordmark } from "../ui/BrandMark";
+import { AXOMMark, AXOMWordmark } from "../ui/BrandMark";
 import { Field } from "../ui/Modal";
 import { FOCUS_OPTIONS, focusOption } from "../../lib/experience";
 import { groupedTracks, resolveTrack } from "../../lib/tracks";
@@ -83,7 +83,7 @@ export function OnboardingWizard() {
   function finish() {
     const nextSubscriptions = [...new Set([activeFocusId, ...subscriptions])];
     store.updateProfile({
-      name: name.trim() || "Axom",
+      name: name.trim() || "AXOM",
       tagline: activeFocus.tagline,
       onboarded: true,
     });
@@ -113,8 +113,8 @@ export function OnboardingWizard() {
 
         {step === 0 && (
           <div className="onboarding-body">
-            <div className="onboarding-mark axom"><AxomMark size={30} /></div>
-            <h2>Personalize <AxomWordmark /></h2>
+            <div className="onboarding-mark axom"><AXOMMark size={30} /></div>
+            <h2>Personalize <AXOMWordmark /></h2>
             <p className="onboarding-lede">
               Next you'll pick your program — SGU, US MD/DO, pre-med, MCAT, undergrad, nursing, or PA.
               That choice tailors your starter courses, the resources you see, and the study lanes on
@@ -183,7 +183,7 @@ export function OnboardingWizard() {
           <div className="onboarding-body">
             <h2>Choose your focus lanes</h2>
             <p className="onboarding-lede">
-              These are the {track.short} lanes Axom will track. Subscribe to the ones you want
+              These are the {track.short} lanes AXOM will track. Subscribe to the ones you want
               visible, then mark one as your current primary focus for targets and AI context.
             </p>
             <div className="focus-card-grid">
@@ -264,7 +264,7 @@ export function OnboardingWizard() {
             <div className="onboarding-mark good"><Check size={26} /></div>
             <h2>Ready, {name.trim() || "there"}.</h2>
             <p className="onboarding-lede">
-              Axom is set up for <b>{track.label}</b>, focused on <b>{activeFocus.label}</b>.
+              AXOM is set up for <b>{track.label}</b>, focused on <b>{activeFocus.label}</b>.
               {!wasOnboarded && track.seedsStructure ? ` Your ${track.progress.unit} structure is loading now.` : ""}
             </p>
             <div className="onboarding-summary">
