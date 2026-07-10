@@ -98,6 +98,26 @@ export function QuestionWorkspacePage() {
             </div>
           }
         />
+        {runnable > 0 && (due.length > 0 || incorrect.length > 0 || weak.length > 0) && (
+          <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            <span className="sub">Today's study:</span>
+            {due.length > 0 && (
+              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: Math.min(due.length, 20) }, retakeIds: due.slice(0, 20).map((q) => q.id) })}>
+                Review {Math.min(due.length, 20)} due
+              </button>
+            )}
+            {incorrect.length > 0 && (
+              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) })}>
+                Retry {Math.min(incorrect.length, 20)} missed
+              </button>
+            )}
+            {weak[0] && (
+              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: weak[0].topic ? [weak[0].topic] : undefined } })}>
+                Weak topic: {weak[0].topic}
+              </button>
+            )}
+          </div>
+        )}
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
           {TABS.map(([id, label]) => (
             <button key={id} className={`filter-pill ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>{label}</button>

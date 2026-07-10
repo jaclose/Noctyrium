@@ -52,8 +52,15 @@ const OPTION_RE = /^\s*\(?([A-Ha-h])[).:\-–]\s+(.*\S)\s*$/;
 const ANSWER_RE = /^\s*(?:(?:correct\s+)?ans(?:wer)?|correct)\s*[:\-–]?\s*\(?([A-Ha-h])\)?\s*$/i;
 /** "Correct Answer: C. Explanation…" / "The correct answer is C because…" as a line. */
 const ANSWER_WITH_TAIL_RE = /^\s*(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s*\(?([A-Ha-h])\)?\b[.,]?\s*(.*)$/i;
-/** "Explanation:", "Rationale:", "Discussion:". */
-const EXPLANATION_RE = /^\s*(explanation|rationale|discussion|teaching\s+point|why)\s*[:\-–]/i;
+/** Feedback/explanation/objective markers that begin a NON-option content block.
+ * Capturing group 1 is the marker keyword so callers can classify it. */
+const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|explanation|rationale|discussion|teaching\s+point|key\s+concept|learning\s+objectives?|objectives?|references?|why)\s*[:\-–]/i;
+/**
+ * The SAME markers, matched mid-line so we can split feedback that got glued to
+ * an answer choice ("E. Co-payment Correct Feedback: …"). Requires whitespace
+ * before the marker so words like "objective assessment" inside an option don't
+ * trip it. Group 1 = marker, group 2 = the feedback text after the colon. */
+const INLINE_FEEDBACK_RE = /\s+((?:correct|incorrect)\s+feedback|feedback|explanation|rationale|this\s+question\s+addresses\s+objectives?|learning\s+objectives?|objectives?|teaching\s+point|key\s+concept)\s*[:\-–]\s*(.*)$/i;
 /** "A is incorrect because…" / "C is correct — …" (choice rationales). */
 const RATIONALE_RE = /^\s*\(?([A-Ha-h])\)?[).:\-–]?\s+is\s+(in)?correct\b[.,:;\s]*(.*)$/i;
 /** Prose-embedded answer inside explanation text. */
@@ -62,6 +69,30 @@ const PROSE_ANSWER_RE = /\b(?:the\s+answer\s+is|correct\s+answer\s+is|correct\s+
 const META_RE = /^\s*(topic|system|source|category|subject|tags)\s*[:\-–]\s*(.+\S)\s*$/i;
 /** A numbered question start: "1. ", "12) ", "Q3: ", "Question 4." */
 const QUESTION_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,3})\s*[).:]\s+\S/i;
+
+/** True when a feedback marker is a "correct" signal (marks its option/choice). */
+function isCorrectFeedback(marker: string): boolean {
+  return /^correct\s+feedback$/i.test(marker.trim());
+}
+function isIncorrectFeedback(marker: string): boolean {
+  return /^incorrect\s+feedback$/i.test(marker.trim());
+}
+
+/**
+ * Split feedback/explanation text that was glued onto an answer choice.
+ * "Co-payment Correct Feedback: Co-insurance is the term…" →
+ *   { optionText: "Co-payment", marker: "Correct Feedback", feedback: "Co-insurance…" }
+ * Returns just the text when no marker is present.
+ */
+export function splitOptionFeedback(text: string): { optionText: string; marker?: string; feedback?: string } {
+  const m = text.match(INLINE_FEEDBACK_RE);
+  if (!m || m.index === undefined) return { optionText: text.trim() };
+  return {
+    optionText: text.slice(0, m.index).trim(),
+    marker: m[1].replace(/\s+/g, " ").trim(),
+    feedback: m[2].trim(),
+  };
+}
 
 export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const warnings: string[] = [];
@@ -74,6 +105,11 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const meta: Record<string, string> = {};
   let correctKey: string | undefined;
   let rationaleCorrectLetter: string | undefined;
+  // Layer 2: the option letter whose choice carried a "Correct Feedback" block.
+  let feedbackCorrectLetter: string | undefined;
+  // While collecting the tail of an inline-feedback block, continuation lines
+  // append to the explanation, not to the previous option's text.
+  let feedbackFlow = false;
   let phase: "stem" | "options" | "explanation" = "stem";
 
   for (const line of lines) {
@@ -86,6 +122,7 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
 
     if (metaMatch && phase !== "stem") {
       meta[metaMatch[1].toLowerCase()] = metaMatch[2].trim();
+      feedbackFlow = false;
       continue;
     }
     // L4: choice rationales. A rationale line can look like an option line
@@ -97,40 +134,78 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       if (isKnownOption || phase === "explanation") {
         rationales[letter] = rationaleMatch[3].trim() || (rationaleMatch[2] ? "Incorrect." : "Correct.");
         if (!rationaleMatch[2]) rationaleCorrectLetter = rationaleCorrectLetter ?? letter;
+        feedbackFlow = false;
         continue;
       }
     }
+    // A standalone feedback/explanation/objective marker line → explanation.
     if (explanationMatch) {
       phase = "explanation";
+      feedbackFlow = true;
       const rest = line.replace(EXPLANATION_RE, "").trim();
       if (rest) explanationLines.push(rest);
       continue;
     }
     if (answerMatch && phase !== "stem") {
       correctKey = answerMatch[1].toUpperCase();
+      feedbackFlow = false;
       continue;
     }
     if (answerTailMatch && phase !== "stem") {
       correctKey = correctKey ?? answerTailMatch[1].toUpperCase();
       if (answerTailMatch[2].trim()) explanationLines.push(answerTailMatch[2].trim());
       phase = "explanation";
+      feedbackFlow = true;
       continue;
     }
     if (optionMatch && (phase === "options" || isLikelyFirstOption(optionMatch[1], options))) {
       phase = "options";
-      options.push({ key: optionMatch[1].toUpperCase(), text: optionMatch[2].trim() });
+      const letter = optionMatch[1].toUpperCase();
+      // CRITICAL FIX: strip any feedback/explanation glued to the choice so it
+      // never becomes part of the option text.
+      const split = splitOptionFeedback(optionMatch[2]);
+      options.push({ key: letter, text: split.optionText });
+      if (split.feedback) {
+        if (isCorrectFeedback(split.marker!)) {
+          feedbackCorrectLetter = feedbackCorrectLetter ?? letter;
+          explanationLines.push(split.feedback);
+        } else if (isIncorrectFeedback(split.marker!)) {
+          rationales[letter] = split.feedback;
+        } else {
+          explanationLines.push(split.feedback);
+        }
+        feedbackFlow = true; // wrapped feedback continues on following lines
+      } else {
+        feedbackFlow = false;
+      }
       continue;
     }
     if (phase === "stem") stemLines.push(line);
     else if (phase === "options" && line.trim()) {
-      // "The answer is C because…" directly after options starts the explanation.
-      if (PROSE_ANSWER_RE.test(line)) {
+      // Feedback started on a prior option line — keep collecting it.
+      if (feedbackFlow) {
+        explanationLines.push(line.trim());
+      } else if (PROSE_ANSWER_RE.test(line)) {
+        // "The answer is C because…" directly after options starts the explanation.
         phase = "explanation";
         explanationLines.push(line.trim());
       } else {
-        // Continuation of the previous option's wrapped text.
-        const last = options[options.length - 1];
-        if (last) last.text = `${last.text} ${line.trim()}`;
+        // Layer 2 by option TEXT: "Co-insurance Correct Feedback: …" (no letter).
+        const textFeedback = line.match(/^(.*?\S)\s+((?:correct|incorrect)\s+feedback)\s*[:\-–]\s*(.*)$/i);
+        const matchedByText = textFeedback
+          ? options.find((o) => o.text.toLowerCase() === textFeedback[1].trim().toLowerCase())
+          : undefined;
+        if (textFeedback && matchedByText) {
+          if (isCorrectFeedback(textFeedback[2])) feedbackCorrectLetter = feedbackCorrectLetter ?? matchedByText.key;
+          else rationales[matchedByText.key] = textFeedback[3].trim();
+          explanationLines.push(textFeedback[3].trim());
+          phase = "explanation";
+          feedbackFlow = true;
+        } else {
+          // Continuation of the previous option's wrapped text.
+          const last = options[options.length - 1];
+          if (last) last.text = `${last.text} ${line.trim()}`;
+        }
       }
     } else if (phase === "explanation") explanationLines.push(line);
   }
@@ -158,16 +233,41 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     confidence = "low";
   }
 
-  // L3/L5: reconcile the explicit answer with what the prose/rationales claim.
+  // L2/L3/L5: reconcile every answer signal. "Correct Feedback" attached to a
+  // choice (feedbackCorrectLetter) is a STRONG explicit signal, on par with an
+  // explicit answer line.
   const proseLetter = explanation?.match(PROSE_ANSWER_RE)?.[1]?.toUpperCase();
-  const claimed = [correctKey, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
+  const explicit = [correctKey, feedbackCorrectLetter].filter((l): l is string => !!l);
+  const claimed = [correctKey, feedbackCorrectLetter, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
   const distinct = [...new Set(claimed)];
-  if (distinct.length > 1) {
-    warnings.push(`Conflicting answers detected (${distinct.join(" vs ")}) between the answer line, explanation prose, and choice rationales — left unset, needs review.`);
+  const distinctExplicit = [...new Set(explicit)];
+  if (distinctExplicit.length > 1) {
+    // Two explicit sources disagree → real conflict, never guess.
+    warnings.push(`Conflicting answers detected (${distinctExplicit.join(" vs ")}) between explicit answer signals — left unset, needs review.`);
     correctKey = undefined;
     confidence = "low";
     needsReview = true;
-  } else if (!correctKey && distinct.length === 1) {
+  } else if (distinctExplicit.length === 1) {
+    correctKey = distinctExplicit[0];
+    // L5: an explicit answer that a prose "the answer is X" contradicts is a
+    // real conflict — never guess, require review (matches the directive).
+    if (proseLetter && proseLetter !== correctKey) {
+      warnings.push(`Conflicting answers detected (${correctKey} vs ${proseLetter}) between the answer signal and explanation prose — left unset, needs review.`);
+      correctKey = undefined;
+      confidence = "low";
+      needsReview = true;
+    } else if (rationaleCorrectLetter && rationaleCorrectLetter !== correctKey) {
+      warnings.push(`Conflicting answers detected (${correctKey} vs ${rationaleCorrectLetter}) between the answer signal and a choice rationale — left unset, needs review.`);
+      correctKey = undefined;
+      confidence = "low";
+      needsReview = true;
+    }
+  } else if (distinct.length > 1) {
+    warnings.push(`Conflicting answers detected (${distinct.join(" vs ")}) between the explanation prose and choice rationales — left unset, needs review.`);
+    correctKey = undefined;
+    confidence = "low";
+    needsReview = true;
+  } else if (distinct.length === 1) {
     correctKey = distinct[0];
     warnings.push(`Answer "${correctKey}" was inferred from explanation prose — confirm it against the source.`);
     if (confidence === "high") confidence = "medium";
@@ -178,6 +278,17 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     correctKey = undefined;
     confidence = confidence === "high" ? "medium" : confidence;
     needsReview = true;
+  }
+  // L3: semantic mapping — the explanation opens by naming an option's text
+  // ("Co-insurance is the term…"). Conservative: only an exact option-text
+  // match at the very start, and only when nothing explicit was found.
+  if (!correctKey && !needsReview && explanation && options.length) {
+    const semantic = matchExplanationToOption(explanation, options);
+    if (semantic) {
+      correctKey = semantic;
+      warnings.push(`Answer "${correctKey}" was inferred from the explanation naming that option — confirm it against the source.`);
+      if (confidence === "high") confidence = "medium";
+    }
   }
   if (!correctKey && !needsReview) {
     warnings.push("No correct answer detected. The question saves fine without one — set it after checking the source.");
@@ -207,6 +318,24 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
 function isLikelyFirstOption(letter: string, existing: QuestionOption[]): boolean {
   if (existing.length > 0) return true;
   return letter.toUpperCase() === "A";
+}
+
+/**
+ * L3 semantic mapping: does the explanation open by naming one option's text?
+ * "Co-insurance is the term…" → the option whose text is "Co-insurance".
+ * Requires the named phrase to appear at the very start followed by "is/are",
+ * and to be an EXACT (case-insensitive) option-text match, so it never guesses.
+ * Returns the option letter, or undefined when no single clear match exists.
+ */
+function matchExplanationToOption(explanation: string, options: QuestionOption[]): string | undefined {
+  const opening = explanation.trim().slice(0, 120).toLowerCase();
+  const matches = options.filter((o) => {
+    const t = o.text.trim().toLowerCase();
+    if (t.length < 3) return false;
+    return opening.startsWith(`${t} is `) || opening.startsWith(`${t} are `) || opening.startsWith(`${t}, `);
+  });
+  // Exactly one option named at the opening → confident enough to suggest.
+  return matches.length === 1 ? matches[0].key : undefined;
 }
 
 /**

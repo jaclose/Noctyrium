@@ -278,6 +278,20 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
             <ul className="intake-warnings">{batchWarnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
           )}
 
+          {drafts.length > 1 && (
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              <span className="sub">Quick select:</span>
+              <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: d.confidence === "high" && !d.needsReview })))}>
+                High-confidence only ({drafts.filter((d) => d.confidence === "high" && !d.needsReview).length})
+              </button>
+              <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: Boolean(d.needsReview || d.confidence === "low") })))}>
+                Needs-review only ({drafts.filter((d) => d.needsReview || d.confidence === "low").length})
+              </button>
+              <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: true })))}>All</button>
+              <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: false })))}>None</button>
+            </div>
+          )}
+
           <div className="stack gap6">
             <span className="field-label">Save as</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>

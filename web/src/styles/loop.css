@@ -312,6 +312,13 @@
   overflow: hidden; margin-bottom: 4px;
 }
 .quiz-progress-fill { display: block; height: 100%; background: var(--cyan); transition: width 0.25s ease; }
+.review-verdict {
+  font-weight: 700; font-size: 14px; padding: 8px 12px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07);
+}
+/* Bigger, calmer answer choices for the rehauled quiz */
+.option-row { padding: 12px 16px; font-size: 14px; line-height: 1.45; }
+.option-row:not(:disabled):hover { border-color: rgba(230, 226, 214, 0.28); background: rgba(255, 255, 255, 0.04); }
 
 /* --- Study methods ------------------------------------------------------------ */
 .method-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13.5px; line-height: 1.5; }

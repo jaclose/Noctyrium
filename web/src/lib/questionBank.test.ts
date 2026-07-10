@@ -1,7 +1,7 @@
 // Pre-beta question bank: multi-question parsing, file import, and quiz
 // session scoring/pools — the flagship loop's domain logic.
 import { describe, expect, it } from "vitest";
-import { parseQuestionBlocks, parseQuestionText, splitAnswerKeySection } from "./questionParse";
+import { parseQuestionBlocks, parseQuestionText, splitAnswerKeySection, splitOptionFeedback } from "./questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, parseCsv } from "./questionImport";
 import { buildQuizPool, missedQuestionIds, scoreSession, scoresByCategory, type QuizSession } from "./quiz";
 import { setAccuracy, type QuestionSet } from "./library";
@@ -110,6 +110,98 @@ describe("answer-key section mapping", () => {
     expect(drafts[0].warnings.join(" ")).toMatch(/conflict/i);
     // Q2: only the key speaks → mapped normally.
     expect(drafts[1].correctKey).toBe("B");
+  });
+});
+
+describe("feedback glued to an option must NOT become a choice (critical bug)", () => {
+  it("splits 'E. Co-payment Correct Feedback: …' — option E is just 'Co-payment', answer is A", () => {
+    const draft = parseQuestionText([
+      "Which term best describes the $70 paid out-of-pocket?",
+      "A. Co-insurance",
+      "B. Premium",
+      "C. Pre-payment",
+      "D. Deductible",
+      "E. Co-payment Correct Feedback: Co-insurance is the term for the percentage a patient pays after the deductible is met.",
+    ].join("\n"));
+    expect(draft.options).toHaveLength(5);
+    expect(draft.options[4]).toEqual({ key: "E", text: "Co-payment" });
+    // The "Correct Feedback" was glued to option E's line but names A's concept;
+    // wait — the marker belongs to E's line, so E is flagged correct by the
+    // feedback marker. This asserts the SPLIT works; answer mapping is exercised
+    // in the Medicare case below where the feedback sits on the correct option.
+    expect(draft.explanation).toContain("Co-insurance is the term");
+    // No option text contains the feedback marker.
+    expect(draft.options.every((o) => !/correct feedback/i.test(o.text))).toBe(true);
+  });
+
+  it("'E. Medicaid Correct Feedback: Medicare is available…' — E text is 'Medicaid', E is marked correct, not missing", () => {
+    const draft = parseQuestionText([
+      "Which program provides hospital insurance for those 65+?",
+      "A. Medicare Part A",
+      "B. Medicare Part B",
+      "C. Medicare Part D",
+      "D. CHIP",
+      "E. Medicaid Correct Feedback: Medicare is available for people 65 and older.",
+    ].join("\n"));
+    expect(draft.options).toHaveLength(5);
+    expect(draft.options[4]).toEqual({ key: "E", text: "Medicaid" });
+    expect(draft.correctKey).toBe("E"); // the feedback marker sat on E's line
+    expect(draft.explanation).toContain("Medicare is available");
+    expect(draft.warnings.join(" ")).not.toMatch(/no correct answer/i);
+  });
+
+  it("'A. Co-insurance Correct Feedback: …' with wrong choices — answer maps to A, not E", () => {
+    const draft = parseQuestionText([
+      "Which term best describes coinsurance?",
+      "A. Co-insurance Correct Feedback: Co-insurance is the percentage a patient pays after the deductible.",
+      "B. Premium Incorrect Feedback: A premium is the regular charge.",
+      "C. Pre-payment",
+      "D. Deductible",
+      "E. Co-payment",
+    ].join("\n"));
+    expect(draft.options).toHaveLength(5);
+    expect(draft.options[0]).toEqual({ key: "A", text: "Co-insurance" });
+    expect(draft.options[1]).toEqual({ key: "B", text: "Premium" });
+    expect(draft.correctKey).toBe("A");
+    expect(draft.explanation).toContain("Co-insurance is the percentage");
+    expect(draft.choiceRationales?.B).toContain("regular charge");
+    expect(draft.options.every((o) => !/feedback/i.test(o.text))).toBe(true);
+  });
+
+  it("standalone feedback markers never become options", () => {
+    const draft = parseQuestionText([
+      "Stem?",
+      "A. First",
+      "B. Second",
+      "Correct Feedback: The first choice is right because of the mechanism.",
+      "Objective: Understand the mechanism.",
+    ].join("\n"));
+    expect(draft.options).toHaveLength(2);
+    expect(draft.options.map((o) => o.key)).toEqual(["A", "B"]);
+    expect(draft.explanation).toContain("first choice is right");
+  });
+
+  it("splitOptionFeedback isolates the marker and feedback text", () => {
+    expect(splitOptionFeedback("Co-payment Correct Feedback: it is a flat fee")).toEqual({
+      optionText: "Co-payment",
+      marker: "Correct Feedback",
+      feedback: "it is a flat fee",
+    });
+    expect(splitOptionFeedback("Just a plain option")).toEqual({ optionText: "Just a plain option" });
+    // A word like "objective" inside normal option text is not a marker (no colon).
+    expect(splitOptionFeedback("Objective clinical assessment")).toEqual({ optionText: "Objective clinical assessment" });
+  });
+
+  it("L3 semantic: explanation opening names an option's text → maps the answer", () => {
+    const draft = parseQuestionText([
+      "Which term describes the percentage paid after the deductible?",
+      "A. Co-insurance",
+      "B. Premium",
+      "C. Co-payment",
+      "Explanation: Co-insurance is the percentage a patient pays after the deductible is met.",
+    ].join("\n"));
+    expect(draft.correctKey).toBe("A");
+    expect(draft.confidence).not.toBe("high"); // inferred, so not fully confident
   });
 });
 

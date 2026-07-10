@@ -56,6 +56,7 @@ import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
+import { repairOrphans } from "./orphanRepair";
 import {
   nextSchedule, validateAnkiCard,
   type AnkiCard, type CardReviewLog, type ReviewRating,
@@ -206,6 +207,8 @@ interface Actions {
   removeQuestionSet: (id: string) => void;
   saveQuizBlock: (block: QuizBlock) => void;
   removeQuizBlock: (id: string) => void;
+  /** Repair dangling library links (never deletes questions/attempts). */
+  repairQuestionBankOrphans: () => number;
 
   // anki card vault (Phase 5) — validated + reviewed before save
   addAnkiCards: (inputs: unknown[]) => { saved: number; errors: string[] };
@@ -955,6 +958,14 @@ export const useStore = create<Store>()(
         set((s) => ({ quizBlocks: [block, ...(s.quizBlocks ?? []).filter((b) => b.id !== block.id)].slice(0, 200) })),
       removeQuizBlock: (id) =>
         set((s) => ({ quizBlocks: (s.quizBlocks ?? []).filter((b) => b.id !== id) })),
+      repairQuestionBankOrphans: () => {
+        const state = get();
+        const result = repairOrphans(state);
+        if (result.report.totalIssues > 0) {
+          set(() => ({ questions: result.questions, questionSets: result.questionSets, documents: result.documents }));
+        }
+        return result.report.totalIssues;
+      },
 
       addAnkiCards: (inputs) => {
         const errors: string[] = [];

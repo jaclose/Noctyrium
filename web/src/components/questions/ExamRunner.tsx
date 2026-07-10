@@ -58,6 +58,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   const [picked, setPicked] = useState<string | undefined>();
   const [revealed, setRevealed] = useState(false); // tutor mode reveal
   const [errorType, setErrorType] = useState<QuestionErrorType | "">("");
+  const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5 | undefined>();
   const [startedAt, setStartedAt] = useState<string>(() => new Date().toISOString());
   const [shownAt, setShownAt] = useState(() => Date.now());
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -99,6 +100,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         e.preventDefault();
       } else if (letter === "F") {
         toggleFlag();
+        e.preventDefault();
+      } else if (/^[1-5]$/.test(e.key) && mode === "tutor" && revealed) {
+        // 1–5 sets confidence once the answer is revealed.
+        setConfidence(Number(e.key) as 1 | 2 | 3 | 4 | 5);
         e.preventDefault();
       }
     }
@@ -166,12 +171,14 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         answerKey: a?.answerKey,
         status: a?.correct === undefined ? "needs-review" : a.correct ? "correct" : "incorrect",
         timeSpentSeconds: a?.seconds,
+        confidence,
         errorType: a?.correct === false ? (errorType || undefined) : undefined,
       });
     }
     setPicked(undefined);
     setRevealed(false);
     setErrorType("");
+    setConfidence(undefined);
     setAiText(null);
     setShownAt(Date.now());
     if (index + 1 >= pool.length) finishBlock();
@@ -464,19 +471,48 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
 
       {mode === "tutor" && revealed && (
         <>
-          {!question.correctKey && <div className="sub">No correct answer is set on this question — recorded as needs-review.</div>}
+          <div className="review-verdict">
+            {question.correctKey
+              ? <span className={isCorrect ? "grade-green" : "grade-red"}>
+                  {isCorrect ? "Correct" : "Incorrect"} — you picked {picked ?? "nothing"}, answer is {question.correctKey}
+                </span>
+              : <span className="sub">No correct answer is set on this question — recorded as needs-review.</span>}
+          </div>
           {question.explanation && (
             <div className="stack gap6">
               <span className="field-label">Explanation</span>
               <div className="question-explanation">{question.explanation}</div>
             </div>
           )}
+          {question.choiceRationales && Object.keys(question.choiceRationales).length > 0 && (
+            <div className="stack gap6">
+              <span className="field-label">Why each choice</span>
+              {Object.entries(question.choiceRationales).map(([key, why]) => (
+                <div key={key} className={`sub ${key === question.correctKey ? "grade-green" : ""}`}>
+                  <b>{key}:</b> {why}
+                </div>
+              ))}
+            </div>
+          )}
+          {question.sourcePage && (
+            <div className="sub">Source: {question.bank ?? "document"} · page {question.sourcePage}</div>
+          )}
           {!isCorrect && question.correctKey && (
-            <SelectField label="Why did this go wrong?" value={errorType}
-              onChange={(e) => setErrorType(e.target.value as QuestionErrorType | "")}>
-              <option value="">Pick an error type (recommended)</option>
-              {ERROR_TYPES.map((t) => <option key={t} value={t}>{ERROR_TYPE_LABEL[t]}</option>)}
-            </SelectField>
+            <>
+              <SelectField label="Why did this go wrong?" value={errorType}
+                onChange={(e) => setErrorType(e.target.value as QuestionErrorType | "")}>
+                <option value="">Pick an error type (recommended)</option>
+                {ERROR_TYPES.map((t) => <option key={t} value={t}>{ERROR_TYPE_LABEL[t]}</option>)}
+              </SelectField>
+              <div className="stack gap6">
+                <span className="field-label">Confidence in this material now (press 1–5)</span>
+                <div className="row">
+                  {([1, 2, 3, 4, 5] as const).map((n) => (
+                    <button key={n} className={`filter-pill ${confidence === n ? "on" : ""}`} onClick={() => setConfidence(n)}>{n}</button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             {!isCorrect && <GhostButton onClick={() => makeRepairCard(question)}><WandSparkles size={13} /> Repair card</GhostButton>}

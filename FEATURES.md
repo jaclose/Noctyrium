@@ -8,6 +8,30 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
 
 ## Question Bank (flagship)
 
+### Rescue phase (2026-07-09b)
+
+- **Critical parser fix** — feedback/explanation text glued onto an answer
+  choice (`E. Co-payment Correct Feedback: …`) is now split: the option keeps
+  only its real text, the feedback moves to the explanation, and a "Correct
+  Feedback" marker on a choice line marks that choice correct (Layer 2). Also
+  handles `Incorrect Feedback` → choice rationale, standalone feedback/objective
+  marker lines (never options), text-labeled feedback (`Co-insurance Correct
+  Feedback: …`), and L3 semantic mapping (explanation opening that names an
+  option's text). Explicit-vs-prose answer disagreement is a flagged conflict,
+  never a silent guess. 7 new tests cover the exact reported failure cases.
+- **Quiz explanation panel** — correct/incorrect verdict, per-choice rationales
+  (correct one highlighted), source page + set, error-type dropdown, and a
+  1–5 confidence selector with keyboard shortcut. Bigger, calmer answer choices.
+- **Import convenience** — quick-select High-confidence only / Needs-review only
+  / All / None across a parsed batch.
+- **Today's Study shortcuts** — Review due, Retry missed, and Weak-topic block
+  launchers on the Question Bank page.
+- **AI Explanation Cleaner** — grounded rewrite of messy feedback that preserves
+  the answer (mock-covered, provider-gated).
+- **Orphan repair** — a non-destructive integrity pass (unlinks dangling
+  question↔set↔document references, never deletes questions or attempt history)
+  plus a backup reminder, surfaced in Local Data Health.
+
 ### Rehaul phase (2026-07-09)
 
 - **Layered parser** — L1 questions, L2 answer keys, **L3 explanation blocks**

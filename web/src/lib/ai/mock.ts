@@ -55,6 +55,9 @@ export function createMockProvider(): AIProvider {
       if (/map the correct answer/i.test(req.system ?? "")) {
         return { suggestedKey: null, evidence: null, confidence: 0.3, needsReview: true };
       }
+      if (/tighten a messy question explanation/i.test(req.system ?? "")) {
+        return { text: "[DEMO] Cleaned explanation — the correct answer is unchanged; connect a real provider for genuine rewriting." };
+      }
       if (/study coach/i.test(req.system ?? "")) {
         return {
           diagnosis: "[DEMO] You aren't mainly missing these from knowledge gaps — you're over-picking broad answers when the stem hinges on one discriminating clue.",

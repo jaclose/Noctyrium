@@ -4,13 +4,15 @@
 // pre-migration snapshot recovery path. No silent states.
 // ===========================================================================
 import { useEffect, useState } from "react";
-import { Database, HardDrive, History, ShieldCheck } from "lucide-react";
+import { Database, HardDrive, History, ShieldCheck, Wrench } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { lastBackupAt } from "../../lib/backup";
 import { listLocalBackups } from "../../lib/localBackup";
+import { findOrphans } from "../../lib/orphanRepair";
 import { SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
 import { STORAGE_KEYS } from "../../lib/brand";
-import { Tag } from "../ui/primitives";
+import { GhostButton, Tag } from "../ui/primitives";
+import { pushToast } from "../../lib/toast";
 
 async function probeIndexedDb(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -51,6 +53,10 @@ export function DataHealthPanel() {
   }, []);
 
   const backupAgeDays = backup ? Math.floor((Date.now() - Date.parse(backup)) / 86_400_000) : null;
+  const questionCount = (s.questions ?? []).length;
+  const orphans = findOrphans(s);
+  // Nudge a backup when there's meaningful work and no recent export.
+  const backupReminder = questionCount >= 20 && (backupAgeDays === null || backupAgeDays > 7);
   const counts: Array<[string, number]> = [
     ["Tracker items", s.tracker.length],
     ["Tasks", s.tasks.length],
@@ -108,6 +114,31 @@ export function DataHealthPanel() {
             : "No automatic local migration backups retained yet."}
         </span>
       </div>
+      {backupReminder && (
+        <div className="row" style={{ gap: 8 }}>
+          <ShieldCheck size={14} style={{ color: "var(--gold)" }} />
+          <span className="sub">
+            You have {questionCount} questions and {backupAgeDays === null ? "no backup yet" : `no backup in ${backupAgeDays} days`}.
+            Export a JSON backup from above to keep them safe.
+          </span>
+        </div>
+      )}
+
+      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+        <Wrench size={14} style={{ color: "var(--cyan)" }} />
+        <span className="sub">
+          {orphans.totalIssues === 0
+            ? "Question-bank links are healthy — no orphaned questions, sets, or documents."
+            : `${orphans.totalIssues} dangling link${orphans.totalIssues === 1 ? "" : "s"} found (questions/sets/documents). Repair unlinks safely — it never deletes questions or history.`}
+        </span>
+        {orphans.totalIssues > 0 && (
+          <GhostButton onClick={() => {
+            const fixed = s.repairQuestionBankOrphans();
+            pushToast({ title: fixed ? `Repaired ${fixed} dangling link${fixed === 1 ? "" : "s"}` : "Nothing to repair", tone: "success" });
+          }}>Repair links</GhostButton>
+        )}
+      </div>
+
       <div className="sub">{APP_BUILD_LABEL} · updates never wipe local progress; migrations are additive and snapshot first.</div>
     </div>
   );

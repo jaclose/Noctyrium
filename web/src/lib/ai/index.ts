@@ -237,6 +237,37 @@ export async function coachWeakness(
 }
 
 /**
+ * AI Explanation Cleaner (rehaul phase 8). Rewrites messy feedback into a clean,
+ * concise explanation WITHOUT changing the meaning or the answer. The prompt
+ * forbids introducing a new correct answer; the caller keeps the original
+ * correctKey regardless of what the model returns.
+ */
+export async function cleanExplanation(
+  provider: AIProvider,
+  req: { stem: string; correct?: string; rawExplanation: string },
+): Promise<string> {
+  const raw = await provider.completeJson({
+    system: [
+      "You tighten a messy question explanation into clear prose for a medical student.",
+      "Preserve the meaning and the stated correct answer exactly. Do NOT introduce or change the answer.",
+      "Remove feedback labels, duplicated text, and formatting noise. Keep it under 100 words.",
+      'Return JSON: {"text": "cleaned explanation"}.',
+    ].join(" "),
+    prompt: [
+      `Question: ${req.stem.slice(0, 1200)}`,
+      req.correct ? `Correct answer: ${req.correct}` : "",
+      `Raw explanation: ${req.rawExplanation.slice(0, 3000)}`,
+    ].filter(Boolean).join("\n"),
+    maxTokens: 400,
+  });
+  const text = typeof raw === "object" && raw !== null && typeof (raw as { text?: unknown }).text === "string"
+    ? (raw as { text: string }).text.trim()
+    : "";
+  if (!text) throw new Error("The model returned no cleaned explanation.");
+  return text;
+}
+
+/**
  * Question Intelligence (§AI enhancement): digest of what a question set
  * tests, common pitfalls, and suggested review targets. Output is labeled
  * with the provider and stored on the set only after the user opted in.
