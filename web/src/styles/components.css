@@ -59,20 +59,32 @@
 .gbtn:active { transform: translateY(0) scale(0.99); }
 .gbtn.sm { height: 30px; padding: 0 12px; font-size: 11.5px; }
 .gbtn.tiny { height: 26px; padding: 0 9px; font-size: 11px; border-radius: 9px; }
-/* Primary — a confident machined-gold CTA with dark ink text. */
+/* Primary — black glass with a machined-gold FRAME and warm-white label.
+   The gold is a thin edge, never a fill: premium, not "yellow button". */
 .gbtn.primary {
-  color: #1a160e;
-  font-weight: 700;
-  background: linear-gradient(135deg, #d8bd82, #c8a96a 55%, #b8975a);
-  border-color: rgba(200, 169, 106, 0.5);
-  box-shadow: 0 6px 18px rgba(200, 169, 106, 0.22), inset 0 1px 0 rgba(255, 248, 232, 0.4);
+  color: var(--bone);
+  font-weight: 650;
+  background:
+    linear-gradient(180deg, rgba(230,226,214,0.05), rgba(0,0,0,0.18)),
+    rgba(12,12,13,0.72);
+  border-color: rgba(200, 169, 106, 0.55);
+  box-shadow:
+    0 1px 0 rgba(230,226,214,0.08) inset,
+    0 8px 22px rgba(0,0,0,0.42),
+    0 0 0 1px rgba(200,169,106,0.12);
 }
 .gbtn.primary:hover {
-  color: #17130b;
-  background: linear-gradient(135deg, #e3ca8f, #d0b274 55%, #c09d60);
-  border-color: rgba(200, 169, 106, 0.7);
-  box-shadow: 0 8px 26px rgba(200, 169, 106, 0.34), inset 0 1px 0 rgba(255, 248, 232, 0.5);
+  color: #fff;
+  border-color: rgba(210, 180, 118, 0.85);
+  background:
+    linear-gradient(180deg, rgba(230,226,214,0.08), rgba(0,0,0,0.15)),
+    rgba(16,16,17,0.78);
+  box-shadow:
+    0 1px 0 rgba(230,226,214,0.1) inset,
+    0 10px 28px rgba(0,0,0,0.5),
+    0 0 20px rgba(200,169,106,0.2);
 }
+.gbtn.primary svg { color: var(--gold); }
 .gbtn.danger { color: var(--red); }
 .gbtn.danger:hover { border-color: rgba(217,122,114,0.5); background: rgba(217,122,114,0.1); }
 .gbtn.icon { width: 34px; padding: 0; }

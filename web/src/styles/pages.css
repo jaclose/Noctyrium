@@ -1656,8 +1656,10 @@
 .filter-pill:hover { color: var(--text-80); background: rgba(230,226,214,0.08); }
 .filter-pill:disabled { opacity: 0.4; cursor: default; }
 .filter-pill.on {
-  color: var(--cyan-strong); background: var(--gold-soft);
-  border-color: var(--gold-line);
+  color: var(--bone);
+  background: rgba(12,12,13,0.7);
+  border-color: rgba(200,169,106,0.5);
+  box-shadow: 0 0 0 1px rgba(200,169,106,0.12), 0 4px 14px rgba(0,0,0,0.35);
 }
 
 /* ---- Tasks ---- */

@@ -48,13 +48,14 @@ export interface AnswerSectionEntry {
 
 /** Lines like "A. text", "B) text", "(C) text", "d - text". */
 const OPTION_RE = /^\s*\(?([A-Ha-h])[).:\-–]\s+(.*\S)\s*$/;
-/** "Answer: C", "Correct answer - B", "ANS: A", "Correct: B". */
-const ANSWER_RE = /^\s*(?:(?:correct\s+)?ans(?:wer)?|correct)\s*[:\-–]?\s*\(?([A-Ha-h])\)?\s*$/i;
+/** "Answer: C", "Correct answer - B", "ANS: A", "Correct: B", "Key: B",
+ * "Correct option: B", "Right answer: B", "Solution: B". */
+const ANSWER_RE = /^\s*(?:(?:correct|right)\s+(?:answer|option|choice)|(?:correct\s+)?ans(?:wer)?|correct|key|solution)\s*[:\-–]?\s*\(?([A-Ha-h])\)?\s*$/i;
 /** "Correct Answer: C. Explanation…" / "The correct answer is C because…" as a line. */
 const ANSWER_WITH_TAIL_RE = /^\s*(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s*\(?([A-Ha-h])\)?\b[.,]?\s*(.*)$/i;
 /** Feedback/explanation/objective markers that begin a NON-option content block.
  * Capturing group 1 is the marker keyword so callers can classify it. */
-const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|explanation|rationale|discussion|teaching\s+point|key\s+concept|learning\s+objectives?|objectives?|references?|why)\s*[:\-–]/i;
+const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|answer\s+explanation|explanation|rationale|discussion|teaching\s+point|key\s+concept|learning\s+objectives?|objectives?|references?|why)\s*[:\-–]/i;
 /**
  * The SAME markers, matched mid-line so we can split feedback that got glued to
  * an answer choice ("E. Co-payment Correct Feedback: …"). Requires whitespace
@@ -94,9 +95,56 @@ export function splitOptionFeedback(text: string): { optionText: string; marker?
   };
 }
 
+/**
+ * Normalization pre-pass — makes every downstream detector stronger for free.
+ * Strips markdown bold/italic pairs, leading list bullets, smart quotes,
+ * non-breaking spaces, and stray form-feed/tab noise from copied PDFs.
+ */
+export function normalizeSourceText(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u00a0\u2007\u202f]/g, " ") // nbsp variants -> space
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")            // **bold** → bold
+    .replace(/__([^_\n]+)__/g, "$1")
+    .replace(/^[\s]*[•●▪‣◦·]\s*/gm, "")            // list bullets at line start
+    .replace(/[\t\f\v]+/g, " ");
+}
+
+/** Correct-answer markers that can decorate a single option line. */
+const CHECK_MARK_RE = /[✓✔☑]/;
+const CORRECT_SUFFIX_RE = /\s*\(\s*(?:correct(?:\s+answer)?|right)\s*\)\s*$/i;
+
+/**
+ * Options crammed onto one line — "A. Alpha B. Beta C. Gamma D. Delta" —
+ * are expanded onto separate lines so the option loop can read them.
+ * Requires a run of ≥3 sequential letters starting at A to avoid mangling
+ * prose that merely mentions "B. cereus".
+ */
+export function expandInlineOptions(line: string): string[] {
+  const starts: Array<{ index: number; letter: string }> = [];
+  const re = /(?:^|\s)\(?([A-Ha-h])[).:]\s+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    starts.push({ index: m.index === 0 ? 0 : m.index + 1, letter: m[1].toUpperCase() });
+  }
+  if (starts.length < 3) return [line];
+  const letters = starts.map((s) => s.letter).join("");
+  if (!"ABCDEFGH".startsWith(letters)) return [line];
+  const pieces: string[] = [];
+  if (starts[0].index > 0) pieces.push(line.slice(0, starts[0].index).trim());
+  for (let i = 0; i < starts.length; i++) {
+    const from = starts[i].index;
+    const to = i + 1 < starts.length ? starts[i + 1].index : line.length;
+    pieces.push(line.slice(from, to).trim());
+  }
+  return pieces.filter(Boolean);
+}
+
 export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const warnings: string[] = [];
-  const lines = raw.replace(/\r\n?/g, "\n").split("\n");
+  const lines = normalizeSourceText(raw).split("\n").flatMap(expandInlineOptions);
 
   const stemLines: string[] = [];
   const options: QuestionOption[] = [];
@@ -110,9 +158,20 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   // While collecting the tail of an inline-feedback block, continuation lines
   // append to the explanation, not to the previous option's text.
   let feedbackFlow = false;
+  // Options decorated with a correct-marker (✓, leading/trailing *, "(correct)").
+  const markedLetters: string[] = [];
   let phase: "stem" | "options" | "explanation" = "stem";
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    // Strip a correct-marker decorating this line so the option regex can see
+    // through it; remember the flag for the marker heuristic below.
+    let line = rawLine;
+    let lineMarked = false;
+    const lead = line.match(/^\s*[*✓✔☑]\s*(\(?[A-Ha-h][).:\-–]\s.*)$/);
+    if (lead) { line = lead[1]; lineMarked = true; }
+    const trail = line.match(/^(\s*\(?[A-Ha-h][).:\-–]\s.*\S)\s*[*✓✔☑]\s*$/);
+    if (trail) { line = trail[1]; lineMarked = true; }
+
     const optionMatch = line.match(OPTION_RE);
     const answerMatch = line.match(ANSWER_RE);
     const answerTailMatch = line.match(ANSWER_WITH_TAIL_RE);
@@ -164,7 +223,14 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       // CRITICAL FIX: strip any feedback/explanation glued to the choice so it
       // never becomes part of the option text.
       const split = splitOptionFeedback(optionMatch[2]);
-      options.push({ key: letter, text: split.optionText });
+      // "(correct)" suffix decorating the choice text is an answer marker.
+      let optionText = split.optionText;
+      if (CORRECT_SUFFIX_RE.test(optionText)) {
+        optionText = optionText.replace(CORRECT_SUFFIX_RE, "").trim();
+        lineMarked = true;
+      }
+      if (lineMarked || CHECK_MARK_RE.test(rawLine)) markedLetters.push(letter);
+      options.push({ key: letter, text: optionText });
       if (split.feedback) {
         if (isCorrectFeedback(split.marker!)) {
           feedbackCorrectLetter = feedbackCorrectLetter ?? letter;
@@ -233,12 +299,20 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     confidence = "low";
   }
 
+  // Correct-marker heuristic: exactly ONE option decorated (✓ / * / "(correct)")
+  // is an explicit signal; every option decorated means list bullets — ignore.
+  const uniqueMarked = [...new Set(markedLetters)];
+  const markerCorrectLetter =
+    uniqueMarked.length === 1 && options.length > 1 && markedLetters.length < options.length
+      ? uniqueMarked[0]
+      : undefined;
+
   // L2/L3/L5: reconcile every answer signal. "Correct Feedback" attached to a
-  // choice (feedbackCorrectLetter) is a STRONG explicit signal, on par with an
-  // explicit answer line.
+  // choice (feedbackCorrectLetter) and a single correct-marker are STRONG
+  // explicit signals, on par with an explicit answer line.
   const proseLetter = explanation?.match(PROSE_ANSWER_RE)?.[1]?.toUpperCase();
-  const explicit = [correctKey, feedbackCorrectLetter].filter((l): l is string => !!l);
-  const claimed = [correctKey, feedbackCorrectLetter, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
+  const explicit = [correctKey, feedbackCorrectLetter, markerCorrectLetter].filter((l): l is string => !!l);
+  const claimed = [correctKey, feedbackCorrectLetter, markerCorrectLetter, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
   const distinct = [...new Set(claimed)];
   const distinctExplicit = [...new Set(explicit)];
   if (distinctExplicit.length > 1) {
@@ -345,7 +419,7 @@ function matchExplanationToOption(explanation: string, options: QuestionOption[]
  * flagged, never invented.
  */
 export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
-  const { body, entries } = parseAnswerSections(raw.replace(/\r\n?/g, "\n"));
+  const { body, entries } = parseAnswerSections(normalizeSourceText(raw));
   const lines = body.split("\n");
   const starts: number[] = [];
   lines.forEach((line, i) => {

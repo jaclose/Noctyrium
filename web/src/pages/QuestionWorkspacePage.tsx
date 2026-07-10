@@ -14,8 +14,7 @@ import {
 } from "../lib/questions";
 import type { QuizBlock, QuizFilters, QuizMode } from "../lib/quiz";
 import type { QuestionSet, SourceDocument } from "../lib/library";
-import { GlassCard, PanelHeader, EmptyState, GButton } from "../components/ui/primitives";
-import { StatCard } from "../components/ui/StatCard";
+import { GlassCard, PanelHeader, EmptyState } from "../components/ui/primitives";
 import { ImportPanel, type ImportSeed } from "../components/questions/ImportPanel";
 import { MassImport } from "../components/questions/MassImport";
 import { ExamRunner } from "../components/questions/ExamRunner";
@@ -74,56 +73,76 @@ export function QuestionWorkspacePage() {
     ["insights", "Insights"],
   ];
 
+  const stats: Array<{ label: string; value: number; note: string; icon: typeof HelpCircle }> = [
+    { label: "In the bank", value: questions.length, note: `${runnable} runnable`, icon: HelpCircle },
+    { label: "Due for review", value: due.length, note: "auto-resurfaced", icon: ListFilter },
+    { label: "Incorrect", value: incorrect.length, note: "future assets", icon: Microscope },
+    { label: "Weak topics", value: weak.length, note: weak[0] ? weak[0].topic : "none yet", icon: Microscope },
+  ];
+
   return (
     <>
-      <div className="grid grid-stats">
-        <StatCard icon={<HelpCircle size={17} />} title="Question bank" value={String(questions.length)} note={`${runnable} runnable in blocks`} />
-        <StatCard icon={<ListFilter size={17} />} title="Due for review" value={String(due.length)} note="misses resurface automatically" />
-        <StatCard icon={<Microscope size={17} />} title="Incorrect" value={String(incorrect.length)} note="each one is a future asset" />
-        <StatCard icon={<Microscope size={17} />} title="Weak topics" value={String(weak.length)} note={weak[0] ? `worst: ${weak[0].topic}` : "none identified yet"} />
+      {/* ---- Marble hero: identity, one-line intent, framed primary actions ---- */}
+      <div className="qb-hero tx-marble">
+        <div className="qb-hero-inner">
+          <div className="qb-hero-head">
+            <div className="stack" style={{ gap: 6, minWidth: 0 }}>
+              <span className="qb-eyebrow">Question Bank</span>
+              <h2 className="qb-title">Turn messy files into a reliable question bank.</h2>
+              <p className="qb-lede">Import, review only what's uncertain, then practise — tutor or exam, with weakness intelligence that compounds.</p>
+            </div>
+            <div className="qb-hero-actions">
+              <button className="qb-cta" disabled={!runnable} onClick={() => setRunner({ mode: "tutor" })}>
+                <Play size={15} /> Tutor block
+              </button>
+              <button className="qb-cta ghost" disabled={!runnable} onClick={() => setRunner({ mode: "exam" })}>
+                <Timer size={15} /> Exam block
+              </button>
+            </div>
+          </div>
+
+          <div className="qb-stats">
+            {stats.map((st) => (
+              <div key={st.label} className="qb-stat">
+                <span className="qb-stat-icon"><st.icon size={15} /></span>
+                <span className="qb-stat-value">{st.value}</span>
+                <span className="qb-stat-label">{st.label}</span>
+                <span className="qb-stat-note">{st.note}</span>
+              </div>
+            ))}
+          </div>
+
+          {runnable > 0 && (due.length > 0 || incorrect.length > 0 || weak.length > 0) && (
+            <div className="qb-quick">
+              <span className="qb-quick-label">Today</span>
+              {due.length > 0 && (
+                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: Math.min(due.length, 20) }, retakeIds: due.slice(0, 20).map((q) => q.id) })}>
+                  Review {Math.min(due.length, 20)} due
+                </button>
+              )}
+              {incorrect.length > 0 && (
+                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) })}>
+                  Retry {Math.min(incorrect.length, 20)} missed
+                </button>
+              )}
+              {weak[0] && (
+                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: weak[0].topic ? [weak[0].topic] : undefined } })}>
+                  Weak: {weak[0].topic}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <GlassCard>
-        <PanelHeader
-          title="Run a block"
-          sub="Tutor gives feedback after every question; Exam holds explanations until the end and can be timed."
-          action={
-            <div className="row">
-              <GButton size="sm" variant="primary" disabled={!runnable} onClick={() => setRunner({ mode: "tutor" })}>
-                <Play size={14} /> Tutor block
-              </GButton>
-              <GButton size="sm" disabled={!runnable} onClick={() => setRunner({ mode: "exam" })}>
-                <Timer size={14} /> Exam block
-              </GButton>
-            </div>
-          }
-        />
-        {runnable > 0 && (due.length > 0 || incorrect.length > 0 || weak.length > 0) && (
-          <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-            <span className="sub">Today's study:</span>
-            {due.length > 0 && (
-              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: Math.min(due.length, 20) }, retakeIds: due.slice(0, 20).map((q) => q.id) })}>
-                Review {Math.min(due.length, 20)} due
-              </button>
-            )}
-            {incorrect.length > 0 && (
-              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) })}>
-                Retry {Math.min(incorrect.length, 20)} missed
-              </button>
-            )}
-            {weak[0] && (
-              <button className="filter-pill" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: weak[0].topic ? [weak[0].topic] : undefined } })}>
-                Weak topic: {weak[0].topic}
-              </button>
-            )}
-          </div>
-        )}
-        <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-          {TABS.map(([id, label]) => (
-            <button key={id} className={`filter-pill ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>{label}</button>
-          ))}
-        </div>
-      </GlassCard>
+      {/* ---- Premium segmented navigation ---- */}
+      <div className="qb-segment" role="tablist">
+        {TABS.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={`qb-seg ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       {tab === "import" && <ImportPanel key={importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"} seed={importSeed} />}
       {tab === "mass" && (

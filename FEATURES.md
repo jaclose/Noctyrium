@@ -132,6 +132,20 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
   detection (survives version-line resets), never fires during an active session,
   never destructive; service-worker cache versioned per release.
 
+### Detector + premium page rehaul (2026-07-10b)
+
+- **Stronger question/answer detector**: normalization pre-pass (markdown bold,
+  list bullets, smart quotes, nbsp, tab noise), correct-markers on options
+  (✓ / single leading-or-trailing * / "(correct)" suffix — all-marked = bullets,
+  ignored), options crammed on one line expanded ("A. x B. y C. z"), extended
+  answer vocabulary (Key/Solution/Correct option/Right answer), "Answer
+  explanation" blocks. 10 new tests; 224 total.
+- **Question Bank page rehaul**: black-marble hero with gold eyebrow + Poppins
+  headline, framed liquid-glass stat tiles, gold-framed black-glass CTAs
+  (gold is a frame, never a fill), quick-action chips, segmented tab control.
+  Site-wide primary buttons and active pills de-yellowed to the framed style;
+  marble/limestone/liquid-glass utility classes added to the theme.
+
 ## Identity
 
 - AXOM brand: tintable SVG mark, Poppins wordmark (self-hosted), graphite/bone/muted-gold

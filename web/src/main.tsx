@@ -9,6 +9,7 @@ import "./styles/pages.css";
 import "./styles/motion.css";
 import "./styles/tour.css";
 import "./styles/loop.css";
+import "./styles/questionbank.css";
 
 async function bootstrap() {
   const rootElement = document.getElementById("root");

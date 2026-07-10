@@ -1,7 +1,10 @@
 // Pre-beta question bank: multi-question parsing, file import, and quiz
 // session scoring/pools — the flagship loop's domain logic.
 import { describe, expect, it } from "vitest";
-import { parseQuestionBlocks, parseQuestionText, splitAnswerKeySection, splitOptionFeedback } from "./questionParse";
+import {
+  expandInlineOptions, normalizeSourceText, parseQuestionBlocks, parseQuestionText,
+  splitAnswerKeySection, splitOptionFeedback,
+} from "./questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, parseCsv } from "./questionImport";
 import { buildQuizPool, missedQuestionIds, scoreSession, scoresByCategory, type QuizSession } from "./quiz";
 import { setAccuracy, type QuestionSet } from "./library";
@@ -110,6 +113,57 @@ describe("answer-key section mapping", () => {
     expect(drafts[0].warnings.join(" ")).toMatch(/conflict/i);
     // Q2: only the key speaks → mapped normally.
     expect(drafts[1].correctKey).toBe("B");
+  });
+});
+
+describe("detector strength: normalization, markers, inline options, vocab", () => {
+  it("normalization strips markdown bold, bullets, nbsp, and smart quotes", () => {
+    const cleaned = normalizeSourceText("• **Answer: B** is “right”");
+    expect(cleaned).toBe('Answer: B is "right"');
+  });
+
+  it("markdown-bolded answers are detected after normalization", () => {
+    const draft = parseQuestionText("Stem?\nA. x\nB. y\nC. z\n**Answer: B**");
+    expect(draft.correctKey).toBe("B");
+  });
+
+  it("a ✓ checkmark on exactly one option marks it correct", () => {
+    const draft = parseQuestionText("Stem?\nA. Alpha\nB. Beta ✓\nC. Gamma\nD. Delta");
+    expect(draft.correctKey).toBe("B");
+    expect(draft.options[1].text).toBe("Beta");
+  });
+
+  it("a leading * on exactly one option marks it correct; on ALL options it's just bullets", () => {
+    const marked = parseQuestionText("Stem?\nA. Alpha\n*B. Beta\nC. Gamma");
+    expect(marked.correctKey).toBe("B");
+    expect(marked.options[1].text).toBe("Beta");
+
+    const bullets = parseQuestionText("Stem?\n*A. Alpha\n*B. Beta\n*C. Gamma");
+    expect(bullets.correctKey).toBeUndefined();
+    expect(bullets.options).toHaveLength(3);
+  });
+
+  it("'(correct)' suffix marks the option and is stripped from its text", () => {
+    const draft = parseQuestionText("Stem?\nA. Alpha\nB. Beta (correct)\nC. Gamma");
+    expect(draft.correctKey).toBe("B");
+    expect(draft.options[1].text).toBe("Beta");
+  });
+
+  it("options crammed on one line are expanded (A. x B. y C. z D. w)", () => {
+    const draft = parseQuestionText("Which is right?\nA. Alpha B. Beta C. Gamma D. Delta\nAnswer: C");
+    expect(draft.options.map((o) => o.key)).toEqual(["A", "B", "C", "D"]);
+    expect(draft.options[2].text).toBe("Gamma");
+    expect(draft.correctKey).toBe("C");
+  });
+
+  it("expandInlineOptions leaves prose mentioning 'B. cereus' alone", () => {
+    expect(expandInlineOptions("Infection with B. cereus is classic")).toEqual(["Infection with B. cereus is classic"]);
+  });
+
+  it("extended answer vocab: 'Correct option: B', 'Key: C', 'Solution: D'", () => {
+    expect(parseQuestionText("Q?\nA. x\nB. y\nCorrect option: B").correctKey).toBe("B");
+    expect(parseQuestionText("Q?\nA. x\nB. y\nC. z\nKey: C").correctKey).toBe("C");
+    expect(parseQuestionText("Q?\nA. x\nB. y\nC. z\nD. w\nSolution: D").correctKey).toBe("D");
   });
 });
 
