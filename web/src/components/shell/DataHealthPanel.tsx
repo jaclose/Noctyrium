@@ -55,6 +55,11 @@ export function DataHealthPanel() {
   const backupAgeDays = backup ? Math.floor((Date.now() - Date.parse(backup)) / 86_400_000) : null;
   const questionCount = (s.questions ?? []).length;
   const orphans = findOrphans(s);
+  const checksumCounts = new Map<string, number>();
+  for (const document of s.documents ?? []) {
+    if (document.checksum) checksumCounts.set(document.checksum, (checksumCounts.get(document.checksum) ?? 0) + 1);
+  }
+  const duplicateSources = [...checksumCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
   // Nudge a backup when there's meaningful work and no recent export.
   const backupReminder = questionCount >= 20 && (backupAgeDays === null || backupAgeDays > 7);
   const counts: Array<[string, number]> = [
@@ -80,6 +85,9 @@ export function DataHealthPanel() {
             ? "No backup exported yet"
             : backupAgeDays === 0 ? "Backed up today" : `Last backup ${backupAgeDays}d ago`}
         </Tag>
+        <Tag tone={duplicateSources ? "orange" : "green"}>
+          <FileFingerprintIcon /> {duplicateSources ? `${duplicateSources} duplicate source${duplicateSources === 1 ? "" : "s"}` : "Source checksums healthy"}
+        </Tag>
       </div>
 
       {idbOk === false && (
@@ -102,8 +110,8 @@ export function DataHealthPanel() {
         <History size={14} style={{ color: "var(--cyan)" }} />
         <span className="sub">
           {snapshot
-            ? `A pre-migration snapshot from schema v${snapshot.fromVersion} (${snapshot.savedAt.slice(0, 10)}) is retained locally. If anything looks wrong after an update, export it before clearing browser data and report the issue.`
-            : "No pre-migration snapshot present (none needed yet). One is written automatically before every schema upgrade."}
+            ? `A migration marker from schema v${snapshot.fromVersion} (${snapshot.savedAt.slice(0, 10)}) is retained. The matching full safety copy is held in the automatic IndexedDB backups below.`
+            : "No pre-migration marker present (none needed yet). A full IndexedDB backup is written automatically before every schema upgrade."}
         </span>
       </div>
       <div className="row" style={{ gap: 8 }}>
@@ -142,4 +150,8 @@ export function DataHealthPanel() {
       <div className="sub">{APP_BUILD_LABEL} · updates never wipe local progress; migrations are additive and snapshot first.</div>
     </div>
   );
+}
+
+function FileFingerprintIcon() {
+  return <span aria-hidden="true" style={{ fontSize: 11, fontWeight: 800 }}>#</span>;
 }

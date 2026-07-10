@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
 import { useStore } from "../../lib/store";
-import { AxomMark, AxomWordmark } from "../ui/BrandMark";
+import { AxomBrandLockup } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
 
 export function Sidebar({
@@ -71,11 +71,13 @@ export function Sidebar({
     <>
       <div className={`sidebar ${collapsed ? "open" : ""}`}>
         <button type="button" className="server-header" onClick={() => onOpenSettings("general")} title="Profile & settings">
-          <span className="server-logo"><AxomMark size={19} /></span>
-          <span className="server-meta">
-            <span className="server-name"><AxomWordmark /></span>
-            <span className="server-ver mono">{profile.versionLabel}</span>
-          </span>
+          <AxomBrandLockup
+            className="server-brand"
+            layout="horizontal"
+            size="sm"
+            subtitle={profile.versionLabel}
+            markFramed
+          />
           <ChevronDown size={16} className="server-caret" />
         </button>
 

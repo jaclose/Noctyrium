@@ -1,6 +1,6 @@
 // ===========================================================================
-// The single source of truth. Zustand + persist (localStorage) so every change
-// survives reloads, works offline, and needs no backend. All lists are CRUD-
+// The single source of truth. Zustand + an IndexedDB-first persistent vault so
+// every change survives reloads, works offline, and needs no backend. All lists are CRUD-
 // able, which is what makes the app "modular" rather than the fixed Swift build.
 // ===========================================================================
 import { create } from "zustand";
@@ -53,7 +53,7 @@ import {
 } from "./sessions";
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
-import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, type QuestionAttempt, type QuestionRecord } from "./questions";
+import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, withCorrectAnswerText, type QuestionAttempt, type QuestionRecord } from "./questions";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
 import { repairOrphans } from "./orphanRepair";
@@ -874,7 +874,9 @@ export const useStore = create<Store>()(
       },
       updateQuestion: (id, patch) =>
         set((s) => ({
-          questions: (s.questions ?? []).map((q) => (q.id === id ? { ...q, ...patch, updatedAt: now() } : q)),
+          questions: (s.questions ?? []).map((q) => (q.id === id
+            ? withCorrectAnswerText({ ...q, ...patch, updatedAt: now() })
+            : q)),
         })),
       removeQuestion: (id) => set((s) => ({ questions: (s.questions ?? []).filter((q) => q.id !== id) })),
       recordQuestionAttempt: (id, attempt) =>
@@ -1048,7 +1050,8 @@ export const useStore = create<Store>()(
 // ===========================================================================
 // Forward-migrate older saved data so existing users never lose anything as
 // the schema grows. Exported for tests. A pre-migration snapshot is written
-// first (best-effort) so a bad migration is always recoverable.
+// first. The full automatic safety copy lives in IndexedDB; this synchronous
+// marker remains small so localStorage is reserved for preferences/metadata.
 // ===========================================================================
 export function migratePersistedState(persisted: unknown, fromVersion: number): NoctyriumState {
   const s = (persisted ?? {}) as Record<string, unknown>;
@@ -1057,7 +1060,16 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(
           STORAGE_KEYS.preMigrationSnapshot,
-          JSON.stringify({ fromVersion, savedAt: new Date().toISOString(), state: s }),
+          JSON.stringify({
+            fromVersion,
+            savedAt: new Date().toISOString(),
+            recordCounts: {
+              questions: Array.isArray(s.questions) ? s.questions.length : 0,
+              documents: Array.isArray(s.documents) ? s.documents.length : 0,
+              questionSets: Array.isArray(s.questionSets) ? s.questionSets.length : 0,
+              tasks: Array.isArray(s.tasks) ? s.tasks.length : 0,
+            },
+          }),
         );
       }
     } catch {
@@ -1325,6 +1337,41 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       ...question,
       taxonomy: normalizeQuestionTaxonomy(question.taxonomy, question) ?? {},
     }));
+  }
+  if (fromVersion < 32) {
+    // Import provenance + confidence diagnostics. This is additive: existing
+    // question content is never rewritten, and old confidence buckets seed
+    // conservative numeric scores for the new review UI.
+    const scoreFor = (value: unknown) => value === "high" ? 0.9 : value === "medium" ? 0.65 : 0.35;
+    s.questions = arrayOfRecords(s.questions).map((question) => {
+      const extraction = isRecord(question.extraction) ? question.extraction : undefined;
+      const options = Array.isArray(question.options) ? question.options : [];
+      const correctKey = typeof question.correctKey === "string" ? question.correctKey : undefined;
+      const correct = options.find((option) => isRecord(option) && option.key === correctKey);
+      return {
+        ...question,
+        correctAnswerText: correct && typeof correct.text === "string" ? correct.text : undefined,
+        extraction: extraction
+          ? {
+              ...extraction,
+              questionDetectionConfidence: typeof extraction.questionDetectionConfidence === "number"
+                ? extraction.questionDetectionConfidence
+                : scoreFor(extraction.confidence),
+              answerDetectionConfidence: typeof extraction.answerDetectionConfidence === "number"
+                ? extraction.answerDetectionConfidence
+                : correctKey ? scoreFor(extraction.confidence) : 0.1,
+              explanationDetectionConfidence: typeof extraction.explanationDetectionConfidence === "number"
+                ? extraction.explanationDetectionConfidence
+                : typeof question.explanation === "string" && question.explanation.trim() ? scoreFor(extraction.confidence) : 0.15,
+              overallImportConfidence: typeof extraction.overallImportConfidence === "number"
+                ? extraction.overallImportConfidence
+                : scoreFor(extraction.confidence),
+              warnings: Array.isArray(extraction.warnings) ? extraction.warnings : [],
+              parserRuleIds: Array.isArray(extraction.parserRuleIds) ? extraction.parserRuleIds : ["MIGRATED.LEGACY"],
+            }
+          : undefined,
+      };
+    });
   }
   return s as unknown as NoctyriumState;
 }

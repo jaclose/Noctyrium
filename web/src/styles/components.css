@@ -643,10 +643,11 @@ select.field, .scope-select {
 /* small inline icon button (ghost) */
 .ghost-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 8px;
+  width: auto; min-width: 28px; height: 28px; padding: 0 8px; gap: 6px; border-radius: 8px;
   color: var(--text-45); background: transparent; border: none;
   transition: color .12s ease, background .12s ease;
 }
+.ghost-btn.icon-only { width: 28px; padding: 0; }
 .ghost-btn:hover { color: var(--text); background: rgba(255,255,255,0.08); }
 .ghost-btn.danger:hover { color: var(--red); background: rgba(255,93,108,0.12); }
 

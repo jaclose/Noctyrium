@@ -322,6 +322,125 @@ describe("explanation mapping (L3–L6)", () => {
   });
 });
 
+describe("structured answer parsing and import diagnostics", () => {
+  const ppd = [
+    "A 36-year-old man with tuberculosis exposure has a positive PPD skin test. Which cells mediate this reaction?",
+    "A. B lymphocytes",
+    "B. CD4+ T lymphocytes",
+    "C. Mast cells",
+    "D. Eosinophils",
+    "E. Neutrophils",
+    "Answer: B. CD4+ T lymphocytes",
+    "Explanation: The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.",
+  ].join("\n");
+
+  it("parses the exact PPD fixture without contaminating option E or explanation", () => {
+    const draft = parseQuestionBlocks(ppd)[0];
+    expect(draft.correctKey).toBe("B");
+    expect(draft.correctAnswerText).toBe("CD4+ T lymphocytes");
+    expect(draft.options[4]).toEqual({ key: "E", text: "Neutrophils" });
+    expect(draft.explanation).toBe("The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.");
+    expect(draft.explanation).not.toMatch(/36-year-old|A\. B lymphocytes|Answer:/i);
+    expect(draft.answerEvidence).toBe("Answer: B. CD4+ T lymphocytes");
+    expect(draft.parserRuleIds).toEqual(expect.arrayContaining([
+      "answer.explicit-letter-text",
+      "answer.text-option-match",
+      "explanation.explanation",
+    ]));
+    expect(draft.questionDetectionConfidence).toBeGreaterThanOrEqual(0.9);
+    expect(draft.answerDetectionConfidence).toBeGreaterThanOrEqual(0.9);
+    expect(draft.explanationDetectionConfidence).toBeGreaterThanOrEqual(0.9);
+    expect(draft.overallImportConfidence).toBeGreaterThanOrEqual(0.85);
+    expect(draft.sourceSnippet).toContain("Answer: B. CD4+ T lymphocytes");
+  });
+
+  it("maps answer text alone and tolerates a terminal period on a letter", () => {
+    const byText = parseQuestionText([
+      "Which cells?", "A. B lymphocytes", "B. CD4+ T lymphocytes", "C. Mast cells",
+      "Answer: CD4+ T lymphocytes",
+    ].join("\n"));
+    expect(byText.correctKey).toBe("B");
+    expect(byText.correctAnswerText).toBe("CD4+ T lymphocytes");
+
+    const startsWithLetter = parseQuestionText([
+      "Which cells?", "A. B lymphocytes", "B. CD4+ T lymphocytes", "C. Mast cells",
+      "Answer: B lymphocytes",
+    ].join("\n"));
+    expect(startsWithLetter.correctKey).toBe("A");
+    expect(startsWithLetter.correctAnswerText).toBe("B lymphocytes");
+
+    const punctuated = parseQuestionText("Which?\nA. one\nB. two\nC. three\nAnswer: B.");
+    expect(punctuated.correctKey).toBe("B");
+  });
+
+  it("does not turn the answer text in 'Correct Answer: B. text' into explanation", () => {
+    const draft = parseQuestionText([
+      "Which cells?", "A. B lymphocytes", "B. CD4+ T lymphocytes", "C. Mast cells",
+      "Correct Answer: B. CD4+ T lymphocytes",
+      "Explanation: This is a delayed, T-cell-mediated response.",
+    ].join("\n"));
+    expect(draft.correctKey).toBe("B");
+    expect(draft.explanation).toBe("This is a delayed, T-cell-mediated response.");
+  });
+
+  it("flags a letter/text mismatch instead of trusting either answer signal", () => {
+    const draft = parseQuestionText([
+      "Which cells?", "A. B lymphocytes", "B. CD4+ T lymphocytes", "C. Mast cells",
+      "Answer: B. Mast cells",
+    ].join("\n"));
+    expect(draft.correctKey).toBeUndefined();
+    expect(draft.correctAnswerText).toBeUndefined();
+    expect(draft.needsReview).toBe(true);
+    expect(draft.confidence).toBe("low");
+    expect(draft.warnings.join(" ")).toMatch(/conflicting answer letter\/text/i);
+  });
+
+  it("keeps objective and reference metadata out of the explanation", () => {
+    const draft = parseQuestionText([
+      "Which cells?", "A. B cells", "B. T cells", "C. Mast cells", "Answer: B",
+      "Explanation: Delayed hypersensitivity is T-cell mediated.",
+      "Learning Objective: Distinguish hypersensitivity mechanisms.",
+      "Reference: Immunology chapter 12.",
+      "Teaching point: Th1 cells activate macrophages.",
+    ].join("\n"));
+    expect(draft.objective).toBe("Distinguish hypersensitivity mechanisms.");
+    expect(draft.reference).toBe("Immunology chapter 12.");
+    expect(draft.explanation).toContain("Delayed hypersensitivity");
+    expect(draft.explanation).toContain("Th1 cells activate macrophages");
+    expect(draft.explanation).not.toMatch(/objective|chapter 12/i);
+  });
+
+  it("supports Q1/Question 2 boundaries without punctuation and Q1 B keys", () => {
+    const drafts = parseQuestionBlocks([
+      "Q1", "First stem?", "A. one", "B. two", "C. three", "",
+      "Question 2 Second stem?", "A. one", "B. two", "C. three", "",
+      "Answer key:", "Q1 B", "Q2 C",
+    ].join("\n"));
+    expect(drafts).toHaveLength(2);
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "C"]);
+    expect(drafts[0].parserRuleIds).toContain("question.numbered-boundary");
+    expect(drafts[0].parserRuleIds).toContain("answer.trailing-section");
+  });
+
+  it("does not mistake a standalone Explanation header for an answer section", () => {
+    const draft = parseQuestionBlocks([
+      "1. Which cells?", "A. B cells", "B. T cells", "C. Mast cells", "Answer: B",
+      "Explanation:", "This reaction is mediated by sensitized T cells.",
+    ].join("\n"))[0];
+    expect(draft.correctKey).toBe("B");
+    expect(draft.explanation).toBe("This reaction is mediated by sensitized T cells.");
+  });
+
+  it("requires review when no reliable answer signal exists", () => {
+    const draft = parseQuestionText("Which cells?\nA. B cells\nB. T cells\nC. Mast cells");
+    expect(draft.correctKey).toBeUndefined();
+    expect(draft.needsReview).toBe(true);
+    expect(draft.answerDetectionConfidence).toBe(0);
+    expect(draft.overallImportConfidence).toBeLessThan(0.5);
+  });
+});
+
 describe("library links", () => {
   it("pools by setId and documentId, and honors ordered mode", () => {
     const qs = [
@@ -350,12 +469,13 @@ describe("library links", () => {
 });
 
 describe("file import", () => {
-  it("detects formats honestly, including provenance-only PDFs/images", () => {
+  it("detects text-extractable document formats and provenance-only images", () => {
     expect(detectImportFormat("set.csv", "text/csv")).toBe("csv");
     expect(detectImportFormat("bank.json", "application/json")).toBe("json");
     expect(detectImportFormat("notes.md", "")).toBe("text");
-    expect(detectImportFormat("scan.pdf", "application/pdf")).toBe("provenance-only");
-    expect(detectImportFormat("shot.png", "image/png")).toBe("provenance-only");
+    expect(detectImportFormat("scan.pdf", "application/pdf")).toBe("pdf");
+    expect(detectImportFormat("questions.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe("docx");
+    expect(detectImportFormat("shot.png", "image/png")).toBe("image");
     expect(detectImportFormat("deck.apkg", "application/octet-stream")).toBe("unsupported");
   });
 
@@ -375,7 +495,7 @@ describe("file import", () => {
     expect(result.drafts[0].correctKey).toBe("B");
     expect(result.drafts[0].topic).toBe("Immuno");
     expect(result.drafts[1].correctKey).toBeUndefined();
-    expect(result.drafts[1].warnings.join(" ")).toMatch(/no matching option/i);
+    expect(result.drafts[1].warnings.join(" ")).toMatch(/match an option/i);
   });
 
   it("imports JSON arrays with string options and answer matching", () => {
@@ -385,6 +505,28 @@ describe("file import", () => {
     expect(result.drafts).toHaveLength(1);
     expect(result.drafts[0].options[1]).toEqual({ key: "B", text: "two" });
     expect(result.drafts[0].correctKey).toBe("B");
+  });
+
+  it("maps answer text consistently in CSV and JSON without leading-letter ambiguity", () => {
+    const csv = importFromCsv([
+      "question,a,b,c,answer,explanation",
+      '"Which cell?","B lymphocytes","CD4+ T lymphocytes","Mast cells","B lymphocytes","Because B cells."',
+    ].join("\n"));
+    const json = importFromJson(JSON.stringify([{
+      question: "Which cell?",
+      options: ["B lymphocytes", "CD4+ T lymphocytes", "Mast cells"],
+      answer: "B. CD4+ T lymphocytes",
+      explanation: "Because T cells.",
+    }]));
+    expect(csv.drafts[0].correctKey).toBe("A");
+    expect(csv.drafts[0].correctAnswerText).toBe("B lymphocytes");
+    expect(json.drafts[0].correctKey).toBe("B");
+    expect(json.drafts[0].correctAnswerText).toBe("CD4+ T lymphocytes");
+    for (const draft of [csv.drafts[0], json.drafts[0]]) {
+      expect(draft.answerDetectionConfidence).toBeGreaterThan(0.9);
+      expect(draft.parserRuleIds).toContain("answer.structured-value");
+      expect(draft.sourceSnippet).toContain("Which cell?");
+    }
   });
 
   it("rejects malformed JSON with a clear warning instead of throwing", () => {

@@ -15,6 +15,8 @@ import { newSchedule } from "../../lib/ankiCards";
 import { Modal, TextAreaField, SelectField } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
+import { cleanExplanationText } from "../../lib/questionExplanation";
+import { QuizFeedback } from "./QuizFeedback";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 
@@ -67,7 +69,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
       front: `You missed this: ${question.stem.slice(0, 300)}${question.stem.length > 300 ? "…" : ""}`,
       back: [
         correct ? `Correct: ${correct.key}. ${correct.text}` : "Set the correct answer on the question first.",
-        question.explanation ?? "",
+        cleanExplanationText(question.explanation, question),
         errorType ? `Why missed: ${ERROR_TYPE_LABEL[errorType as QuestionErrorType]}` : "",
       ].filter(Boolean).join("\n\n"),
       source: question.citation ?? "Question Workspace",
@@ -137,13 +139,14 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
 
       {revealed && (
         <>
-          {!hasKey && <div className="sub">No correct answer is set on this question yet — it will be marked needs-review.</div>}
-          {question.explanation && (
-            <div className="stack gap6">
-              <span className="field-label">Explanation</span>
-              <div className="question-explanation">{question.explanation}</div>
-            </div>
-          )}
+          <QuizFeedback
+            question={question}
+            pickedKey={picked}
+            onRepairCard={hasKey && !isCorrect ? makeRepairCard : undefined}
+            onAddReview={() => s.updateQuestion(question.id, { marked: true })}
+            onMarkExplanationWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
+            onMarkAnswerWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
+          />
           <div className="stack gap6">
             <span className="field-label">Confidence</span>
             <div className="row">

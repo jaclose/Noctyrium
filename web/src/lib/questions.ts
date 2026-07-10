@@ -101,6 +101,27 @@ export interface QuestionAttempt {
 
 export type ExtractionConfidence = "high" | "medium" | "low";
 
+/**
+ * Parser diagnostics are persisted with imported questions so a user can
+ * inspect why a mapping was accepted, repair it later, and keep that evidence
+ * across backup/export cycles. Numeric scores are conservative 0..1 values;
+ * `confidence` remains as the backwards-compatible display bucket.
+ */
+export interface QuestionImportDiagnostics {
+  confidence: ExtractionConfidence;
+  reviewed: boolean;
+  reviewedAt?: string;
+  questionDetectionConfidence?: number;
+  answerDetectionConfidence?: number;
+  explanationDetectionConfidence?: number;
+  overallImportConfidence?: number;
+  warnings?: string[];
+  parserRuleIds?: string[];
+  sourceSnippet?: string;
+  answerEvidence?: string;
+  explanationSource?: "inline" | "answer-section" | "feedback" | "manual";
+}
+
 export interface QuestionRecord {
   id: ID;
   source: QuestionSource;
@@ -109,6 +130,8 @@ export interface QuestionRecord {
   stem: string;
   options: QuestionOption[];
   correctKey?: string;
+  /** Derived from correctKey + options at validation/update time. */
+  correctAnswerText?: string;
   explanation?: string;
   /** Per-choice rationales ("A is incorrect because…"), keyed by letter. */
   choiceRationales?: Record<string, string>;
@@ -146,7 +169,7 @@ export interface QuestionRecord {
   attemptedAt?: string;
   reviewDueAt?: string;
   ai?: { generated: boolean; provider?: string; model?: string; promptVersion?: string };
-  extraction?: { confidence: ExtractionConfidence; reviewed: boolean };
+  extraction?: QuestionImportDiagnostics;
   citation?: string;
   createdAt: string;
   updatedAt: string;
@@ -224,6 +247,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       stem,
       options,
       correctKey,
+      correctAnswerText: correctKey ? options.find((option) => option.key === correctKey)?.text : undefined,
       explanation: typeof input.explanation === "string" && input.explanation.trim() ? input.explanation.trim() : undefined,
       choiceRationales: isRecord(input.choiceRationales)
         ? Object.fromEntries(Object.entries(input.choiceRationales)
@@ -275,6 +299,19 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
               ? input.extraction.confidence as ExtractionConfidence
               : "low",
             reviewed: input.extraction.reviewed === true,
+            reviewedAt: cleanString(input.extraction.reviewedAt),
+            questionDetectionConfidence: confidenceScore(input.extraction.questionDetectionConfidence),
+            answerDetectionConfidence: confidenceScore(input.extraction.answerDetectionConfidence),
+            explanationDetectionConfidence: confidenceScore(input.extraction.explanationDetectionConfidence),
+            overallImportConfidence: confidenceScore(input.extraction.overallImportConfidence),
+            warnings: stringArray(input.extraction.warnings),
+            parserRuleIds: stringArray(input.extraction.parserRuleIds),
+            sourceSnippet: cleanString(input.extraction.sourceSnippet),
+            answerEvidence: cleanString(input.extraction.answerEvidence),
+            explanationSource: (["inline", "answer-section", "feedback", "manual"] as const)
+              .includes(input.extraction.explanationSource as "inline")
+              ? input.extraction.explanationSource as QuestionImportDiagnostics["explanationSource"]
+              : undefined,
           }
         : undefined,
       citation: cleanString(input.citation),
@@ -286,6 +323,30 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
 
 function cleanString(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+function confidenceScore(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : undefined;
+}
+
+function stringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const result = value
+    .filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    .map((item) => item.trim());
+  return result.length ? [...new Set(result)] : undefined;
+}
+
+/** Keep duplicated display text synchronized whenever an answer/options edit occurs. */
+export function withCorrectAnswerText(question: QuestionRecord): QuestionRecord {
+  return {
+    ...question,
+    correctAnswerText: question.correctKey
+      ? question.options.find((option) => option.key === question.correctKey)?.text
+      : undefined,
+  };
 }
 
 export function normalizeQuestionTaxonomy(

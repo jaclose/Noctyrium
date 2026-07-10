@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
@@ -38,6 +38,10 @@ import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
 import { QuestionWorkspacePage } from "./pages/QuestionWorkspacePage";
 import { StudyMethodsPage } from "./pages/StudyMethodsPage";
+
+const DevDesignPreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/DesignPreviewPage"))
+  : null;
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -132,6 +136,14 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     setSettings(true);
     useUi.getState().clearSettingsRequest();
   }, [settingsRequest]);
+
+  if (route === "design-preview" && DevDesignPreview) {
+    return (
+      <Suspense fallback={<div className="design-preview-boot">Preparing AXOM component preview…</div>}>
+        <DevDesignPreview />
+      </Suspense>
+    );
+  }
 
   function go(id: string) {
     try {

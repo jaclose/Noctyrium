@@ -12,15 +12,19 @@ import { ClipboardPaste, FileUp, Save, Sparkles, RefreshCw, ChevronDown, Chevron
 import { useStore } from "../../lib/store";
 import { parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, importFromText } from "../../lib/questionImport";
-import { extractDocxText, extractPdfText } from "../../lib/extractText";
+import { extractDocxText, extractPdfText, extractPlainText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { EXAM_TYPE_LABEL, QUESTION_CATEGORIES, type QuestionDifficulty, type QuestionExamType, type QuestionSource } from "../../lib/questions";
 import { normalizeTags, suggestCategory } from "../../lib/taxonomy";
-import { checkProviderHealth, enhanceQuestionSet, generateQuestionDrafts, loadAiSettings, resolveActiveProvider } from "../../lib/ai";
+import {
+  checkProviderHealth, cleanExplanation as cleanExplanationWithAi, enhanceQuestionSet,
+  generateQuestionDrafts, loadAiSettings, mapAnswerFromText, resolveActiveProvider,
+} from "../../lib/ai";
 import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
+import { sha256Hex } from "../../lib/checksum";
 
 type ImportTab = "paste" | "file" | "ai";
 type SaveMode = "set" | "doc" | "both";
@@ -39,6 +43,7 @@ interface PendingDocument {
   sizeBytes: number;
   rawText: string;
   pageTexts?: string[];
+  checksum?: string;
 }
 
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -72,6 +77,7 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
   const [category, setCategory] = useState("");
   const [examType, setExamType] = useState<QuestionExamType | "">("");
   const [difficulty, setDifficulty] = useState<QuestionDifficulty | "">("");
+  const [aiBusyDraft, setAiBusyDraft] = useState<number | null>(null);
 
   const provider = useMemo(() => resolveActiveProvider(), []);
   const reviewing = drafts.length > 0 || pendingDoc !== null;
@@ -115,7 +121,10 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
       return;
     }
 
-    const docId = wantsDoc ? uid() : undefined;
+    const duplicateDoc = wantsDoc && pendingDoc?.checksum
+      ? (s.documents ?? []).find((document) => document.checksum === pendingDoc.checksum)
+      : undefined;
+    const docId = wantsDoc ? (duplicateDoc?.id ?? uid()) : undefined;
     const setId = wantsSet ? uid() : undefined;
 
     // Questions first, so the set can reference their real ids.
@@ -128,11 +137,13 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
           stem: d.stem,
           options: d.options,
           correctKey: d.correctKey,
+          correctAnswerText: d.correctAnswerText,
           explanation: d.explanation,
           choiceRationales: d.choiceRationales,
           needsReview: d.needsReview,
           topic: d.topic,
           system: d.system,
+          objective: d.objective,
           category: resolveCategory(d),
           bank: setTitle || undefined,
           setId,
@@ -141,11 +152,24 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
           sourcePage: d.sourcePage,
           examType: (examType || undefined) as QuestionExamType | undefined,
           difficulty: (difficulty || undefined) as QuestionDifficulty | undefined,
-          citation: d.sourceLabel ?? pendingDoc?.fileName,
+          citation: d.reference ?? d.sourceLabel ?? pendingDoc?.fileName,
           tags: normalizeTags([...(d.tags ?? []), ...autoTags(d)]),
           status: "unseen",
           ai: d.aiGenerated ? { generated: true, provider: provider?.info.label } : undefined,
-          extraction: { confidence: d.confidence, reviewed: true },
+          extraction: {
+            confidence: d.confidence,
+            reviewed: !d.needsReview && d.confidence === "high",
+            reviewedAt: !d.needsReview && d.confidence === "high" ? new Date().toISOString() : undefined,
+            questionDetectionConfidence: d.questionDetectionConfidence,
+            answerDetectionConfidence: d.answerDetectionConfidence,
+            explanationDetectionConfidence: d.explanationDetectionConfidence,
+            overallImportConfidence: d.overallImportConfidence,
+            warnings: d.warnings,
+            parserRuleIds: d.parserRuleIds,
+            sourceSnippet: d.sourceSnippet,
+            answerEvidence: d.answerEvidence,
+            explanationSource: d.explanationSource,
+          },
         });
         if (result.ok && result.id) questionIds.push(result.id);
         else errors.push(...result.errors);
@@ -163,7 +187,14 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
       s.addQuestionSet(qset);
     }
 
-    if (wantsDoc && pendingDoc) {
+    if (wantsDoc && pendingDoc && duplicateDoc) {
+      s.updateDocument(duplicateDoc.id, {
+        linkedQuestionSetIds: setId
+          ? [...new Set([...duplicateDoc.linkedQuestionSetIds, setId])]
+          : duplicateDoc.linkedQuestionSetIds,
+        libraryOnly: duplicateDoc.libraryOnly && !setId,
+      });
+    } else if (wantsDoc && pendingDoc) {
       const doc: SourceDocument = {
         id: docId!,
         title: pendingDoc.title,
@@ -173,6 +204,7 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
         rawText: pendingDoc.rawText,
         pageTexts: pendingDoc.pageTexts,
         sizeBytes: pendingDoc.sizeBytes,
+        checksum: pendingDoc.checksum,
         tags: category ? [category] : [],
         linkedQuestionSetIds: setId ? [setId] : [],
         libraryOnly: saveMode === "doc",
@@ -184,7 +216,9 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
       title: wantsSet
         ? `${questionIds.length} question${questionIds.length === 1 ? "" : "s"} saved${wantsDoc ? " + source document" : ""}`
         : "Source document saved to the library",
-      body: errors.length ? `Skipped: ${errors.slice(0, 2).join(" ")}` : undefined,
+      body: errors.length
+        ? `Skipped: ${errors.slice(0, 2).join(" ")}`
+        : duplicateDoc ? "Matched the existing source checksum and linked it instead of storing a duplicate." : undefined,
       tone: "success",
     });
 
@@ -220,6 +254,66 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
 
   function updateDraft(index: number, patch: Partial<ReviewDraft>) {
     setDrafts((all) => all.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  async function assistDraftMapping(index: number) {
+    const draft = drafts[index];
+    if (!provider || !draft || !pendingDoc?.rawText) return;
+    setAiBusyDraft(index);
+    try {
+      const result = await mapAnswerFromText(provider, {
+        stem: draft.stem,
+        options: draft.options,
+        nearbyText: draft.sourceSnippet ?? pendingDoc.rawText.slice(0, 4000),
+      });
+      updateDraft(index, {
+        correctKey: result.suggestedKey,
+        correctAnswerText: result.suggestedKey
+          ? draft.options.find((option) => option.key === result.suggestedKey)?.text
+          : undefined,
+        answerEvidence: result.evidence,
+        answerDetectionConfidence: result.confidence,
+        overallImportConfidence: Math.min(0.84, Math.max(draft.overallImportConfidence ?? 0, result.confidence)),
+        needsReview: result.needsReview || undefined,
+        confidence: result.needsReview ? "low" : "medium",
+        warnings: [
+          ...draft.warnings,
+          result.needsReview
+            ? "AI mapping assist found no grounded answer — human review is still required."
+            : `AI mapping suggestion ${result.suggestedKey} is grounded in the evidence shown below and still requires your approval.`,
+        ],
+        parserRuleIds: [...new Set([...(draft.parserRuleIds ?? []), "ai.mapping-assist.reviewed-suggestion"])],
+      });
+    } catch (error) {
+      pushToast({ title: "Mapping assist failed", body: error instanceof Error ? error.message : "Unknown error.", tone: "warn" });
+    } finally {
+      setAiBusyDraft(null);
+    }
+  }
+
+  async function cleanDraftWithAi(index: number) {
+    const draft = drafts[index];
+    if (!provider || !draft?.explanation) return;
+    setAiBusyDraft(index);
+    try {
+      const cleaned = await cleanExplanationWithAi(provider, {
+        stem: draft.stem,
+        correct: draft.correctAnswerText,
+        rawExplanation: draft.explanation,
+      });
+      updateDraft(index, {
+        explanation: cleaned,
+        explanationDetectionConfidence: Math.max(draft.explanationDetectionConfidence ?? 0, 0.8),
+        confidence: draft.confidence === "low" ? "low" : "medium",
+        needsReview: true,
+        warnings: [...draft.warnings, "AI cleaned this explanation without changing the mapped answer — review before acceptance."],
+        parserRuleIds: [...new Set([...(draft.parserRuleIds ?? []), "ai.explanation-cleaner.review-required"])],
+      });
+    } catch (error) {
+      pushToast({ title: "Explanation cleaner failed", body: error instanceof Error ? error.message : "Unknown error.", tone: "warn" });
+    } finally {
+      setAiBusyDraft(null);
+    }
   }
 
   const includedCount = drafts.filter((d) => d.include).length;
@@ -366,6 +460,12 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
                 {d.expanded && (
                   <div className="stack" style={{ gap: 8, marginTop: 10 }}>
                     {d.warnings.length > 0 && <ul className="intake-warnings">{d.warnings.map((w, j) => <li key={j}>{w}</li>)}</ul>}
+                    <div className="import-confidence-grid" aria-label="Parser confidence by layer">
+                      <span><b>{Math.round((d.questionDetectionConfidence ?? 0) * 100)}%</b> question</span>
+                      <span><b>{Math.round((d.answerDetectionConfidence ?? 0) * 100)}%</b> answer</span>
+                      <span><b>{Math.round((d.explanationDetectionConfidence ?? 0) * 100)}%</b> explanation</span>
+                      <span><b>{Math.round((d.overallImportConfidence ?? 0) * 100)}%</b> overall</span>
+                    </div>
                     <TextAreaField label="Stem" rows={3} value={d.stem} onChange={(e) => updateDraft(i, { stem: e.target.value })} />
                     {d.options.map((opt, j) => (
                       <div key={j} className="row">
@@ -381,14 +481,48 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
                     </GhostButton>
                     <div className="grid grid-2">
                       <SelectField label="Correct answer" value={d.correctKey ?? ""}
-                        onChange={(e) => updateDraft(i, { correctKey: e.target.value || undefined })}>
+                        onChange={(e) => {
+                          const key = e.target.value || undefined;
+                          const answerScore = key ? 1 : 0;
+                          const overall = (d.questionDetectionConfidence ?? 0) * 0.4
+                            + answerScore * 0.4
+                            + (d.explanationDetectionConfidence ?? 0) * 0.2;
+                          updateDraft(i, {
+                            correctKey: key,
+                            correctAnswerText: key ? d.options.find((option) => option.key === key)?.text : undefined,
+                            answerDetectionConfidence: answerScore,
+                            overallImportConfidence: overall,
+                            needsReview: !key || (d.questionDetectionConfidence ?? 0) < 0.75 || undefined,
+                            confidence: overall >= 0.85 && key ? "high" : overall >= 0.6 ? "medium" : "low",
+                            parserRuleIds: [...new Set([...(d.parserRuleIds ?? []), "answer.user-reviewed-mapping"])],
+                          });
+                        }}>
                         <option value="">Not set</option>
                         {d.options.map((o) => <option key={o.key} value={o.key}>{o.key}</option>)}
                       </SelectField>
                       <Field label="Topic" value={d.topic ?? ""} onChange={(e) => updateDraft(i, { topic: e.target.value || undefined })} />
+                      <Field label="Learning objective" value={d.objective ?? ""} onChange={(e) => updateDraft(i, { objective: e.target.value || undefined })} />
+                      <Field label="Reference / source" value={d.reference ?? d.sourceLabel ?? ""}
+                        onChange={(e) => updateDraft(i, { reference: e.target.value || undefined })} />
                     </div>
                     <TextAreaField label="Explanation" rows={2} value={d.explanation ?? ""}
                       onChange={(e) => updateDraft(i, { explanation: e.target.value || undefined })} />
+                    {provider && (
+                      <div className="row wrap gap6">
+                        {!d.correctKey && pendingDoc?.rawText && (
+                          <GhostButton disabled={aiBusyDraft === i} onClick={() => void assistDraftMapping(i)}>
+                            <Sparkles size={13} /> {aiBusyDraft === i ? "Checking evidence…" : "Mapping assist"}
+                          </GhostButton>
+                        )}
+                        {d.explanation && (
+                          <GhostButton disabled={aiBusyDraft === i} onClick={() => void cleanDraftWithAi(i)}>
+                            <Sparkles size={13} /> {aiBusyDraft === i ? "Cleaning…" : "Clean explanation with AI"}
+                          </GhostButton>
+                        )}
+                        <span className="sub">AI suggestions stay review-gated and never invent a key without quoted evidence.</span>
+                      </div>
+                    )}
+                    {d.answerEvidence && <div className="question-explanation"><b>Answer evidence:</b> {d.answerEvidence}</div>}
                     {d.choiceRationales && Object.keys(d.choiceRationales).length > 0 && (
                       <div className="stack gap6">
                         <span className="field-label">Choice rationales</span>
@@ -400,6 +534,7 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
                     {pendingDoc?.rawText && d.stem && (
                       <SourcePeek rawText={pendingDoc.rawText} stem={d.stem} />
                     )}
+                    {(d.parserRuleIds?.length ?? 0) > 0 && <div className="source-rules">Parser rules: {d.parserRuleIds!.join(" · ")}</div>}
                   </div>
                 )}
               </div>
@@ -479,6 +614,7 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
     try {
       if (isPdf || isDocx) {
         const buffer = await file.arrayBuffer();
+        const checksum = await sha256Hex(buffer);
         const extracted = isPdf ? await extractPdfText(buffer) : await extractDocxText(buffer);
         const doc: PendingDocument = {
           title: documentTitleFromFile(file.name),
@@ -487,6 +623,7 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
           sizeBytes: file.size,
           rawText: extracted.text,
           pageTexts: isPdf ? extracted.pages : undefined,
+          checksum,
         };
         if (extracted.empty) {
           onParsed([], extracted.warnings, isPdf ? "pdf" : "imported", doc);
@@ -507,6 +644,7 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
       }
 
       if (file.type.startsWith("image/")) {
+        const checksum = await sha256Hex(await file.arrayBuffer());
         onParsed([], [
           `Attached ${file.name}. Image imports store provenance only — there is no in-app OCR yet. Paste the question text instead.`,
         ], "image", {
@@ -515,6 +653,7 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
           fileType: file.type,
           sizeBytes: file.size,
           rawText: "",
+          checksum,
         });
         return;
       }
@@ -524,14 +663,19 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
         pushToast({ title: "Unsupported file type", body: "Use PDF, DOCX, TXT, Markdown, CSV, or JSON.", tone: "warn" });
         return;
       }
-      const text = await file.text();
-      const result = format === "csv" ? importFromCsv(text) : format === "json" ? importFromJson(text) : importFromText(text);
-      onParsed(result.drafts, result.warnings, "imported", {
+      const [text, checksum] = await Promise.all([
+        file.text(),
+        file.arrayBuffer().then(sha256Hex),
+      ]);
+      const plain = extractPlainText(text);
+      const result = format === "csv" ? importFromCsv(plain.text) : format === "json" ? importFromJson(plain.text) : importFromText(plain.text);
+      onParsed(result.drafts, [...plain.warnings, ...result.warnings], "imported", {
         title: documentTitleFromFile(file.name),
         fileName: file.name,
         fileType: format,
         sizeBytes: file.size,
-        rawText: text.slice(0, 400_000),
+        rawText: plain.text,
+        checksum,
       });
     } catch (err) {
       pushToast({ title: "Import failed", body: err instanceof Error ? err.message : "Could not read this file.", tone: "warn" });
@@ -560,7 +704,13 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
           e.target.value = "";
         }}
       />
-      <div className="row">
+      <div className="import-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files?.[0];
+        if (file && !busyFile) void handleFile(file);
+      }}>
+        <FileUp size={22} />
+        <div><b>Drop a question file here</b><span>or choose one from this device</span></div>
         <GButton variant="primary" disabled={busyFile !== null} onClick={() => fileInput.current?.click()}>
           {busyFile ? <RefreshCw size={14} className="spin" /> : <FileUp size={14} />} {busyFile ? `Extracting ${busyFile}…` : "Choose file"}
         </GButton>
@@ -575,7 +725,11 @@ function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
     const needle = draft.stem.slice(0, 60).trim();
     if (needle.length < 12) continue;
     const page = pages.findIndex((p) => p.includes(needle));
-    if (page >= 0) draft.sourcePage = page + 1;
+    if (page >= 0) {
+      draft.sourcePage = page + 1;
+      const start = Math.max(0, pages[page].indexOf(needle) - 120);
+      draft.sourceSnippet = pages[page].slice(start, start + 800).trim();
+    }
   }
 }
 

@@ -38,8 +38,10 @@ export function GButton({
 export function GhostButton({
   className = "", children, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const childItems = React.Children.toArray(children);
+  const iconOnly = childItems.length === 1 && React.isValidElement(childItems[0]);
   return (
-    <button className={`ghost-btn ${className}`} {...rest}>
+    <button className={`ghost-btn ${iconOnly ? "icon-only" : ""} ${className}`} {...rest}>
       {children}
     </button>
   );

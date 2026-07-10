@@ -89,7 +89,7 @@ export async function runStorageMigrations(): Promise<StorageMigrationResult> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown migration error";
     writeMigrationFailure({ fromVersion, toVersion: BUILD_INFO.schemaVersion, errorMessage, backupKey });
-    console.error("[Axom] Local data migration failed", { fromVersion, toVersion: BUILD_INFO.schemaVersion, error });
+    console.error("[AXOM] Local data migration failed", { fromVersion, toVersion: BUILD_INFO.schemaVersion, error });
     return {
       ok: false,
       fromVersion,

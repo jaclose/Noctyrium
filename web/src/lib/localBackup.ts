@@ -4,6 +4,8 @@ import { STORAGE_KEYS } from "./brand";
 const BACKUP_SCHEMA_VERSION = 1;
 const DEFAULT_BACKUP_LIMIT = 8;
 const VAULT_STORE_NAME = "state";
+const BACKUP_STORE_NAME = "backups";
+const VAULT_DB_VERSION = 2;
 
 export interface LocalBackupSnapshot {
   schemaVersion: number;
@@ -24,6 +26,12 @@ export interface LocalBackupSummary {
   oldSchemaVersion: number;
   appVersion: string;
   commitSha: string;
+}
+
+interface LocalBackupMarker extends LocalBackupSummary {
+  schemaVersion: number;
+  storage: "indexeddb";
+  sizeBytes: number;
 }
 
 export async function createLocalBackup(
@@ -49,8 +57,21 @@ export async function createLocalBackup(
   }
 
   const key = `${STORAGE_KEYS.localBackupPrefix}${savedAt}`;
-  getLocalStorage()?.setItem(key, JSON.stringify(snapshot));
-  pruneLocalBackups(backupLimit);
+  const storage = getLocalStorage();
+  const serialized = JSON.stringify(snapshot);
+  try {
+    // Move any snapshots created by older builds out of localStorage first.
+    // A failed migration leaves the legacy payload untouched and recoverable.
+    await migrateLegacyBackupsToIndexedDb(storage);
+    await writeBackupRecord(key, serialized);
+    storage?.setItem(key, JSON.stringify(toMarker(key, snapshot, serialized.length)));
+  } catch {
+    // Private browsing and storage policies can disable IndexedDB. Keep a full
+    // localStorage fallback in that case rather than losing the safety copy.
+    if (!storage) throw new Error("No browser storage is available for the migration backup.");
+    storage.setItem(key, serialized);
+  }
+  await pruneLocalBackups(backupLimit);
   return key;
 }
 
@@ -74,6 +95,15 @@ export function listLocalBackups(): LocalBackupSummary[] {
             commitSha: parsed.build.commitSha,
           };
         }
+        if (isBackupMarker(parsed)) {
+          return {
+            key,
+            savedAt: parsed.savedAt,
+            oldSchemaVersion: parsed.oldSchemaVersion,
+            appVersion: parsed.appVersion,
+            commitSha: parsed.commitSha,
+          };
+        }
       } catch {
         /* ignore malformed backup metadata */
       }
@@ -87,14 +117,37 @@ export function listLocalBackups(): LocalBackupSummary[] {
     });
 }
 
-export function pruneLocalBackups(keep = DEFAULT_BACKUP_LIMIT) {
+export async function readLocalBackup(key: string): Promise<LocalBackupSnapshot | null> {
   const storage = getLocalStorage();
-  if (!storage) return;
-  const keys = localStorageKeys(storage)
-    .filter((key) => key.startsWith(STORAGE_KEYS.localBackupPrefix))
-    .sort((a, b) => b.localeCompare(a));
+  const local = storage?.getItem(key);
+  if (local) {
+    try {
+      const parsed = JSON.parse(local) as unknown;
+      if (isBackupSnapshot(parsed)) return parsed;
+    } catch {
+      /* try the IndexedDB record below */
+    }
+  }
+  try {
+    const serialized = await readBackupRecord(key);
+    if (!serialized) return null;
+    const parsed = JSON.parse(serialized) as unknown;
+    return isBackupSnapshot(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function pruneLocalBackups(keep = DEFAULT_BACKUP_LIMIT): Promise<void> {
+  const storage = getLocalStorage();
+  const localKeys = storage
+    ? localStorageKeys(storage).filter((key) => key.startsWith(STORAGE_KEYS.localBackupPrefix))
+    : [];
+  const indexedDbKeys = await listBackupRecordKeys().catch(() => []);
+  const keys = [...new Set([...localKeys, ...indexedDbKeys])].sort((a, b) => b.localeCompare(a));
   for (const key of keys.slice(Math.max(0, keep))) {
-    storage.removeItem(key);
+    storage?.removeItem(key);
+    await deleteBackupRecord(key).catch(() => undefined);
   }
 }
 
@@ -160,11 +213,79 @@ async function readVaultIndexedDb(): Promise<NonNullable<LocalBackupSnapshot["in
 
 function openVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(STORAGE_KEYS.vaultDb);
+    const request = indexedDB.open(STORAGE_KEYS.vaultDb, VAULT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
+        request.result.createObjectStore(VAULT_STORE_NAME);
+      }
+      if (!request.result.objectStoreNames.contains(BACKUP_STORE_NAME)) {
+        request.result.createObjectStore(BACKUP_STORE_NAME);
+      }
+    };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error("Unable to open local vault"));
     request.onblocked = () => reject(new Error("Local vault is blocked by another tab"));
   });
+}
+
+async function writeBackupRecord(key: string, value: string): Promise<void> {
+  await withBackupStore("readwrite", (store) => store.put(value, key));
+}
+
+async function readBackupRecord(key: string): Promise<string | undefined> {
+  return withBackupStore("readonly", (store) => store.get(key));
+}
+
+async function listBackupRecordKeys(): Promise<string[]> {
+  const keys = await withBackupStore("readonly", (store) => store.getAllKeys());
+  return keys.map(String).filter((key) => key.startsWith(STORAGE_KEYS.localBackupPrefix));
+}
+
+async function deleteBackupRecord(key: string): Promise<void> {
+  await withBackupStore("readwrite", (store) => store.delete(key));
+}
+
+async function withBackupStore<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
+  const db = await openVault();
+  try {
+    const tx = db.transaction(BACKUP_STORE_NAME, mode);
+    return await requestResult(run(tx.objectStore(BACKUP_STORE_NAME)));
+  } finally {
+    db.close();
+  }
+}
+
+async function migrateLegacyBackupsToIndexedDb(storage: Storage | null): Promise<void> {
+  if (!storage) return;
+  const keys = localStorageKeys(storage).filter((key) => key.startsWith(STORAGE_KEYS.localBackupPrefix));
+  for (const key of keys) {
+    const raw = storage.getItem(key);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isBackupSnapshot(parsed)) continue;
+      await writeBackupRecord(key, raw);
+      storage.setItem(key, JSON.stringify(toMarker(key, parsed, raw.length)));
+    } catch {
+      // Keep the full legacy snapshot in localStorage if it cannot be moved.
+    }
+  }
+}
+
+function toMarker(key: string, snapshot: LocalBackupSnapshot, sizeBytes: number): LocalBackupMarker {
+  return {
+    key,
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    storage: "indexeddb",
+    sizeBytes,
+    savedAt: snapshot.savedAt,
+    oldSchemaVersion: snapshot.oldSchemaVersion,
+    appVersion: snapshot.build.version,
+    commitSha: snapshot.build.commitSha,
+  };
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -190,6 +311,17 @@ function isBackupSnapshot(value: unknown): value is LocalBackupSnapshot {
     typeof value.oldSchemaVersion === "number" &&
     typeof value.build.version === "string" &&
     typeof value.build.commitSha === "string"
+  );
+}
+
+function isBackupMarker(value: unknown): value is LocalBackupMarker {
+  if (!isRecord(value)) return false;
+  return (
+    value.storage === "indexeddb" &&
+    typeof value.savedAt === "string" &&
+    typeof value.oldSchemaVersion === "number" &&
+    typeof value.appVersion === "string" &&
+    typeof value.commitSha === "string"
   );
 }
 

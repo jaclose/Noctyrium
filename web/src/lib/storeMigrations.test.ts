@@ -71,13 +71,19 @@ describe("v26 → v27 migration", () => {
     expect(result.questions).toEqual([{ id: "q1", taxonomy: {} }]);
   });
 
-  it("writes a recoverable pre-migration snapshot before migrating", () => {
+  it("writes only lightweight pre-migration metadata to localStorage", () => {
     migratePersistedState(v26State(), 26);
     const raw = localStorage.getItem(STORAGE_KEYS.preMigrationSnapshot);
     expect(raw).toBeTruthy();
-    const snapshot = JSON.parse(raw!) as { fromVersion: number; savedAt: string; state: { tasks: Array<{ title: string }> } };
+    const snapshot = JSON.parse(raw!) as {
+      fromVersion: number;
+      savedAt: string;
+      recordCounts: { tasks: number };
+      state?: unknown;
+    };
     expect(snapshot.fromVersion).toBe(26);
-    expect(snapshot.state.tasks[0].title).toBe("Old task");
+    expect(snapshot.recordCounts.tasks).toBe(1);
+    expect(snapshot.state).toBeUndefined();
   });
 
   it("v28→v29 adds quiz sessions; the v28 rebrand touches only placeholder names", () => {
@@ -113,6 +119,30 @@ describe("v26 → v27 migration", () => {
       discipline: "Physiology",
       topic: "Murmurs",
       errorPattern: "missed-clue",
+    });
+  });
+
+  it("v31→v32 adds import diagnostics without rewriting question content", () => {
+    const question = {
+      id: "q1",
+      stem: "A preserved stem",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      correctKey: "B",
+      explanation: "A preserved explanation",
+      extraction: { confidence: "medium", reviewed: false },
+    };
+    const state = { ...v26State(), schemaVersion: 31, questions: [question] };
+    const result = migratePersistedState(structuredClone(state), 31);
+    expect(result.questions[0].stem).toBe(question.stem);
+    expect(result.questions[0].explanation).toBe(question.explanation);
+    expect(result.questions[0].correctAnswerText).toBe("Beta");
+    expect(result.questions[0].extraction).toMatchObject({
+      confidence: "medium",
+      questionDetectionConfidence: 0.65,
+      answerDetectionConfidence: 0.65,
+      explanationDetectionConfidence: 0.65,
+      overallImportConfidence: 0.65,
+      parserRuleIds: ["MIGRATED.LEGACY"],
     });
   });
 

@@ -4,9 +4,47 @@ Living record of what is **built and working**. Update this whenever a feature s
 The companion file is [ROADMAP.md](ROADMAP.md) — in-progress and proposed work lives there,
 and items move from there to here when they ship.
 
-Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
+Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
 
 ## Question Bank (flagship)
+
+### Command-center and integrity pass (2026-07-10c)
+
+- **Question Bank Command Center** — defaults to an overview that answers
+  “what should I do next?” with Quick Import, Mass Import, Build Block, and
+  Continue actions; total/due/unseen/accuracy/set/mapping metrics; a recommended
+  action; due, missed, weak-topic, and import loop cards; library shortcuts; and
+  weakest-category, error-pattern, confidence-mismatch, pacing, and improvement
+  insight. The optional weakness coach is provider-gated and labeled.
+- **Parser provenance and confidence** — imported questions now persist separate
+  question, answer, explanation, and overall confidence values plus warnings,
+  parser rule IDs, source snippets, answer evidence, source page, explanation
+  source, and normalized `correctAnswerText`. Letter, letter-plus-text, normalized
+  answer-text, inline, feedback-adjacent, compressed, and trailing answer keys are
+  reconciled; disagreement is a review flag, never a silent mapping.
+- **Deterministic explanation cleanup** — `cleanExplanationText` removes repeated
+  stems, options, answer lines, objectives/sources, and extraction duplication
+  without rewriting teaching content. The reported PPD/CD4 fixture maps to B and
+  shows only the type-IV-hypersensitivity rationale.
+- **Structured quiz feedback** — the shared feedback surface provides a short
+  correct/incorrect/needs-review banner, separate correct and learner answer rows,
+  clean rationale, optional learning objective, collapsible source/confidence/rule
+  evidence, and repair actions. Tutor mode and question detail reuse the shared
+  component; results apply the same deterministic explanation cleaner.
+- **Progress-rich question-set cards** — reusable set cards show source/category,
+  total/completed/remaining, completion, attempt accuracy, last studied, aggregate
+  import confidence, mapping-review count, AI labeling, and start/miss/edit/insight
+  actions. Accuracy colors are green ≥90, gold 80–89, orange 70–79, red ≤69,
+  and neutral before attempts.
+- **Source identity and duplicate protection** — PDF, DOCX, and text imports receive
+  SHA-256 checksums when the browser supports SubtleCrypto. Matching sources are
+  linked to the existing library record instead of being stored twice; Local Data
+  Health surfaces checksum duplicates and non-destructive orphan repair.
+- **Reusable development preview** — the hidden development-only
+  `#design-preview` route uses production brand, set-card, feedback, and primitive
+  components with representative local data, three restrained glass variants,
+  desktop/mobile layouts, and loading/empty/error/review/correct/incorrect states.
+  The page is excluded from production routing and code output.
 
 ### Rescue phase (2026-07-09b)
 
@@ -19,9 +57,9 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
   Feedback: …`), and L3 semantic mapping (explanation opening that names an
   option's text). Explicit-vs-prose answer disagreement is a flagged conflict,
   never a silent guess. 7 new tests cover the exact reported failure cases.
-- **Quiz explanation panel** — correct/incorrect verdict, per-choice rationales
-  (correct one highlighted), source page + set, error-type dropdown, and a
-  1–5 confidence selector with keyboard shortcut. Bigger, calmer answer choices.
+- **Quiz explanation panel** — structured correct/incorrect verdict, answer
+  comparison, cleaned rationale, source page/evidence, error classification,
+  repair actions, and a 1–5 confidence selector with keyboard shortcut.
 - **Import convenience** — quick-select High-confidence only / Needs-review only
   / All / None across a parsed batch.
 - **Today's Study shortcuts** — Review due, Retry missed, and Weak-topic block
@@ -75,8 +113,9 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
 - **Source Library** — uploaded documents with extracted text, page counts, linked sets,
   reference-only storage, text preview, delete-with-unlink (questions never silently lost),
   and "generate questions from this document" (AI, review-gated).
-- **Question Sets** — first-class sets with accuracy from attempt history, tags, source
-  links, AI digest cards (Question Intelligence), run-as-block, delete-with-unlink.
+- **Question Sets** — first-class sets with completion and threshold-colored accuracy,
+  remaining/review/import-confidence/last-studied metrics, tags, source links, AI digest
+  cards (Question Intelligence), run-as-block, search, and delete-with-unlink.
 - **Block Builder** — saved re-runnable block definitions (mode, count, pool filters,
   sets, timing); filters stay live so "missed only" blocks track current misses.
 - **Tutor mode** — immediate feedback, error-type taxonomy (12 types), confidence,
@@ -118,16 +157,24 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
   (no key field ships in the client, by design).
 - All outputs schema-validated; nothing mutates user data without review.
 - Actions: card generation, question generation (topic/reference-grounded), set digests
-  with pitfalls + review targets, explain simply, why-was-I-wrong, memory hooks.
+  with pitfalls + review targets, mapping assist with quoted evidence, explanation cleanup,
+  weakness coaching, explain simply, why-was-I-wrong, and memory hooks.
+- With no reachable configured provider/model, AI actions remain unavailable and the
+  deterministic import → review → quiz loop continues to work normally.
 
 ## Data safety & updates
 
 - IndexedDB vault + localStorage fallback; frozen `noctyrium-*` storage keys (rebrand-safe).
-- Versioned schema (v30) with **additive-only migrations** and an automatic
+- Versioned schema (v32) with **additive-only migrations** and an automatic
   **pre-migration snapshot** before every upgrade.
+- Schema v32 adds import diagnostics and derived answer text without rewriting stems,
+  options, explanations, attempts, set links, or source links. Legacy confidence buckets
+  seed conservative numeric scores and are marked with a migration rule ID.
 - JSON **export backup**, **replace-restore** (confirmed), and **merge import**
-  (union by id, newer wins, nothing deleted); last-backup age tracking.
-- **Data health panel**: storage driver, record counts, migration state, snapshot status.
+  (union by id, newer wins, nothing deleted); diagnostics and source checksums survive
+  export/import; last-backup age tracking.
+- **Data health panel**: storage driver, record counts, schema/migration state, snapshot
+  status, source-checksum health, orphan repair, and growth-based backup reminders.
 - **Update flow**: single version source (`web/src/lib/brand.ts`), deploy-difference
   detection (survives version-line resets), never fires during an active session,
   never destructive; service-worker cache versioned per release.
@@ -139,7 +186,7 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
   (✓ / single leading-or-trailing * / "(correct)" suffix — all-marked = bullets,
   ignored), options crammed on one line expanded ("A. x B. y C. z"), extended
   answer vocabulary (Key/Solution/Correct option/Right answer), "Answer
-  explanation" blocks. 10 new tests; 224 total.
+  explanation" blocks, with dedicated parser and explanation-cleaning regressions.
 - **Question Bank page rehaul**: black-marble hero with gold eyebrow + Poppins
   headline, framed liquid-glass stat tiles, gold-framed black-glass CTAs
   (gold is a frame, never a fill), quick-action chips, segmented tab control.
@@ -148,8 +195,10 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
 
 ## Identity
 
-- AXOM brand: tintable SVG mark, Poppins wordmark (self-hosted), graphite/bone/muted-gold
-  palette, regenerated icon set, brand config centralized for future changes.
+- AXOM brand: reusable accessible `AxomMark`, `AxomWordmark`, and
+  `AxomBrandLockup`; tintable official-shape SVG mark; geometric serif wordmark
+  stack separated from UI text; semantic `--axom-*` graphite/ivory/gold/glass
+  tokens; uppercase browser/PWA naming; and centralized brand config.
 - **Premium theme rehaul (2026-07-10)**: 450+ legacy cyan/blue/purple accent instances
   re-tinted to the identity palette across every stylesheet; machined-gold primary CTA
   with ink text; gold active-nav indicator + soft glow; architectural glass cards with
@@ -159,3 +208,17 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
   empty states, and the shell's gold top seam; Safari backdrop-filter fixes.
   Verified visually via headless-browser screenshots of onboarding, dashboard, and
   Question Bank.
+
+## Known Current Boundaries
+
+- PDF extraction requires a digital text layer. Scanned PDFs and screenshots do not
+  have OCR and remain provenance-only unless text is supplied separately.
+- DOCX is supported; legacy binary `.doc` is not.
+- The Source Library stores extracted/page text, metadata, and checksums, not the
+  original uploaded binary. Users must retain their source files externally.
+- AI is optional and requires a reachable configured provider/model. Cloud BYOK has
+  no client-side secret path and stays disabled until a secure endpoint exists.
+- The Local Vault is local to a browser origin/device. IndexedDB can fall back to
+  localStorage, but neither replaces a user-held JSON backup or hardened account sync.
+- Full browser E2E coverage and OCR remain roadmap work; parser confidence narrows
+  review work but does not certify the medical correctness of source material.

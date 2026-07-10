@@ -5,22 +5,34 @@
 // generate more questions from its source document (review-gated).
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { FileText, Play, Sparkles, Trash2, BookOpen } from "lucide-react";
+import { FileText, Sparkles, Trash2, BookOpen, Search } from "lucide-react";
 import { useStore } from "../../lib/store";
-import { setAccuracy, type QuestionSet, type SourceDocument } from "../../lib/library";
+import { questionSetMetrics, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
-import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+import { GlassCard, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Modal } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import type { QuestionRecord } from "../../lib/questions";
+import { QuestionSetCard } from "./QuestionSetCard";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
+const NO_DOCUMENTS: SourceDocument[] = [];
+const NO_SETS: QuestionSet[] = [];
 
 export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: SourceDocument) => void }) {
   const s = useStore();
-  const documents = s.documents ?? [];
+  const documents = s.documents ?? NO_DOCUMENTS;
   const [preview, setPreview] = useState<SourceDocument | null>(null);
+  const [query, setQuery] = useState("");
   const provider = useMemo(() => resolveActiveProvider(), []);
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return documents;
+    return documents.filter((document) =>
+      document.title.toLowerCase().includes(term)
+      || document.fileName.toLowerCase().includes(term)
+      || document.tags.some((tag) => tag.toLowerCase().includes(term)));
+  }, [documents, query]);
 
   return (
     <GlassCard>
@@ -28,6 +40,13 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
         title="Source Library"
         sub="Every uploaded file, with its extracted text and linked question sets. Reference-only documents live here too."
       />
+      {documents.length > 0 && (
+        <div className="row" style={{ gap: 7, marginBottom: 12 }}>
+          <Search size={14} className="dim" />
+          <input className="field grow" value={query} onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search source documents" placeholder="Search source documents…" />
+        </div>
+      )}
       {documents.length === 0 ? (
         <EmptyState
           icon={<FileText size={18} />}
@@ -36,7 +55,7 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
         />
       ) : (
         <div className="stack gap6">
-          {documents.map((doc) => (
+          {filtered.map((doc) => (
             <div key={doc.id} className="import-draft">
               <div className="row" style={{ gap: 8 }}>
                 <button className="grow stack card-row-main" onClick={() => setPreview(doc)}>
@@ -61,6 +80,7 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
               </div>
             </div>
           ))}
+          {filtered.length === 0 && <EmptyState title="No source documents match" hint="Try a different title, filename, or tag." />}
         </div>
       )}
       {preview && (
@@ -75,22 +95,23 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
   );
 }
 
-export function QuestionSetList({ onRunSet }: { onRunSet: (set: QuestionSet) => void }) {
+export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
+  onRunSet: (set: QuestionSet) => void;
+  onReviewMisses?: (ids: string[]) => void;
+  onOpenInsights?: () => void;
+}) {
   const s = useStore();
-  const sets = s.questionSets ?? [];
+  const sets = s.questionSets ?? NO_SETS;
   const questions = s.questions ?? NO_QUESTIONS;
   const provider = useMemo(() => resolveActiveProvider(), []);
   const [enhancing, setEnhancing] = useState<string | null>(null);
-
-  const attemptsByQuestion = useMemo(() => {
-    const map = new Map<string, { correct: number; total: number }>();
-    for (const q of questions) {
-      if (!q.attempts.length) continue;
-      const correct = q.attempts.filter((a) => a.status === "correct").length;
-      map.set(q.id, { correct, total: q.attempts.length });
-    }
-    return map;
-  }, [questions]);
+  const [query, setQuery] = useState("");
+  const filteredSets = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return sets;
+    return sets.filter((set) => set.title.toLowerCase().includes(term)
+      || set.tags.some((tag) => tag.toLowerCase().includes(term)));
+  }, [sets, query]);
 
   async function enhance(set: QuestionSet) {
     if (!provider) return;
@@ -119,6 +140,13 @@ export function QuestionSetList({ onRunSet }: { onRunSet: (set: QuestionSet) => 
         title="Question Sets"
         sub="Parsed sets with accuracy, source links, and Question Intelligence digests."
       />
+      {sets.length > 0 && (
+        <div className="row" style={{ gap: 7, marginBottom: 12 }}>
+          <Search size={14} className="dim" />
+          <input className="field grow" value={query} onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search question sets" placeholder="Search question sets…" />
+        </div>
+      )}
       {sets.length === 0 ? (
         <EmptyState
           icon={<BookOpen size={18} />}
@@ -126,33 +154,22 @@ export function QuestionSetList({ onRunSet }: { onRunSet: (set: QuestionSet) => 
           hint="Import questions in the Import Center and save them as a question set — they'll appear here with accuracy tracking."
         />
       ) : (
-        <div className="stack gap6">
-          {sets.map((set) => {
-            const acc = setAccuracy(set, attemptsByQuestion);
+        <div className="qset-grid">
+          {filteredSets.map((set) => {
+            const metrics = questionSetMetrics(set, questions, s.documents ?? []);
             return (
-              <div key={set.id} className="import-draft">
-                <div className="row" style={{ gap: 8 }}>
-                  <div className="grow stack" style={{ gap: 2, minWidth: 0 }}>
-                    <span className="truncate" style={{ fontWeight: 600 }}>{set.title}</span>
-                    <span className="sub truncate">
-                      {set.questionIds.length} questions · {set.createdAt.slice(0, 10)}
-                      {acc.pct !== null ? ` · ${acc.pct}% accuracy (${acc.correct}/${acc.total})` : " · not attempted yet"}
-                      {set.tags.length ? ` · ${set.tags.join(", ")}` : ""}
-                    </span>
-                  </div>
-                  {set.aiEnhanced && <Tag tone="purple">AI digest</Tag>}
-                  <GButton size="sm" variant="primary" onClick={() => onRunSet(set)}><Play size={13} /> Run</GButton>
-                  {provider && !set.digest && (
-                    <GhostButton disabled={enhancing === set.id} onClick={() => void enhance(set)}>
-                      <Sparkles size={13} /> {enhancing === set.id ? "Analyzing…" : "Digest"}
-                    </GhostButton>
-                  )}
-                  <GhostButton aria-label={`Delete ${set.title}`} onClick={() => {
-                    if (confirm(`Remove the set "${set.title}"? Its questions stay in the bank, unlinked.`)) s.removeQuestionSet(set.id);
-                  }}>
-                    <Trash2 size={13} />
-                  </GhostButton>
-                </div>
+              <QuestionSetCard
+                key={set.id}
+                set={set}
+                metrics={metrics}
+                onStart={() => onRunSet(set)}
+                onReviewMisses={onReviewMisses ? () => onReviewMisses(metrics.missedQuestionIds) : undefined}
+                onInsights={onOpenInsights}
+                onEdit={() => {
+                  const title = prompt("Rename this question set:", set.title)?.trim();
+                  if (title && title !== set.title) s.updateQuestionSet(set.id, { title });
+                }}
+              >
                 {set.digest && (
                   <div className="stack" style={{ gap: 6, marginTop: 10 }}>
                     <div className="question-explanation">
@@ -166,9 +183,22 @@ export function QuestionSetList({ onRunSet }: { onRunSet: (set: QuestionSet) => 
                     )}
                   </div>
                 )}
-              </div>
+                <div className="row wrap gap6">
+                  {provider && !set.digest && (
+                    <GhostButton disabled={enhancing === set.id} onClick={() => void enhance(set)}>
+                      <Sparkles size={13} /> {enhancing === set.id ? "Analyzing…" : "Build digest"}
+                    </GhostButton>
+                  )}
+                  <GhostButton aria-label={`Delete ${set.title}`} onClick={() => {
+                    if (confirm(`Remove the set "${set.title}"? Its questions stay in the bank, unlinked.`)) s.removeQuestionSet(set.id);
+                  }}>
+                    <Trash2 size={13} /> Remove set
+                  </GhostButton>
+                </div>
+              </QuestionSetCard>
             );
           })}
+          {filteredSets.length === 0 && <EmptyState title="No question sets match" hint="Try a different set title or tag." />}
         </div>
       )}
     </GlassCard>

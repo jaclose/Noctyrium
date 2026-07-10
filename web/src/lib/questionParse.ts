@@ -13,11 +13,16 @@
 // left blank with a visible warning and a needs-review flag.
 // ===========================================================================
 import type { ExtractionConfidence, QuestionOption } from "./questions";
+import { cleanExplanationText } from "./questionExplanation";
 
 export interface ParsedQuestionDraft {
   stem: string;
   options: QuestionOption[];
   correctKey?: string;
+  /** Canonical display text derived from correctKey + options (never invented). */
+  correctAnswerText?: string;
+  /** Verbatim source line(s) that supported the answer mapping. */
+  answerEvidence?: string;
   explanation?: string;
   /** Per-choice rationales ("A is incorrect because…"), keyed by letter. */
   choiceRationales?: Record<string, string>;
@@ -27,12 +32,24 @@ export interface ParsedQuestionDraft {
   topic?: string;
   system?: string;
   sourceLabel?: string;
+  /** Kept separate from explanation so quiz feedback stays focused. */
+  objective?: string;
+  reference?: string;
   category?: string;
   tags?: string[];
   /** The document's own question number, when present ("12." → 12). */
   questionNumber?: number;
   /** Page in the source document this question came from (PDF imports). */
   sourcePage?: number;
+  /** Bounded evidence excerpt from the exact source block used by the parser. */
+  sourceSnippet?: string;
+  /** Stable, inspectable rules that contributed to this mapping. */
+  parserRuleIds?: string[];
+  /** Numeric 0..1 confidence for each parser stage. */
+  questionDetectionConfidence?: number;
+  answerDetectionConfidence?: number;
+  explanationDetectionConfidence?: number;
+  overallImportConfidence?: number;
   /** Set when a conflict or serious ambiguity demands human review. */
   needsReview?: boolean;
   confidence: ExtractionConfidence;
@@ -48,14 +65,9 @@ export interface AnswerSectionEntry {
 
 /** Lines like "A. text", "B) text", "(C) text", "d - text". */
 const OPTION_RE = /^\s*\(?([A-Ha-h])[).:\-–]\s+(.*\S)\s*$/;
-/** "Answer: C", "Correct answer - B", "ANS: A", "Correct: B", "Key: B",
- * "Correct option: B", "Right answer: B", "Solution: B". */
-const ANSWER_RE = /^\s*(?:(?:correct|right)\s+(?:answer|option|choice)|(?:correct\s+)?ans(?:wer)?|correct|key|solution)\s*[:\-–]?\s*\(?([A-Ha-h])\)?\s*$/i;
-/** "Correct Answer: C. Explanation…" / "The correct answer is C because…" as a line. */
-const ANSWER_WITH_TAIL_RE = /^\s*(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s*\(?([A-Ha-h])\)?\b[.,]?\s*(.*)$/i;
 /** Feedback/explanation/objective markers that begin a NON-option content block.
  * Capturing group 1 is the marker keyword so callers can classify it. */
-const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|answer\s+explanation|explanation|rationale|discussion|teaching\s+point|key\s+concept|learning\s+objectives?|objectives?|references?|why)\s*[:\-–]/i;
+const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|answer\s+explanation|explanation|rationale|discussion|teaching\s+point|key\s+concept|why)\s*[:\-–]/i;
 /**
  * The SAME markers, matched mid-line so we can split feedback that got glued to
  * an answer choice ("E. Co-payment Correct Feedback: …"). Requires whitespace
@@ -68,8 +80,79 @@ const RATIONALE_RE = /^\s*\(?([A-Ha-h])\)?[).:\-–]?\s+is\s+(in)?correct\b[.,:;
 const PROSE_ANSWER_RE = /\b(?:the\s+answer\s+is|correct\s+answer\s+is|correct\s+choice\s+is)\s*\(?([A-Ha-h])\)?(?![a-z])/i;
 /** Metadata lines: "Topic: Complement", "System: Immuno", "Source: SGU NB3", "Tags: a, b". */
 const META_RE = /^\s*(topic|system|source|category|subject|tags)\s*[:\-–]\s*(.+\S)\s*$/i;
-/** A numbered question start: "1. ", "12) ", "Q3: ", "Question 4." */
-const QUESTION_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,3})\s*[).:]\s+\S/i;
+const OBJECTIVE_RE = /^\s*(learning\s+objectives?|objectives?|this\s+question\s+addresses\s+objectives?)\s*[:\-–]\s*(.*)$/i;
+const REFERENCE_RE = /^\s*(references?|citation)\s*[:\-–]\s*(.*)$/i;
+
+interface AnswerSignal {
+  key?: string;
+  answerText?: string;
+  rationale?: string;
+  ruleId: string;
+  evidence: string;
+  payload: string;
+  /** "Answer: B lymphocytes" may be text, not letter B + tail. */
+  ambiguousLeadingLetter?: boolean;
+}
+
+const ANSWER_PREFIX_RE = /^\s*(?:(?:the\s+)?(?:correct\s+|right\s+)?answer|(?:correct|right)\s+(?:option|choice)|(?:correct\s+)?ans|correct|key|solution)\s*(?:is)?\s*[:\-–]?\s*(.+?)\s*$/i;
+
+/** Parse explicit answer lines without confusing answer text with explanation. */
+export function parseAnswerSignal(line: string): AnswerSignal | undefined {
+  const match = line.match(ANSWER_PREFIX_RE);
+  if (!match) return undefined;
+  const payload = match[1].trim();
+  const punctuated = payload.match(/^\(?([A-Ha-h])\)?\s*[.):\-–]\s*(.*)$/);
+  const bare = payload.match(/^\(?([A-Ha-h])\)?\s*$/);
+  const spaced = payload.match(/^([A-Ha-h])\s+(.+)$/);
+  const letter = punctuated ?? bare ?? spaced;
+  if (!letter) return { answerText: payload, ruleId: "answer.explicit-text", evidence: line.trim(), payload };
+
+  const key = letter[1].toUpperCase();
+  const tail = (letter[2] ?? "").trim();
+  if (!tail) return { key, ruleId: "answer.explicit-letter", evidence: line.trim(), payload };
+  if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) {
+    return { key, rationale: tail, ruleId: "answer.explicit-letter-rationale", evidence: line.trim(), payload };
+  }
+  return {
+    key,
+    answerText: tail,
+    ruleId: "answer.explicit-letter-text",
+    evidence: line.trim(),
+    payload,
+    ambiguousLeadingLetter: Boolean(spaced && !punctuated),
+  };
+}
+
+function comparableAnswerText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/^\(?[a-h]\)?[).:\-–]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[\s.,;:!?]+$/g, "")
+    .trim();
+}
+
+function matchAnswerText(text: string, options: QuestionOption[]): { key?: string; ambiguous: boolean } {
+  const normalized = comparableAnswerText(text);
+  if (!normalized) return { ambiguous: false };
+  const matches = options.filter((option) => comparableAnswerText(option.text) === normalized);
+  return { key: matches.length === 1 ? matches[0].key : undefined, ambiguous: matches.length > 1 };
+}
+
+function boundedConfidence(value: number): number {
+  return Math.round(Math.max(0, Math.min(1, value)) * 100) / 100;
+}
+
+function categoricalConfidence(value: number): ExtractionConfidence {
+  return value >= 0.85 ? "high" : value >= 0.6 ? "medium" : "low";
+}
+
+function sourceSnippet(raw: string): string | undefined {
+  const value = normalizeSourceText(raw).trim().replace(/\n{3,}/g, "\n\n");
+  return value ? value.slice(0, 1600) : undefined;
+}
 
 /** True when a feedback marker is a "correct" signal (marks its option/choice). */
 function isCorrectFeedback(marker: string): boolean {
@@ -144,14 +227,23 @@ export function expandInlineOptions(line: string): string[] {
 
 export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const warnings: string[] = [];
-  const lines = normalizeSourceText(raw).split("\n").flatMap(expandInlineOptions);
+  const parserRuleIds = new Set<string>();
+  const normalized = normalizeSourceText(raw);
+  const lines: string[] = [];
+  for (const line of normalized.split("\n")) {
+    const expanded = expandInlineOptions(line);
+    if (expanded.length > 1) parserRuleIds.add("options.inline-expanded");
+    lines.push(...expanded);
+  }
 
   const stemLines: string[] = [];
   const options: QuestionOption[] = [];
   const explanationLines: string[] = [];
+  const objectiveLines: string[] = [];
+  const referenceLines: string[] = [];
   const rationales: Record<string, string> = {};
   const meta: Record<string, string> = {};
-  let correctKey: string | undefined;
+  const answerSignals: AnswerSignal[] = [];
   let rationaleCorrectLetter: string | undefined;
   // Layer 2: the option letter whose choice carried a "Correct Feedback" block.
   let feedbackCorrectLetter: string | undefined;
@@ -161,6 +253,8 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   // Options decorated with a correct-marker (✓, leading/trailing *, "(correct)").
   const markedLetters: string[] = [];
   let phase: "stem" | "options" | "explanation" = "stem";
+  let metadataFlow: "objective" | "reference" | undefined;
+  let explanationMarkerDetected = false;
 
   for (const rawLine of lines) {
     // Strip a correct-marker decorating this line so the option regex can see
@@ -173,15 +267,32 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     if (trail) { line = trail[1]; lineMarked = true; }
 
     const optionMatch = line.match(OPTION_RE);
-    const answerMatch = line.match(ANSWER_RE);
-    const answerTailMatch = line.match(ANSWER_WITH_TAIL_RE);
+    const answerSignal = parseAnswerSignal(line);
     const explanationMatch = line.match(EXPLANATION_RE);
     const metaMatch = line.match(META_RE);
+    const objectiveMatch = line.match(OBJECTIVE_RE);
+    const referenceMatch = line.match(REFERENCE_RE);
     const rationaleMatch = line.match(RATIONALE_RE);
 
     if (metaMatch && phase !== "stem") {
       meta[metaMatch[1].toLowerCase()] = metaMatch[2].trim();
+      parserRuleIds.add(`metadata.${metaMatch[1].toLowerCase()}`);
       feedbackFlow = false;
+      metadataFlow = undefined;
+      continue;
+    }
+    if (objectiveMatch && phase !== "stem") {
+      if (objectiveMatch[2].trim()) objectiveLines.push(objectiveMatch[2].trim());
+      parserRuleIds.add("metadata.objective");
+      feedbackFlow = false;
+      metadataFlow = "objective";
+      continue;
+    }
+    if (referenceMatch && phase !== "stem") {
+      if (referenceMatch[2].trim()) referenceLines.push(referenceMatch[2].trim());
+      parserRuleIds.add("metadata.reference");
+      feedbackFlow = false;
+      metadataFlow = "reference";
       continue;
     }
     // L4: choice rationales. A rationale line can look like an option line
@@ -193,28 +304,31 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       if (isKnownOption || phase === "explanation") {
         rationales[letter] = rationaleMatch[3].trim() || (rationaleMatch[2] ? "Incorrect." : "Correct.");
         if (!rationaleMatch[2]) rationaleCorrectLetter = rationaleCorrectLetter ?? letter;
+        parserRuleIds.add(rationaleMatch[2] ? "rationale.incorrect-choice" : "answer.choice-rationale");
         feedbackFlow = false;
+        metadataFlow = undefined;
         continue;
       }
     }
-    // A standalone feedback/explanation/objective marker line → explanation.
+    // A standalone feedback/explanation marker line → explanation. Objectives
+    // and references were handled above and never contaminate this field.
     if (explanationMatch) {
       phase = "explanation";
       feedbackFlow = true;
+      metadataFlow = undefined;
+      explanationMarkerDetected = true;
+      parserRuleIds.add(`explanation.${explanationMatch[1].toLowerCase().replace(/\s+/g, "-")}`);
       const rest = line.replace(EXPLANATION_RE, "").trim();
       if (rest) explanationLines.push(rest);
       continue;
     }
-    if (answerMatch && phase !== "stem") {
-      correctKey = answerMatch[1].toUpperCase();
-      feedbackFlow = false;
-      continue;
-    }
-    if (answerTailMatch && phase !== "stem") {
-      correctKey = correctKey ?? answerTailMatch[1].toUpperCase();
-      if (answerTailMatch[2].trim()) explanationLines.push(answerTailMatch[2].trim());
+    if (answerSignal && phase !== "stem") {
+      answerSignals.push(answerSignal);
+      parserRuleIds.add(answerSignal.ruleId);
+      if (answerSignal.rationale) explanationLines.push(answerSignal.rationale);
       phase = "explanation";
-      feedbackFlow = true;
+      feedbackFlow = Boolean(answerSignal.rationale);
+      metadataFlow = undefined;
       continue;
     }
     if (optionMatch && (phase === "options" || isLikelyFirstOption(optionMatch[1], options))) {
@@ -231,23 +345,36 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       }
       if (lineMarked || CHECK_MARK_RE.test(rawLine)) markedLetters.push(letter);
       options.push({ key: letter, text: optionText });
+      parserRuleIds.add("options.labeled");
       if (split.feedback) {
         if (isCorrectFeedback(split.marker!)) {
           feedbackCorrectLetter = feedbackCorrectLetter ?? letter;
           explanationLines.push(split.feedback);
+          parserRuleIds.add("answer.correct-feedback");
         } else if (isIncorrectFeedback(split.marker!)) {
           rationales[letter] = split.feedback;
+          parserRuleIds.add("rationale.incorrect-feedback");
         } else {
           explanationLines.push(split.feedback);
         }
+        explanationMarkerDetected = true;
         feedbackFlow = true; // wrapped feedback continues on following lines
       } else {
         feedbackFlow = false;
       }
+      metadataFlow = undefined;
       continue;
     }
     if (phase === "stem") stemLines.push(line);
     else if (phase === "options" && line.trim()) {
+      if (metadataFlow === "objective") {
+        objectiveLines.push(line.trim());
+        continue;
+      }
+      if (metadataFlow === "reference") {
+        referenceLines.push(line.trim());
+        continue;
+      }
       // Feedback started on a prior option line — keep collecting it.
       if (feedbackFlow) {
         explanationLines.push(line.trim());
@@ -265,6 +392,8 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
           if (isCorrectFeedback(textFeedback[2])) feedbackCorrectLetter = feedbackCorrectLetter ?? matchedByText.key;
           else rationales[matchedByText.key] = textFeedback[3].trim();
           explanationLines.push(textFeedback[3].trim());
+          parserRuleIds.add(isCorrectFeedback(textFeedback[2]) ? "answer.correct-feedback-text-match" : "rationale.incorrect-feedback");
+          explanationMarkerDetected = true;
           phase = "explanation";
           feedbackFlow = true;
         } else {
@@ -273,30 +402,33 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
           if (last) last.text = `${last.text} ${line.trim()}`;
         }
       }
-    } else if (phase === "explanation") explanationLines.push(line);
+    } else if (phase === "explanation") {
+      if (metadataFlow === "objective") objectiveLines.push(line.trim());
+      else if (metadataFlow === "reference") referenceLines.push(line.trim());
+      else explanationLines.push(line);
+    }
   }
 
   const stem = stemLines.join("\n").trim();
-  const explanation = explanationLines.join("\n").trim() || undefined;
+  const rawExplanation = explanationLines.join("\n").trim() || undefined;
 
-  // Confidence: honest, never "perfect extraction".
-  let confidence: ExtractionConfidence = "high";
   let needsReview = false;
   if (!stem) {
     warnings.push("No question stem detected — paste the full question including the stem.");
-    confidence = "low";
+  } else {
+    parserRuleIds.add("question.stem");
   }
   if (options.length === 0) {
     warnings.push("No answer options detected. Add them manually or check the paste format (A. / B. / C.).");
-    confidence = "low";
   } else if (options.length < 3) {
     warnings.push(`Only ${options.length} option${options.length === 1 ? "" : "s"} detected — most exam questions have 4–5.`);
-    confidence = confidence === "high" ? "medium" : confidence;
   }
   const keys = options.map((o) => o.key);
+  let duplicateOptions = false;
   if (new Set(keys).size !== keys.length) {
     warnings.push("Duplicate option letters detected — review the split.");
-    confidence = "low";
+    duplicateOptions = true;
+    needsReview = true;
   }
 
   // Correct-marker heuristic: exactly ONE option decorated (✓ / * / "(correct)")
@@ -306,21 +438,74 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     uniqueMarked.length === 1 && options.length > 1 && markedLetters.length < options.length
       ? uniqueMarked[0]
       : undefined;
+  if (markerCorrectLetter) parserRuleIds.add("answer.option-marker");
 
-  // L2/L3/L5: reconcile every answer signal. "Correct Feedback" attached to a
-  // choice (feedbackCorrectLetter) and a single correct-marker are STRONG
-  // explicit signals, on par with an explicit answer line.
-  const proseLetter = explanation?.match(PROSE_ANSWER_RE)?.[1]?.toUpperCase();
-  const explicit = [correctKey, feedbackCorrectLetter, markerCorrectLetter].filter((l): l is string => !!l);
-  const claimed = [correctKey, feedbackCorrectLetter, markerCorrectLetter, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
+  // Reconcile every explicit letter/text signal before considering weaker prose.
+  const structuredKeys: string[] = [];
+  let answerDetectionConfidence = 0;
+  let structuredConflict = false;
+  for (const signal of answerSignals) {
+    let signalKey = signal.key;
+    let signalAnswerText = signal.answerText;
+    if (signal.ambiguousLeadingLetter) {
+      const fullTextMatch = matchAnswerText(signal.payload, options);
+      if (fullTextMatch.ambiguous) {
+        warnings.push(`Answer text "${signal.payload}" matches more than one option — left unset, needs review.`);
+        structuredConflict = true;
+        needsReview = true;
+      } else if (fullTextMatch.key) {
+        signalKey = fullTextMatch.key;
+        signalAnswerText = undefined;
+        parserRuleIds.add("answer.text-option-match");
+        answerDetectionConfidence = Math.max(answerDetectionConfidence, 0.96);
+      }
+    }
+    if (signalAnswerText) {
+      const textMatch = matchAnswerText(signalAnswerText, options);
+      if (textMatch.ambiguous) {
+        warnings.push(`Answer text "${signalAnswerText}" matches more than one option — left unset, needs review.`);
+        structuredConflict = true;
+        needsReview = true;
+      } else if (textMatch.key) {
+        parserRuleIds.add("answer.text-option-match");
+        answerDetectionConfidence = Math.max(answerDetectionConfidence, 0.96);
+        if (signalKey && signalKey !== textMatch.key) {
+          warnings.push(`Conflicting answer letter/text detected (${signalKey} vs ${textMatch.key}) — left unset, needs review.`);
+          structuredConflict = true;
+          needsReview = true;
+        } else signalKey = textMatch.key;
+      } else {
+        warnings.push(`Answer text "${signalAnswerText}" did not exactly match an option — review the mapping.`);
+        needsReview = true;
+      }
+    }
+    if (signalKey) {
+      if (!keys.includes(signalKey)) {
+        warnings.push(`Detected answer "${signalKey}" doesn't match any option — left unset.`);
+        needsReview = true;
+      } else {
+        structuredKeys.push(signalKey);
+        answerDetectionConfidence = Math.max(answerDetectionConfidence, signalAnswerText ? 0.98 : 0.96);
+      }
+    }
+  }
+
+  const proseLetter = rawExplanation?.match(PROSE_ANSWER_RE)?.[1]?.toUpperCase();
+  if (proseLetter) parserRuleIds.add("answer.explanation-prose");
+  const explicit = [...structuredKeys, feedbackCorrectLetter, markerCorrectLetter].filter((l): l is string => !!l);
+  if (feedbackCorrectLetter) answerDetectionConfidence = Math.max(answerDetectionConfidence, 0.92);
+  if (markerCorrectLetter) answerDetectionConfidence = Math.max(answerDetectionConfidence, 0.9);
+  const claimed = [...explicit, proseLetter, rationaleCorrectLetter].filter((l): l is string => !!l);
   const distinct = [...new Set(claimed)];
   const distinctExplicit = [...new Set(explicit)];
-  if (distinctExplicit.length > 1) {
+  let correctKey: string | undefined;
+  if (structuredConflict || distinctExplicit.length > 1) {
     // Two explicit sources disagree → real conflict, never guess.
-    warnings.push(`Conflicting answers detected (${distinctExplicit.join(" vs ")}) between explicit answer signals — left unset, needs review.`);
+    if (distinctExplicit.length > 1) warnings.push(`Conflicting answers detected (${distinctExplicit.join(" vs ")}) between explicit answer signals — left unset, needs review.`);
     correctKey = undefined;
-    confidence = "low";
+    answerDetectionConfidence = 0.05;
     needsReview = true;
+    parserRuleIds.add("conflict.explicit-answer");
   } else if (distinctExplicit.length === 1) {
     correctKey = distinctExplicit[0];
     // L5: an explicit answer that a prose "the answer is X" contradicts is a
@@ -328,62 +513,104 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     if (proseLetter && proseLetter !== correctKey) {
       warnings.push(`Conflicting answers detected (${correctKey} vs ${proseLetter}) between the answer signal and explanation prose — left unset, needs review.`);
       correctKey = undefined;
-      confidence = "low";
+      answerDetectionConfidence = 0.05;
       needsReview = true;
+      parserRuleIds.add("conflict.answer-vs-explanation");
     } else if (rationaleCorrectLetter && rationaleCorrectLetter !== correctKey) {
       warnings.push(`Conflicting answers detected (${correctKey} vs ${rationaleCorrectLetter}) between the answer signal and a choice rationale — left unset, needs review.`);
       correctKey = undefined;
-      confidence = "low";
+      answerDetectionConfidence = 0.05;
       needsReview = true;
+      parserRuleIds.add("conflict.answer-vs-rationale");
     }
   } else if (distinct.length > 1) {
     warnings.push(`Conflicting answers detected (${distinct.join(" vs ")}) between the explanation prose and choice rationales — left unset, needs review.`);
     correctKey = undefined;
-    confidence = "low";
+    answerDetectionConfidence = 0.05;
     needsReview = true;
+    parserRuleIds.add("conflict.inferred-answer");
   } else if (distinct.length === 1) {
     correctKey = distinct[0];
     warnings.push(`Answer "${correctKey}" was inferred from explanation prose — confirm it against the source.`);
-    if (confidence === "high") confidence = "medium";
+    answerDetectionConfidence = rationaleCorrectLetter ? 0.76 : 0.72;
   }
 
   if (correctKey && keys.length > 0 && !keys.includes(correctKey)) {
     warnings.push(`Detected answer "${correctKey}" doesn't match any option — left unset.`);
     correctKey = undefined;
-    confidence = confidence === "high" ? "medium" : confidence;
+    answerDetectionConfidence = 0.1;
     needsReview = true;
   }
   // L3: semantic mapping — the explanation opens by naming an option's text
   // ("Co-insurance is the term…"). Conservative: only an exact option-text
   // match at the very start, and only when nothing explicit was found.
-  if (!correctKey && !needsReview && explanation && options.length) {
-    const semantic = matchExplanationToOption(explanation, options);
+  if (!correctKey && !needsReview && rawExplanation && options.length) {
+    const semantic = matchExplanationToOption(rawExplanation, options);
     if (semantic) {
       correctKey = semantic;
       warnings.push(`Answer "${correctKey}" was inferred from the explanation naming that option — confirm it against the source.`);
-      if (confidence === "high") confidence = "medium";
+      answerDetectionConfidence = 0.66;
+      parserRuleIds.add("answer.explanation-text-match");
     }
   }
   if (!correctKey && !needsReview) {
-    warnings.push("No correct answer detected. The question saves fine without one — set it after checking the source.");
-    if (confidence === "high") confidence = "medium";
+    warnings.push("No correct answer was reliably detected — set it after checking the source.");
+    needsReview = true;
   }
+
+  const explanation = cleanExplanationText(rawExplanation, { stem, options, correctKey }) || undefined;
+  if (rawExplanation && !explanation) {
+    warnings.push("Explanation content contained only duplicated question structure or metadata and was removed.");
+  }
+
+  const questionDetectionConfidence = boundedConfidence(
+    !stem ? (options.length ? 0.25 : 0.05)
+      : options.length >= 3 && !duplicateOptions ? 0.96
+        : options.length === 2 && !duplicateOptions ? 0.76
+          : options.length === 1 && !duplicateOptions ? 0.52
+            : 0.42,
+  );
+  const explanationDetectionConfidence = boundedConfidence(
+    explanation ? (explanationMarkerDetected ? 0.95 : 0.76) : 0,
+  );
+  let overallImportConfidence = boundedConfidence(
+    questionDetectionConfidence * 0.4
+      + answerDetectionConfidence * 0.4
+      + explanationDetectionConfidence * 0.2,
+  );
+  if (needsReview && answerDetectionConfidence <= 0.1) overallImportConfidence = Math.min(overallImportConfidence, 0.49);
+  if (correctKey && answerDetectionConfidence < 0.8) overallImportConfidence = Math.min(overallImportConfidence, 0.84);
+  const confidence = categoricalConfidence(overallImportConfidence);
+  const correctAnswerText = correctKey ? options.find((option) => option.key === correctKey)?.text : undefined;
+  const answerEvidence = answerSignals.map((signal) => signal.evidence).filter(Boolean).join("\n")
+    || (feedbackCorrectLetter ? `Correct Feedback attached to option ${feedbackCorrectLetter}` : undefined)
+    || (markerCorrectLetter ? `Correct marker attached to option ${markerCorrectLetter}` : undefined);
 
   return {
     stem,
     options,
     correctKey,
+    correctAnswerText,
+    answerEvidence,
     explanation,
     choiceRationales: Object.keys(rationales).length ? rationales : undefined,
     explanationSource: explanation ? "inline" : undefined,
     topic: meta.topic,
     system: meta.system,
     sourceLabel: meta.source,
+    objective: objectiveLines.join("\n").trim() || undefined,
+    reference: referenceLines.join("\n").trim() || undefined,
     category: meta.category ?? meta.subject,
     tags: meta.tags ? meta.tags.split(/[,;]/).map((t) => t.trim()).filter(Boolean) : undefined,
     needsReview: needsReview || undefined,
     confidence,
     warnings,
+    parserRuleIds: [...parserRuleIds],
+    questionDetectionConfidence,
+    answerDetectionConfidence: boundedConfidence(answerDetectionConfidence),
+    explanationDetectionConfidence,
+    overallImportConfidence,
+    sourceSnippet: sourceSnippet(raw),
   };
 }
 
@@ -423,16 +650,21 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
   const lines = body.split("\n");
   const starts: number[] = [];
   lines.forEach((line, i) => {
-    if (QUESTION_START_RE.test(line)) starts.push(i);
+    if (matchQuestionStart(line)) starts.push(i);
   });
 
   let drafts: ParsedQuestionDraft[];
-  // One (or zero) numbered starts → single-question parse of the whole text.
-  if (starts.length <= 1) {
-    const number = starts.length === 1 ? leadingNumber(body) : undefined;
-    const cleaned = starts.length === 1 ? stripLeadingNumber(body) : body;
+  if (starts.length === 0) {
+    const draft = parseQuestionText(body);
+    drafts = draft.stem || draft.options.length ? [draft] : [];
+  } else if (starts.length === 1) {
+    // Drop a document title/preamble before the sole numbered question.
+    const block = lines.slice(starts[0]).join("\n");
+    const number = leadingNumber(block);
+    const cleaned = stripLeadingNumber(block);
     const draft = parseQuestionText(cleaned);
     draft.questionNumber = number;
+    markNumberedDraft(draft, block);
     drafts = draft.stem || draft.options.length ? [draft] : [];
   } else {
     drafts = [];
@@ -443,6 +675,7 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
       const block = lines.slice(from, to).join("\n");
       const draft = parseQuestionText(stripLeadingNumber(block));
       draft.questionNumber = leadingNumber(block);
+      markNumberedDraft(draft, block);
       if (draft.stem || draft.options.length) drafts.push(draft);
     }
     const numbers = drafts.map((d) => d.questionNumber).filter((n): n is number => n !== undefined);
@@ -454,22 +687,49 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
   return entries.size ? applyAnswerEntries(drafts, entries) : drafts;
 }
 
+function matchQuestionStart(line: string): { number: number; rest: string } | undefined {
+  // Strong labels allow no punctuation and may occupy their own line: "Q1",
+  // "Question 2", "Q3 What is...".
+  const labeled = line.match(/^\s*q(?:uestion)?\s*(\d{1,4})\s*(?:[).:\-–]\s*)?(.*?)\s*$/i);
+  if (labeled) return { number: Number(labeled[1]), rest: labeled[2].trim() };
+  // Bare numbers remain punctuation-gated to avoid splitting doses/lab values.
+  const numbered = line.match(/^\s*(\d{1,4})\s*[).:\-–]\s*(.*?)\s*$/);
+  return numbered ? { number: Number(numbered[1]), rest: numbered[2].trim() } : undefined;
+}
+
 function leadingNumber(block: string): number | undefined {
-  const match = block.match(/^\s*(?:q(?:uestion)?\s*)?(\d{1,3})\s*[).:]\s+/i);
-  return match ? Number(match[1]) : undefined;
+  return matchQuestionStart(block.split("\n", 1)[0])?.number;
 }
 
 function stripLeadingNumber(block: string): string {
-  return block.replace(/^\s*(?:q(?:uestion)?\s*)?\d{1,3}\s*[).:]\s+/i, "");
+  const lines = block.split("\n");
+  const match = matchQuestionStart(lines[0]);
+  if (!match) return block;
+  return [match.rest, ...lines.slice(1)].filter((line, index) => index > 0 || Boolean(line)).join("\n");
+}
+
+function markNumberedDraft(draft: ParsedQuestionDraft, originalBlock: string) {
+  draft.parserRuleIds = [...new Set([...(draft.parserRuleIds ?? []), "question.numbered-boundary"])];
+  const priorQuestionConfidence = draft.questionDetectionConfidence ?? 0;
+  draft.questionDetectionConfidence = Math.max(priorQuestionConfidence, draft.stem && draft.options.length >= 3 ? 0.99 : priorQuestionConfidence);
+  draft.sourceSnippet = sourceSnippet(originalBlock);
+  draft.overallImportConfidence = boundedConfidence(
+    draft.questionDetectionConfidence * 0.4
+      + (draft.answerDetectionConfidence ?? 0) * 0.4
+      + (draft.explanationDetectionConfidence ?? 0) * 0.2,
+  );
+  if (draft.needsReview && (draft.answerDetectionConfidence ?? 0) <= 0.1) draft.overallImportConfidence = Math.min(draft.overallImportConfidence, 0.49);
+  if (draft.correctKey && (draft.answerDetectionConfidence ?? 0) < 0.8) draft.overallImportConfidence = Math.min(draft.overallImportConfidence, 0.84);
+  draft.confidence = categoricalConfidence(draft.overallImportConfidence);
 }
 
 // --- answer / explanation sections (L2 + L3) -------------------------------------
 
 const KEY_HEADER_RE = /^\s*(answer\s*key|answers?(?:\s*(?:and|&)\s*(?:explanations?|rationales?))?|explanations?|solutions?)\s*[:\-–]?\s*$/im;
 /** Compressed pairs like "1. C", "2-B", "3) D", "Question 4: A", "5C". */
-const KEY_PAIR_RE = /(?:question\s*)?(\d{1,3})\s*[).:\-–]?\s*\(?([A-Ha-h])\)?(?![a-z0-9])/gi;
+const KEY_PAIR_RE = /(?:q(?:uestion)?\s*)?(\d{1,4})\s*[).:\-–]?\s*\(?([A-Ha-h])\)?(?![a-z0-9])/gi;
 /** A numbered entry start inside an answer section: "1. …", "Question 3: …". */
-const ENTRY_START_RE = /^\s*(?:question\s*)?(\d{1,3})\s*[).:\-–]\s*/i;
+const ENTRY_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,4})\s*(?:[).:\-–]\s*|\s+)(?=\S)/i;
 /** Letter at the head of a section entry: "C", "(C)", "C.", "Correct answer: C". */
 const ENTRY_LETTER_RE = /^(?:(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s*)?\(?([A-Ha-h])\)?(?:[.,:;]|\s+[—–-]\s*|\s|$)/i;
 
@@ -484,14 +744,25 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
   let sectionText = "";
 
   if (headerMatch && headerMatch.index !== undefined) {
-    sectionText = text.slice(headerMatch.index + headerMatch[0].length);
-    body = text.slice(0, headerMatch.index);
+    const candidate = text.slice(headerMatch.index + headerMatch[0].length);
+    // A single-question "Explanation:\n..." is content, not a trailing
+    // numbered answer section. Only cut when the tail has number→answer shape.
+    const hasNumberedAnswer = candidate.split("\n").some((line) => {
+      const start = line.match(ENTRY_START_RE);
+      if (!start) return false;
+      return Boolean(line.slice(start[0].length).match(ENTRY_LETTER_RE));
+    });
+    const hasCompressedKey = /(?:q(?:uestion)?\s*)?\d{1,4}\s*[).:\-–]?\s*\(?[A-Ha-h]\)?(?![a-z0-9])/i.test(candidate);
+    if (hasNumberedAnswer || hasCompressedKey) {
+      sectionText = candidate;
+      body = text.slice(0, headerMatch.index);
+    }
   } else {
     // Inline form: "Answers: 1C, 2B, 3D" on a single line. Must contain real
     // number→letter pairs — a per-question "Answer: B" line is NOT a key
     // section and stays in the body for the single-question parser.
     const inline = text.match(/^\s*answers?\s*[:\-–]\s*(.+\S)\s*$/im);
-    if (inline && inline.index !== undefined && /\d{1,3}\s*[).:\-–]?\s*\(?[A-Ha-h]\)?(?![a-z0-9])/.test(inline[1])) {
+    if (inline && inline.index !== undefined && /(?:q(?:uestion)?\s*)?\d{1,4}\s*[).:\-–]?\s*\(?[A-Ha-h]\)?(?![a-z0-9])/i.test(inline[1])) {
       sectionText = inline[1];
       body = text.slice(0, inline.index) + text.slice(inline.index + inline[0].length);
     }
@@ -569,42 +840,88 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
 
     // L3: attach the section explanation when the question has none.
     if (entry.explanation && !next.explanation) {
-      next.explanation = entry.explanation;
-      next.explanationSource = "answer-section";
+      const optionText = entry.letter && entry.letter !== "?"
+        ? next.options.find((option) => option.key === entry.letter)?.text
+        : undefined;
+      // "1. B. CD4+ T lymphocytes" is an answer-text key, not an
+      // explanation. Only attach the tail when it is teaching prose.
+      const tailIsAnswerText = optionText
+        ? comparableAnswerText(optionText) === comparableAnswerText(entry.explanation)
+        : false;
+      if (!tailIsAnswerText) {
+        next.explanation = cleanExplanationText(entry.explanation, next) || undefined;
+        next.explanationSource = next.explanation ? "answer-section" : undefined;
+        if (next.explanation) next.explanationDetectionConfidence = 0.96;
+      }
     }
 
     if (entry.letter === "?") {
       next.warnings = [...next.warnings, "The answer section lists conflicting answers for this number — left unset, needs review."];
       next.needsReview = true;
+      next.correctKey = undefined;
+      next.correctAnswerText = undefined;
+      next.answerDetectionConfidence = 0.05;
+      next.overallImportConfidence = Math.min(next.overallImportConfidence ?? 1, 0.49);
       next.confidence = "low";
+      next.parserRuleIds = [...new Set([...(next.parserRuleIds ?? []), "conflict.answer-section"] )];
       return next;
     }
     if (!entry.letter) return next;
 
     // L5: the key vs an answer already found inside the question block.
     if (next.correctKey && next.correctKey !== entry.letter) {
+      const blockKey = next.correctKey;
       next = {
         ...next,
         correctKey: undefined,
+        correctAnswerText: undefined,
         needsReview: true,
+        answerDetectionConfidence: 0.05,
+        overallImportConfidence: Math.min(next.overallImportConfidence ?? 1, 0.49),
         confidence: "low",
-        warnings: [...next.warnings, `Conflict: the question block says "${next.correctKey}" but the answer section says "${entry.letter}" — left unset, needs review.`],
+        parserRuleIds: [...new Set([...(next.parserRuleIds ?? []), "conflict.block-vs-answer-section"])],
+        warnings: [...next.warnings, `Conflict: the question block says "${blockKey}" but the answer section says "${entry.letter}" — left unset, needs review.`],
       };
       return next;
     }
-    if (next.correctKey) return next; // already agrees
+    if (next.correctKey) return refreshAnswerEntryDiagnostics(next); // already agrees
 
     if (!next.options.some((o) => o.key === entry.letter)) {
       next.warnings = [...next.warnings, `Answer key says "${entry.letter}" but no such option exists — left unset.`];
       next.needsReview = true;
+      next.answerDetectionConfidence = 0.1;
+      next.overallImportConfidence = Math.min(next.overallImportConfidence ?? 1, 0.49);
+      next.confidence = "low";
+      next.parserRuleIds = [...new Set([...(next.parserRuleIds ?? []), "answer.section-invalid-option"])];
       return next;
     }
-    // L6: full alignment (number + options + key ± explanation) earns high.
-    return {
+    return refreshAnswerEntryDiagnostics({
       ...next,
       correctKey: entry.letter,
-      confidence: next.confidence === "low" ? "low" : "high",
-      warnings: next.warnings.filter((w) => !/no correct answer detected/i.test(w)),
-    };
+      correctAnswerText: next.options.find((option) => option.key === entry.letter)?.text,
+    });
   });
+}
+
+function refreshAnswerEntryDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDraft {
+  const warnings = draft.warnings.filter((warning) => !/no correct answer/i.test(warning));
+  const parserRuleIds = [...new Set([...(draft.parserRuleIds ?? []), "answer.trailing-section"])];
+  const answerDetectionConfidence = 0.99;
+  let overallImportConfidence = boundedConfidence(
+    (draft.questionDetectionConfidence ?? 0) * 0.4
+      + answerDetectionConfidence * 0.4
+      + (draft.explanationDetectionConfidence ?? 0) * 0.2,
+  );
+  const stillNeedsReview = warnings.some((warning) => /conflict|duplicate|doesn't match|no such option|no question stem|no answer options/i.test(warning));
+  if (stillNeedsReview) overallImportConfidence = Math.min(overallImportConfidence, 0.49);
+  return {
+    ...draft,
+    correctAnswerText: draft.correctKey ? draft.options.find((option) => option.key === draft.correctKey)?.text : undefined,
+    answerDetectionConfidence,
+    overallImportConfidence,
+    confidence: categoricalConfidence(overallImportConfidence),
+    needsReview: stillNeedsReview || undefined,
+    parserRuleIds,
+    warnings,
+  };
 }

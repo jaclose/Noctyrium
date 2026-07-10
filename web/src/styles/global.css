@@ -1,7 +1,7 @@
 @import "./theme.css";
 
-/* AXOM display face — Poppins (brand guide 05), self-hosted for offline use.
-   500 for the wordmark, 600 for architectural headings. */
+/* Poppins remains the self-hosted application display face. The AXOM wordmark
+   uses the separate --font-brand stack so body typography stays effortless. */
 @font-face {
   font-family: "Poppins";
   font-style: normal;
@@ -40,13 +40,85 @@ input, textarea, select { font-family: inherit; }
 
 ::selection { background: rgba(200, 169, 106, 0.32); }
 
-/* Brand wordmark: uppercase, widely tracked, bone — matches the lockup. */
+/* AXOM brand primitives --------------------------------------------------- */
 .brand-wordmark {
-  font-family: "Poppins", var(--font-rounded);
-  font-weight: 500;
+  font-family: var(--font-brand);
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.34em;
-  color: var(--bone);
+  color: var(--axom-text);
+}
+.axom-wordmark {
+  display: inline-block;
+  max-width: 100%;
+  line-height: 1;
+  white-space: nowrap;
+  padding-inline-end: 0.34em; /* protects the tracked final M from clipping */
+  background: linear-gradient(180deg, #fffaf0 0%, #c8beb0 48%, var(--axom-gold-soft) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 1px 12px rgba(214, 184, 112, 0.12);
+}
+.axom-wordmark--sm { font-size: 0.78rem; letter-spacing: 0.24em; padding-inline-end: 0.24em; }
+.axom-wordmark--md { font-size: 0.94rem; letter-spacing: 0.32em; padding-inline-end: 0.32em; }
+.axom-wordmark--lg { font-size: 1.45rem; letter-spacing: 0.38em; padding-inline-end: 0.38em; }
+.axom-wordmark--hero { font-size: clamp(2.3rem, 7vw, 4.5rem); letter-spacing: 0.42em; padding-inline-end: 0.42em; }
+.axom-wordmark.is-compact { letter-spacing: 0.2em; padding-inline-end: 0.2em; }
+.axom-wordmark.is-muted {
+  color: var(--axom-text-muted);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
+}
+
+.axom-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  line-height: 0;
+}
+.axom-mark svg { width: 100%; height: 100%; }
+.axom-mark--framed {
+  color: var(--axom-text);
+  border-radius: 30%;
+  background: var(--axom-surface);
+  border: 1px solid var(--axom-border);
+  box-shadow: var(--axom-shadow-glass), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.axom-mark--framed svg { width: 62%; height: 62%; }
+
+.axom-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.72rem;
+  min-width: 0;
+  color: var(--axom-text);
+}
+.axom-brand-lockup--vertical { flex-direction: column; text-align: center; gap: 0.9rem; }
+.axom-brand-lockup__copy { display: inline-flex; flex-direction: column; min-width: 0; gap: 0.2rem; }
+.axom-brand-lockup--vertical .axom-brand-lockup__copy { align-items: center; }
+.axom-brand-lockup__subtitle {
+  overflow: hidden;
+  color: var(--axom-text-muted);
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axom-brand-lockup--lg { gap: 1rem; }
+.axom-brand-lockup--hero { gap: 1.25rem; }
+.server-brand { flex: 1; min-width: 0; }
+.server-brand .axom-brand-lockup__copy { flex: 1; }
+.server-brand .axom-brand-lockup__subtitle { font-size: 9.5px; }
+
+@media (prefers-contrast: more) {
+  .axom-mark--framed { border-color: var(--axom-border-strong); }
+  .axom-brand-lockup__subtitle { color: var(--axom-text); }
 }
 
 /* Custom scrollbars — slim, bone, gold on hover */

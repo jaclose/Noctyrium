@@ -4,8 +4,8 @@
 // flagging, end-of-block review). Results persist as QuizSession records and
 // every answer is recorded on the question for spaced retry.
 // ===========================================================================
-import { useEffect, useMemo, useState } from "react";
-import { Flag, Play, WandSparkles, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, Flag, Play, WandSparkles, Sparkles } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
   buildQuizPool, missedQuestionIds, scoreSession,
@@ -20,6 +20,8 @@ import { explainSimply, explainWhyWrong, memoryHook, resolveActiveProvider } fro
 import { Modal, SelectField } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
+import { QuizFeedback } from "./QuizFeedback";
+import { cleanExplanationText } from "../../lib/questionExplanation";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -65,6 +67,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   const [session, setSession] = useState<QuizSession | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  const [editingMapping, setEditingMapping] = useState(false);
+  const recordedTutorAttempts = useRef(new Set<string>());
 
   const timeLimitSeconds = timed ? Math.round(pool.length * minutesPerQ * 60) : undefined;
   const question = pool[index];
@@ -104,6 +108,13 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
       } else if (/^[1-5]$/.test(e.key) && mode === "tutor" && revealed) {
         // 1–5 sets confidence once the answer is revealed.
         setConfidence(Number(e.key) as 1 | 2 | 3 | 4 | 5);
+        e.preventDefault();
+      } else if (e.key === "ArrowLeft" && index > 0) {
+        goPrevious();
+        e.preventDefault();
+      } else if (e.key === "ArrowRight") {
+        if (mode === "tutor" && revealed) nextQuestion();
+        else if (mode === "exam" && picked) submitExamAndNext();
         e.preventDefault();
       }
     }
@@ -165,7 +176,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
 
   function nextQuestion() {
     // Tutor mode saves the attempt (with error type) as the user moves on.
-    if (mode === "tutor" && question && revealed) {
+    if (mode === "tutor" && question && revealed && !recordedTutorAttempts.current.has(question.id)) {
       const a = answers.get(question.id);
       s.recordQuestionAttempt(question.id, {
         answerKey: a?.answerKey,
@@ -174,12 +185,14 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         confidence,
         errorType: a?.correct === false ? (errorType || undefined) : undefined,
       });
+      recordedTutorAttempts.current.add(question.id);
     }
     setPicked(undefined);
     setRevealed(false);
     setErrorType("");
     setConfidence(undefined);
     setAiText(null);
+    setEditingMapping(false);
     setShownAt(Date.now());
     if (index + 1 >= pool.length) finishBlock();
     else setIndex(index + 1);
@@ -190,6 +203,20 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
     setPicked(undefined);
     if (index + 1 >= pool.length) finishBlock(picked);
     else { setIndex(index + 1); setShownAt(Date.now()); }
+  }
+
+  function goPrevious() {
+    if (index <= 0) return;
+    const previous = pool[index - 1];
+    const saved = answers.get(previous.id);
+    setIndex((value) => Math.max(0, value - 1));
+    setPicked(saved?.answerKey);
+    setRevealed(mode === "tutor" && Boolean(saved?.answerKey));
+    setErrorType("");
+    setConfidence(undefined);
+    setAiText(null);
+    setEditingMapping(false);
+    setShownAt(Date.now());
   }
 
   function finishBlock(lastPick?: string) {
@@ -281,6 +308,28 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
     }
   }
 
+  function flagExtractionIssue(kind: "answer" | "explanation") {
+    if (!question) return;
+    const warning = kind === "answer"
+      ? "User marked the mapped answer as wrong."
+      : "User marked the extracted explanation as wrong.";
+    const previous = question.extraction;
+    s.updateQuestion(question.id, {
+      needsReview: true,
+      status: "needs-review",
+      extraction: {
+        confidence: "low",
+        reviewed: false,
+        ...previous,
+        answerDetectionConfidence: kind === "answer" ? 0 : previous?.answerDetectionConfidence,
+        explanationDetectionConfidence: kind === "explanation" ? 0 : previous?.explanationDetectionConfidence,
+        overallImportConfidence: Math.min(previous?.overallImportConfidence ?? 0.35, 0.35),
+        warnings: [...new Set([...(previous?.warnings ?? []), warning])],
+      },
+    });
+    pushToast({ title: "Added to mapping review", body: warning, tone: "warn" });
+  }
+
   // ------------------------------------------------------------------ render
 
   if (stage === "setup") {
@@ -365,6 +414,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
                 setAnswers(new Map());
                 setIndex(0);
                 setSession(null);
+                recordedTutorAttempts.current = new Set();
                 setStartedAt(new Date().toISOString());
                 setShownAt(Date.now());
                 setStage("running");
@@ -395,7 +445,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
                   <div className="stack" style={{ gap: 4 }}>
                     <span style={{ fontWeight: 600 }}>{q.stem}</span>
                     <span className="sub">You picked {a?.answerKey ?? "nothing"} · correct {q.correctKey}</span>
-                    {q.explanation && <span className="sub">{q.explanation}</span>}
+                    {q.explanation && <span className="sub">{cleanExplanationText(q.explanation, q)}</span>}
                     <div className="row">
                       <GhostButton onClick={() => makeRepairCard(q)}><WandSparkles size={13} /> Repair card</GhostButton>
                     </div>
@@ -417,14 +467,23 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   return (
     <Modal
       title={`${mode === "exam" ? "Exam" : "Tutor"} · ${index + 1} of ${pool.length}`}
+      className="quiz-player-modal"
+      bodyClassName="quiz-player-body"
       onClose={() => { if (confirm("Leave this block? Progress in unanswered questions is discarded.")) onClose(); }}
       footer={
         mode === "tutor"
-          ? (!revealed
-            ? <GButton variant="primary" disabled={!picked} onClick={submitTutor}>Check answer</GButton>
-            : <GButton variant="primary" onClick={nextQuestion}>{index + 1 >= pool.length ? "Finish block" : "Next question"}</GButton>)
+          ? (
+            <>
+              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={14} /> Previous</GhostButton>
+              <GhostButton onClick={toggleFlag}><Flag size={13} /> {answer?.flagged ? "Flagged" : "Mark review"}</GhostButton>
+              {!revealed
+                ? <GButton variant="primary" disabled={!picked} onClick={submitTutor}>Check answer</GButton>
+                : <GButton variant="primary" onClick={nextQuestion}>{index + 1 >= pool.length ? "Finish block" : "Next question"}</GButton>}
+            </>
+          )
           : (
             <>
+              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={14} /> Previous</GhostButton>
               <GhostButton onClick={() => finishBlock()}>End block</GhostButton>
               <GButton variant="primary" disabled={!picked} onClick={submitExamAndNext}>
                 {index + 1 >= pool.length ? "Submit & finish" : "Submit & next"}
@@ -471,18 +530,33 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
 
       {mode === "tutor" && revealed && (
         <>
-          <div className="review-verdict">
-            {question.correctKey
-              ? <span className={isCorrect ? "grade-green" : "grade-red"}>
-                  {isCorrect ? "Correct" : "Incorrect"} — you picked {picked ?? "nothing"}, answer is {question.correctKey}
-                </span>
-              : <span className="sub">No correct answer is set on this question — recorded as needs-review.</span>}
-          </div>
-          {question.explanation && (
-            <div className="stack gap6">
-              <span className="field-label">Explanation</span>
-              <div className="question-explanation">{question.explanation}</div>
-            </div>
+          <QuizFeedback
+            question={question}
+            pickedKey={picked}
+            onRepairCard={!isCorrect ? () => makeRepairCard(question) : undefined}
+            onAddReview={() => s.updateQuestion(question.id, { marked: true })}
+            onMarkExplanationWrong={() => flagExtractionIssue("explanation")}
+            onMarkAnswerWrong={() => flagExtractionIssue("answer")}
+            onEditMapping={() => setEditingMapping((value) => !value)}
+          />
+          {editingMapping && (
+            <SelectField label="Repair correct-answer mapping" value={question.correctKey ?? ""}
+              onChange={(event) => {
+                s.updateQuestion(question.id, {
+                  correctKey: event.target.value || undefined,
+                  needsReview: !event.target.value,
+                  extraction: question.extraction ? {
+                    ...question.extraction,
+                    reviewed: Boolean(event.target.value),
+                    reviewedAt: event.target.value ? new Date().toISOString() : undefined,
+                    answerDetectionConfidence: event.target.value ? 1 : 0,
+                  } : undefined,
+                });
+                setEditingMapping(false);
+              }}>
+              <option value="">No reliable answer</option>
+              {question.options.map((option) => <option key={option.key} value={option.key}>{option.key}. {option.text}</option>)}
+            </SelectField>
           )}
           {question.choiceRationales && Object.keys(question.choiceRationales).length > 0 && (
             <div className="stack gap6">
@@ -493,9 +567,6 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
                 </div>
               ))}
             </div>
-          )}
-          {question.sourcePage && (
-            <div className="sub">Source: {question.bank ?? "document"} · page {question.sourcePage}</div>
           )}
           {!isCorrect && question.correctKey && (
             <>
@@ -515,7 +586,6 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
             </>
           )}
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-            {!isCorrect && <GhostButton onClick={() => makeRepairCard(question)}><WandSparkles size={13} /> Repair card</GhostButton>}
             {provider && (
               <>
                 <GhostButton disabled={aiBusy} onClick={() => runAi("simple")}><Sparkles size={13} /> Explain simply</GhostButton>

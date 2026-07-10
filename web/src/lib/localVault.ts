@@ -4,6 +4,8 @@ import { STORAGE_KEYS } from "./brand";
 
 const DB_NAME = STORAGE_KEYS.vaultDb;
 const STORE_NAME = "state";
+const BACKUP_STORE_NAME = "backups";
+const DB_VERSION = 2;
 const activeUserKey = (name: string) => `${name}:active-user`;
 const scopedStateKey = (name: string, userId: string) => `${name}:user:${userId}`;
 
@@ -21,9 +23,10 @@ function openVault(): Promise<IDBDatabase> {
       reject(new Error("IndexedDB is unavailable"));
       return;
     }
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
-      req.result.createObjectStore(STORE_NAME);
+      if (!req.result.objectStoreNames.contains(STORE_NAME)) req.result.createObjectStore(STORE_NAME);
+      if (!req.result.objectStoreNames.contains(BACKUP_STORE_NAME)) req.result.createObjectStore(BACKUP_STORE_NAME);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error("Unable to open local vault"));
@@ -77,11 +80,6 @@ export const localVaultStorage: StateStorage = {
   async setItem(name, value) {
     const userId = persistedUserId(value);
     const fallbackStore = localFallback();
-    fallbackStore?.setItem(name, value);
-    if (userId) {
-      fallbackStore?.setItem(activeUserKey(name), userId);
-      fallbackStore?.setItem(scopedStateKey(name, userId), value);
-    }
     try {
       await withStore("readwrite", (store) => {
         store.put(value, name);
@@ -91,15 +89,45 @@ export const localVaultStorage: StateStorage = {
         }
         return store.get(name);
       });
+      // IndexedDB owns the large serialized workspace. localStorage keeps only
+      // the tiny active-profile pointer and device preferences; remove legacy
+      // mirrored state after a confirmed vault write.
+      fallbackStore?.removeItem(name);
+      if (userId) {
+        fallbackStore?.setItem(activeUserKey(name), userId);
+        fallbackStore?.removeItem(scopedStateKey(name, userId));
+      }
     } catch {
-      // localStorage fallback above already persisted the write.
+      // IndexedDB can be blocked/private-mode unavailable. In that case retain
+      // the full localStorage fallback so the app stays usable and data-safe.
+      fallbackStore?.setItem(name, value);
+      if (userId) {
+        fallbackStore?.setItem(activeUserKey(name), userId);
+        fallbackStore?.setItem(scopedStateKey(name, userId), value);
+      }
     }
   },
 
   async removeItem(name) {
-    localFallback()?.removeItem(name);
+    const fallback = localFallback();
+    let active = fallback?.getItem(activeUserKey(name)) ?? undefined;
+    if (!active) {
+      try {
+        active = await withStore<string | undefined>("readonly", (store) => store.get(activeUserKey(name)));
+      } catch {
+        // Continue with the localStorage cleanup path below.
+      }
+    }
+    fallback?.removeItem(name);
+    fallback?.removeItem(activeUserKey(name));
+    if (active) fallback?.removeItem(scopedStateKey(name, active));
     try {
-      await withStore("readwrite", (store) => store.delete(name));
+      await withStore("readwrite", (store) => {
+        store.delete(name);
+        store.delete(activeUserKey(name));
+        if (active) store.delete(scopedStateKey(name, active));
+        return store.get(name);
+      });
     } catch {
       // No-op; best effort cleanup.
     }

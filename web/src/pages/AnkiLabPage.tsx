@@ -256,7 +256,7 @@ function PromptStudio() {
 
       <GlassCard pad>
         <PanelHeader title="5 · Your own card style & note types"
-          sub="Load the Axom / MADCOW glass card style, or build a custom note type"
+          sub="Load the AXOM / MADCOW glass card style, or build a custom note type"
           action={<a className="gbtn sm" href="https://drive.google.com/drive/u/0/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp" target="_blank" rel="noreferrer noopener"><FolderDown size={14} /> Get the Anki style</a>} />
         <div className="anki-guide">
           <div className="anki-guide-col">
@@ -500,7 +500,7 @@ function makeLocalCards({
   topic: string; system: string; maxCards: number; styles: Set<CardStyle>; noteType: NoteType; content: string;
 }): { cards: DraftCard[]; warnings: string[] } {
   const analysis = analyzeContent(content, system, topic);
-  const tag = tagify(analysis.correctedSystem || system || topic || "Axom");
+  const tag = tagify(analysis.correctedSystem || system || topic || "AXOM");
   const seen = new Set<string>();
   const candidates: DraftCard[] = [...conceptCards(content, styles, tag, topic)];
   const lines = preprocessLectureText(content);
@@ -572,7 +572,7 @@ function cardsToTsv(cards: DraftCard[], customFields: string): string {
 
 /** Convert "Front : Back" / cloze lines into tab-separated Anki import text. */
 function toTsv(text: string, system: string): string {
-  const tag = tagify(system || "Axom");
+  const tag = tagify(system || "AXOM");
   return text.split("\n").map((l) => l.trim()).filter(Boolean).map((line) => {
     const idx = line.indexOf(" : ");
     if (idx > -1) return `${cleanField(line.slice(0, idx))}\t${cleanField(line.slice(idx + 3))}\t${tag}\tAI paste\tMedium\tBasic`;

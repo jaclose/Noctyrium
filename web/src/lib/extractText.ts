@@ -19,33 +19,59 @@ export interface ExtractedText {
 /** Rough cap on stored raw text so a giant textbook can't bloat the vault. */
 export const RAW_TEXT_CAP = 400_000;
 
-export async function extractPdfText(buffer: ArrayBuffer): Promise<ExtractedText> {
-  const pdfjs = await import("pdfjs-dist");
+/** TXT/Markdown extraction keeps author line breaks intact; only newline
+ * encoding and the storage cap are normalized. */
+export function extractPlainText(raw: string): ExtractedText {
+  const normalized = raw.replace(/\r\n?/g, "\n");
+  const warnings: string[] = [];
+  if (!normalized.trim()) warnings.push("No text found in this file.");
+  if (normalized.length > RAW_TEXT_CAP) {
+    warnings.push(`Text truncated at ${Math.round(RAW_TEXT_CAP / 1000)}k characters to protect local storage.`);
+  }
+  const text = normalized.slice(0, RAW_TEXT_CAP);
+  return { pages: [text], text, empty: !text.trim(), warnings };
+}
+
+export async function extractPdfText(
+  buffer: ArrayBuffer,
+  pdfjsOverride?: typeof import("pdfjs-dist"),
+): Promise<ExtractedText> {
+  // Tests may inject pdf.js's legacy Node adapter. Production imports only the
+  // modern browser build, keeping the extra legacy runtime out of the app.
+  const nodeLike = typeof window === "undefined";
+  const pdfjs = pdfjsOverride ?? await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
+    nodeLike
+      ? "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs"
+      : "../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
     import.meta.url,
   ).toString();
 
   const warnings: string[] = [];
-  const doc = await pdfjs.getDocument({ data: buffer }).promise;
+  const loadingTask = pdfjs.getDocument({ data: buffer });
+  const doc = await loadingTask.promise;
   const pages: string[] = [];
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    // Rebuild line structure from item positions: a new baseline = new line.
-    let lastY: number | null = null;
-    let text = "";
-    for (const item of content.items) {
-      if (!("str" in item)) continue;
-      const y = Math.round(item.transform[5]);
-      if (lastY !== null && Math.abs(y - lastY) > 2) text += "\n";
-      else if (text && !text.endsWith("\n") && !text.endsWith(" ")) text += " ";
-      text += item.str;
-      lastY = y;
+  try {
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      // Rebuild line structure from item positions: a new baseline = new line.
+      let lastY: number | null = null;
+      let text = "";
+      for (const item of content.items) {
+        if (!("str" in item)) continue;
+        const y = Math.round(item.transform[5]);
+        if (lastY !== null && Math.abs(y - lastY) > 2) text += "\n";
+        else if (text && !text.endsWith("\n") && !text.endsWith(" ")) text += " ";
+        text += item.str;
+        lastY = y;
+      }
+      pages.push(text.trim());
     }
-    pages.push(text.trim());
+  } finally {
+    await doc.cleanup();
+    await loadingTask.destroy();
   }
-  await doc.cleanup();
 
   const joined = pages.join("\n\n").trim();
   if (!joined) {
@@ -67,7 +93,11 @@ export async function extractPdfText(buffer: ArrayBuffer): Promise<ExtractedText
 export async function extractDocxText(buffer: ArrayBuffer): Promise<ExtractedText> {
   const mammoth = await import("mammoth");
   const warnings: string[] = [];
-  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  const nodeBuffer = (globalThis as typeof globalThis & {
+    Buffer?: { from(input: ArrayBuffer): Uint8Array };
+  }).Buffer;
+  const input = nodeBuffer ? { buffer: nodeBuffer.from(buffer) } : { arrayBuffer: buffer };
+  const result = await mammoth.extractRawText(input as Parameters<typeof mammoth.extractRawText>[0]);
   for (const message of result.messages ?? []) {
     if (message.message) warnings.push(message.message);
   }

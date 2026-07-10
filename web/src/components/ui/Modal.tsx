@@ -1,15 +1,18 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useId } from "react";
 import { X } from "lucide-react";
 import { GhostButton } from "./primitives";
 
 export function Modal({
-  title, onClose, children, footer,
+  title, onClose, children, footer, className = "", bodyClassName = "",
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
 }) {
+  const titleId = useId();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -18,12 +21,13 @@ export function Modal({
 
   return (
     <div className="modal-scrim" onMouseDown={onClose}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`modal ${className}`} role="dialog" aria-modal="true" aria-labelledby={titleId}
+        onMouseDown={(e) => e.stopPropagation()}>
         <div className="spread">
-          <h3>{title}</h3>
+          <h3 id={titleId}>{title}</h3>
           <GhostButton onClick={onClose} aria-label="Close"><X size={18} /></GhostButton>
         </div>
-        <div className="modal-body">{children}</div>
+        <div className={`modal-body ${bodyClassName}`}>{children}</div>
         {footer && <div className="modal-actions">{footer}</div>}
       </div>
     </div>

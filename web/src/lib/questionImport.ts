@@ -7,8 +7,9 @@
 // ===========================================================================
 import { parseQuestionBlocks, type ParsedQuestionDraft } from "./questionParse";
 import type { QuestionOption } from "./questions";
+import { cleanExplanationText } from "./questionExplanation";
 
-export type ImportFormat = "text" | "csv" | "json" | "provenance-only" | "unsupported";
+export type ImportFormat = "text" | "csv" | "json" | "pdf" | "docx" | "image" | "unsupported";
 
 export interface ImportResult {
   drafts: ParsedQuestionDraft[];
@@ -21,7 +22,9 @@ export function detectImportFormat(fileName: string, mimeType: string): ImportFo
   if (name.endsWith(".csv")) return "csv";
   if (name.endsWith(".json")) return "json";
   if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown") || mimeType.startsWith("text/")) return "text";
-  if (mimeType.startsWith("image/") || mimeType === "application/pdf" || name.endsWith(".pdf")) return "provenance-only";
+  if (mimeType === "application/pdf" || name.endsWith(".pdf")) return "pdf";
+  if (name.endsWith(".docx") || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx";
+  if (mimeType.startsWith("image/")) return "image";
   return "unsupported";
 }
 
@@ -109,19 +112,11 @@ export function importFromCsv(text: string): ImportResult {
     const options: QuestionOption[] = optionCols
       .map(({ index, key }) => ({ key, text: (cells[index] ?? "").trim() }))
       .filter((o) => o.text);
-    let correctKey = answerCol >= 0 ? (cells[answerCol] ?? "").trim().toUpperCase() : undefined;
+    const answerValue = answerCol >= 0 ? (cells[answerCol] ?? "").trim() : undefined;
+    const correctKey = resolveAnswerValue(answerValue, options);
     const rowWarnings: string[] = [];
-    if (correctKey && correctKey.length > 1) {
-      // Accept full answer text by matching it against an option.
-      const byText = options.find((o) => o.text.toLowerCase() === correctKey!.toLowerCase());
-      correctKey = byText?.key;
-      if (!byText) rowWarnings.push("Answer cell didn't match an option letter or option text.");
-    }
-    if (correctKey && !options.some((o) => o.key === correctKey)) {
-      rowWarnings.push(`Answer "${correctKey}" has no matching option — left unset.`);
-      correctKey = undefined;
-    }
-    drafts.push({
+    if (answerValue && !correctKey) rowWarnings.push("Answer cell didn't match an option letter or option text.");
+    drafts.push(withStructuredDiagnostics({
       stem,
       options,
       correctKey,
@@ -130,9 +125,9 @@ export function importFromCsv(text: string): ImportResult {
       system: systemCol >= 0 ? (cells[systemCol] ?? "").trim() || undefined : undefined,
       category: categoryCol >= 0 ? (cells[categoryCol] ?? "").trim() || undefined : undefined,
       sourceLabel: sourceCol >= 0 ? (cells[sourceCol] ?? "").trim() || undefined : undefined,
-      confidence: rowWarnings.length ? "medium" : options.length >= 3 && correctKey ? "high" : "medium",
+      confidence: "medium",
       warnings: rowWarnings,
-    });
+    }));
   }
   return { drafts, warnings, format: "csv" };
 }
@@ -173,13 +168,11 @@ export function importFromJson(text: string): ImportResult {
         return null;
       })
       .filter((o): o is QuestionOption => o !== null && !!o.text);
-    let correctKey = (str(item.correctKey) ?? str(item.answer))?.toUpperCase();
+    const answerValue = str(item.correctKey) ?? str(item.answer);
+    const correctKey = resolveAnswerValue(answerValue, options);
     const rowWarnings: string[] = [];
-    if (correctKey && !options.some((o) => o.key === correctKey)) {
-      rowWarnings.push(`Answer "${correctKey}" has no matching option — left unset.`);
-      correctKey = undefined;
-    }
-    drafts.push({
+    if (answerValue && !correctKey) rowWarnings.push(`Answer "${answerValue}" has no matching option — left unset.`);
+    drafts.push(withStructuredDiagnostics({
       stem,
       options,
       correctKey,
@@ -189,9 +182,64 @@ export function importFromJson(text: string): ImportResult {
       category: str(item.category) ?? str(item.subject),
       sourceLabel: str(item.source),
       tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === "string" && !!t.trim()) : undefined,
-      confidence: rowWarnings.length ? "medium" : "high",
+      confidence: "medium",
       warnings: rowWarnings,
-    });
+    }));
   });
   return { drafts, warnings, format: "json" };
+}
+
+function comparable(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/^\(?[a-h]\)?[).:\-–]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[\s.,;:!?]+$/g, "")
+    .trim();
+}
+
+/** Shared letter / "B. text" / full-answer-text resolution for CSV + JSON. */
+export function resolveAnswerValue(value: string | undefined, options: QuestionOption[]): string | undefined {
+  if (!value?.trim()) return undefined;
+  const raw = value.trim();
+  // Full-text equality wins before letter parsing so an option such as
+  // "B lymphocytes" is not misread as answer letter B.
+  const fullTextMatches = options.filter((option) => comparable(option.text) === comparable(raw));
+  if (fullTextMatches.length === 1) return fullTextMatches[0].key;
+  const letter = raw.match(/^\(?([A-Ha-h])\)?(?:[).:\-–]\s*|\s+|$)(.*)$/);
+  if (letter) {
+    const key = letter[1].toUpperCase();
+    const option = options.find((candidate) => candidate.key === key);
+    if (!option) return undefined;
+    const tail = letter[2].trim();
+    return !tail || comparable(tail) === comparable(option.text) ? key : undefined;
+  }
+  return undefined;
+}
+
+function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDraft {
+  const explanation = cleanExplanationText(draft.explanation, draft) || undefined;
+  const questionDetectionConfidence = draft.stem && draft.options.length >= 3 ? 0.96 : draft.stem ? 0.6 : 0.1;
+  const answerDetectionConfidence = draft.correctKey ? 0.98 : 0;
+  const explanationDetectionConfidence = explanation ? 0.94 : 0;
+  const overallImportConfidence = Math.max(0, Math.min(1,
+    questionDetectionConfidence * 0.4 + answerDetectionConfidence * 0.4 + explanationDetectionConfidence * 0.2));
+  const needsReview = !draft.correctKey || questionDetectionConfidence < 0.75 || draft.warnings.length > 0;
+  return {
+    ...draft,
+    explanation,
+    correctAnswerText: draft.correctKey ? draft.options.find((option) => option.key === draft.correctKey)?.text : undefined,
+    needsReview: needsReview || undefined,
+    questionDetectionConfidence,
+    answerDetectionConfidence,
+    explanationDetectionConfidence,
+    overallImportConfidence,
+    confidence: overallImportConfidence >= 0.85 && !needsReview ? "high" : overallImportConfidence >= 0.6 ? "medium" : "low",
+    parserRuleIds: [
+      "import.structured-record",
+      ...(draft.correctKey ? ["answer.structured-value"] : []),
+      ...(explanation ? ["explanation.structured-field"] : []),
+    ],
+    sourceSnippet: [draft.stem, ...draft.options.map((option) => `${option.key}. ${option.text}`)].join("\n").slice(0, 800),
+  };
 }

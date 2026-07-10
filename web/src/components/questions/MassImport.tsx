@@ -13,7 +13,7 @@ import { FileUp, RefreshCw, Save, CheckCircle2, AlertTriangle, Trash2, Eye } fro
 import { useStore } from "../../lib/store";
 import { parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
 import { importFromCsv, importFromJson } from "../../lib/questionImport";
-import { extractDocxText, extractPdfText } from "../../lib/extractText";
+import { extractDocxText, extractPdfText, extractPlainText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { suggestCategory, normalizeTags } from "../../lib/taxonomy";
 import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
@@ -21,6 +21,7 @@ import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
 import type { QuestionSource } from "../../lib/questions";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
+import { sha256Hex } from "../../lib/checksum";
 
 type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "no-text" | "error" | "saved";
 
@@ -32,6 +33,7 @@ interface QueuedFile {
   status: FileStatus;
   rawText: string;
   pageTexts?: string[];
+  checksum?: string;
   drafts: ParsedQuestionDraft[];
   warnings: string[];
   answerKeyDetected: boolean;
@@ -95,30 +97,41 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
       const kind = fileKind(file);
       let rawText = "";
       let pageTexts: string[] | undefined;
+      let checksum: string | undefined;
       let warnings: string[] = [];
 
       if (kind === "pdf" || kind === "docx") {
         const buffer = await file.arrayBuffer();
+        checksum = await sha256Hex(buffer);
         const extracted = kind === "pdf" ? await extractPdfText(buffer) : await extractDocxText(buffer);
         rawText = extracted.text;
         pageTexts = kind === "pdf" ? extracted.pages : undefined;
         warnings = [...extracted.warnings];
         if (extracted.empty) {
-          patch(id, { status: "no-text", rawText: "", pageTexts, warnings, drafts: [] });
+          patch(id, { status: "no-text", rawText: "", pageTexts, checksum, warnings, drafts: [] });
           return;
         }
       } else if (kind === "csv" || kind === "json") {
-        rawText = await file.text();
+        const buffer = await file.arrayBuffer();
+        checksum = await sha256Hex(buffer);
+        const plain = extractPlainText(new TextDecoder().decode(buffer));
+        rawText = plain.text;
+        warnings.push(...plain.warnings);
       } else {
-        rawText = await file.text();
+        const buffer = await file.arrayBuffer();
+        checksum = await sha256Hex(buffer);
+        const plain = extractPlainText(new TextDecoder().decode(buffer));
+        rawText = plain.text;
+        warnings.push(...plain.warnings);
       }
 
-      patch(id, { status: "parsing", rawText, pageTexts });
+      patch(id, { status: "parsing", rawText, pageTexts, checksum });
       const result = kind === "csv" ? importFromCsv(rawText) : kind === "json" ? importFromJson(rawText) : { drafts: parseQuestionBlocks(rawText), warnings: [] };
       const drafts = result.drafts;
+      if (kind === "pdf" && pageTexts) assignSourcePages(drafts, pageTexts);
       warnings = [...warnings, ...result.warnings];
       const answerKeyDetected = drafts.some((d) => d.correctKey);
-      const needsReview = drafts.length === 0 || drafts.some((d) => d.needsReview || d.confidence === "low");
+      const needsReview = drafts.length === 0 || drafts.some((d) => d.needsReview || d.confidence !== "high");
       patch(id, {
         status: drafts.length === 0 ? "error" : needsReview ? "needs-review" : "ready",
         drafts,
@@ -136,7 +149,10 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
     let sets = 0;
     let totalQ = 0;
     for (const file of clean) {
-      const docId = uid();
+      const existingDoc = file.checksum
+        ? (s.documents ?? []).find((document) => document.checksum === file.checksum)
+        : undefined;
+      const docId = existingDoc?.id ?? uid();
       const setId = uid();
       const questionIds: string[] = [];
       for (const d of file.drafts) {
@@ -146,20 +162,34 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
           stem: d.stem,
           options: d.options,
           correctKey: d.correctKey,
+          correctAnswerText: d.correctAnswerText,
           explanation: d.explanation,
           choiceRationales: d.choiceRationales,
           needsReview: d.needsReview,
           topic: d.topic,
+          objective: d.objective,
           category: d.category ?? (suggestion.autoAssign ? suggestion.category : undefined),
           bank: documentTitleFromFile(file.fileName),
           setId,
           sourceDocumentId: docId,
           questionNumber: d.questionNumber,
           sourcePage: d.sourcePage,
-          citation: file.fileName,
+          citation: d.reference ?? file.fileName,
           tags: normalizeTags([...(d.tags ?? []), ...suggestion.tags]),
           status: "unseen",
-          extraction: { confidence: d.confidence, reviewed: false },
+          extraction: {
+            confidence: d.confidence,
+            reviewed: false,
+            questionDetectionConfidence: d.questionDetectionConfidence,
+            answerDetectionConfidence: d.answerDetectionConfidence,
+            explanationDetectionConfidence: d.explanationDetectionConfidence,
+            overallImportConfidence: d.overallImportConfidence,
+            warnings: d.warnings,
+            parserRuleIds: d.parserRuleIds,
+            sourceSnippet: d.sourceSnippet,
+            answerEvidence: d.answerEvidence,
+            explanationSource: d.explanationSource,
+          },
         });
         if (result.ok && result.id) questionIds.push(result.id);
       }
@@ -175,20 +205,28 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
         parserWarnings: file.warnings,
       };
       s.addQuestionSet(qset);
-      const doc: SourceDocument = {
-        id: docId,
-        title: documentTitleFromFile(file.fileName),
-        fileName: file.fileName,
-        fileType: file.fileType,
-        uploadedAt: new Date().toISOString(),
-        rawText: file.rawText,
-        pageTexts: file.pageTexts,
-        sizeBytes: file.sizeBytes,
-        tags: [],
-        linkedQuestionSetIds: [setId],
-        libraryOnly: false,
-      };
-      s.addDocument(doc);
+      if (existingDoc) {
+        s.updateDocument(existingDoc.id, {
+          linkedQuestionSetIds: [...new Set([...existingDoc.linkedQuestionSetIds, setId])],
+          libraryOnly: false,
+        });
+      } else {
+        const doc: SourceDocument = {
+          id: docId,
+          title: documentTitleFromFile(file.fileName),
+          fileName: file.fileName,
+          fileType: file.fileType,
+          uploadedAt: new Date().toISOString(),
+          rawText: file.rawText,
+          pageTexts: file.pageTexts,
+          sizeBytes: file.sizeBytes,
+          checksum: file.checksum,
+          tags: [],
+          linkedQuestionSetIds: [setId],
+          libraryOnly: false,
+        };
+        s.addDocument(doc);
+      }
       patch(file.id, { status: "saved" });
       sets++;
       totalQ += questionIds.length;
@@ -313,6 +351,18 @@ function fileKind(file: File): string {
 function sourceKind(file: File): QuestionSource {
   const k = fileKind(file);
   return k === "pdf" ? "pdf" : "imported";
+}
+
+function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
+  for (const draft of drafts) {
+    const needle = draft.stem.slice(0, 60).trim();
+    if (needle.length < 12) continue;
+    const page = pages.findIndex((text) => text.includes(needle));
+    if (page < 0) continue;
+    draft.sourcePage = page + 1;
+    const start = Math.max(0, pages[page].indexOf(needle) - 120);
+    draft.sourceSnippet = pages[page].slice(start, start + 800).trim();
+  }
 }
 
 function StatusIcon({ status }: { status: FileStatus }) {

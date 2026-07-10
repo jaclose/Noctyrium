@@ -39,7 +39,7 @@ export function AnkiConnectPanel() {
     webCorsOriginList: ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173", origin],
   }, null, 2);
   const localAppUrl = "http://127.0.0.1:5173/#integrations";
-  const localLaunchCommand = "cd /Users/jd/Developer/Noctyrium/web && npm run dev -- --host 127.0.0.1";
+  const localLaunchCommand = "npm --prefix web run dev -- --host 127.0.0.1";
 
   async function copyText(text: string, label: string) {
     try {
