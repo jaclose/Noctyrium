@@ -86,7 +86,7 @@
   padding: 10px 16px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(16, 18, 26, 0.92);
+  background: rgba(17,17,19, 0.92);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
@@ -102,7 +102,7 @@
   min-width: 190px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(20, 22, 32, 0.98);
+  background: rgba(22,22,24, 0.98);
   overflow: hidden;
   z-index: 61;
 }
@@ -214,7 +214,7 @@
   cursor: pointer;
 }
 .option-row:disabled { cursor: default; }
-.option-row.picked { border-color: var(--cyan); background: rgba(56, 189, 248, 0.08); }
+.option-row.picked { border-color: var(--gold-line); background: var(--gold-soft); }
 .option-row.correct { border-color: var(--grade-green, #46d27e); background: rgba(70, 210, 126, 0.1); }
 .option-row.wrong { border-color: var(--grade-red, #ff5563); background: rgba(255, 85, 99, 0.09); }
 

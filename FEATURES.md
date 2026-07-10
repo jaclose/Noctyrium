@@ -136,3 +136,12 @@ Last updated: 2026-07-09 · app v0.0.1-prebeta · data schema v30
 
 - AXOM brand: tintable SVG mark, Poppins wordmark (self-hosted), graphite/bone/muted-gold
   palette, regenerated icon set, brand config centralized for future changes.
+- **Premium theme rehaul (2026-07-10)**: 450+ legacy cyan/blue/purple accent instances
+  re-tinted to the identity palette across every stylesheet; machined-gold primary CTA
+  with ink text; gold active-nav indicator + soft glow; architectural glass cards with
+  bevel hairlines; Poppins 600 display headings (self-hosted); mineralized status colors
+  (sage/amber/terracotta/slate) replacing loud web primaries; warmed all navy surface
+  fills to neutral graphite; gold focus rings; refined scrollbars, filter pills, fields,
+  empty states, and the shell's gold top seam; Safari backdrop-filter fixes.
+  Verified visually via headless-browser screenshots of onboarding, dashboard, and
+  Question Bank.

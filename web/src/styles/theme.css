@@ -1,61 +1,77 @@
 /* ===========================================================================
-   Axom design tokens. Identity palette (brand guide 06): ink #0d0d0e,
-   graphite #1c1c1e, bone #e6e2d6, muted gold #c8a96a. The legacy variable
-   NAMES are kept (--cyan is the primary-accent slot everywhere) — only their
-   VALUES shift, so the whole app re-themes without touching function.
+   AXOM design tokens — a private academic operating system. Identity palette
+   (brand guide 06): ink #0d0d0e, graphite #1c1c1e, bone #e6e2d6, muted gold
+   #c8a96a. Legacy variable NAMES are preserved (--cyan is the primary-accent
+   slot everywhere) so the whole app re-themes without touching component logic.
+   The design intent: premium, minimal, architectural, calm under pressure.
    =========================================================================== */
 :root {
-  /* Backdrop gradient — near-black ink into graphite */
-  --bg-1: #0a0a0b;
-  --bg-2: #0d0d0e;
-  --bg-3: #141416;
+  /* Backdrop — deep mineral ink, faintly warm, layered into graphite. */
+  --bg-1: #08080a;
+  --bg-2: #0c0c0e;
+  --bg-3: #121214;
 
-  /* Accents. --cyan is the app's primary-accent slot → Axom muted gold. */
-  --cyan: #c8a96a;
-  --cyan-strong: #b8955a;
-  --purple: #a396c9;        /* desaturated — AI/secondary accents stay quiet */
-  --blue: #8fa8c8;
-  --green: #4ade80;
-  --orange: #ffa64d;
-  --red: #ff5d6c;
+  /* Accent slot (--cyan) → AXOM muted gold. Used with discipline: primary
+     actions, active states, focus, key highlights — never as wallpaper. */
+  --cyan: #cdb078;
+  --cyan-strong: #dcc38a;
   --gold: #c8a96a;
+  --gold-soft: rgba(200, 169, 106, 0.14);
+  --gold-line: rgba(200, 169, 106, 0.34);
+  --gold-glow: rgba(200, 169, 106, 0.22);
+  --purple: #a79ac9;        /* quiet violet-bone for AI/secondary accents */
+  --blue: #93a7c4;          /* muted steel, rare */
   --teal: #9fb8a8;
   --bone: #e6e2d6;
+  --bone-dim: #c9c4b6;
 
-  /* Day-grade scale (todayGrade) */
-  --grade-blue: #4d8dff;
-  --grade-green: #46d27e;
-  --grade-orange: #ff9f43;
-  --grade-red: #ff5563;
+  /* Functional status — mineralized to sit inside the graphite/gold world
+     (sage / amber / terracotta / slate) instead of loud web primaries. */
+  --green: #7fb894;
+  --orange: #d9a566;
+  --red: #d97a72;
 
-  /* Text — bone-warmed off-white per the identity */
-  --text: #f2efe7;
-  --text-80: rgba(242, 239, 231, 0.84);
-  --text-60: rgba(242, 239, 231, 0.62);
-  --text-45: rgba(242, 239, 231, 0.47);
-  --text-30: rgba(242, 239, 231, 0.34);
+  /* Day-grade scale — refined but still legible as status. */
+  --grade-blue: #8fb0c8;
+  --grade-green: #7fb894;
+  --grade-orange: #d9a566;
+  --grade-red: #d97a72;
 
-  /* Glass surfaces — neutral graphite, hairlines tinted bone not blue */
-  --shell-radius: 30px;
-  --card-radius: 20px;
-  --btn-radius: 14px;
+  /* Text — bone-warmed off-white per the identity. */
+  --text: #f3f0e8;
+  --text-80: rgba(243, 240, 232, 0.86);
+  --text-60: rgba(243, 240, 232, 0.60);
+  --text-45: rgba(243, 240, 232, 0.44);
+  --text-30: rgba(243, 240, 232, 0.30);
 
-  --glass-card-fill: rgba(20, 20, 22, 0.55);
-  --glass-card-border: rgba(230, 226, 214, 0.10);
-  --glass-card-border-hover: rgba(230, 226, 214, 0.22);
+  /* Surfaces — neutral graphite glass; hairlines tinted bone, not blue. */
+  --shell-radius: 26px;
+  --card-radius: 18px;
+  --btn-radius: 12px;
 
-  --hairline: rgba(255, 255, 255, 0.08);
-  --hairline-soft: rgba(255, 255, 255, 0.055);
+  --surface-1: rgba(24, 24, 27, 0.62);
+  --surface-2: rgba(30, 30, 34, 0.72);
+  --glass-card-fill: rgba(22, 22, 25, 0.60);
+  --glass-card-border: rgba(230, 226, 214, 0.09);
+  --glass-card-border-hover: rgba(200, 169, 106, 0.30);
 
-  /* Typography — SF Rounded on Apple, graceful rounded fallback elsewhere */
-  --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito", "Quicksand",
-    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --hairline: rgba(230, 226, 214, 0.09);
+  --hairline-soft: rgba(230, 226, 214, 0.05);
+
+  /* Typography — architectural, not rounded. A crisp neutral grotesque for the
+     product surface; Poppins (self-hosted) for display headings + the wordmark,
+     matching the identity's lettering. */
+  --font-rounded: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  --font-display: "Poppins", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 
-  --shadow-shell: 0 34px 70px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(255,255,255,0.08);
-  --shadow-card: 0 18px 42px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255,255,255,0.055);
+  /* Depth — deep, soft, architectural shadows with a whisper-thin top light. */
+  --shadow-shell: 0 40px 90px rgba(0, 0, 0, 0.72), 0 2px 0 rgba(230, 226, 214, 0.04) inset, 0 1px 0 rgba(230, 226, 214, 0.06) inset;
+  --shadow-card: 0 20px 46px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(230, 226, 214, 0.05);
+  --shadow-gold: 0 0 0 1px rgba(200, 169, 106, 0.28), 0 10px 28px rgba(200, 169, 106, 0.12);
 
-  --sidebar-w: 246px;
+  --sidebar-w: 250px;
 }
 
 /* Grade helpers reused by Ring / Heatmap / pills */

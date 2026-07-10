@@ -1,12 +1,20 @@
 @import "./theme.css";
 
-/* Axom wordmark lettering — Poppins Medium (brand guide 05), self-hosted. */
+/* AXOM display face — Poppins (brand guide 05), self-hosted for offline use.
+   500 for the wordmark, 600 for architectural headings. */
 @font-face {
   font-family: "Poppins";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
   src: url("/fonts/poppins-500-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/poppins-600-latin.woff2") format("woff2");
 }
 
 * { box-sizing: border-box; }
@@ -41,16 +49,23 @@ input, textarea, select { font-family: inherit; }
   color: var(--bone);
 }
 
-/* Custom scrollbars to keep the premium feel */
-*::-webkit-scrollbar { width: 10px; height: 10px; }
+/* Custom scrollbars — slim, bone, gold on hover */
+*::-webkit-scrollbar { width: 9px; height: 9px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(230, 226, 214, 0.12);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--gold-line); background-clip: padding-box; }
+
+/* Gold focus ring for keyboard users — consistent, premium, accessible. */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold-line);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
 
 /* =========================== App layout shell =========================== */
 .app-root {
@@ -75,16 +90,18 @@ input, textarea, select { font-family: inherit; }
     linear-gradient(135deg, var(--bg-1), var(--bg-2) 52%, var(--bg-3));
   overflow: hidden;
 }
+/* Fine architectural grid — a faint blueprint texture, masked to the edges. */
 .backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.28;
+  opacity: 0.5;
   background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-  background-size: 44px 44px, 44px 44px;
-  mask-image: radial-gradient(circle at center, black, transparent 78%);
+    linear-gradient(rgba(230,226,214,0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(230,226,214,0.012) 1px, transparent 1px);
+  background-size: 56px 56px, 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at center, black, transparent 82%);
+  mask-image: radial-gradient(ellipse 90% 80% at center, black, transparent 82%);
 }
 .orb {
   position: absolute;
@@ -122,25 +139,35 @@ input, textarea, select { font-family: inherit; }
   min-height: 0;
   border-radius: var(--shell-radius);
   background:
-    linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045) 50%, rgba(255,255,255,0.02)),
-    rgba(15,15,17,0.6);
-  backdrop-filter: blur(30px) saturate(165%);
-  -webkit-backdrop-filter: blur(30px) saturate(165%);
-  border: 1px solid var(--glass-card-border-hover);
+    linear-gradient(150deg, rgba(230,226,214,0.05), rgba(230,226,214,0.018) 46%, rgba(16,16,19,0.7)),
+    rgba(14,14,17,0.66);
+  backdrop-filter: blur(34px) saturate(150%);
+  -webkit-backdrop-filter: blur(34px) saturate(150%);
+  border: 1px solid rgba(230, 226, 214, 0.10);
   box-shadow: var(--shadow-shell);
   overflow: hidden;
 }
-/* Slow diagonal luster sweep across the shell */
+/* A single faint gold hairline along the top edge — the "premium seam". */
+.shell::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 8%; right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-line), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+/* Slow, whisper-quiet diagonal luster — calm, not flashy. */
 .shell::after {
   content: "";
   position: absolute;
   top: -50%;
   left: -40%;
-  width: 14%;
+  width: 16%;
   height: 220%;
-  background: linear-gradient(to bottom, transparent, rgba(242,239,231,0.09), rgba(200,169,106,0.05), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(243,240,232,0.05), rgba(200,169,106,0.035), transparent);
   transform: rotate(17deg);
-  animation: luster 7.8s ease-in-out infinite;
+  animation: luster 15s ease-in-out infinite;
   pointer-events: none;
 }
 @keyframes luster {
@@ -181,11 +208,20 @@ input, textarea, select { font-family: inherit; }
 .page { display: flex; flex-direction: column; gap: 20px; max-width: 1180px; }
 
 /* Reusable text helpers */
-.h-section { font-size: 17px; font-weight: 700; letter-spacing: 0; }
-.sub { color: var(--text-45); font-size: 12.5px; font-weight: 500; }
+.h-section {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.sub { color: var(--text-45); font-size: 12.5px; font-weight: 450; line-height: 1.5; }
 .muted { color: var(--text-60); }
 .dim { color: var(--text-45); }
-.mono { font-family: var(--font-mono); }
+.mono { font-family: var(--font-mono); letter-spacing: -0.01em; }
+
+/* Page-level headings pick up the display face for architectural hierarchy. */
+h1, h2, h3, .panel-title, .stat-value { font-family: var(--font-display); }
 
 /* Grids */
 .grid { display: grid; gap: 16px; }

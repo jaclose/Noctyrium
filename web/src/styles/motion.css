@@ -10,11 +10,11 @@
   --nm-dur-slow: 520ms;
   --nm-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --nm-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --nm-tone-cyan: #5ad7ef;
-  --nm-tone-green: #46d27e;
-  --nm-tone-orange: #ff9f43;
-  --nm-tone-red: #ff5563;
-  --nm-tone-violet: #b07bff;
+  --nm-tone-cyan: #cdb078;
+  --nm-tone-green: #7fb894;
+  --nm-tone-orange: #d9a566;
+  --nm-tone-red: #d97a72;
+  --nm-tone-violet: #a79ac9;
 }
 
 /* ---- AnimatedProgressBar ------------------------------------------------- */
@@ -24,7 +24,7 @@
   height: 16px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(180, 226, 255, 0.1);
+  border: 1px solid rgba(230,226,214, 0.1);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -39,12 +39,12 @@
   background-size: 220% 100%;
   animation: nm-flow 2.4s linear infinite;
 }
-.nm-progress-fill.tone-cyan { background-image: linear-gradient(100deg, #2aa7c8, #5ad7ef, #2aa7c8); }
+.nm-progress-fill.tone-cyan { background-image: linear-gradient(100deg, #a8894f, #cdb078, #a8894f); }
 .nm-progress-fill.tone-green { background-image: linear-gradient(100deg, #2c9d5b, #46d27e, #2c9d5b); }
 .nm-progress-fill.tone-orange { background-image: linear-gradient(100deg, #d97a1f, #ff9f43, #d97a1f); }
 .nm-progress-fill.tone-red { background-image: linear-gradient(100deg, #cc3a47, #ff5563, #cc3a47); }
-.nm-progress-fill.tone-violet { background-image: linear-gradient(100deg, #7d4fcf, #b07bff, #7d4fcf); }
-.nm-progress.glow .nm-progress-fill { box-shadow: 0 0 12px rgba(90, 215, 239, 0.45); }
+.nm-progress-fill.tone-violet { background-image: linear-gradient(100deg, #877aa8, #a79ac9, #877aa8); }
+.nm-progress.glow .nm-progress-fill { box-shadow: 0 0 12px rgba(200,169,106, 0.45); }
 .nm-progress-label {
   position: relative;
   z-index: 1;
@@ -66,7 +66,7 @@
   width: 100%;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(180, 226, 255, 0.09);
+  border: 1px solid rgba(230,226,214, 0.09);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -80,11 +80,11 @@
   background-size: 200% 100%;
   animation: nm-flow 2.8s linear infinite;
 }
-.nm-fluid-fill.tone-cyan { background-image: linear-gradient(100deg, #2aa7c8, #5ad7ef, #2aa7c8); }
+.nm-fluid-fill.tone-cyan { background-image: linear-gradient(100deg, #a8894f, #cdb078, #a8894f); }
 .nm-fluid-fill.tone-green { background-image: linear-gradient(100deg, #2c9d5b, #46d27e, #2c9d5b); }
 .nm-fluid-fill.tone-orange { background-image: linear-gradient(100deg, #d97a1f, #ff9f43, #d97a1f); }
 .nm-fluid-fill.tone-red { background-image: linear-gradient(100deg, #cc3a47, #ff5563, #cc3a47); }
-.nm-fluid-fill.tone-violet { background-image: linear-gradient(100deg, #7d4fcf, #b07bff, #7d4fcf); }
+.nm-fluid-fill.tone-violet { background-image: linear-gradient(100deg, #877aa8, #a79ac9, #877aa8); }
 .nm-fluid.reduced .nm-fluid-fill { animation: none; }
 .nm-fluid-label {
   position: relative;
@@ -135,8 +135,8 @@
   border-style: dashed;
 }
 .nm-status-border.status-active {
-  border-color: rgba(90, 215, 239, 0.55);
-  box-shadow: 0 0 0 1px rgba(90, 215, 239, 0.22), 0 0 16px rgba(90, 215, 239, 0.16);
+  border-color: rgba(200,169,106, 0.55);
+  box-shadow: 0 0 0 1px rgba(200,169,106, 0.22), 0 0 16px rgba(200,169,106, 0.16);
 }
 .nm-status-border.status-idle { border-color: rgba(255, 255, 255, 0.08); }
 @keyframes nm-strong-pulse {
@@ -147,12 +147,12 @@
 /* ---- FocusGlow ----------------------------------------------------------- */
 .nm-focus-glow { border-radius: 16px; transition: box-shadow var(--nm-dur-base) var(--nm-ease-out); }
 .nm-focus-glow.active {
-  box-shadow: 0 0 0 1px rgba(90, 215, 239, 0.3), 0 0 22px rgba(90, 215, 239, 0.18);
+  box-shadow: 0 0 0 1px rgba(200,169,106, 0.3), 0 0 22px rgba(200,169,106, 0.18);
   animation: nm-focus-breathe 3s ease-in-out infinite;
 }
 @keyframes nm-focus-breathe {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(90, 215, 239, 0.22), 0 0 16px rgba(90, 215, 239, 0.12); }
-  50% { box-shadow: 0 0 0 1px rgba(90, 215, 239, 0.34), 0 0 26px rgba(90, 215, 239, 0.22); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(200,169,106, 0.22), 0 0 16px rgba(200,169,106, 0.12); }
+  50% { box-shadow: 0 0 0 1px rgba(200,169,106, 0.34), 0 0 26px rgba(200,169,106, 0.22); }
 }
 
 /* ---- ScrollReactiveSurface ----------------------------------------------- */
