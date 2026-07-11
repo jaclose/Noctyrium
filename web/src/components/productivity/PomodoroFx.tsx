@@ -1,14 +1,33 @@
-// Mounted once at the app root. Watches the Pomodoro store for a completed focus
-// sprint and fires the whole-page glow + a completion toast (and an OS
-// notification if the user granted permission), so it works on any page.
+// Mounted once at the app root. Owns the Pomodoro clock lifecycle so a running
+// sprint keeps accurate time on ANY route and across reloads — not only while
+// the Productivity page is mounted. Watches for a completed focus sprint and
+// fires the whole-page glow + a completion toast (and an OS notification if the
+// user granted permission).
 import { useEffect, useState } from "react";
-import { usePomodoro } from "../../lib/pomodoro";
+import { usePomodoro, ensurePomodoroClock, reconcilePomodoro } from "../../lib/pomodoro";
 import { pushToast } from "../../lib/toast";
 
 export function PomodoroFx() {
   const completedAt = usePomodoro((s) => s.completedAt);
   const completedMinutes = usePomodoro((s) => s.completedMinutes);
   const [glow, setGlow] = useState(false);
+
+  // Root-level clock ownership: start ticking on load if a sprint was running,
+  // and reconcile against wall-clock time whenever the tab regains focus or is
+  // restored from the back/forward cache. Listeners are cleaned up on unmount.
+  useEffect(() => {
+    ensurePomodoroClock();
+    const reconcile = () => reconcilePomodoro();
+    const onVisible = () => { if (!document.hidden) reconcile(); };
+    window.addEventListener("focus", reconcile);
+    window.addEventListener("pageshow", reconcile);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", reconcile);
+      window.removeEventListener("pageshow", reconcile);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     if (!completedAt) return;
@@ -21,12 +40,14 @@ export function PomodoroFx() {
       href: "#productivity",
       actionLabel: "Productivity",
       duration: 7000,
+      dedupe: `pomodoro-complete-${completedAt}`,
     });
     try {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         new Notification("AXOM — focus sprint complete", {
           body: minutes ? `${minutes} minutes logged. Take your break.` : "Take your break.",
           icon: "./icon-192.png",
+          tag: `axom-pomodoro-${completedAt}`,
         });
       }
     } catch { /* ignore */ }

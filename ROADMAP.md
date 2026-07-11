@@ -60,6 +60,11 @@ Last updated: 2026-07-11
 
 ## Recently shipped (move log)
 
+- 2026-07-11 — Wave 1 behavioral reliability: habit tracking-start floor (no
+  first-day "missed yesterday", pre-creation days excluded from adherence and
+  heatmaps), root-owned Pomodoro clock with focus/visibility/pageshow
+  reconciliation (runs on any route, single completion log), and preset-driven
+  short/long break sequencing → moved to FEATURES.md.
 - 2026-07-11 — Latest-attempt current-mastery metrics with separately named
   all-attempt historical accuracy, shared vault constants, verbatim stored-explanation
   rendering, and the persisted Question Bank browser journey → moved to FEATURES.md.

@@ -8,10 +8,17 @@ import {
   weekStats,
   heatmapCells,
   recoveryMessage,
+  trackingStartKey,
   newHabitDefaults,
   HABIT_TYPE_META,
 } from "./habits";
 import { addLocalDays } from "./dailyRollover";
+
+/** A local-time ISO timestamp (round-trips to the given local calendar day
+ * regardless of the test runner's timezone). */
+function localIso(y: number, m: number, d: number, hh = 12, mm = 0): string {
+  return new Date(y, m - 1, d, hh, mm).toISOString();
+}
 
 const TODAY = "2026-06-25"; // Thursday (getDay === 4)
 
@@ -144,5 +151,92 @@ describe("newHabitDefaults", () => {
     expect(newHabitDefaults("Study", "duration").target).toBe(20);
     expect(newHabitDefaults("Pushups", "count").unit).toBe("reps");
     expect(newHabitDefaults("Gym", "weekly").weeklyTarget).toBe(3);
+  });
+});
+
+describe("first-day / tracking-start correctness", () => {
+  it("derives the tracking start from createdAt's LOCAL calendar day", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 25, 9, 0) });
+    expect(trackingStartKey(created, [], TODAY)).toBe("2026-06-25");
+  });
+
+  it("prefers an explicit trackingStartsAt (bare date key honored verbatim)", () => {
+    const h = habit({ trackingStartsAt: "2026-06-22", createdAt: localIso(2026, 6, 25) });
+    expect(trackingStartKey(h, [], TODAY)).toBe("2026-06-22");
+  });
+
+  it("falls back to the earliest log, then today, for a malformed legacy createdAt", () => {
+    const legacy = habit({ createdAt: "" });
+    expect(trackingStartKey(legacy, [entry("2026-06-23", "done")], TODAY)).toBe("2026-06-23");
+    expect(trackingStartKey(habit({ createdAt: "not-a-date" }), [], TODAY)).toBe(TODAY);
+  });
+
+  it("does not say 'missed yesterday' for a habit created today", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 25, 9, 0) });
+    const message = recoveryMessage(created, [], TODAY).toLowerCase();
+    expect(message).toContain("fresh start");
+    expect(message).not.toContain("missed");
+    expect(currentStreak(created, [], TODAY)).toBe(0);
+  });
+
+  it("does not penalize a habit created late at night for the prior day", () => {
+    // created 2026-06-24 at 11:50 PM local; evaluated the next day.
+    const created = habit({ createdAt: localIso(2026, 6, 24, 23, 50) });
+    expect(trackingStartKey(created, [], TODAY)).toBe("2026-06-24");
+    expect(recoveryMessage(created, [], TODAY).toLowerCase()).toContain("fresh start");
+    // The unlogged creation day is a grace day, so the chain is not broken to -1.
+    expect(currentStreak(created, [], TODAY)).toBe(0);
+  });
+
+  it("begins tracking on the new local day for a just-after-midnight creation", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 25, 0, 10) });
+    expect(trackingStartKey(created, [], TODAY)).toBe("2026-06-25");
+    expect(recoveryMessage(created, [], TODAY).toLowerCase()).toContain("fresh start");
+  });
+
+  it("credits the first completion with no historical penalty", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 25, 9, 0) });
+    const entries = [entry(TODAY, "done")];
+    expect(currentStreak(created, entries, TODAY)).toBe(1);
+    const week = weekStats(created, entries, Array.from({ length: 7 }, (_, i) => addLocalDays(TODAY, -i)));
+    // Only the creation day is in range: one scheduled day, done → 100% adherence.
+    expect(week.scheduledDays).toBe(1);
+    expect(week.adherence).toBe(100);
+    expect(week.missed).toBe(0);
+  });
+
+  it("evaluates only post-creation scheduled days after several absent days", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 20, 9, 0) });
+    // No logs since creation; today is 2026-06-25.
+    expect(currentStreak(created, [], TODAY)).toBe(0);
+    // Yesterday (06-24) is a genuine post-creation miss.
+    expect(recoveryMessage(created, [], TODAY).toLowerCase()).toContain("missed");
+    const week = weekStats(created, [], Array.from({ length: 7 }, (_, i) => addLocalDays(TODAY, -i)));
+    // 06-19 precedes creation and is excluded; 06-20..06-25 count (6 days).
+    expect(week.scheduledDays).toBe(6);
+  });
+
+  it("excludes pre-creation days from the weekday-scheduled adherence window", () => {
+    // Thursdays only, created this past Monday (2026-06-22).
+    const created = habit({ type: "scheduled", schedule: [4], createdAt: localIso(2026, 6, 22, 9, 0) });
+    const dates = Array.from({ length: 14 }, (_, i) => addLocalDays(TODAY, -i));
+    const week = weekStats(created, [entry(TODAY, "done")], dates);
+    // Only 2026-06-25 (Thu, ≥ creation) is a scheduled evaluable day in range.
+    expect(week.scheduledDays).toBe(1);
+    expect(week.done).toBe(1);
+  });
+
+  it("renders pre-creation heatmap cells as inert, never missed", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 24, 9, 0) });
+    const cells = heatmapCells(created, [entry(TODAY, "done")], 35, TODAY);
+    const beforeCreation = cells.filter((c) => c.date < "2026-06-24");
+    expect(beforeCreation.every((c) => c.status === "none" && !c.scheduled && c.intensity === 0)).toBe(true);
+    expect(cells[cells.length - 1].intensity).toBe(1);
+  });
+
+  it("still breaks the chain on an explicit miss on the creation day", () => {
+    const created = habit({ createdAt: localIso(2026, 6, 24, 9, 0) });
+    // Explicitly marked missed on the creation day → a real signal.
+    expect(recoveryMessage(created, [entry("2026-06-24", "missed")], TODAY).toLowerCase()).toContain("missed");
   });
 });

@@ -35,6 +35,37 @@ export const POMODORO_PRESETS: PomodoroPreset[] = [
 export const DEFAULT_CUSTOM = { focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 };
 const clampMin = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(Number.isFinite(n) ? n : lo)));
 
+function validCyclesBeforeLongBreak(value: number | undefined): number {
+  return Number.isFinite(value) && Number(value) > 0
+    ? clampMin(Number(value), 1, 12)
+    : DEFAULT_CUSTOM.cyclesBeforeLongBreak;
+}
+
+/**
+ * Select the duration of the break represented by a completed-session count.
+ * This is the single cadence rule used when a break starts, is restored, is
+ * re-fit after a custom edit, or is rendered by the progress ring.
+ */
+export function getBreakDurationMinutes({
+  sessionsToday,
+  cyclesBeforeLongBreak,
+  shortBreak,
+  longBreak,
+}: {
+  sessionsToday: number;
+  cyclesBeforeLongBreak?: number;
+  shortBreak: number;
+  longBreak?: number;
+}): number {
+  const sessions = Number.isFinite(sessionsToday) ? Math.max(0, Math.floor(sessionsToday)) : 0;
+  const cycles = validCyclesBeforeLongBreak(cyclesBeforeLongBreak);
+  const shortMinutes = clampMin(shortBreak, 1, 90);
+  const longMinutes = longBreak == null || !Number.isFinite(longBreak)
+    ? shortMinutes
+    : clampMin(longBreak, 1, 120);
+  return sessions > 0 && sessions % cycles === 0 ? longMinutes : shortMinutes;
+}
+
 export type PomodoroPhase = "focus" | "break";
 export type PomodoroTargetKind = "free" | "tracker" | "blueprint";
 
@@ -117,7 +148,7 @@ function profileCustom(): CustomDurations {
     customFocus: clampMin(c?.focus ?? DEFAULT_CUSTOM.focus, 1, 180),
     customBreak: clampMin(c?.break ?? DEFAULT_CUSTOM.break, 1, 90),
     customLongBreak: clampMin(c?.longBreak ?? DEFAULT_CUSTOM.longBreak, 1, 120),
-    customCycles: clampMin(c?.cyclesBeforeLongBreak ?? DEFAULT_CUSTOM.cyclesBeforeLongBreak, 1, 12),
+    customCycles: validCyclesBeforeLongBreak(c?.cyclesBeforeLongBreak),
   };
 }
 
@@ -145,17 +176,30 @@ function readPersisted(): Partial<PersistedPomodoro> {
       customFocus: clampMin(parsed.customFocus ?? fallbackCustom.customFocus, 1, 180),
       customBreak: clampMin(parsed.customBreak ?? fallbackCustom.customBreak, 1, 90),
       customLongBreak: clampMin(parsed.customLongBreak ?? fallbackCustom.customLongBreak, 1, 120),
-      customCycles: clampMin(parsed.customCycles ?? fallbackCustom.customCycles, 1, 12),
+      customCycles: validCyclesBeforeLongBreak(parsed.customCycles ?? fallbackCustom.customCycles),
     };
     const phase = parsed.phase === "break" ? "break" : "focus";
     const preset = effectivePreset({ presetId: parsed.presetId, ...custom });
-    const maxSeconds = (phase === "focus" ? preset.focus : preset.break) * 60;
-    const elapsed = parsed.running ? Math.floor((Date.now() - Number(parsed.updatedAt || Date.now())) / 1000) : 0;
+    const sessionsToday = Number.isFinite(parsed.sessionsToday) ? Math.max(0, Math.floor(parsed.sessionsToday)) : 0;
+    const breakMinutes = getBreakDurationMinutes({
+      sessionsToday,
+      cyclesBeforeLongBreak: preset.cyclesBeforeLongBreak,
+      shortBreak: preset.break,
+      longBreak: preset.longBreak,
+    });
+    const maxSeconds = (phase === "focus" ? clampMin(preset.focus, 1, 180) : breakMinutes) * 60;
+    const storedSeconds = Number(parsed.secondsLeft);
+    const updatedAt = Number(parsed.updatedAt);
+    const elapsedSeconds = parsed.running && Number.isFinite(updatedAt)
+      ? Math.max(0, Math.floor((Date.now() - updatedAt) / 1000))
+      : 0;
+    const remainingSeconds = (Number.isFinite(storedSeconds) ? storedSeconds : maxSeconds) - elapsedSeconds;
     return {
       ...parsed,
       ...custom,
       phase,
-      secondsLeft: Math.max(parsed.running ? 1 : 0, Math.min(maxSeconds, Number(parsed.secondsLeft || maxSeconds) - elapsed)),
+      secondsLeft: Math.max(parsed.running ? 1 : 0, Math.min(maxSeconds, remainingSeconds)),
+      sessionsToday,
       presetId: PRESET_ALIASES[parsed.presetId] ?? parsed.presetId,
       targetKind: parsed.targetKind ?? "free",
       intention: parsed.intention ?? "",
@@ -262,9 +306,18 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         useStore.getState().logStudy({ type: "Pomodoro", minutes: preset.focus, note: logNote("complete", targetLabel, intention) });
       }
       if (natural) chime(true);
+      // Completed focus sprints today (this one included only when natural — a
+      // skipped/cancelled focus never advances the long-break cadence).
+      const completedFocus = get().sessionsToday + (natural ? 1 : 0);
+      const breakMinutes = getBreakDurationMinutes({
+        sessionsToday: completedFocus,
+        cyclesBeforeLongBreak: preset.cyclesBeforeLongBreak,
+        shortBreak: preset.break,
+        longBreak: preset.longBreak,
+      });
       set((s) => ({
         phase: "break",
-        secondsLeft: preset.break * 60,
+        secondsLeft: breakMinutes * 60,
         running: natural,
         lastTickAt: Date.now(),
         sessionsToday: natural ? s.sessionsToday + 1 : s.sessionsToday,
@@ -344,7 +397,9 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         customFocus: clampMin(patch.focus ?? get().customFocus, 1, 180),
         customBreak: clampMin(patch.break ?? get().customBreak, 1, 90),
         customLongBreak: clampMin(patch.longBreak ?? get().customLongBreak, 1, 120),
-        customCycles: clampMin(patch.cyclesBeforeLongBreak ?? get().customCycles, 1, 12),
+        customCycles: patch.cyclesBeforeLongBreak === undefined
+          ? validCyclesBeforeLongBreak(get().customCycles)
+          : validCyclesBeforeLongBreak(patch.cyclesBeforeLongBreak),
       };
       set(next);
       // Persist to the profile so custom durations back up + sync with the vault.
@@ -356,7 +411,13 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       // Re-fit the clock if the custom preset is active and idle.
       if ((PRESET_ALIASES[get().presetId] ?? get().presetId) === "custom" && !get().running) {
         const preset = effectivePreset(get());
-        set({ secondsLeft: (get().phase === "focus" ? preset.focus : preset.break) * 60, lastTickAt: Date.now() });
+        const breakMinutes = getBreakDurationMinutes({
+          sessionsToday: get().sessionsToday,
+          cyclesBeforeLongBreak: preset.cyclesBeforeLongBreak,
+          shortBreak: preset.break,
+          longBreak: preset.longBreak,
+        });
+        set({ secondsLeft: (get().phase === "focus" ? preset.focus : breakMinutes) * 60, lastTickAt: Date.now() });
       }
       persistSnapshot(get());
     },
@@ -385,6 +446,19 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
 export function ensurePomodoroClock() {
   const state = usePomodoro.getState();
   if (state.running) startInterval(() => usePomodoro.getState()._tick());
+}
+
+/**
+ * Reconcile a running timer against wall-clock time and (re)attach the 1s
+ * interval. Called at app startup and on visibility/focus/pageshow so a sprint
+ * keeps accurate time across route changes, reloads, and backgrounded tabs
+ * (where setInterval is throttled). Only forces a catch-up tick when real drift
+ * has accumulated, so it never double-counts the normal foreground cadence.
+ */
+export function reconcilePomodoro() {
+  const state = usePomodoro.getState();
+  if (state.running && Date.now() - state.lastTickAt >= 1500) state._tick();
+  ensurePomodoroClock();
 }
 
 export function pomodoroPreset(id: string): PomodoroPreset {

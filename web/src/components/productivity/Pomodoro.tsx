@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, RotateCcw, SkipForward, Timer, Coffee, Flame } from "lucide-react";
 import { GlassCard, GButton, PanelHeader } from "../ui/primitives";
 import { useStore } from "../../lib/store";
-import { usePomodoro, POMODORO_PRESETS, effectivePreset, formatClock, ensurePomodoroClock } from "../../lib/pomodoro";
+import { usePomodoro, POMODORO_PRESETS, effectivePreset, formatClock, getBreakDurationMinutes } from "../../lib/pomodoro";
 
 export function Pomodoro({ compact = false }: { compact?: boolean }) {
   const pomo = usePomodoro();
@@ -13,7 +13,13 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
   const tracker = useStore((s) => s.tracker);
   const blueprintInstalls = useStore((s) => s.blueprintInstalls);
   const preset = effectivePreset(pomo);
-  const total = (pomo.phase === "focus" ? preset.focus : preset.break) * 60;
+  const breakSeconds = getBreakDurationMinutes({
+    sessionsToday: pomo.sessionsToday,
+    cyclesBeforeLongBreak: preset.cyclesBeforeLongBreak,
+    shortBreak: preset.break,
+    longBreak: preset.longBreak,
+  }) * 60;
+  const total = pomo.phase === "focus" ? preset.focus * 60 : breakSeconds;
   const elapsed = total - pomo.secondsLeft;
   const pct = total ? Math.min(100, Math.max(0, (elapsed / total) * 100)) : 0;
   const isFocus = pomo.phase === "focus";
@@ -37,7 +43,8 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
   }, [tracker, blueprintInstalls]);
   const selectedTarget = pomo.targetKind === "free" ? "free" : `${pomo.targetKind}:${pomo.targetId ?? ""}`;
 
-  useEffect(() => { ensurePomodoroClock(); }, []);
+  // The clock lifecycle is owned at the app root (PomodoroFx), so a running
+  // sprint keeps time regardless of whether this page is mounted.
   useEffect(() => { setIntentionDraft(pomo.intention); }, [pomo.intention]);
 
   function chooseTarget(value: string) {

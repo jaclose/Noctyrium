@@ -33,6 +33,43 @@ export function isScheduledDay(habit: Habit, date: string): boolean {
   return habit.schedule.includes(weekday);
 }
 
+/**
+ * Normalize a stored date/timestamp to a LOCAL calendar-date key (YYYY-MM-DD).
+ * A bare date key is trusted verbatim (it was authored in local time); a full
+ * ISO timestamp is converted to the viewer's local day so a habit created at
+ * 12:10 AM begins tracking on the new local date, not the UTC one. Malformed
+ * input returns undefined.
+ */
+function toLocalDateKey(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? undefined : localDateKey(parsed);
+}
+
+/**
+ * The local day a habit starts being evaluated. A habit can never be "missed"
+ * for a day before it existed. Resolution order (smallest safe model):
+ *   1. explicit habit.trackingStartsAt
+ *   2. the local calendar date of createdAt
+ *   3. the earliest recorded log for this habit
+ *   4. today (malformed legacy record — never penalize the past)
+ */
+export function trackingStartKey(habit: Habit, entries: HabitEntry[], today: string = localDateKey()): string {
+  const explicit = toLocalDateKey(habit.trackingStartsAt);
+  if (explicit) return explicit;
+  const created = toLocalDateKey(habit.createdAt);
+  if (created) return created;
+  let earliest: string | undefined;
+  for (const entry of entries) {
+    if (entry.habitId !== habit.id) continue;
+    const key = toLocalDateKey(entry.date);
+    if (key && (!earliest || key < earliest)) earliest = key;
+  }
+  return earliest ?? today;
+}
+
 export function entryFor(entries: HabitEntry[], habitId: string, date: string): HabitEntry | undefined {
   return entries.find((e) => e.habitId === habitId && e.date === date);
 }
@@ -44,32 +81,24 @@ export function statusOn(habit: Habit, entries: HabitEntry[], date: string): Hab
 }
 
 /**
- * Whether a day "holds" the streak. Non-punitive: done/partial hold it, an
- * intentional skip holds it, and a day the habit isn't scheduled holds it. Only
- * an explicit "missed" (or, for non-recovery habits, an unlogged scheduled past
- * day) breaks it. Recovery habits never break.
- */
-function dayHolds(habit: Habit, entries: HabitEntry[], date: string, isPast: boolean): boolean {
-  if (habit.type === "recovery") return true;
-  if (!isScheduledDay(habit, date)) return true;
-  const status = statusOn(habit, entries, date);
-  if (status === "done" || status === "partial" || status === "skipped") return true;
-  if (status === "missed") return false;
-  // status === "none": an unlogged scheduled day in the past counts as a break,
-  // but today being unlogged never breaks (you may still do it).
-  return !isPast;
-}
-
-/**
- * Current streak counting back from `today`. Today being unlogged does not break
- * the chain (mirrors studyStreak). Avoidance habits count "done" (avoided) days.
+ * Current streak counting back from `today`. Non-punitive: done/partial extend
+ * it; an intentional skip and a non-scheduled day hold it; an explicit "missed"
+ * or an unlogged scheduled past day breaks it. Today being unlogged never breaks
+ * (you may still do it), and the creation day being unlogged never breaks (the
+ * habit only existed for part of it). Recovery habits never break. Avoidance
+ * habits count "done" (avoided) days.
  */
 export function currentStreak(habit: Habit, entries: HabitEntry[], today: string = localDateKey()): number {
+  const start = trackingStartKey(habit, entries, today);
+  const recovery = habit.type === "recovery";
   let streak = 0;
   let cursor = today;
   let isToday = true;
   // Walk backwards up to 2 years to stay bounded.
   for (let i = 0; i < 730; i++) {
+    // Never evaluate days before the habit began — they can neither extend nor
+    // break the chain.
+    if (cursor < start) break;
     const past = !isToday;
     if (!isScheduledDay(habit, cursor)) {
       cursor = addLocalDays(cursor, -1);
@@ -77,14 +106,16 @@ export function currentStreak(habit: Habit, entries: HabitEntry[], today: string
       continue;
     }
     const status = statusOn(habit, entries, cursor);
-    const counts = status === "done" || status === "partial";
-    if (counts) {
+    if (status === "done" || status === "partial") {
       streak++;
-    } else if (!dayHolds(habit, entries, cursor, past)) {
+    } else if (status === "missed") {
+      if (!recovery) break; // an explicit miss is a real signal, even on day one
+    } else if (status === "skipped") {
+      // intentional skip holds the chain without extending it
+    } else if (past && cursor > start && !recovery) {
+      // an unlogged, scheduled, past day AFTER the creation day breaks the chain;
+      // the creation day (cursor === start) and today are grace days.
       break;
-    } else if (past && status === "none") {
-      // unlogged past scheduled day breaks for non-recovery habits
-      if (habit.type !== "recovery") break;
     }
     cursor = addLocalDays(cursor, -1);
     isToday = false;
@@ -103,8 +134,10 @@ export interface HabitWeekStats {
 
 /** Aggregate a habit's status across a set of local dates (e.g. the last 7 days). */
 export function weekStats(habit: Habit, entries: HabitEntry[], dates: string[]): HabitWeekStats {
+  const start = trackingStartKey(habit, entries);
   let done = 0, partial = 0, skipped = 0, missed = 0, scheduledDays = 0;
   for (const date of dates) {
+    if (date < start) continue; // before the habit existed — not evaluable
     if (!isScheduledDay(habit, date)) continue;
     scheduledDays++;
     const status = statusOn(habit, entries, date);
@@ -131,9 +164,15 @@ const INTENSITY: Record<HabitCheckStatus, number> = { done: 1, partial: 0.6, ski
 
 /** Last `days` cells (oldest → newest) for a habit heatmap. */
 export function heatmapCells(habit: Habit, entries: HabitEntry[], days = 35, today: string = localDateKey()): HeatCell[] {
+  const start = trackingStartKey(habit, entries, today);
   const cells: HeatCell[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const date = addLocalDays(today, -i);
+    // Days before the habit began read as inert, never as a missed slot.
+    if (date < start) {
+      cells.push({ date, status: "none", scheduled: false, intensity: 0 });
+      continue;
+    }
     const scheduled = isScheduledDay(habit, date);
     const status = statusOn(habit, entries, date);
     cells.push({
@@ -149,10 +188,20 @@ export function heatmapCells(habit: Habit, entries: HabitEntry[], days = 35, tod
 /** A short, non-punitive nudge based on the last few days. Never shames a miss. */
 export function recoveryMessage(habit: Habit, entries: HabitEntry[], today: string = localDateKey()): string {
   const streak = currentStreak(habit, entries, today);
+  const start = trackingStartKey(habit, entries, today);
   const yesterday = addLocalDays(today, -1);
   const yStatus = statusOn(habit, entries, yesterday);
   if (habit.examMode) return "Exam mode: logging only, no pressure. Do what you can.";
-  if (yStatus === "missed" || yStatus === "none") {
+  // An explicit miss is always a real signal, even on the first day.
+  if (yStatus === "missed") {
+    return "Missed yesterday — that's fine. Restart today; one rep rebuilds momentum.";
+  }
+  // A habit created yesterday-or-later was never expected yesterday, so an
+  // unlogged yesterday is not a miss — welcome it instead of scolding.
+  if (yesterday <= start) {
+    return "Fresh start. Pick the smallest version you can't say no to.";
+  }
+  if (yStatus === "none") {
     return "Missed yesterday — that's fine. Restart today; one rep rebuilds momentum.";
   }
   if (streak >= 21) return `${streak}-day rhythm. This is who you are now — protect it, don't grind it.`;

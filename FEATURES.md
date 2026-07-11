@@ -152,6 +152,16 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
   triage, 24h restart + 72h stabilization plans. No shame language.
 - Course tracker, productivity logs + Pomodoro, journal/standups, reports, habits,
   study-methods library (14 techniques with when-NOT-to-use), resources, prep lanes.
+- **Pomodoro reliability**: the clock lifecycle is owned at the app root, so a running
+  sprint keeps accurate time on any route and across reloads; wall-clock reconciliation
+  on focus/visibility/pageshow catches up backgrounded tabs; a sprint that finishes
+  while hidden logs exactly once. Short/long break sequencing follows the preset's
+  cycles-before-long-break cadence (cancelled or skipped sprints never advance it).
+- **Habit fairness**: a habit is never "missed" before it existed. Tracking starts on
+  the local calendar day the habit was created (or an explicit start date; earliest log
+  for malformed legacy records) — streaks, weekly adherence, heatmaps, and the recovery
+  message all floor at that day. Streak and recovery messaging treat an unlogged
+  creation day as a grace day, while still honoring an explicit miss.
 
 ## AI layer (local-first, review-gated)
 

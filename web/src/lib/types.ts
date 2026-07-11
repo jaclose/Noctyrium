@@ -193,6 +193,10 @@ export interface Habit {
   archived?: boolean;
   createdAt: string;
   updatedAt: string;
+  // Optional explicit tracking start (local date key or ISO). When absent the
+  // effective start is derived from createdAt (or the earliest log): a habit can
+  // never be "missed" for a day before it existed. Additive; no schema change.
+  trackingStartsAt?: string;
 }
 
 export interface HabitEntry {
