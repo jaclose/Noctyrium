@@ -133,6 +133,7 @@ describe("v26 → v27 migration", () => {
     };
     const state = { ...v26State(), schemaVersion: 31, questions: [question] };
     const result = migratePersistedState(structuredClone(state), 31);
+    expect(result.schemaVersion).toBe(32);
     expect(result.questions[0].stem).toBe(question.stem);
     expect(result.questions[0].explanation).toBe(question.explanation);
     expect(result.questions[0].correctAnswerText).toBe("Beta");
@@ -144,6 +145,19 @@ describe("v26 → v27 migration", () => {
       overallImportConfidence: 0.65,
       parserRuleIds: ["MIGRATED.LEGACY"],
     });
+  });
+
+  it("preserves existing answer text when a legacy key cannot be matched", () => {
+    const state = {
+      ...v26State(),
+      schemaVersion: 31,
+      questions: [{
+        id: "q1", stem: "Preserve me", options: [{ key: "A", text: "Alpha" }],
+        correctKey: "B", correctAnswerText: "Legacy free-text answer",
+      }],
+    };
+    const result = migratePersistedState(structuredClone(state), 31);
+    expect(result.questions[0].correctAnswerText).toBe("Legacy free-text answer");
   });
 
   it("survives a deep-legacy (v1-era) payload without throwing", () => {

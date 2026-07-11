@@ -24,39 +24,85 @@ function openVault(): Promise<IDBDatabase> {
       return;
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
+    let blocked = false;
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE_NAME)) req.result.createObjectStore(STORE_NAME);
       if (!req.result.objectStoreNames.contains(BACKUP_STORE_NAME)) req.result.createObjectStore(BACKUP_STORE_NAME);
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      if (blocked) {
+        req.result.close();
+        return;
+      }
+      req.result.onversionchange = () => req.result.close();
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error ?? new Error("Unable to open local vault"));
+    req.onblocked = () => {
+      blocked = true;
+      reject(new Error("Local vault upgrade is blocked by another tab"));
+    };
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const db = await openVault();
+function openExistingVault(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB is unavailable"));
+      return;
+    }
+    const req = indexedDB.open(DB_NAME);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(STORE_NAME)) req.result.createObjectStore(STORE_NAME);
+      if (!req.result.objectStoreNames.contains(BACKUP_STORE_NAME)) req.result.createObjectStore(BACKUP_STORE_NAME);
+    };
+    req.onsuccess = () => {
+      req.result.onversionchange = () => req.result.close();
+      resolve(req.result);
+    };
+    req.onerror = () => reject(req.error ?? new Error("Unable to open existing local vault"));
+  });
+}
+
+async function withStore<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+  open: () => Promise<IDBDatabase> = openVault,
+): Promise<T> {
+  const db = await open();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, mode);
     const req = run(tx.objectStore(STORE_NAME));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error ?? new Error("Local vault request failed"));
-    tx.oncomplete = () => db.close();
+    let result: T;
+    let settled = false;
+    req.onsuccess = () => { result = req.result; };
+    req.onerror = () => {
+      if (!settled) reject(req.error ?? new Error("Local vault request failed"));
+      settled = true;
+    };
+    tx.oncomplete = () => {
+      db.close();
+      if (!settled) resolve(result);
+      settled = true;
+    };
     tx.onerror = () => {
       db.close();
-      reject(tx.error ?? new Error("Local vault transaction failed"));
+      if (!settled) reject(tx.error ?? new Error("Local vault transaction failed"));
+      settled = true;
     };
+    tx.onabort = tx.onerror;
   });
 }
 
 export const localVaultStorage: StateStorage = {
   async getItem(name) {
     try {
-      const value = await withStore<string | undefined>("readonly", (store) => store.get(name));
+      const value = await withStore<string | undefined>("readonly", (store) => store.get(name), openExistingVault);
       if (value) return value;
 
-      const activeUser = await withStore<string | undefined>("readonly", (store) => store.get(activeUserKey(name)));
+      const activeUser = await withStore<string | undefined>("readonly", (store) => store.get(activeUserKey(name)), openExistingVault);
       if (activeUser) {
-        const scoped = await withStore<string | undefined>("readonly", (store) => store.get(scopedStateKey(name, activeUser)));
+        const scoped = await withStore<string | undefined>("readonly", (store) => store.get(scopedStateKey(name, activeUser)), openExistingVault);
         if (scoped) return scoped;
       }
     } catch {
@@ -113,7 +159,7 @@ export const localVaultStorage: StateStorage = {
     let active = fallback?.getItem(activeUserKey(name)) ?? undefined;
     if (!active) {
       try {
-        active = await withStore<string | undefined>("readonly", (store) => store.get(activeUserKey(name)));
+        active = await withStore<string | undefined>("readonly", (store) => store.get(activeUserKey(name)), openExistingVault);
       } catch {
         // Continue with the localStorage cleanup path below.
       }
@@ -127,7 +173,7 @@ export const localVaultStorage: StateStorage = {
         store.delete(activeUserKey(name));
         if (active) store.delete(scopedStateKey(name, active));
         return store.get(name);
-      });
+      }, openExistingVault);
     } catch {
       // No-op; best effort cleanup.
     }
@@ -140,6 +186,7 @@ function persistedUserId(raw: string): string {
       state?: { profile?: { userId?: unknown; name?: unknown } };
     };
     const profile = parsed.state?.profile;
+    if (!profile) return "";
     if (typeof profile?.userId === "string" && profile.userId.trim()) return profile.userId;
     return userIdFromName(typeof profile?.name === "string" ? profile.name : "");
   } catch {

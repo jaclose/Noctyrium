@@ -16,10 +16,13 @@ async function bootstrap() {
   if (!rootElement) return;
   const startupStatus = await runStorageMigrations();
   const { default: App } = await import("./App");
+  const analyticsEnabled = import.meta.env.PROD && (
+    location.hostname.endsWith(".vercel.app") || import.meta.env.VITE_ENABLE_ANALYTICS === "true"
+  );
   createRoot(rootElement).render(
     <StrictMode>
       <App startupStatus={startupStatus} />
-      <Analytics />
+      {analyticsEnabled && <Analytics />}
     </StrictMode>,
   );
 }

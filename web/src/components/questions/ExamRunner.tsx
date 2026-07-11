@@ -22,18 +22,23 @@ import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { QuizFeedback } from "./QuizFeedback";
 import { cleanExplanationText } from "../../lib/questionExplanation";
+import { accuracyTone } from "../../lib/library";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
 
 type Stage = "setup" | "running" | "results";
 
-export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClose }: {
+export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, presetTimed = false, blockId, onClose }: {
   mode: QuizMode;
   /** When set, skips setup and runs exactly these questions (retake missed). */
   retakeIds?: string[];
   /** Pre-fill the setup (run-from-set, saved blocks). */
   presetFilters?: Partial<QuizFilters>;
+  /** Preserve the timer setting when reopening a saved block/session. */
+  presetTimed?: boolean;
+  /** Saved block whose last-run timestamp advances only when the run begins. */
+  blockId?: string;
   onClose: () => void;
 }) {
   const s = useStore();
@@ -49,7 +54,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   const [examType, setExamType] = useState<QuestionExamType | "">(presetFilters?.examTypes?.[0] ?? "");
   const [setIds, setSetIds] = useState<string[]>(presetFilters?.setIds ?? []);
   const [ordered, setOrdered] = useState(presetFilters?.ordered ?? false);
-  const [timed, setTimed] = useState(false);
+  const [timed, setTimed] = useState(presetTimed);
+  const [runBlockId, setRunBlockId] = useState(blockId);
   const [minutesPerQ] = useState(1.5);
 
   // --- run state
@@ -92,18 +98,18 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   useEffect(() => {
     if (stage !== "running" || !question) return;
     function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="button"]')) return;
       const letter = e.key.toUpperCase();
-      if (/^[A-H]$/.test(letter) && question!.options.some((o) => o.key === letter)) {
+      if (letter === "F") {
+        toggleFlag();
+        e.preventDefault();
+      } else if (/^[A-E]$/.test(letter) && question!.options.some((o) => o.key === letter)) {
         if (!(mode === "tutor" && revealed)) setPicked(letter);
         e.preventDefault();
       } else if (e.key === "Enter") {
         if (mode === "tutor") { if (!revealed && picked) submitTutor(); else if (revealed) nextQuestion(); }
         else if (picked) submitExamAndNext();
-        e.preventDefault();
-      } else if (letter === "F") {
-        toggleFlag();
         e.preventDefault();
       } else if (/^[1-5]$/.test(e.key) && mode === "tutor" && revealed) {
         // 1–5 sets confidence once the answer is revealed.
@@ -121,7 +127,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, question?.id, revealed, picked, mode]);
+  }, [stage, question?.id, revealed, picked, mode, errorType, confidence]);
 
   function currentFilters(): QuizFilters {
     return {
@@ -137,14 +143,16 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
   function saveAsBlock() {
     const title = prompt("Name this block (it appears in Block Builder):", "");
     if (!title?.trim()) return;
+    const id = crypto.randomUUID();
     s.saveQuizBlock({
-      id: crypto.randomUUID(),
+      id,
       title: title.trim(),
       mode,
       timed,
       filters: currentFilters(),
       createdAt: new Date().toISOString(),
     });
+    setRunBlockId(id);
     pushToast({ title: "Block saved", body: "Rerun it any time from Block Builder.", tone: "success" });
   }
 
@@ -155,9 +163,14 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
       pushToast({ title: "No questions match", body: "Loosen the filters or import more questions first.", tone: "warn" });
       return;
     }
+    const runStartedAt = new Date().toISOString();
     setPool(built);
-    setStartedAt(new Date().toISOString());
+    setStartedAt(runStartedAt);
     setShownAt(Date.now());
+    if (runBlockId) {
+      const savedBlock = (s.quizBlocks ?? []).find((block) => block.id === runBlockId);
+      if (savedBlock) s.saveQuizBlock({ ...savedBlock, lastRunAt: runStartedAt });
+    }
     setStage("running");
   }
 
@@ -341,9 +354,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
             <GButton variant="primary" onClick={begin}><Play size={14} /> Start {mode} block</GButton>
           </>
         }>
-        <div className="row" style={{ gap: 6 }}>
+        <div className="row" style={{ gap: 6 }} role="group" aria-label="Block mode">
           {(["tutor", "exam"] as QuizMode[]).map((m) => (
-            <button key={m} className={`filter-pill ${mode === m ? "on" : ""}`} onClick={() => setMode(m)}>
+            <button type="button" key={m} className={`filter-pill ${mode === m ? "on" : ""}`}
+              aria-pressed={mode === m} onClick={() => setMode(m)}>
               {m === "tutor" ? "Tutor (feedback per question)" : "Exam (feedback at the end)"}
             </button>
           ))}
@@ -351,9 +365,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         {questionSets.length > 0 && (
           <div className="stack gap6">
             <span className="field-label">Question sets (none selected = whole bank)</span>
-            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }} role="group" aria-label="Question sets">
               {questionSets.map((qset) => (
-                <button key={qset.id} className={`filter-pill ${setIds.includes(qset.id) ? "on" : ""}`}
+                <button type="button" key={qset.id} className={`filter-pill ${setIds.includes(qset.id) ? "on" : ""}`}
+                  aria-pressed={setIds.includes(qset.id)}
                   onClick={() => setSetIds((prev) => prev.includes(qset.id) ? prev.filter((x) => x !== qset.id) : [...prev, qset.id])}>
                   {qset.title} ({qset.questionIds.length})
                 </button>
@@ -363,17 +378,19 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         )}
         <div className="stack gap6">
           <span className="field-label">How many questions</span>
-          <div className="row" style={{ flexWrap: "wrap" }}>
+          <div className="row" style={{ flexWrap: "wrap" }} role="group" aria-label="Question count">
             {[5, 10, 20, 40].map((n) => (
-              <button key={n} className={`filter-pill ${count === n ? "on" : ""}`} onClick={() => setCount(n)}>{n}</button>
+              <button type="button" key={n} className={`filter-pill ${count === n ? "on" : ""}`}
+                aria-pressed={count === n} onClick={() => setCount(n)}>{n}</button>
             ))}
           </div>
         </div>
         <div className="stack gap6">
           <span className="field-label">Pool</span>
-          <div className="row" style={{ flexWrap: "wrap" }}>
+          <div className="row" style={{ flexWrap: "wrap" }} role="group" aria-label="Question pool">
             {([["all", "All"], ["unused", "Unused only"], ["incorrect", "Incorrect only"], ["marked", "Marked only"]] as Array<[QuizFilters["status"], string]>).map(([v, label]) => (
-              <button key={v} className={`filter-pill ${status === v ? "on" : ""}`} onClick={() => setStatus(v)}>{label}</button>
+              <button type="button" key={v} className={`filter-pill ${status === v ? "on" : ""}`}
+                aria-pressed={status === v} onClick={() => setStatus(v)}>{label}</button>
             ))}
           </div>
         </div>
@@ -424,7 +441,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
           </>
         }>
         <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-          <Tag tone={session.score && session.score.pct >= 70 ? "green" : "orange"}>
+          <Tag tone={accuracyTone(session.score?.pct ?? null)}>
             {session.score?.correct}/{session.score?.scored} correct ({session.score?.pct}%)
           </Tag>
           <Tag tone="neutral">{session.mode} mode</Tag>
@@ -475,7 +492,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
           ? (
             <>
               <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={14} /> Previous</GhostButton>
-              <GhostButton onClick={toggleFlag}><Flag size={13} /> {answer?.flagged ? "Flagged" : "Mark review"}</GhostButton>
+              <GhostButton onClick={toggleFlag} aria-pressed={answer?.flagged ?? false}>
+                <Flag size={13} /> {answer?.flagged ? "Flagged" : "Mark review"}
+              </GhostButton>
               {!revealed
                 ? <GButton variant="primary" disabled={!picked} onClick={submitTutor}>Check answer</GButton>
                 : <GButton variant="primary" onClick={nextQuestion}>{index + 1 >= pool.length ? "Finish block" : "Next question"}</GButton>}
@@ -503,7 +522,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
         {question.examType && <Tag tone="neutral">{EXAM_TYPE_LABEL[question.examType]}</Tag>}
         {question.sourcePage && <Tag tone="neutral">p.{question.sourcePage}</Tag>}
         {question.bank && <span className="sub truncate" style={{ maxWidth: 200 }}>{question.bank}</span>}
-        <GhostButton onClick={toggleFlag} aria-label="Flag question">
+        <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
           <Flag size={13} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
         </GhostButton>
       </div>
@@ -516,8 +535,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
           const showCorrect = revealed && question.correctKey === opt.key;
           const showWrong = revealed && isPicked && question.correctKey !== opt.key;
           return (
-            <button key={opt.key}
+            <button type="button" key={opt.key}
               className={`option-row ${isPicked ? "picked" : ""} ${showCorrect ? "correct" : ""} ${showWrong ? "wrong" : ""}`}
+              aria-label={`${opt.key}. ${opt.text}`}
+              aria-pressed={isPicked}
               disabled={revealed}
               onClick={() => setPicked(opt.key)}>
               <span className="mono option-key">{opt.key}</span>
@@ -577,9 +598,11 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, onClos
               </SelectField>
               <div className="stack gap6">
                 <span className="field-label">Confidence in this material now (press 1–5)</span>
-                <div className="row">
+                <div className="row" role="group" aria-label="Confidence in this material">
                   {([1, 2, 3, 4, 5] as const).map((n) => (
-                    <button key={n} className={`filter-pill ${confidence === n ? "on" : ""}`} onClick={() => setConfidence(n)}>{n}</button>
+                    <button type="button" key={n} className={`filter-pill ${confidence === n ? "on" : ""}`}
+                      aria-label={`Confidence ${n} of 5`} aria-pressed={confidence === n}
+                      onClick={() => setConfidence(n)}>{n}</button>
                   ))}
                 </div>
               </div>

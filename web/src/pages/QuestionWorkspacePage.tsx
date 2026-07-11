@@ -38,6 +38,7 @@ interface RunnerLaunch {
   mode: QuizMode;
   retakeIds?: string[];
   presetFilters?: Partial<QuizFilters>;
+  presetTimed?: boolean;
   blockId?: string;
 }
 
@@ -100,8 +101,7 @@ export function QuestionWorkspacePage() {
     setRunner({ mode: "tutor", presetFilters: { setIds: [set.id], count: Math.min(set.questionIds.length, 20) } });
   }
   function runBlock(block: QuizBlock) {
-    s.saveQuizBlock({ ...block, lastRunAt: new Date().toISOString() });
-    setRunner({ mode: block.mode, presetFilters: block.filters, blockId: block.id });
+    setRunner({ mode: block.mode, presetFilters: block.filters, presetTimed: block.timed, blockId: block.id });
   }
   function generateFrom(doc: SourceDocument) {
     setImportSeed({ reference: { title: doc.title, text: doc.rawText } });
@@ -168,7 +168,7 @@ export function QuestionWorkspacePage() {
                 <Boxes size={15} /> Build block
               </button>
               <button className="qb-cta ghost" disabled={!lastSession && !runnable} onClick={() => {
-                if (lastSession) setRunner({ mode: lastSession.mode, presetFilters: lastSession.filters });
+                if (lastSession) setRunner({ mode: lastSession.mode, presetFilters: lastSession.filters, presetTimed: lastSession.timed });
                 else setRunner({ mode: "tutor" });
               }}>
                 <Play size={15} /> Continue last block
@@ -371,6 +371,8 @@ export function QuestionWorkspacePage() {
           mode={runner.mode}
           retakeIds={runner.retakeIds}
           presetFilters={runner.presetFilters}
+          presetTimed={runner.presetTimed}
+          blockId={runner.blockId}
           onClose={() => setRunner(null)}
         />
       )}

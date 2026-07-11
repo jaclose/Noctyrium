@@ -1,5 +1,6 @@
 import { BUILD_INFO } from "./buildInfo";
 import { STORAGE_KEYS } from "./brand";
+import { localVaultStorage } from "./localVault";
 
 export type AiGenerationKind =
   | "question-analysis"
@@ -37,43 +38,46 @@ export type AiGenerationInput = Omit<AiGenerationRecord, "id" | "createdAt" | "u
 const AI_GENERATION_SCHEMA_VERSION = 1;
 const MAX_GENERATION_RECORDS = 250;
 const KINDS: AiGenerationKind[] = ["question-analysis", "flashcards", "study-plan", "summary", "taxonomy", "other"];
+let mutationQueue: Promise<void> = Promise.resolve();
 
-export function loadAiGenerations(): AiGenerationRecord[] {
-  return loadAiGenerationStore().records;
+export async function loadAiGenerations(): Promise<AiGenerationRecord[]> {
+  return (await loadAiGenerationStore()).records;
 }
 
-export function saveAiGeneration(input: AiGenerationInput): AiGenerationRecord {
-  const store = loadAiGenerationStore();
-  const now = new Date().toISOString();
-  const sourceIds = normalizeStringList(input.sourceIds);
-  const existingIndex = store.records.findIndex((record) =>
-    (input.id && record.id === input.id) ||
-    (input.inputHash && record.inputHash === input.inputHash && record.kind === input.kind),
-  );
-  const previous = existingIndex >= 0 ? store.records[existingIndex] : undefined;
-  const record: AiGenerationRecord = {
-    id: previous?.id ?? input.id ?? crypto.randomUUID(),
-    kind: input.kind,
-    title: input.title.trim() || "AI generation",
-    inputHash: input.inputHash,
-    sourceIds: sourceIds.length ? sourceIds : undefined,
-    createdAt: previous?.createdAt ?? input.createdAt ?? now,
-    updatedAt: now,
-    model: input.model,
-    promptVersion: input.promptVersion,
-    content: input.content,
-    metadata: input.metadata,
-  };
-  const records = existingIndex >= 0
-    ? store.records.map((item, index) => (index === existingIndex ? record : item))
-    : [record, ...store.records];
-  persistAiGenerationStore({
-    schemaVersion: AI_GENERATION_SCHEMA_VERSION,
-    records: records
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .slice(0, MAX_GENERATION_RECORDS),
+export async function saveAiGeneration(input: AiGenerationInput): Promise<AiGenerationRecord> {
+  return serializeMutation(async () => {
+    const store = await loadAiGenerationStore();
+    const now = new Date().toISOString();
+    const sourceIds = normalizeStringList(input.sourceIds);
+    const existingIndex = store.records.findIndex((record) =>
+      (input.id && record.id === input.id) ||
+      (input.inputHash && record.inputHash === input.inputHash && record.kind === input.kind),
+    );
+    const previous = existingIndex >= 0 ? store.records[existingIndex] : undefined;
+    const record: AiGenerationRecord = {
+      id: previous?.id ?? input.id ?? crypto.randomUUID(),
+      kind: input.kind,
+      title: input.title.trim() || "AI generation",
+      inputHash: input.inputHash,
+      sourceIds: sourceIds.length ? sourceIds : undefined,
+      createdAt: previous?.createdAt ?? input.createdAt ?? now,
+      updatedAt: now,
+      model: input.model,
+      promptVersion: input.promptVersion,
+      content: input.content,
+      metadata: input.metadata,
+    };
+    const records = existingIndex >= 0
+      ? store.records.map((item, index) => (index === existingIndex ? record : item))
+      : [record, ...store.records];
+    await persistAiGenerationStore({
+      schemaVersion: AI_GENERATION_SCHEMA_VERSION,
+      records: records
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, MAX_GENERATION_RECORDS),
+    });
+    return record;
   });
-  return record;
 }
 
 export function hashGenerationInput(input: unknown): string {
@@ -86,17 +90,23 @@ export function hashGenerationInput(input: unknown): string {
   return (hash >>> 0).toString(16);
 }
 
-export function migrateAiGenerationStorage(): void {
-  const store = loadAiGenerationStore();
-  persistAiGenerationStore(store);
+export async function migrateAiGenerationStorage(): Promise<void> {
+  await serializeMutation(async () => {
+    const store = await loadAiGenerationStore();
+    await persistAiGenerationStore(store);
+  });
 }
 
-function loadAiGenerationStore(): AiGenerationStore {
+function serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = mutationQueue.then(operation, operation);
+  mutationQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
+async function loadAiGenerationStore(): Promise<AiGenerationStore> {
   const fallback: AiGenerationStore = { schemaVersion: AI_GENERATION_SCHEMA_VERSION, records: [] };
-  const storage = getLocalStorage();
-  if (!storage) return fallback;
   try {
-    const raw = storage.getItem(STORAGE_KEYS.aiGenerations);
+    const raw = await localVaultStorage.getItem(STORAGE_KEYS.aiGenerations);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as unknown;
     if (Array.isArray(parsed)) {
@@ -114,11 +124,9 @@ function loadAiGenerationStore(): AiGenerationStore {
   return fallback;
 }
 
-function persistAiGenerationStore(store: AiGenerationStore) {
-  const storage = getLocalStorage();
-  if (!storage) return;
+async function persistAiGenerationStore(store: AiGenerationStore): Promise<void> {
   try {
-    storage.setItem(STORAGE_KEYS.aiGenerations, JSON.stringify({
+    await localVaultStorage.setItem(STORAGE_KEYS.aiGenerations, JSON.stringify({
       schemaVersion: AI_GENERATION_SCHEMA_VERSION,
       build: {
         version: BUILD_INFO.version,
@@ -176,14 +184,6 @@ function stableValue(value: unknown): unknown {
   }
   if (["string", "number", "boolean"].includes(typeof value)) return value;
   return String(value);
-}
-
-function getLocalStorage(): Storage | null {
-  try {
-    return typeof localStorage === "undefined" ? null : localStorage;
-  } catch {
-    return null;
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

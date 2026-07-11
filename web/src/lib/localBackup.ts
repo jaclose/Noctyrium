@@ -145,7 +145,13 @@ export async function pruneLocalBackups(keep = DEFAULT_BACKUP_LIMIT): Promise<vo
     : [];
   const indexedDbKeys = await listBackupRecordKeys().catch(() => []);
   const keys = [...new Set([...localKeys, ...indexedDbKeys])].sort((a, b) => b.localeCompare(a));
-  for (const key of keys.slice(Math.max(0, keep))) {
+  const recoverable: string[] = [];
+  for (const key of keys) {
+    if (await readLocalBackup(key)) recoverable.push(key);
+  }
+  // Unreadable markers never count toward retention. A temporary IndexedDB
+  // outage must not let newer metadata displace the last verified snapshot.
+  for (const key of recoverable.slice(Math.max(0, keep))) {
     storage?.removeItem(key);
     await deleteBackupRecord(key).catch(() => undefined);
   }
@@ -193,7 +199,7 @@ function getLocalStorage(): Storage | null {
 
 async function readVaultIndexedDb(): Promise<NonNullable<LocalBackupSnapshot["indexedDb"]>> {
   if (typeof indexedDB === "undefined") throw new Error("IndexedDB is unavailable");
-  const db = await openVault();
+  const db = await openExistingVault();
   try {
     const tx = db.transaction(VAULT_STORE_NAME, "readonly");
     const store = tx.objectStore(VAULT_STORE_NAME);
@@ -214,6 +220,7 @@ async function readVaultIndexedDb(): Promise<NonNullable<LocalBackupSnapshot["in
 function openVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(STORAGE_KEYS.vaultDb, VAULT_DB_VERSION);
+    let blocked = false;
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
         request.result.createObjectStore(VAULT_STORE_NAME);
@@ -222,9 +229,38 @@ function openVault(): Promise<IDBDatabase> {
         request.result.createObjectStore(BACKUP_STORE_NAME);
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      if (blocked) {
+        request.result.close();
+        return;
+      }
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error ?? new Error("Unable to open local vault"));
-    request.onblocked = () => reject(new Error("Local vault is blocked by another tab"));
+    request.onblocked = () => {
+      blocked = true;
+      reject(new Error("Local vault is blocked by another tab"));
+    };
+  });
+}
+
+function openExistingVault(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(STORAGE_KEYS.vaultDb);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
+        request.result.createObjectStore(VAULT_STORE_NAME);
+      }
+      if (!request.result.objectStoreNames.contains(BACKUP_STORE_NAME)) {
+        request.result.createObjectStore(BACKUP_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
+    request.onerror = () => reject(request.error ?? new Error("Unable to open existing local vault"));
   });
 }
 
@@ -250,12 +286,28 @@ async function withBackupStore<T>(
   run: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
   const db = await openVault();
-  try {
+  return new Promise((resolve, reject) => {
     const tx = db.transaction(BACKUP_STORE_NAME, mode);
-    return await requestResult(run(tx.objectStore(BACKUP_STORE_NAME)));
-  } finally {
-    db.close();
-  }
+    const request = run(tx.objectStore(BACKUP_STORE_NAME));
+    let result: T;
+    let settled = false;
+    request.onsuccess = () => { result = request.result; };
+    request.onerror = () => {
+      if (!settled) reject(request.error ?? new Error("IndexedDB backup request failed"));
+      settled = true;
+    };
+    tx.oncomplete = () => {
+      db.close();
+      if (!settled) resolve(result);
+      settled = true;
+    };
+    tx.onerror = () => {
+      db.close();
+      if (!settled) reject(tx.error ?? new Error("IndexedDB backup transaction failed"));
+      settled = true;
+    };
+    tx.onabort = tx.onerror;
+  });
 }
 
 async function migrateLegacyBackupsToIndexedDb(storage: Storage | null): Promise<void> {

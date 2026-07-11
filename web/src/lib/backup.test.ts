@@ -66,4 +66,37 @@ describe("portable backup safety", () => {
     expect(merged.questions.find((question) => question.id === "q1")?.stem).toBe("Current stem");
     expect(merged.questions.find((question) => question.id === "q2")?.stem).toBe("New question");
   });
+
+  it("merges unique attempt history for the same question instead of dropping the older side", () => {
+    const current = makeSeed();
+    current.questions = [{
+      id: "q1", source: "manual", stem: "Current", options: [], status: "correct", tags: [],
+      attempts: [{ at: "2026-07-01T00:00:00.000Z", status: "correct", answerKey: "A" }],
+      createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-03T00:00:00.000Z",
+    }];
+    const imported = makeSeed();
+    imported.questions = [{
+      ...current.questions[0], stem: "Imported older", status: "incorrect",
+      attempts: [{ at: "2026-07-02T00:00:00.000Z", status: "incorrect", answerKey: "B" }],
+      updatedAt: "2026-07-02T00:00:00.000Z",
+    }];
+    const merged = mergeStates(current, imported);
+    expect(merged.questions[0].stem).toBe("Current");
+    expect(merged.questions[0].attempts.map((attempt) => attempt.answerKey)).toEqual(["A", "B"]);
+  });
+
+  it("upgrades a v31 portable import to v32 without erasing answer text", () => {
+    const legacy = makeSeed() as unknown as Record<string, unknown>;
+    legacy.schemaVersion = 31;
+    legacy.questions = [{
+      id: "q1", stem: "Legacy", options: [{ key: "A", text: "Alpha" }], correctKey: "B",
+      correctAnswerText: "Legacy answer", extraction: { confidence: "medium", reviewed: false },
+      source: "manual", status: "unseen", tags: [], attempts: [],
+      createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
+    }];
+    const parsed = parseImport(JSON.stringify(legacy));
+    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.questions[0].correctAnswerText).toBe("Legacy answer");
+    expect(parsed.questions[0].extraction?.overallImportConfidence).toBe(0.65);
+  });
 });

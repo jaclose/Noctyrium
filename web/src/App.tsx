@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
@@ -83,11 +83,29 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const [settings, setSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
   const [refreshing, setRefreshing] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const onboarded = useStore((s) => s.profile.onboarded);
   const tourDone = useStore((s) => s.profile.tourDone);
   const updateProfile = useStore((s) => s.updateProfile);
   // Show the tour once after onboarding; "Replay tour" simply clears tourDone.
   const showTour = onboarded && !tourDone;
+
+  const closeDrawer = useCallback(() => {
+    if (!drawer) return;
+    setDrawer(false);
+    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, [drawer]);
+
+  useEffect(() => {
+    if (!drawer) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeDrawer();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeDrawer, drawer]);
 
   useEffect(() => {
     if (!startupStatus) return;
@@ -200,7 +218,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
           onSelect={go}
           onOpenSettings={(tab) => { setSettingsTab(tab ?? "general"); setSettings(true); }}
           collapsed={drawer}
-          onClose={() => setDrawer(false)}
+          onClose={closeDrawer}
         />
 
         <div className="surface">
@@ -208,6 +226,8 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
             title={nav.label}
             subtitle={nav.subtitle}
             onMenu={() => setDrawer(true)}
+            menuButtonRef={menuButtonRef}
+            drawerOpen={drawer}
             onRefresh={refresh}
             refreshing={refreshing}
           />

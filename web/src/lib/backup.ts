@@ -5,6 +5,7 @@ import type { NoctyriumState } from "./types";
 import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
+import { normalizeQuestionTaxonomy } from "./questions";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { resolveTrack } from "./tracks";
 
@@ -14,6 +15,10 @@ const DATA_KEYS = [
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
   "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
 ] as const;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export function toPortableState(state: NoctyriumState): NoctyriumState {
   const payload: Record<string, unknown> = {};
@@ -78,7 +83,9 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     if (key === "boardPrep") continue;
     const a = Array.isArray(cur[key]) ? cur[key] as Array<Record<string, unknown>> : [];
     const b = Array.isArray(imp[key]) ? imp[key] as Array<Record<string, unknown>> : [];
-    merged[key] = mergeById(a, b, key === "dayPlans" ? "dayKey" : key === "dailyArchives" ? "date" : "id");
+    merged[key] = key === "questions"
+      ? mergeQuestionsById(a, b)
+      : mergeById(a, b, key === "dayPlans" ? "dayKey" : key === "dailyArchives" ? "date" : "id");
   }
   // boardPrep is a keyed map — imported lanes fill gaps, current lanes win ties by `updated`.
   const curPrep = (cur.boardPrep ?? {}) as Record<string, { updated?: string } | undefined>;
@@ -115,6 +122,51 @@ function mergeById(
   return [...byId.values(), ...unkeyed];
 }
 
+function mergeQuestionsById(
+  current: Array<Record<string, unknown>>,
+  imported: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  const stamp = (record: Record<string, unknown>) =>
+    String(record.updatedAt ?? record.updated ?? record.createdAt ?? record.created ?? "");
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const record of imported) {
+    const id = String(record.id ?? "");
+    if (id) byId.set(id, record);
+  }
+  for (const record of current) {
+    const id = String(record.id ?? "");
+    if (!id) continue;
+    const other = byId.get(id);
+    if (!other) {
+      byId.set(id, record);
+      continue;
+    }
+    const newer = stamp(record) >= stamp(other) ? record : other;
+    const older = newer === record ? other : record;
+    byId.set(id, {
+      ...older,
+      ...newer,
+      attempts: mergeQuestionAttempts(older.attempts, newer.attempts),
+    });
+  }
+  const unkeyed = [...current, ...imported].filter((record) => !String(record.id ?? ""));
+  return [...byId.values(), ...unkeyed];
+}
+
+function mergeQuestionAttempts(left: unknown, right: unknown): Array<Record<string, unknown>> {
+  const attempts = [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]
+    .filter(isRecord);
+  const byFingerprint = new Map<string, Record<string, unknown>>();
+  for (const attempt of attempts) {
+    const fingerprint = [
+      attempt.at, attempt.answerKey, attempt.status, attempt.confidence,
+      attempt.timeSpentSeconds, attempt.changedFromKey, attempt.errorType, attempt.note,
+    ].map((value) => String(value ?? "")).join("\u001f");
+    byFingerprint.set(fingerprint, attempt);
+  }
+  return [...byFingerprint.values()].sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")));
+}
+
 export function parseImport(text: string): NoctyriumState {
   const data = JSON.parse(text);
   if (!data || typeof data !== "object" || !Array.isArray(data.terms)) {
@@ -132,8 +184,9 @@ export function parseImport(text: string): NoctyriumState {
   const activeFocus = focusOption(activeFocusId);
   const educationTrack = resolveTrack(typeof profile.educationTrack === "string" ? profile.educationTrack : undefined).id;
 
+  const importedSchemaVersion = typeof data.schemaVersion === "number" ? data.schemaVersion : 0;
   return {
-    schemaVersion: data.schemaVersion ?? SCHEMA_VERSION,
+    schemaVersion: SCHEMA_VERSION,
     profile: {
       name,
       userId: typeof profile.userId === "string" && profile.userId.trim() ? profile.userId : userIdFromName(name),
@@ -200,7 +253,9 @@ export function parseImport(text: string): NoctyriumState {
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
     closeouts: Array.isArray(data.closeouts) ? data.closeouts : [],
     recoveryPlans: Array.isArray(data.recoveryPlans) ? data.recoveryPlans : [],
-    questions: Array.isArray(data.questions) ? data.questions : [],
+    questions: Array.isArray(data.questions)
+      ? data.questions.map((question: unknown) => migrateImportedQuestion(question, importedSchemaVersion))
+      : [],
     quizSessions: Array.isArray(data.quizSessions) ? data.quizSessions : [],
     documents: Array.isArray(data.documents) ? data.documents : [],
     questionSets: Array.isArray(data.questionSets) ? data.questionSets : [],
@@ -208,6 +263,42 @@ export function parseImport(text: string): NoctyriumState {
     ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
     cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
   } as NoctyriumState;
+}
+
+function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
+  if (!isRecord(value)) return value;
+  const question = { ...value };
+  if (fromVersion < 31) {
+    question.taxonomy = normalizeQuestionTaxonomy(question.taxonomy, question) ?? {};
+  }
+  if (fromVersion < 32) {
+    const extraction = isRecord(question.extraction) ? question.extraction : undefined;
+    const scoreFor = (confidence: unknown) => confidence === "high" ? 0.9 : confidence === "medium" ? 0.65 : 0.35;
+    const correctKey = typeof question.correctKey === "string" ? question.correctKey : undefined;
+    const options = Array.isArray(question.options) ? question.options : [];
+    const matched = options.find((option) => isRecord(option) && option.key === correctKey);
+    const existingAnswerText = typeof question.correctAnswerText === "string" && question.correctAnswerText.trim()
+      ? question.correctAnswerText
+      : undefined;
+    question.correctAnswerText = matched && typeof matched.text === "string" ? matched.text : existingAnswerText;
+    if (extraction) {
+      question.extraction = {
+        ...extraction,
+        questionDetectionConfidence: typeof extraction.questionDetectionConfidence === "number"
+          ? extraction.questionDetectionConfidence : scoreFor(extraction.confidence),
+        answerDetectionConfidence: typeof extraction.answerDetectionConfidence === "number"
+          ? extraction.answerDetectionConfidence : correctKey ? scoreFor(extraction.confidence) : 0.1,
+        explanationDetectionConfidence: typeof extraction.explanationDetectionConfidence === "number"
+          ? extraction.explanationDetectionConfidence
+          : typeof question.explanation === "string" && question.explanation.trim() ? scoreFor(extraction.confidence) : 0.15,
+        overallImportConfidence: typeof extraction.overallImportConfidence === "number"
+          ? extraction.overallImportConfidence : scoreFor(extraction.confidence),
+        warnings: Array.isArray(extraction.warnings) ? extraction.warnings : [],
+        parserRuleIds: Array.isArray(extraction.parserRuleIds) ? extraction.parserRuleIds : ["MIGRATED.LEGACY"],
+      };
+    }
+  }
+  return question;
 }
 
 function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumState["profile"]["dashboardWidgetOrder"]> {

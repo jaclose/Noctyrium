@@ -1,7 +1,7 @@
 import { indexedDB as fakeIndexedDb, IDBKeyRange } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STORAGE_KEYS } from "./brand";
-import { createLocalBackup, listLocalBackups, readLocalBackup } from "./localBackup";
+import { createLocalBackup, listLocalBackups, pruneLocalBackups, readLocalBackup } from "./localBackup";
 import { localVaultStorage } from "./localVault";
 
 const values = new Map<string, string>();
@@ -66,6 +66,20 @@ describe("automatic local migration backups", () => {
     const raw = localStorage.getItem(key!);
     expect(raw).toContain("fallback");
     expect((await readLocalBackup(key!))?.oldSchemaVersion).toBe(31);
+  });
+
+  it("does not let newer unreadable markers displace the only verified backup", async () => {
+    const persisted = JSON.stringify({ state: { profile: { userId: "jd" }, questions: [{ id: "safe" }] }, version: 32 });
+    await localVaultStorage.setItem(STORAGE_KEYS.persistedState, persisted);
+    const validKey = await createLocalBackup(31, 8);
+    for (let index = 0; index < 8; index += 1) {
+      localStorage.setItem(`${STORAGE_KEYS.localBackupPrefix}2099-01-0${index + 1}T00:00:00.000Z`, JSON.stringify({
+        storage: "indexeddb", savedAt: `2099-01-0${index + 1}T00:00:00.000Z`,
+        oldSchemaVersion: 31, appVersion: "missing", commitSha: "missing",
+      }));
+    }
+    await pruneLocalBackups(1);
+    expect(await readLocalBackup(validKey!)).not.toBeNull();
   });
 });
 

@@ -107,6 +107,7 @@
   border: 1px solid rgba(200, 169, 106, 0.18);
 }
 .tag.green { color: var(--green); background: rgba(127,184,148,0.13); border-color: rgba(127,184,148,0.2); }
+.tag.gold { color: var(--gold); background: rgba(200,169,106,0.13); border-color: rgba(200,169,106,0.22); }
 .tag.purple { color: var(--purple); background: rgba(163,150,201,0.14); border-color: rgba(163,150,201,0.2); }
 .tag.neutral { color: var(--text-60); background: rgba(230,226,214,0.06); border-color: rgba(230,226,214,0.1); }
 .tag.orange { color: var(--orange); background: rgba(217,165,102,0.14); border-color: rgba(217,165,102,0.2); }
@@ -200,6 +201,9 @@ select.field, .scope-select {
 .modal .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) {
+  .modal-scrim, .modal { animation: none; }
+}
 
 .settings-intro {
   display: grid;

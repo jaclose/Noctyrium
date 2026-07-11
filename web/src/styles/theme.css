@@ -144,5 +144,6 @@
 /* Grade helpers reused by Ring / Heatmap / pills */
 .grade-blue { color: var(--grade-blue); }
 .grade-green { color: var(--grade-green); }
+.grade-gold { color: var(--gold); }
 .grade-orange { color: var(--grade-orange); }
 .grade-red { color: var(--grade-red); }

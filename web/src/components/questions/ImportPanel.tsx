@@ -235,7 +235,7 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
             aiEnhanced: true,
             digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() },
           });
-          saveAiGeneration({
+          void saveAiGeneration({
             kind: "summary",
             title: `${setTitle || "Question set"} digest`,
             inputHash: hashGenerationInput({ kind: "question-set-digest", setId, questionIds }),
@@ -764,7 +764,7 @@ function AiGenerateTab({ seedReference, onParsed }: {
         count: Math.max(1, Math.min(10, Number(count) || 3)),
         reference: reference || undefined,
       });
-      saveAiGeneration({
+      void saveAiGeneration({
         kind: "question-analysis",
         title: topic.trim() || "AI question drafts",
         inputHash: hashGenerationInput({ topic, category: genCategory, style, difficulty, count, reference }),

@@ -84,6 +84,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   }
 
   function remove() {
+    if (!confirm("Permanently delete this question and its attempt history? It will be safely unlinked from question sets.")) return;
     s.removeQuestion(question.id);
     onClose();
   }

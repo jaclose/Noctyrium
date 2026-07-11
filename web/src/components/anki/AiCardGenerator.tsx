@@ -69,7 +69,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
         flags: reviewCardQuality({ type: d.type, front: d.front, back: d.back, source: d.source, aiGenerated: true }, existing),
         accepted: true,
       })));
-      saveAiGeneration({
+      void saveAiGeneration({
         kind: "flashcards",
         title: topic.trim() || source.trim() || "AI flashcards",
         inputHash: hashGenerationInput({ material, topic, source, style, maxCards: requestedMaxCards }),

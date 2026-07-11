@@ -236,7 +236,7 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
         enhanceQuestionSet(provider, { title: qset.title, questions: forDigest })
           .then((digest) => {
             s.updateQuestionSet(setId, { aiEnhanced: true, digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() } });
-            saveAiGeneration({
+            void saveAiGeneration({
               kind: "summary",
               title: `${qset.title} digest`,
               inputHash: hashGenerationInput({ kind: "mass-import-digest", setId, questionIds }),

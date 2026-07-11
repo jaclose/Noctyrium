@@ -42,16 +42,12 @@ const migrations: Migration[] = [
   {
     from: 0,
     to: 1,
-    run: () => {
-      migrateAiGenerationStorage();
-    },
+    run: () => migrateAiGenerationStorage(),
   },
   {
     from: 1,
     to: BUILD_INFO.schemaVersion,
-    run: () => {
-      migrateAiGenerationStorage();
-    },
+    run: () => migrateAiGenerationStorage(),
   },
 ].filter((migration) => migration.from < migration.to);
 

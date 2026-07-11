@@ -47,7 +47,29 @@ describe("IndexedDB-first local vault", () => {
     expect(await localVaultStorage.getItem(STORAGE_KEYS.persistedState)).toBeNull();
     expect(localStorage.getItem(`${STORAGE_KEYS.persistedState}:active-user`)).toBeNull();
   });
+
+  it("falls back deterministically instead of hanging when a v2 upgrade is blocked by an old tab", async () => {
+    const oldConnection = await openVersionOneVault();
+    const persisted = JSON.stringify({ state: { profile: { userId: "jd" }, questions: [{ id: "safe" }] }, version: 32 });
+    await expect(Promise.race([
+      localVaultStorage.setItem(STORAGE_KEYS.persistedState, persisted),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("setItem hung")), 500)),
+    ])).resolves.toBeUndefined();
+    expect(localStorage.getItem(STORAGE_KEYS.persistedState)).toBe(persisted);
+    oldConnection.close();
+  });
 });
+
+function openVersionOneVault(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = fakeIndexedDb.open(STORAGE_KEYS.vaultDb, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("state")) request.result.createObjectStore("state");
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
 
 function deleteDatabase(name: string): Promise<void> {
   return new Promise((resolve) => {

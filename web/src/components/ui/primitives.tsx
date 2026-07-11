@@ -50,7 +50,7 @@ export function GhostButton({
 export function Tag({
   children, tone = "cyan",
 }: {
-  children: React.ReactNode; tone?: "cyan" | "green" | "purple" | "neutral" | "orange" | "red";
+  children: React.ReactNode; tone?: "cyan" | "green" | "gold" | "purple" | "neutral" | "orange" | "red";
 }) {
   return <span className={`tag ${tone === "cyan" ? "" : tone}`}>{children}</span>;
 }

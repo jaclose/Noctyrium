@@ -423,6 +423,27 @@ describe("structured answer parsing and import diagnostics", () => {
     expect(drafts[0].parserRuleIds).toContain("answer.trailing-section");
   });
 
+  it("keeps duplicate question numbers separate but flags every affected draft", () => {
+    const drafts = parseQuestionBlocks([
+      "1. First stem?", "A. one", "B. two", "C. three", "Answer: A", "",
+      "1. Second stem?", "A. one", "B. two", "C. three", "Answer: B",
+    ].join("\n"));
+    expect(drafts).toHaveLength(2);
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 1]);
+    expect(drafts.every((draft) => draft.warnings.some((warning) => /duplicate question numbers/i.test(warning)))).toBe(true);
+    expect(drafts.every((draft) => draft.needsReview)).toBe(true);
+  });
+
+  it("does not confidently split malformed bare-number prefixes", () => {
+    const drafts = parseQuestionBlocks([
+      "1 First malformed stem?", "A. one", "B. two", "C. three", "Answer: A", "",
+      "2 Second malformed stem?", "A. one", "B. two", "C. three", "Answer: B",
+    ].join("\n"));
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].needsReview).toBe(true);
+    expect(drafts[0].questionDetectionConfidence).toBeLessThan(0.9);
+  });
+
   it("does not mistake a standalone Explanation header for an answer section", () => {
     const draft = parseQuestionBlocks([
       "1. Which cells?", "A. B cells", "B. T cells", "C. Mast cells", "Answer: B",

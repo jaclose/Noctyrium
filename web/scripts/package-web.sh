@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Build Noctyrium-web and produce downloadable packages:
+# Build AXOM-web and produce downloadable packages:
 #   1. a static web zip (unzip -> open index.html)
-#   2. a macOS app zip (unzip -> open Noctyrium.app)
+#   2. a macOS app zip (unzip -> open AXOM.app)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 VERSION="$(node -p "require('./package.json').version")"
-STATIC_OUT="Noctyrium-web-v${VERSION}.zip"
-MAC_OUT="Noctyrium-mac-v${VERSION}.zip"
+STATIC_OUT="AXOM-web-v${VERSION}.zip"
+MAC_OUT="AXOM-mac-v${VERSION}.zip"
 STAGE_ROOT=".package"
-STATIC_STAGE="$STAGE_ROOT/Noctyrium-web-v${VERSION}"
-APP_STAGE="$STAGE_ROOT/Noctyrium.app"
+STATIC_STAGE="$STAGE_ROOT/AXOM-web-v${VERSION}"
+APP_STAGE="$STAGE_ROOT/AXOM.app"
 
-echo "▸ Building Noctyrium-web v${VERSION}…"
+echo "▸ Building AXOM-web v${VERSION}…"
 npm run build
 
 echo "▸ Staging static web package…"
@@ -22,7 +22,7 @@ rm -rf "$STAGE_ROOT"
 mkdir -p "$STATIC_STAGE"
 cp -R dist/. "$STATIC_STAGE/"
 cat > "$STATIC_STAGE/README.txt" <<README
-Noctyrium Web v${VERSION}
+AXOM Web v${VERSION}
 
 Open index.html to run the app from this package.
 
@@ -34,7 +34,7 @@ This package is the built app. It does not require npm, Vite, or localhost.
 README
 
 echo "▸ Zipping ${STATIC_STAGE} → ${STATIC_OUT}"
-( cd "$STAGE_ROOT" && zip -qr "../$STATIC_OUT" "Noctyrium-web-v${VERSION}" )
+( cd "$STAGE_ROOT" && zip -qr "../$STATIC_OUT" "AXOM-web-v${VERSION}" )
 
 if [[ "$(uname -s)" == "Darwin" ]] && command -v swiftc >/dev/null 2>&1; then
   echo "▸ Building double-clickable macOS app package…"
@@ -43,7 +43,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v swiftc >/dev/null 2>&1; then
 
   swiftc "native/NoctyriumWebApp.swift" \
     -parse-as-library \
-    -o "$APP_STAGE/Contents/MacOS/Noctyrium" \
+    -o "$APP_STAGE/Contents/MacOS/AXOM" \
     -framework SwiftUI \
     -framework WebKit \
     -framework AppKit
@@ -54,13 +54,13 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v swiftc >/dev/null 2>&1; then
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>Noctyrium</string>
+  <string>AXOM</string>
   <key>CFBundleDisplayName</key>
-  <string>Noctyrium</string>
+  <string>AXOM</string>
   <key>CFBundleIdentifier</key>
   <string>com.jd.noctyrium.web</string>
   <key>CFBundleExecutable</key>
-  <string>Noctyrium</string>
+  <string>AXOM</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleVersion</key>
@@ -68,7 +68,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v swiftc >/dev/null 2>&1; then
   <key>CFBundleShortVersionString</key>
   <string>${VERSION}</string>
   <key>CFBundleIconFile</key>
-  <string>Noctyrium</string>
+  <string>AXOM</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>NSHighResolutionCapable</key>
@@ -80,7 +80,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v swiftc >/dev/null 2>&1; then
 PLIST
 
   if [[ -f "../Resources/Noctyrium.icns" ]]; then
-    cp "../Resources/Noctyrium.icns" "$APP_STAGE/Contents/Resources/Noctyrium.icns"
+    cp "../Resources/Noctyrium.icns" "$APP_STAGE/Contents/Resources/AXOM.icns"
   fi
 
   if command -v codesign >/dev/null 2>&1; then
@@ -88,13 +88,13 @@ PLIST
   fi
 
   cat > "$STAGE_ROOT/README-Mac-App.txt" <<README
-Noctyrium macOS App v${VERSION}
+AXOM macOS App v${VERSION}
 
-Open Noctyrium.app to run the current web build as a local Mac app.
+Open AXOM.app to run the current web build as a local Mac app.
 No localhost is required. Data is saved in the app/browser local vault on this Mac.
 
 This app is ad-hoc signed for local use, not notarized. If macOS blocks it after
-download, right-click Noctyrium.app and choose Open once.
+download, right-click AXOM.app and choose Open once.
 README
 
   echo "▸ Zipping ${APP_STAGE} → ${MAC_OUT}"

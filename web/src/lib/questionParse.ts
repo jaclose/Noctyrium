@@ -680,7 +680,13 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
     }
     const numbers = drafts.map((d) => d.questionNumber).filter((n): n is number => n !== undefined);
     if (new Set(numbers).size !== numbers.length) {
-      for (const d of drafts) d.warnings.push("Duplicate question numbers in this document — check the split.");
+      for (const d of drafts) {
+        d.warnings.push("Duplicate question numbers in this document — check the split.");
+        d.needsReview = true;
+        d.confidence = "low";
+        d.overallImportConfidence = Math.min(d.overallImportConfidence ?? 0.45, 0.45);
+        d.parserRuleIds = [...new Set([...(d.parserRuleIds ?? []), "conflict.duplicate-question-number"])];
+      }
     }
   }
 

@@ -164,15 +164,19 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
 
 ## Data safety & updates
 
-- IndexedDB vault + localStorage fallback; frozen `noctyrium-*` storage keys (rebrand-safe).
+- IndexedDB vault + localStorage emergency fallback; frozen `noctyrium-*` storage keys
+  remain rebrand-safe while successful writes remove full workspace mirrors from localStorage.
 - Versioned schema (v32) with **additive-only migrations** and an automatic
-  **pre-migration snapshot** before every upgrade.
+  **pre-migration snapshot** in a dedicated IndexedDB backup store before every upgrade;
+  localStorage retains only summary metadata unless IndexedDB is unavailable or blocked.
 - Schema v32 adds import diagnostics and derived answer text without rewriting stems,
   options, explanations, attempts, set links, or source links. Legacy confidence buckets
   seed conservative numeric scores and are marked with a migration rule ID.
 - JSON **export backup**, **replace-restore** (confirmed), and **merge import**
-  (union by id, newer wins, nothing deleted); diagnostics and source checksums survive
-  export/import; last-backup age tracking.
+  (union by id, newer fields win while distinct same-question attempts are combined);
+  older imports migrate to v32, and diagnostics/source checksums survive export/import.
+- AI generation artifacts use the same IndexedDB-first adapter instead of storing large
+  generated content in localStorage.
 - **Data health panel**: storage driver, record counts, schema/migration state, snapshot
   status, source-checksum health, orphan repair, and growth-based backup reminders.
 - **Update flow**: single version source (`web/src/lib/brand.ts`), deploy-difference
@@ -208,6 +212,8 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
   empty states, and the shell's gold top seam; Safari backdrop-filter fixes.
   Verified visually via headless-browser screenshots of onboarding, dashboard, and
   Question Bank.
+- Release-facing web package metadata, portable/macOS archive names, embed example,
+  and native wrapper error copy use uppercase AXOM. Frozen internal identifiers remain.
 
 ## Known Current Boundaries
 

@@ -11,6 +11,7 @@ import { dueQuestions, errorPatterns, ERROR_TYPE_LABEL, type QuestionRecord } fr
 import { coachWeakness, resolveActiveProvider } from "../../lib/ai";
 import { GlassCard, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
+import { accuracyTone } from "../../lib/library";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 
@@ -72,7 +73,7 @@ export function PerformancePanel({ onRetakeMissed }: { onRetakeMissed: (ids: str
             <span className="field-label">Recent blocks</span>
             {recent.map((session) => (
               <div key={session.id} className="row" style={{ fontSize: 13 }}>
-                <Tag tone={session.score && session.score.pct >= 70 ? "green" : "orange"}>
+                <Tag tone={accuracyTone(session.score?.pct ?? null)}>
                   {session.score?.pct ?? 0}%
                 </Tag>
                 <span className="grow">
@@ -89,7 +90,7 @@ export function PerformancePanel({ onRetakeMissed }: { onRetakeMissed: (ids: str
               {byCategory.map((c) => (
                 <div key={c.category} className="row" style={{ fontSize: 13 }}>
                   <span className="grow">{c.category}</span>
-                  <span className={c.pct < 60 ? "grade-red" : c.pct < 75 ? "grade-orange" : "grade-green"}>
+                  <span className={`grade-${accuracyTone(c.pct)}`}>
                     {c.pct}% ({c.correct}/{c.attempts})
                   </span>
                 </div>

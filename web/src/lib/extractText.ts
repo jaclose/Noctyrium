@@ -1,4 +1,6 @@
 // ===========================================================================
+
+import browserPdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 // Document text extraction (Import Center layer 1). PDF via pdfjs-dist
 // (digital text layer only — a scanned/image PDF yields no text and we say so
 // honestly; OCR remains future work). DOCX via mammoth. Both libraries load
@@ -35,17 +37,12 @@ export function extractPlainText(raw: string): ExtractedText {
 export async function extractPdfText(
   buffer: ArrayBuffer,
   pdfjsOverride?: typeof import("pdfjs-dist"),
+  workerSrcOverride?: string,
 ): Promise<ExtractedText> {
   // Tests may inject pdf.js's legacy Node adapter. Production imports only the
   // modern browser build, keeping the extra legacy runtime out of the app.
-  const nodeLike = typeof window === "undefined";
   const pdfjs = pdfjsOverride ?? await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    nodeLike
-      ? "../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs"
-      : "../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrcOverride ?? browserPdfWorkerUrl;
 
   const warnings: string[] = [];
   const loadingTask = pdfjs.getDocument({ data: buffer });

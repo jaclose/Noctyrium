@@ -1,9 +1,9 @@
 {
-  "name": "noctyrium-web",
+  "name": "axom-web",
   "private": true,
   "version": "0.0.1-prebeta",
   "type": "module",
-  "description": "Noctyrium — a premium, local-first medical-school command center, as a deployable web app.",
+  "description": "AXOM — a premium, local-first medical-school command center, as a deployable web app.",
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -b",

@@ -40,6 +40,7 @@ describe("document text extraction", () => {
     const result = await extractPdfText(
       makePdf(["Question 1 page one", "Question 2 page two"]),
       legacyPdf as unknown as typeof import("pdfjs-dist"),
+      new URL("../../node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString(),
     );
     expect(result.pages).toHaveLength(2);
     expect(result.pages[0]).toContain("Question 1 page one");

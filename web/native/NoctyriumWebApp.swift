@@ -86,7 +86,7 @@ struct NoctyriumWebView: NSViewRepresentable {
 private extension WKWebView {
     func loadNoctyrium() {
         guard let resourceURL = Bundle.main.resourceURL else {
-            loadHTMLString(errorPage("Noctyrium resources were not bundled into this app."), baseURL: nil)
+            loadHTMLString(errorPage("AXOM resources were not bundled into this app."), baseURL: nil)
             return
         }
 
@@ -95,7 +95,7 @@ private extension WKWebView {
         if FileManager.default.fileExists(atPath: index.path) {
             loadFileURL(index, allowingReadAccessTo: webRoot)
         } else {
-            loadHTMLString(errorPage("Missing WebApp/index.html inside Noctyrium.app."), baseURL: nil)
+            loadHTMLString(errorPage("Missing WebApp/index.html inside AXOM.app."), baseURL: nil)
         }
     }
 
@@ -112,13 +112,13 @@ private extension WKWebView {
                 display: grid;
                 place-items: center;
                 color: white;
-                background: radial-gradient(circle at top left, #16364a, transparent 42%), #020308;
+                background: radial-gradient(circle at top left, #292317, transparent 42%), #070707;
                 font: 15px -apple-system, BlinkMacSystemFont, "SF Pro Rounded", system-ui, sans-serif;
               }
               main {
                 width: min(560px, calc(100vw - 48px));
                 padding: 28px;
-                border: 1px solid rgba(180,226,255,.2);
+                border: 1px solid rgba(200,169,106,.24);
                 border-radius: 22px;
                 background: rgba(255,255,255,.06);
                 box-shadow: 0 24px 70px rgba(0,0,0,.5);
@@ -129,7 +129,7 @@ private extension WKWebView {
           </head>
           <body>
             <main>
-              <h1>Noctyrium could not start</h1>
+              <h1>AXOM could not start</h1>
               <p>\(message)</p>
             </main>
           </body>

@@ -878,7 +878,13 @@ export const useStore = create<Store>()(
             ? withCorrectAnswerText({ ...q, ...patch, updatedAt: now() })
             : q)),
         })),
-      removeQuestion: (id) => set((s) => ({ questions: (s.questions ?? []).filter((q) => q.id !== id) })),
+      removeQuestion: (id) => set((s) => ({
+        questions: (s.questions ?? []).filter((q) => q.id !== id),
+        questionSets: (s.questionSets ?? []).map((questionSet) => ({
+          ...questionSet,
+          questionIds: questionSet.questionIds.filter((questionId) => questionId !== id),
+        })),
+      })),
       recordQuestionAttempt: (id, attempt) =>
         set((s) => ({
           questions: (s.questions ?? []).map((q) => (q.id === id ? applyAttempt(q, attempt) : q)),
@@ -1348,9 +1354,12 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       const options = Array.isArray(question.options) ? question.options : [];
       const correctKey = typeof question.correctKey === "string" ? question.correctKey : undefined;
       const correct = options.find((option) => isRecord(option) && option.key === correctKey);
+      const existingAnswerText = typeof question.correctAnswerText === "string" && question.correctAnswerText.trim()
+        ? question.correctAnswerText
+        : undefined;
       return {
         ...question,
-        correctAnswerText: correct && typeof correct.text === "string" ? correct.text : undefined,
+        correctAnswerText: correct && typeof correct.text === "string" ? correct.text : existingAnswerText,
         extraction: extraction
           ? {
               ...extraction,
@@ -1373,6 +1382,7 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       };
     });
   }
+  s.schemaVersion = SCHEMA_VERSION;
   return s as unknown as NoctyriumState;
 }
 

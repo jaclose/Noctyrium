@@ -40,11 +40,10 @@ Last updated: 2026-07-10
 | E2E smoke test (onboarding → import → block → repair card) | next | Parser, extraction, feedback, cards, backups, migrations, and vault behavior have unit coverage; the full persisted browser journey is not automated yet. |
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
 | Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; the main index chunk still exceeds 500 kB. Route-level splitting proposed. |
-| Remaining React hook warnings (7, page-level) | in-progress | Pre-existing in large pages (Dashboard/Journal/Productivity/CourseTracker/GuidedTour/Onboarding); fix opportunistically. |
+| Remaining React hook warnings (8, page-level) | in-progress | Pre-existing in large pages (Dashboard/Journal/Productivity/CourseTracker/GuidedTour/Onboarding); fix opportunistically. |
 | Cloud sync hardening (PIN auth, sessions) | blocked | Alpha-labeled; needs real auth review before production claims. |
 | AnkiConnect verified sync (dry-run preview, deck mapping) | next | Diagnostics exist; not machine-verified. |
 | Native/Tauri shell refresh | proposed | Metadata rebranded; end-to-end native vault behavior unverified. |
-| Packaging-wrapper identity cleanup | next | The primary web UI is AXOM; legacy wrapper filenames/bundle identifiers still need a compatibility-safe release pass. |
 | Calendar integration (day plans → calendar blocks) | proposed | Standard formats (ICS) first. |
 | Premium tier activation | blocked | Scaffold shipped (`lib/tier.ts`), everything free during beta by design. |
 
@@ -57,7 +56,7 @@ Last updated: 2026-07-10
 | Application Checker maturation | proposed | Shell exists; no data gathering yet. |
 | Leaderboards | proposed | Deliberately deprioritized — conflicts with the calm tone. |
 | DAT / CASPer lanes | proposed | Light surfaces only. |
-| Accessibility pass (focus traps, contrast, reduced motion) | next | Reduced-motion partially handled; needs a dedicated pass. |
+| Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, 44px mobile nav targets, and modal/drawer reduced motion are verified. A broader contrast/screen-reader audit remains. |
 | In-app privacy/data inventory page | next | Documented in ASK report; not in-app yet. |
 
 ## Recently shipped (move log)
@@ -68,6 +67,9 @@ Last updated: 2026-07-10
   reusable design preview → moved to FEATURES.md.
 - 2026-07-10 — Full-text bank/source/set search, weak-topic next actions, optional
   weakness coach, and AI explanation cleaner → moved to FEATURES.md.
+- 2026-07-10 — IndexedDB backup hardening, same-question attempt-safe backup merge,
+  mobile/modal keyboard accessibility, bundled production PDF worker, and AXOM package/
+  wrapper identity cleanup → moved to FEATURES.md.
 - 2026-07-08 — PDF/DOCX extraction, answer-key mapping, Source Library, Question Sets,
   Block Builder, AI set digests → moved to FEATURES.md.
 - 2026-07-08 — AXOM rebrand, version unification, exam/tutor modes, quiz sessions.

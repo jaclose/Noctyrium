@@ -5,9 +5,9 @@ local-first question bank, study engine, and command center. The pre-beta is
 centered on the deployable Vite/React web app in [`web/`](web/) with optional
 Vercel serverless backend sync.
 
-> Note: the repository folder, npm package names, and all persisted storage
-> keys intentionally remain `noctyrium-*` — they are frozen legacy identifiers
-> so every existing install keeps its data across the rebrand.
+> Note: the repository folder, native compatibility type names, and persisted
+> storage keys intentionally retain some `noctyrium-*` identifiers so existing
+> installs keep their data. Release-facing package names and UI use AXOM.
 
 The app combines:
 

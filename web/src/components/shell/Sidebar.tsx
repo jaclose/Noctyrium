@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
 } from "lucide-react";
@@ -6,6 +6,27 @@ import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDE
 import { useStore } from "../../lib/store";
 import { AxomBrandLockup } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
+
+const MOBILE_SIDEBAR_QUERY = "(max-width: 880px)";
+
+function useMobileSidebar(): boolean {
+  const [mobile, setMobile] = useState(() => (
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(MOBILE_SIDEBAR_QUERY).matches
+      : false
+  ));
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+    const update = (event: MediaQueryListEvent | MediaQueryList) => setMobile(event.matches);
+    update(query);
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, []);
+
+  return mobile;
+}
 
 export function Sidebar({
   active, onSelect, onOpenSettings, collapsed, onClose,
@@ -19,6 +40,22 @@ export function Sidebar({
   const profile = useStore((s) => s.profile);
   const updateProfile = useStore((s) => s.updateProfile);
   const [manage, setManage] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobile = useMobileSidebar();
+  const hiddenOffscreen = mobile && !collapsed;
+
+  useLayoutEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    if (hiddenOffscreen) sidebar.setAttribute("inert", "");
+    else sidebar.removeAttribute("inert");
+  }, [hiddenOffscreen]);
+
+  useEffect(() => {
+    if (!mobile || !collapsed) return;
+    const frame = window.requestAnimationFrame(() => sidebarRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [collapsed, mobile]);
 
   const hidden = new Set(profile.hiddenNav ?? []);
   const toolsOpen = !profile.toolsCollapsed;
@@ -69,7 +106,14 @@ export function Sidebar({
 
   return (
     <>
-      <div className={`sidebar ${collapsed ? "open" : ""}`}>
+      <aside
+        id="app-sidebar"
+        ref={sidebarRef}
+        className={`sidebar ${collapsed ? "open" : ""}`}
+        aria-label="Primary navigation"
+        aria-hidden={hiddenOffscreen || undefined}
+        tabIndex={-1}
+      >
         <button type="button" className="server-header" onClick={() => onOpenSettings("general")} title="Profile & settings">
           <AxomBrandLockup
             className="server-brand"
@@ -175,8 +219,15 @@ export function Sidebar({
             </div>
           </div>
         </div>
-      </div>
-      {collapsed && <div className="drawer-scrim" onClick={onClose} />}
+      </aside>
+      {collapsed && (
+        <button
+          type="button"
+          className="drawer-scrim"
+          onClick={onClose}
+          aria-label="Close navigation menu"
+        />
+      )}
     </>
   );
 }
