@@ -6,6 +6,24 @@
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0d0e" />
+    <script>
+      (() => {
+        const key = "axom.theme"; // Keep in sync with STORAGE_KEYS.themePreference.
+        let preference = "system";
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored === "light" || stored === "dark" || stored === "system") preference = stored;
+        } catch { /* storage can be unavailable in private/locked contexts */ }
+        let prefersDark = true;
+        try { prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? true; } catch { /* dark is the safe brand fallback */ }
+        const theme = preference === "system" ? (prefersDark ? "dark" : "light") : preference;
+        const root = document.documentElement;
+        root.dataset.theme = theme;
+        root.dataset.themePreference = preference;
+        root.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0d0d0e" : "#f3eee3");
+      })();
+    </script>
     <meta name="description" content="AXOM — a private academic operating system. Courses, mastery tracking, sessions, questions, and recovery in one calm cockpit." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>AXOM</title>

@@ -6,11 +6,20 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import App from "../../App";
 import { useStore } from "../../lib/store";
+import { getNavModuleStatus, MODULE_STATUS_META } from "./nav";
 
 beforeEach(() => {
   window.location.hash = "#dashboard";
   useStore.setState((state) => ({
-    profile: { ...state.profile, onboarded: true, tourDone: true },
+    profile: {
+      ...state.profile,
+      onboarded: true,
+      tourDone: true,
+      hiddenNav: [],
+      prepCollapsed: false,
+      toolsCollapsed: false,
+      experimentalFlags: { ...state.profile.experimentalFlags, habits: true },
+    },
   }));
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -114,5 +123,110 @@ describe("mobile sidebar accessibility", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("button", { name: "Close navigation menu" })).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+});
+
+describe("sidebar module status", () => {
+  it("keeps status assignments and accessible presentation metadata centralized", () => {
+    expect(getNavModuleStatus("questions")).toBe("new");
+    expect(getNavModuleStatus("methods")).toBe("new");
+    expect(getNavModuleStatus("anki")).toBe("wip");
+    expect(getNavModuleStatus("habits")).toBe("wip");
+    expect(getNavModuleStatus("step")).toBe("wip");
+    expect(getNavModuleStatus("premed")).toBe("wip");
+    expect(getNavModuleStatus("integrations")).toBe("wip");
+    expect(getNavModuleStatus("appchecker")).toBe("under-construction");
+    expect(getNavModuleStatus("leaderboards")).toBe("under-construction");
+    expect(getNavModuleStatus("dashboard")).toBeUndefined();
+    expect(MODULE_STATUS_META["under-construction"]).toEqual({
+      badgeLabel: "BUILDING",
+      accessibleLabel: "Under construction",
+    });
+  });
+
+  it("renders visible badges with full accessible status names", () => {
+    render(
+      <Sidebar
+        active="dashboard"
+        onSelect={vi.fn()}
+        onOpenSettings={vi.fn()}
+        collapsed
+        onClose={vi.fn()}
+      />,
+    );
+
+    const newItem = screen.getByRole("button", { name: "Question Bank, New" });
+    expect(newItem.querySelector(".nav-status")?.textContent).toBe("NEW");
+
+    const wipItem = screen.getByRole("button", { name: "Anki Lab, Work in progress" });
+    expect(wipItem.querySelector(".nav-status")?.textContent).toBe("WIP");
+
+    const buildingItem = screen.getByRole("button", { name: "Application Checker, Under construction" });
+    const buildingBadge = buildingItem.querySelector<HTMLElement>(".nav-status");
+    expect(buildingBadge?.textContent).toBe("BUILDING");
+    expect(buildingBadge?.getAttribute("title")).toBe("Under construction");
+  });
+
+  it("keeps status treatments visible for hidden modules in customize mode", () => {
+    useStore.setState((state) => ({
+      profile: { ...state.profile, hiddenNav: ["methods"] },
+    }));
+    render(
+      <Sidebar
+        active="dashboard"
+        onSelect={vi.fn()}
+        onOpenSettings={vi.fn()}
+        collapsed
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Study Methods, New" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Customize" }));
+
+    const hiddenModule = screen.getByRole("button", { name: "Study Methods, New" });
+    expect(hiddenModule.classList.contains("off")).toBe(true);
+    expect(hiddenModule.getAttribute("aria-pressed")).toBe("false");
+    expect(hiddenModule.querySelector(".nav-status")?.textContent).toBe("NEW");
+  });
+});
+
+describe("sidebar folder disclosure accessibility", () => {
+  it("uses stable controls and keeps collapsed Academic Prep and Tools groups mounted", () => {
+    render(
+      <Sidebar
+        active="dashboard"
+        onSelect={vi.fn()}
+        onOpenSettings={vi.fn()}
+        collapsed
+        onClose={vi.fn()}
+      />,
+    );
+
+    const prepToggle = screen.getByRole("button", { name: "Academic Prep" });
+    const prepItems = document.getElementById("sidebar-academic-prep-items")!;
+    expect(prepToggle.getAttribute("id")).toBe("sidebar-academic-prep-toggle");
+    expect(prepToggle.getAttribute("aria-controls")).toBe(prepItems.id);
+    expect(prepToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(prepItems.getAttribute("aria-labelledby")).toBe(prepToggle.id);
+    expect(prepItems.hidden).toBe(false);
+
+    fireEvent.click(prepToggle);
+    expect(prepToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.getElementById("sidebar-academic-prep-items")).toBe(prepItems);
+    expect(prepItems.hidden).toBe(true);
+
+    const toolsToggle = screen.getByRole("button", { name: "Tools" });
+    const toolItems = document.getElementById("sidebar-tools-items")!;
+    expect(toolsToggle.getAttribute("id")).toBe("sidebar-tools-toggle");
+    expect(toolsToggle.getAttribute("aria-controls")).toBe(toolItems.id);
+    expect(toolsToggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toolItems.getAttribute("aria-labelledby")).toBe(toolsToggle.id);
+    expect(toolItems.hidden).toBe(false);
+
+    fireEvent.click(toolsToggle);
+    expect(toolsToggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.getElementById("sidebar-tools-items")).toBe(toolItems);
+    expect(toolItems.hidden).toBe(true);
   });
 });

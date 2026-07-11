@@ -1,7 +1,6 @@
 @import "./theme.css";
 
-/* Poppins remains the self-hosted application display face. The AXOM wordmark
-   uses the separate --font-brand stack so body typography stays effortless. */
+/* Poppins remains the self-hosted application display face. */
 @font-face {
   font-family: "Poppins";
   font-style: normal;
@@ -42,34 +41,39 @@ input, textarea, select { font-family: inherit; }
 
 /* AXOM brand primitives --------------------------------------------------- */
 .brand-wordmark {
-  font-family: var(--font-brand);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.34em;
   color: var(--axom-text);
 }
 .axom-wordmark {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  width: 4.4565em;
+  height: 1em;
   max-width: 100%;
   line-height: 1;
   white-space: nowrap;
-  padding-inline-end: 0.34em; /* protects the tracked final M from clipping */
-  background: linear-gradient(180deg, #fffaf0 0%, #c8beb0 48%, var(--axom-gold-soft) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 1px 12px rgba(214, 184, 112, 0.12);
+  filter: drop-shadow(0 1px 6px rgba(214, 184, 112, 0.12));
 }
-.axom-wordmark--sm { font-size: 0.78rem; letter-spacing: 0.24em; padding-inline-end: 0.24em; }
-.axom-wordmark--md { font-size: 0.94rem; letter-spacing: 0.32em; padding-inline-end: 0.32em; }
-.axom-wordmark--lg { font-size: 1.45rem; letter-spacing: 0.38em; padding-inline-end: 0.38em; }
-.axom-wordmark--hero { font-size: clamp(2.3rem, 7vw, 4.5rem); letter-spacing: 0.42em; padding-inline-end: 0.42em; }
-.axom-wordmark.is-compact { letter-spacing: 0.2em; padding-inline-end: 0.2em; }
+.axom-wordmark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.axom-wordmark__lettering {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 7.5;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.axom-wordmark--sm { font-size: 0.78rem; }
+.axom-wordmark--md { font-size: 0.94rem; }
+.axom-wordmark--lg { font-size: 1.45rem; }
+.axom-wordmark--hero { font-size: clamp(2.3rem, 7vw, 4.5rem); }
+.axom-wordmark.is-compact { width: 4.2em; }
 .axom-wordmark.is-muted {
   color: var(--axom-text-muted);
-  background: none;
-  -webkit-text-fill-color: currentColor;
-  text-shadow: none;
+  filter: none;
 }
 
 .axom-mark {

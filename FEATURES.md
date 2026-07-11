@@ -217,9 +217,20 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
 ## Identity
 
 - AXOM brand: reusable accessible `AxomMark`, `AxomWordmark`, and
-  `AxomBrandLockup`; tintable official-shape SVG mark; geometric serif wordmark
-  stack separated from UI text; semantic `--axom-*` graphite/ivory/gold/glass
-  tokens; uppercase browser/PWA naming; and centralized brand config.
+  `AxomBrandLockup`; tintable official-shape SVG mark plus a real inline SVG
+  wordmark matching the custom crossbar-free A, X, circular O, and geometric M
+  lettering (no runtime raster or font approximation); semantic `--axom-*`
+  graphite/ivory/gold/glass tokens; uppercase browser/PWA naming; and centralized
+  brand config.
+- **Theme foundation**: Light, Dark, and System preferences use one validated,
+  device-local setting; an inline head script applies the resolved theme before
+  first paint, while runtime listeners follow OS and cross-tab changes. The shell,
+  shared primitives, onboarding, settings, and Question Bank have warm-paper light
+  treatments without changing schema v32 or adding workspace data to localStorage.
+- **Honest module navigation**: typed, centralized module-status metadata drives
+  visible NEW, WIP, and BUILDING sidebar badges in normal and customization modes.
+  Academic Prep and Tools are proper disclosure controls with stable
+  `aria-expanded` / `aria-controls` relationships.
 - **Premium theme rehaul (2026-07-10)**: 450+ legacy cyan/blue/purple accent instances
   re-tinted to the identity palette across every stylesheet; machined-gold primary CTA
   with ink text; gold active-nav indicator + soft glow; architectural glass cards with

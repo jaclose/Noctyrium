@@ -17,6 +17,7 @@ import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
 import { prettyDate } from "../../lib/scoring";
 import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
 import { HardDrive } from "lucide-react";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 export type SettingsTab = "general" | "personalization" | "ai" | "backup" | "account";
 
@@ -161,6 +162,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               onChange={(e) => store.updateProfile({ journalReviewTime: e.target.value || "20:00" })} />
           </div>
           <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
+
+          <ThemeToggle />
 
           <div className="backup-actions-panel" style={{ marginTop: 14 }}>
             <div>

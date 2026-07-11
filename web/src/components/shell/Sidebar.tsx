@@ -2,12 +2,25 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
 } from "lucide-react";
-import { navById, SIDEBAR_TOP, SIDEBAR_PREP, SIDEBAR_TOOLS, SIDEBAR_BOTTOM, SIDEBAR_LOCKED } from "./nav";
+import {
+  getNavModuleStatus,
+  MODULE_STATUS_META,
+  navById,
+  SIDEBAR_BOTTOM,
+  SIDEBAR_LOCKED,
+  SIDEBAR_PREP,
+  SIDEBAR_TOOLS,
+  SIDEBAR_TOP,
+} from "./nav";
 import { useStore } from "../../lib/store";
 import { AxomBrandLockup } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 880px)";
+const PREP_FOLDER_TOGGLE_ID = "sidebar-academic-prep-toggle";
+const PREP_FOLDER_ITEMS_ID = "sidebar-academic-prep-items";
+const TOOLS_FOLDER_TOGGLE_ID = "sidebar-tools-toggle";
+const TOOLS_FOLDER_ITEMS_ID = "sidebar-tools-items";
 
 function useMobileSidebar(): boolean {
   const [mobile, setMobile] = useState(() => (
@@ -74,21 +87,35 @@ export function Sidebar({
     if (!item) return null;
     const I = item.icon;
     const isHidden = hidden.has(id);
+    const moduleStatus = getNavModuleStatus(id);
+    const status = moduleStatus ? MODULE_STATUS_META[moduleStatus] : undefined;
+    const accessibleLabel = status ? `${item.label}, ${status.accessibleLabel}` : item.label;
+    const statusBadge = status && (
+      <span
+        className={`nav-status nav-status--${moduleStatus}`}
+        aria-label={status.accessibleLabel}
+        title={status.accessibleLabel}
+      >
+        {status.badgeLabel}
+      </span>
+    );
     if (manage) {
       const locked = SIDEBAR_LOCKED.has(id);
       return (
         <button type="button" className={`nav-item manage ${isHidden ? "off" : ""}`}
+          aria-label={accessibleLabel} aria-pressed={!isHidden}
           onClick={() => toggleHidden(id)} disabled={locked} title={locked ? "Always shown" : isHidden ? "Show" : "Hide"}>
           <span className={`nav-check ${!isHidden ? "on" : ""}`}>{!isHidden && <Check size={11} />}</span>
-          <I size={16} /><span>{item.label}</span>
+          <I size={16} /><span className="nav-item-label">{item.label}</span>{statusBadge}
         </button>
       );
     }
     if (isHidden) return null;
     return (
       <button type="button" className={`nav-item ${active === id ? "on" : ""}`}
+        aria-label={accessibleLabel}
         onClick={() => { onSelect(id); onClose(); }}>
-        <I size={17} /><span>{item.label}</span>
+        <I size={17} /><span className="nav-item-label">{item.label}</span>{statusBadge}
       </button>
     );
   }
@@ -147,33 +174,51 @@ export function Sidebar({
 
           {(prepItems.length > 0 || manage) && (
             <div className="nav-folder">
-              <button type="button" className="nav-folder-head"
+              <button
+                id={PREP_FOLDER_TOGGLE_ID}
+                type="button"
+                className="nav-folder-head"
+                aria-controls={PREP_FOLDER_ITEMS_ID}
+                aria-expanded={prepOpen}
                 onClick={() => updateProfile({ prepCollapsed: !profile.prepCollapsed })}>
                 {prepOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 <GraduationCap size={15} /><span>Academic Prep</span>
                 {!prepOpen && <span className="nav-folder-count">{prepItems.length}</span>}
               </button>
-              {prepOpen && (
-                <div className="nav-folder-items">
-                  {prepItems.map((id) => <Item key={id} id={id} />)}
-                </div>
-              )}
+              <div
+                id={PREP_FOLDER_ITEMS_ID}
+                className="nav-folder-items"
+                role="group"
+                aria-labelledby={PREP_FOLDER_TOGGLE_ID}
+                hidden={!prepOpen}
+              >
+                {prepItems.map((id) => <Item key={id} id={id} />)}
+              </div>
             </div>
           )}
 
           {(toolItems.length > 0 || manage) && (
             <div className="nav-folder">
-              <button type="button" className="nav-folder-head"
+              <button
+                id={TOOLS_FOLDER_TOGGLE_ID}
+                type="button"
+                className="nav-folder-head"
+                aria-controls={TOOLS_FOLDER_ITEMS_ID}
+                aria-expanded={toolsOpen}
                 onClick={() => updateProfile({ toolsCollapsed: !profile.toolsCollapsed })}>
                 {toolsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 <Wrench size={15} /><span>Tools</span>
                 {!toolsOpen && <span className="nav-folder-count">{toolItems.length}</span>}
               </button>
-              {toolsOpen && (
-                <div className="nav-folder-items">
-                  {toolItems.map((id) => <Item key={id} id={id} />)}
-                </div>
-              )}
+              <div
+                id={TOOLS_FOLDER_ITEMS_ID}
+                className="nav-folder-items"
+                role="group"
+                aria-labelledby={TOOLS_FOLDER_TOGGLE_ID}
+                hidden={!toolsOpen}
+              >
+                {toolItems.map((id) => <Item key={id} id={id} />)}
+              </div>
             </div>
           )}
 

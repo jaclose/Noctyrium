@@ -57,7 +57,23 @@ export function AxomWordmark({
         className,
       ].filter(Boolean).join(" ")}
     >
-      AXOM
+      <svg
+        viewBox="0 0 410 92"
+        role="img"
+        aria-label="AXOM"
+        focusable="false"
+      >
+        <path
+          className="axom-wordmark__lettering"
+          d="M22 82 52 20 82 82 M122 20l56 62 M178 20l-56 62 M332 82V20l25 39 25-39v62"
+        />
+        <circle
+          className="axom-wordmark__lettering"
+          cx="251"
+          cy="51"
+          r="31"
+        />
+      </svg>
     </span>
   );
 }

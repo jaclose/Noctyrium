@@ -238,6 +238,92 @@ select.field, .scope-select {
   gap: 12px;
 }
 
+/* Device theme preference — native radios retain arrow-key and form semantics. */
+.theme-setting {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: var(--surface-1);
+}
+.theme-setting legend { padding: 0 5px; color: var(--text-80); font-size: 12.5px; font-weight: 800; }
+.theme-setting > p { margin: 0; color: var(--text-45); font-size: 11.5px; line-height: 1.45; }
+.theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.theme-option {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  color: var(--text-60);
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: color .13s ease, background .13s ease, border-color .13s ease, box-shadow .13s ease;
+}
+.theme-option:hover { color: var(--text); border-color: var(--gold-line); }
+.theme-option.on { color: var(--text); background: var(--gold-soft); border-color: var(--gold-line); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.theme-option input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.theme-option:focus-within { outline: 2px solid var(--gold-line); outline-offset: 2px; }
+.theme-option svg { flex: 0 0 auto; color: var(--cyan); }
+.theme-option span { min-width: 0; display: grid; gap: 1px; }
+.theme-option b { font-size: 11.5px; }
+.theme-option small { overflow: hidden; color: var(--text-45); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 520px) {
+  .theme-options { grid-template-columns: 1fr; }
+}
+
+/* Light-mode bridge for shared primitives that were originally authored with
+   literal graphite glass. Dark framed primary actions remain brand-consistent. */
+:root[data-theme="light"] .glass-card {
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.86), rgba(255,255,255,0.38) 42%, rgba(229,219,203,0.55)),
+    var(--glass-card-fill);
+}
+:root[data-theme="light"] .glass-card::before { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent); }
+:root[data-theme="light"] .gbtn:not(.primary),
+:root[data-theme="light"] .field {
+  color: var(--text-80);
+  background-color: rgba(255,255,255,0.64);
+  border-color: rgba(67,51,31,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+:root[data-theme="light"] .gbtn:not(.primary):hover,
+:root[data-theme="light"] .field:focus { color: var(--text); background-color: rgba(255,255,255,0.9); }
+:root[data-theme="light"] .gbtn.primary,
+:root[data-theme="light"] .gbtn.primary:hover { color: #f7f1e6; }
+:root[data-theme="light"] .modal {
+  background: linear-gradient(135deg, rgba(255,254,250,0.98), rgba(236,227,213,0.98));
+}
+:root[data-theme="light"] .settings-intro,
+:root[data-theme="light"] .settings-profile-card {
+  background-color: rgba(255,255,255,0.58);
+  border-color: rgba(67,51,31,0.13);
+}
+:root[data-theme="light"] .onboarding-scrim { background: rgba(72,59,43,0.28); }
+:root[data-theme="light"] .onboarding-card {
+  background: linear-gradient(150deg, rgba(255,254,250,0.98), rgba(235,225,210,0.99));
+}
+:root[data-theme="light"] .onboarding-actions {
+  background: linear-gradient(180deg, rgba(246,240,231,0), rgba(246,240,231,.96) 30%, #f6f0e7);
+}
+:root[data-theme="light"] .onboarding-body h2 {
+  background: linear-gradient(120deg, var(--text), #8a6429 62%, #6f4d1d);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+:root[data-theme="light"] :is(.onboarding-phase, .focus-group, .focus-card, .onboarding-summary, .onboarding-track-note) {
+  background-color: rgba(255,255,255,0.55);
+  border-color: rgba(67,51,31,0.13);
+}
+
 /* Account sync controls inside Settings */
 .sync-panel {
   display: flex;

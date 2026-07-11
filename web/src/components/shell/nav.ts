@@ -13,9 +13,23 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
+export type ModuleStatus = "new" | "wip" | "under-construction";
+
+export interface ModuleStatusMetadata {
+  badgeLabel: string;
+  accessibleLabel: string;
+}
+
+// One presentation vocabulary for module maturity across every sidebar mode.
+export const MODULE_STATUS_META = {
+  new: { badgeLabel: "NEW", accessibleLabel: "New" },
+  wip: { badgeLabel: "WIP", accessibleLabel: "Work in progress" },
+  "under-construction": { badgeLabel: "BUILDING", accessibleLabel: "Under construction" },
+} as const satisfies Record<ModuleStatus, ModuleStatusMetadata>;
+
 // All routable pages, keyed for lookup. Order here is not the sidebar order
 // (that lives in the SIDEBAR_* groups below).
-export const NAV: NavItem[] = [
+export const NAV = [
   { id: "dashboard", label: "Dashboard", subtitle: "Your command center at a glance", icon: LayoutGrid },
   { id: "courses", label: "Courses", subtitle: "Term-based course map with module-level folders", icon: BookOpen },
   { id: "tracker", label: "Course Tracker", subtitle: "Lecture, DLA, and PQ completion map", icon: BadgeCheck },
@@ -49,7 +63,27 @@ export const NAV: NavItem[] = [
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
   // Footer (Help is a page; Settings + Account open the modal)
   { id: "help", label: "Help", subtitle: "Guided tour, master guide, Anki import, and feedback", icon: LifeBuoy },
-];
+] as const satisfies readonly NavItem[];
+
+export type NavItemId = (typeof NAV)[number]["id"];
+
+// Status assignments live beside the navigation model rather than being
+// re-declared by each rendering mode or page.
+export const MODULE_STATUS_BY_NAV_ID = {
+  questions: "new",
+  methods: "new",
+  anki: "wip",
+  habits: "wip",
+  step: "wip",
+  premed: "wip",
+  integrations: "wip",
+  appchecker: "under-construction",
+  leaderboards: "under-construction",
+} as const satisfies Partial<Record<NavItemId, ModuleStatus>>;
+
+export function getNavModuleStatus(id: string): ModuleStatus | undefined {
+  return MODULE_STATUS_BY_NAV_ID[id as keyof typeof MODULE_STATUS_BY_NAV_ID];
+}
 
 export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id === id);
 

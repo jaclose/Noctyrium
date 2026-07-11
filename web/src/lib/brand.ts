@@ -40,6 +40,8 @@ export const STORAGE_KEYS = {
   updateDeferredVersion: "noctyrium-update-deferred",
   storageSchemaVersion: "axom.storage.schemaVersion",
   lastSeenBuild: "axom.lastSeenBuild",
+  /** Small device-only UI preference; never part of the workspace payload. */
+  themePreference: "axom.theme",
   localBackupPrefix: "axom.backups.local.",
   aiGenerations: "axom.ai.generations",
   migrationFailure: "axom.storage.migrationFailure",

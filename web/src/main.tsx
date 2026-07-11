@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
 import { runStorageMigrations } from "./lib/storageMigrations";
+import { installThemeSync } from "./lib/theme";
 import "./styles/global.css";
 import "./styles/components.css";
 import "./styles/shell.css";
@@ -10,6 +11,10 @@ import "./styles/motion.css";
 import "./styles/tour.css";
 import "./styles/loop.css";
 import "./styles/questionbank.css";
+
+// The inline head script prevents a first-paint flash; this keeps the chosen
+// theme synchronized with OS and cross-tab changes for the rest of the session.
+installThemeSync();
 
 async function bootstrap() {
   const rootElement = document.getElementById("root");

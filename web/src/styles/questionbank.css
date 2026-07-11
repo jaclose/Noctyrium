@@ -299,3 +299,31 @@
   .import-dropzone > div { flex: none; }
   .import-confidence-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
+
+/* Light-theme treatment for the bank workspace. The marble command hero keeps
+   its own dark local palette; working surfaces below it use paper contrast. */
+:root[data-theme="light"] .qb-segment {
+  background: rgba(255,255,255,.54);
+  border-color: rgba(67,51,31,.12);
+}
+:root[data-theme="light"] .qb-seg.on {
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(230,220,204,.74));
+  border-color: var(--gold-line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 9px rgba(65,48,28,.12);
+}
+:root[data-theme="light"] :is(.qb-loop-card, .qb-library-link, .answer-row, .feedback-explanation, .learning-objective) {
+  background-color: rgba(255,255,255,.56);
+  border-color: rgba(67,51,31,.12);
+}
+:root[data-theme="light"] .qset-metric-strip,
+:root[data-theme="light"] .import-confidence-grid { background: rgba(67,51,31,.1); border-color: rgba(67,51,31,.1); }
+:root[data-theme="light"] .qset-metric-strip span,
+:root[data-theme="light"] .import-confidence-grid span { background: rgba(255,253,248,.9); }
+:root[data-theme="light"] .source-evidence { background: rgba(255,255,255,.48); border-color: rgba(67,51,31,.12); }
+:root[data-theme="light"] .source-evidence pre { color: var(--text-60); background: rgba(67,51,31,.07); }
+:root[data-theme="light"] .import-dropzone { background-color: rgba(255,255,255,.48); }
+:root[data-theme="light"] .quiz-player-modal .modal-actions {
+  background: rgba(247,242,234,.95);
+  border-color: rgba(67,51,31,.13);
+}

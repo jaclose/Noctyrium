@@ -6,6 +6,7 @@
    The design intent: premium, minimal, architectural, calm under pressure.
    =========================================================================== */
 :root {
+  color-scheme: dark;
   /* Public AXOM tokens. New components should consume these semantic names;
      the legacy aliases below keep the established app surface stable. */
   --axom-bg: #070707;
@@ -70,6 +71,19 @@
   --text-60: rgba(243, 240, 232, 0.60);
   --text-45: rgba(243, 240, 232, 0.44);
   --text-30: rgba(243, 240, 232, 0.30);
+  --text-35: rgba(243, 240, 232, 0.35);
+  --text-40: rgba(243, 240, 232, 0.40);
+  --text-50: rgba(243, 240, 232, 0.50);
+  --text-52: rgba(243, 240, 232, 0.52);
+  --text-55: rgba(243, 240, 232, 0.55);
+  --text-58: rgba(243, 240, 232, 0.58);
+  --text-62: rgba(243, 240, 232, 0.62);
+  --text-65: rgba(243, 240, 232, 0.65);
+  --text-70: rgba(243, 240, 232, 0.70);
+  --text-75: rgba(243, 240, 232, 0.75);
+  --text-85: rgba(243, 240, 232, 0.85);
+  --text-90: rgba(243, 240, 232, 0.90);
+  --text-95: rgba(243, 240, 232, 0.95);
 
   /* Surfaces — neutral graphite glass; hairlines tinted bone, not blue. */
   --shell-radius: 26px;
@@ -100,6 +114,145 @@
   --frame-gold: 0 0 0 1px rgba(200,169,106,0.5), 0 0 0 2px rgba(0,0,0,0.4), inset 0 1px 0 rgba(230,226,214,0.06);
 
   --sidebar-w: 250px;
+}
+
+/* Warm paper mode. Attribute selectors are deliberate: the pre-paint script
+   resolves `system` to one concrete theme before the first application frame. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --axom-bg: #f3eee3;
+  --axom-bg-soft: #e9e1d3;
+  --axom-surface: rgba(255, 255, 255, 0.72);
+  --axom-surface-strong: rgba(255, 255, 255, 0.9);
+  --axom-border: rgba(62, 48, 29, 0.16);
+  --axom-border-strong: rgba(62, 48, 29, 0.3);
+  --axom-text: #28231d;
+  --axom-text-muted: rgba(40, 35, 29, 0.64);
+  --axom-gold: #8a6429;
+  --axom-gold-soft: #6f4d1d;
+  --axom-silver: #5f5a52;
+  --axom-success: #267048;
+  --axom-warning: #865f20;
+  --axom-orange: #985a19;
+  --axom-danger: #a63f39;
+  --axom-shadow-glass: 0 22px 60px rgba(74, 55, 31, 0.16);
+  --axom-focus-ring: 0 0 0 1px rgba(138, 100, 41, 0.72), 0 0 0 6px rgba(138, 100, 41, 0.12);
+
+  --bg-1: #eee7da;
+  --bg-2: #f7f3ec;
+  --bg-3: #e5dccd;
+  --cyan: #8a6429;
+  --cyan-strong: #704b16;
+  --gold: #8a6429;
+  --gold-soft: rgba(138, 100, 41, 0.12);
+  --gold-line: rgba(138, 100, 41, 0.42);
+  --gold-glow: rgba(138, 100, 41, 0.17);
+  --purple: #695987;
+  --blue: #4f687d;
+  --teal: #47705f;
+  --bone: #28231d;
+  --bone-dim: #544c42;
+  --green: #267048;
+  --orange: #985a19;
+  --red: #a63f39;
+  --grade-blue: #49677e;
+  --grade-green: #267048;
+  --grade-orange: #985a19;
+  --grade-red: #a63f39;
+
+  --text: #211d18;
+  --text-30: rgba(33, 29, 24, 0.38);
+  --text-35: rgba(33, 29, 24, 0.43);
+  --text-40: rgba(33, 29, 24, 0.48);
+  --text-45: rgba(33, 29, 24, 0.56);
+  --text-50: rgba(33, 29, 24, 0.60);
+  --text-52: rgba(33, 29, 24, 0.62);
+  --text-55: rgba(33, 29, 24, 0.65);
+  --text-58: rgba(33, 29, 24, 0.68);
+  --text-60: rgba(33, 29, 24, 0.72);
+  --text-62: rgba(33, 29, 24, 0.74);
+  --text-65: rgba(33, 29, 24, 0.76);
+  --text-70: rgba(33, 29, 24, 0.80);
+  --text-75: rgba(33, 29, 24, 0.84);
+  --text-80: rgba(33, 29, 24, 0.88);
+  --text-85: rgba(33, 29, 24, 0.91);
+  --text-90: rgba(33, 29, 24, 0.94);
+  --text-95: rgba(33, 29, 24, 0.97);
+
+  --surface-1: rgba(255, 255, 255, 0.62);
+  --surface-2: rgba(255, 255, 255, 0.78);
+  --glass-card-fill: rgba(255, 253, 248, 0.74);
+  --glass-card-border: rgba(67, 51, 31, 0.12);
+  --glass-card-border-hover: rgba(138, 100, 41, 0.34);
+  --hairline: rgba(67, 51, 31, 0.13);
+  --hairline-soft: rgba(67, 51, 31, 0.075);
+  --shadow-shell: 0 32px 80px rgba(65, 48, 28, 0.19), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  --shadow-card: 0 16px 38px rgba(65, 48, 28, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  --shadow-gold: 0 0 0 1px rgba(138, 100, 41, 0.25), 0 10px 24px rgba(138, 100, 41, 0.1);
+  --frame-gold: 0 0 0 1px rgba(138,100,41,0.45), 0 0 0 2px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+/* Structural surfaces that predate semantic tokens need a small, centralized
+   bridge in light mode. More specific selectors keep the dark defaults intact. */
+:root[data-theme="light"] .backdrop::after {
+  background-image:
+    linear-gradient(rgba(67,51,31,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(67,51,31,0.028) 1px, transparent 1px);
+}
+:root[data-theme="light"] .shell {
+  background:
+    linear-gradient(150deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38) 46%, rgba(227,217,201,0.7)),
+    rgba(248,244,236,0.72);
+  border-color: rgba(67,51,31,0.13);
+}
+:root[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,.32), rgba(221,210,193,.42));
+  border-color: rgba(67,51,31,.12);
+}
+:root[data-theme="light"] :is(.server-header:hover, .nav-manage-btn, .nav-item:hover, .user-id:hover, .user-icon-btn:hover) {
+  background-color: rgba(67,51,31,.065);
+}
+:root[data-theme="light"] .nav-folder-items { border-color: rgba(67,51,31,.14); }
+:root[data-theme="light"] .nav-folder-count { background: rgba(67,51,31,.07); }
+:root[data-theme="light"] .nav-check { border-color: rgba(67,51,31,.28); }
+:root[data-theme="light"] .nav-item.on {
+  background: linear-gradient(90deg, rgba(138,100,41,.15), rgba(138,100,41,.035));
+}
+:root[data-theme="light"] .user-panel {
+  background: rgba(255,255,255,.46);
+  border-color: rgba(67,51,31,.13);
+}
+:root[data-theme="light"] .user-online { border-color: #f5efe4; }
+:root[data-theme="light"] .menu-btn {
+  color: var(--text);
+  background: rgba(255,255,255,.62);
+  border-color: rgba(67,51,31,.13);
+}
+@media (max-width: 880px) {
+  :root[data-theme="light"] .sidebar {
+    background: rgba(246,241,232,.97);
+    box-shadow: 0 0 50px rgba(65,48,28,.22);
+  }
+}
+
+/* Marble remains intentionally dark in either theme. Its local foreground
+   tokens prevent light-mode text and the SVG lockup from losing contrast. */
+.tx-marble,
+.tx-limestone {
+  --axom-text: #f7f1e6;
+  --axom-text-muted: rgba(247,241,230,0.66);
+  --bone: #e6e2d6;
+  --text: #f3f0e8;
+  --text-80: rgba(243,240,232,0.86);
+  --text-60: rgba(243,240,232,0.66);
+  --text-45: rgba(243,240,232,0.5);
+}
+
+:root[data-theme="light"] .glass-liquid {
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5) 42%, rgba(229,219,203,0.58)),
+    rgba(251,248,242,0.76);
+  border-color: rgba(67,51,31,0.13);
 }
 
 /* ===========================================================================
