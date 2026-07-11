@@ -2,7 +2,7 @@ import { indexedDB as fakeIndexedDb, IDBKeyRange } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STORAGE_KEYS } from "./brand";
 import { createLocalBackup, listLocalBackups, pruneLocalBackups, readLocalBackup } from "./localBackup";
-import { localVaultStorage } from "./localVault";
+import { BACKUP_STORE_NAME, DB_NAME, DB_VERSION, localVaultStorage, STORE_NAME } from "./localVault";
 
 const values = new Map<string, string>();
 const storage = {
@@ -28,6 +28,17 @@ afterEach(() => {
 });
 
 describe("automatic local migration backups", () => {
+  it("uses the canonical vault version and object stores shared with primary persistence", async () => {
+    const persisted = JSON.stringify({ state: { profile: { userId: "jd" }, questions: [{ id: "q1" }] }, version: 32 });
+    await localVaultStorage.setItem(STORAGE_KEYS.persistedState, persisted);
+    await createLocalBackup(31);
+
+    const db = await openDatabase(DB_NAME);
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toEqual(expect.arrayContaining([STORE_NAME, BACKUP_STORE_NAME]));
+    db.close();
+  });
+
   it("stores the full snapshot in IndexedDB and only summary metadata in localStorage", async () => {
     const persisted = JSON.stringify({
       state: { profile: { userId: "jd", name: "JD" }, questions: [{ id: "q1", stem: "large payload" }] },
@@ -89,5 +100,13 @@ function deleteDatabase(name: string): Promise<void> {
     request.onsuccess = () => resolve();
     request.onerror = () => resolve();
     request.onblocked = () => resolve();
+  });
+}
+
+function openDatabase(name: string): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = fakeIndexedDb.open(name);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
   });
 }

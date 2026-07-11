@@ -5,7 +5,7 @@
 // everywhere; persistence in store.ts (schema v30).
 // ===========================================================================
 import type { ID } from "./types";
-import type { QuestionRecord } from "./questions";
+import type { QuestionAttempt, QuestionRecord } from "./questions";
 
 export interface SourceDocument {
   id: ID;
@@ -47,7 +47,7 @@ export interface QuestionSet {
   digest?: QuestionSetDigest;
 }
 
-/** Accuracy for a set from attempt history on its questions. */
+/** Historical accuracy for a set across every recorded attempt. */
 export function setAccuracy(
   set: QuestionSet,
   attemptsByQuestion: Map<ID, { correct: number; total: number }>,
@@ -65,8 +65,8 @@ export function setAccuracy(
 
 export type AccuracyTone = "green" | "gold" | "orange" | "red" | "neutral";
 
-/** Product-specified accuracy thresholds. Bar length represents completion;
- * this tone represents accuracy, so the two signals never compete. */
+/** Product-specified percentage thresholds. Bar length represents completion;
+ * this tone represents current mastery, so the two signals never compete. */
 export function accuracyTone(pct: number | null): AccuracyTone {
   if (pct === null) return "neutral";
   if (pct >= 90) return "green";
@@ -80,16 +80,34 @@ export interface QuestionSetMetrics {
   completed: number;
   remaining: number;
   completionPct: number;
-  correct: number;
-  attempts: number;
-  accuracyPct: number | null;
-  accuracyTone: AccuracyTone;
+  currentMasteryCorrect: number;
+  currentMasteryQuestions: number;
+  currentMasteryPct: number | null;
+  currentMasteryTone: AccuracyTone;
+  historicalCorrectAttempts: number;
+  historicalAttemptCount: number;
+  historicalAccuracyPct: number | null;
   needsReview: number;
   importConfidence: number | null;
   lastStudiedAt?: string;
   category?: string;
   sourceTitle?: string;
   missedQuestionIds: ID[];
+}
+
+function latestAttempt(question: QuestionRecord): QuestionAttempt | undefined {
+  return question.attempts.reduce<QuestionAttempt | undefined>(
+    (current, attempt) => {
+      if (!current) return attempt;
+      const currentTime = Date.parse(current.at);
+      const attemptTime = Date.parse(attempt.at);
+      if (!Number.isNaN(currentTime) && !Number.isNaN(attemptTime)) {
+        return attemptTime >= currentTime ? attempt : current;
+      }
+      return attempt.at >= current.at ? attempt : current;
+    },
+    undefined,
+  );
 }
 
 /** One canonical calculation shared by set cards, preview, and tests. */
@@ -100,10 +118,19 @@ export function questionSetMetrics(
 ): QuestionSetMetrics {
   const ids = new Set(set.questionIds);
   const inSet = questions.filter((question) => ids.has(question.id));
-  const attempted = inSet.filter((question) => question.attempts.length > 0);
-  const attempts = inSet.flatMap((question) => question.attempts);
-  const correct = attempts.filter((attempt) => attempt.status === "correct").length;
-  const accuracyPct = attempts.length ? Math.round((correct / attempts.length) * 100) : null;
+  const latestAttempts = inSet.flatMap((question) => {
+    const latest = latestAttempt(question);
+    return latest ? [{ question, attempt: latest }] : [];
+  });
+  const historicalAttempts = inSet.flatMap((question) => question.attempts);
+  const currentMasteryCorrect = latestAttempts.filter(({ attempt }) => attempt.status === "correct").length;
+  const currentMasteryPct = latestAttempts.length
+    ? Math.round((currentMasteryCorrect / latestAttempts.length) * 100)
+    : null;
+  const historicalCorrectAttempts = historicalAttempts.filter((attempt) => attempt.status === "correct").length;
+  const historicalAccuracyPct = historicalAttempts.length
+    ? Math.round((historicalCorrectAttempts / historicalAttempts.length) * 100)
+    : null;
   const confidenceScores = inSet
     .map((question) => question.extraction?.overallImportConfidence)
     .filter((value): value is number => typeof value === "number");
@@ -121,13 +148,16 @@ export function questionSetMetrics(
   const total = set.questionIds.length;
   return {
     total,
-    completed: attempted.length,
-    remaining: Math.max(0, total - attempted.length),
-    completionPct: total ? Math.round((attempted.length / total) * 100) : 0,
-    correct,
-    attempts: attempts.length,
-    accuracyPct,
-    accuracyTone: accuracyTone(accuracyPct),
+    completed: latestAttempts.length,
+    remaining: Math.max(0, total - latestAttempts.length),
+    completionPct: total ? Math.round((latestAttempts.length / total) * 100) : 0,
+    currentMasteryCorrect,
+    currentMasteryQuestions: latestAttempts.length,
+    currentMasteryPct,
+    currentMasteryTone: accuracyTone(currentMasteryPct),
+    historicalCorrectAttempts,
+    historicalAttemptCount: historicalAttempts.length,
+    historicalAccuracyPct,
     needsReview: inSet.filter((question) => question.needsReview || question.status === "needs-review").length,
     importConfidence: confidenceScores.length
       ? Math.round((confidenceScores.reduce((sum, value) => sum + value, 0) / confidenceScores.length) * 100)
@@ -135,9 +165,9 @@ export function questionSetMetrics(
     lastStudiedAt: timestamps.at(-1),
     category,
     sourceTitle: source?.title,
-    missedQuestionIds: inSet
-      .filter((question) => question.status === "incorrect" || question.status === "guessed")
-      .map((question) => question.id),
+    missedQuestionIds: latestAttempts
+      .filter(({ attempt }) => attempt.status === "incorrect" || attempt.status === "guessed")
+      .map(({ question }) => question.id),
   };
 }
 

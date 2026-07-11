@@ -1,7 +1,7 @@
 // ===========================================================================
 // Source Library + Question Sets (layer 3). Documents and sets are separate
 // but linked: a document can be reference-only or feed question sets; a set
-// shows its accuracy, digest (when AI-enhanced), and can launch blocks or
+// shows its current mastery and historical accuracy, digest (when AI-enhanced), and can launch blocks or
 // generate more questions from its source document (review-gated).
 // ===========================================================================
 import { useMemo, useState } from "react";
@@ -138,7 +138,7 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
     <GlassCard>
       <PanelHeader
         title="Question Sets"
-        sub="Parsed sets with accuracy, source links, and Question Intelligence digests."
+        sub="Parsed sets with current mastery, historical accuracy, source links, and Question Intelligence digests."
       />
       {sets.length > 0 && (
         <div className="row" style={{ gap: 7, marginBottom: 12 }}>
@@ -151,7 +151,7 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
         <EmptyState
           icon={<BookOpen size={18} />}
           title="No sets yet"
-          hint="Import questions in the Import Center and save them as a question set — they'll appear here with accuracy tracking."
+          hint="Import questions in the Import Center and save them as a question set — they'll appear here with mastery tracking."
         />
       ) : (
         <div className="qset-grid">

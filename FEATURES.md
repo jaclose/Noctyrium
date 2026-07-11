@@ -4,7 +4,7 @@ Living record of what is **built and working**. Update this whenever a feature s
 The companion file is [ROADMAP.md](ROADMAP.md) — in-progress and proposed work lives there,
 and items move from there to here when they ship.
 
-Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
+Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
 
 ## Question Bank (flagship)
 
@@ -12,7 +12,7 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
 
 - **Question Bank Command Center** — defaults to an overview that answers
   “what should I do next?” with Quick Import, Mass Import, Build Block, and
-  Continue actions; total/due/unseen/accuracy/set/mapping metrics; a recommended
+  Continue actions; total/due/unseen/historical-accuracy/set/mapping metrics; a recommended
   action; due, missed, weak-topic, and import loop cards; library shortcuts; and
   weakest-category, error-pattern, confidence-mismatch, pacing, and improvement
   insight. The optional weakness coach is provider-gated and labeled.
@@ -24,18 +24,20 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
   reconciled; disagreement is a review flag, never a silent mapping.
 - **Deterministic explanation cleanup** — `cleanExplanationText` removes repeated
   stems, options, answer lines, objectives/sources, and extraction duplication
-  without rewriting teaching content. The reported PPD/CD4 fixture maps to B and
-  shows only the type-IV-hypersensitivity rationale.
+  without rewriting teaching content during import. Display surfaces trust
+  the stored explanation so later manual edits are rendered verbatim. The reported
+  PPD/CD4 fixture maps to B and shows only the type-IV-hypersensitivity rationale.
 - **Structured quiz feedback** — the shared feedback surface provides a short
   correct/incorrect/needs-review banner, separate correct and learner answer rows,
   clean rationale, optional learning objective, collapsible source/confidence/rule
   evidence, and repair actions. Tutor mode and question detail reuse the shared
-  component; results apply the same deterministic explanation cleaner.
+  component; tutor and deferred-result displays preserve the stored rationale.
 - **Progress-rich question-set cards** — reusable set cards show source/category,
-  total/completed/remaining, completion, attempt accuracy, last studied, aggregate
-  import confidence, mapping-review count, AI labeling, and start/miss/edit/insight
-  actions. Accuracy colors are green ≥90, gold 80–89, orange 70–79, red ≤69,
-  and neutral before attempts.
+  total/completed/remaining, completion, current mastery from each active question's
+  latest attempt, separately named historical accuracy across all attempts, last
+  studied, aggregate import confidence, mapping-review count, AI labeling, and
+  start/miss/edit/insight actions. Mastery colors are green ≥90, gold 80–89,
+  orange 70–79, red ≤69, and neutral before attempts.
 - **Source identity and duplicate protection** — PDF, DOCX, and text imports receive
   SHA-256 checksums when the browser supports SubtleCrypto. Matching sources are
   linked to the existing library record instead of being stored twice; Local Data
@@ -113,8 +115,9 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
 - **Source Library** — uploaded documents with extracted text, page counts, linked sets,
   reference-only storage, text preview, delete-with-unlink (questions never silently lost),
   and "generate questions from this document" (AI, review-gated).
-- **Question Sets** — first-class sets with completion and threshold-colored accuracy,
-  remaining/review/import-confidence/last-studied metrics, tags, source links, AI digest
+- **Question Sets** — first-class sets with completion, threshold-colored current mastery,
+  separately labeled historical accuracy, remaining/review/import-confidence/last-studied
+  metrics, tags, source links, AI digest
   cards (Question Intelligence), run-as-block, search, and delete-with-unlink.
 - **Block Builder** — saved re-runnable block definitions (mode, count, pool filters,
   sets, timing); filters stay live so "missed only" blocks track current misses.
@@ -166,6 +169,7 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
 
 - IndexedDB vault + localStorage emergency fallback; frozen `noctyrium-*` storage keys
   remain rebrand-safe while successful writes remove full workspace mirrors from localStorage.
+  Primary state and backup writers share one exported database-version/store definition.
 - Versioned schema (v32) with **additive-only migrations** and an automatic
   **pre-migration snapshot** in a dedicated IndexedDB backup store before every upgrade;
   localStorage retains only summary metadata unless IndexedDB is unavailable or blocked.
@@ -179,6 +183,9 @@ Last updated: 2026-07-10 · app v0.0.1-prebeta · data schema v32
   generated content in localStorage.
 - **Data health panel**: storage driver, record counts, schema/migration state, snapshot
   status, source-checksum health, orphan repair, and growth-based backup reminders.
+- **Persisted browser journey**: Playwright automates onboarding → exact PPD TXT import →
+  linked set and saved block → incorrect answer/classification/repair card → reload, then
+  verifies retained IndexedDB state and the absence of workspace payloads in localStorage.
 - **Update flow**: single version source (`web/src/lib/brand.ts`), deploy-difference
   detection (survives version-line resets), never fires during an active session,
   never destructive; service-worker cache versioned per release.

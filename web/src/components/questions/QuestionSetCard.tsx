@@ -20,7 +20,8 @@ export function QuestionSetCard({
   onInsights?: () => void;
   children?: ReactNode;
 }) {
-  const accuracy = metrics.accuracyPct === null ? "—" : `${metrics.accuracyPct}%`;
+  const mastery = metrics.currentMasteryPct === null ? "—" : `${metrics.currentMasteryPct}%`;
+  const historicalAccuracy = metrics.historicalAccuracyPct === null ? "—" : `${metrics.historicalAccuracyPct}%`;
   const confidence = metrics.importConfidence === null ? "Legacy" : `${metrics.importConfidence}%`;
 
   return (
@@ -35,9 +36,9 @@ export function QuestionSetCard({
             {metrics.needsReview > 0 && <Tag tone="orange">{metrics.needsReview} need review</Tag>}
           </div>
         </div>
-        <div className={`qset-accuracy ${metrics.accuracyTone}`} aria-label={metrics.accuracyPct === null ? "No attempts yet" : `${metrics.accuracyPct}% accuracy`}>
-          <strong>{accuracy}</strong>
-          <span>accuracy</span>
+        <div className={`qset-accuracy ${metrics.currentMasteryTone}`} aria-label={metrics.currentMasteryPct === null ? "No mastery attempts yet" : `${metrics.currentMasteryPct}% current mastery`}>
+          <strong>{mastery}</strong>
+          <span>mastery</span>
         </div>
       </div>
 
@@ -49,10 +50,10 @@ export function QuestionSetCard({
       </div>
 
       <div className="qset-progress-copy">
-        <span>{metrics.completed}/{metrics.total} complete</span>
+        <span>Historical accuracy {historicalAccuracy} · {metrics.historicalAttemptCount} attempt{metrics.historicalAttemptCount === 1 ? "" : "s"}</span>
         <span>{metrics.lastStudiedAt ? `Last studied ${formatDate(metrics.lastStudiedAt)}` : "Not studied yet"}</span>
       </div>
-      <div className={`qset-progress ${metrics.accuracyTone}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={metrics.completionPct}>
+      <div className={`qset-progress ${metrics.currentMasteryTone}`} role="progressbar" aria-label={`${metrics.completed} of ${metrics.total} questions attempted`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={metrics.completionPct}>
         <span style={{ width: `${metrics.completionPct}%` }} />
       </div>
 

@@ -18,7 +18,7 @@ const set: QuestionSet = {
   tags: [], aiEnhanced: false, parserWarnings: [],
 };
 
-describe("question-set progress and accuracy", () => {
+describe("question-set progress, current mastery, and historical accuracy", () => {
   it("uses the exact product accuracy color thresholds", () => {
     expect(accuracyTone(null)).toBe("neutral");
     expect(accuracyTone(100)).toBe("green");
@@ -55,8 +55,13 @@ describe("question-set progress and accuracy", () => {
       completed: 2,
       remaining: 1,
       completionPct: 67,
-      accuracyPct: 50,
-      accuracyTone: "red",
+      currentMasteryCorrect: 1,
+      currentMasteryQuestions: 2,
+      currentMasteryPct: 50,
+      currentMasteryTone: "red",
+      historicalCorrectAttempts: 1,
+      historicalAttemptCount: 2,
+      historicalAccuracyPct: 50,
       needsReview: 1,
       importConfidence: 85,
       category: "Immunology",
@@ -69,7 +74,56 @@ describe("question-set progress and accuracy", () => {
   it("uses a neutral bar when no attempts exist", () => {
     const metrics = questionSetMetrics(set, set.questionIds.map((id) => question(id)));
     expect(metrics.completed).toBe(0);
-    expect(metrics.accuracyPct).toBeNull();
-    expect(metrics.accuracyTone).toBe("neutral");
+    expect(metrics.currentMasteryPct).toBeNull();
+    expect(metrics.currentMasteryTone).toBe("neutral");
+    expect(metrics.historicalAccuracyPct).toBeNull();
+  });
+
+  it("uses each active question's latest attempt for mastery while retaining all-attempt history", () => {
+    const retried = question("q1", {
+      attempts: [
+        { at: "2026-07-08T10:00:00.000Z", answerKey: "B", status: "incorrect" },
+        { at: "2026-07-08T10:05:00.000Z", answerKey: "B", status: "incorrect" },
+        { at: "2026-07-08T10:10:00.000Z", answerKey: "A", status: "correct" },
+      ],
+    });
+    const metrics = questionSetMetrics({ ...set, questionIds: [retried.id] }, [retried]);
+
+    expect(metrics).toMatchObject({
+      currentMasteryCorrect: 1,
+      currentMasteryQuestions: 1,
+      currentMasteryPct: 100,
+      currentMasteryTone: "green",
+      historicalCorrectAttempts: 1,
+      historicalAttemptCount: 3,
+      historicalAccuracyPct: 33,
+    });
+  });
+
+  it("selects the chronologically latest attempt even when imported history is out of order", () => {
+    const imported = question("q1", {
+      attempts: [
+        { at: "2026-07-08T10:10:00.000Z", answerKey: "B", status: "incorrect" },
+        { at: "2026-07-08T10:00:00.000Z", answerKey: "A", status: "correct" },
+      ],
+    });
+    const metrics = questionSetMetrics({ ...set, questionIds: [imported.id] }, [imported]);
+
+    expect(metrics.currentMasteryPct).toBe(0);
+    expect(metrics.historicalAccuracyPct).toBe(50);
+    expect(metrics.missedQuestionIds).toEqual([imported.id]);
+  });
+
+  it("compares offset-bearing ISO timestamps by instant rather than text order", () => {
+    const imported = question("q1", {
+      attempts: [
+        { at: "2026-07-08T09:30:00Z", answerKey: "A", status: "correct" },
+        { at: "2026-07-08T10:00:00+02:00", answerKey: "B", status: "incorrect" },
+      ],
+    });
+    const metrics = questionSetMetrics({ ...set, questionIds: [imported.id] }, [imported]);
+
+    expect(metrics.currentMasteryPct).toBe(100);
+    expect(metrics.missedQuestionIds).toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ ship, add proposed ideas here as they come up, and be honest about status.
 Statuses: **in-progress** (partially built, gaps known) · **next** (agreed, not started) ·
 **proposed** (idea, not committed) · **blocked** (needs something first).
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 ## Question Bank
 
@@ -37,7 +37,6 @@ Last updated: 2026-07-10
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| E2E smoke test (onboarding → import → block → repair card) | next | Parser, extraction, feedback, cards, backups, migrations, and vault behavior have unit coverage; the full persisted browser journey is not automated yet. |
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
 | Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; the main index chunk still exceeds 500 kB. Route-level splitting proposed. |
 | Remaining React hook warnings (8, page-level) | in-progress | Pre-existing in large pages (Dashboard/Journal/Productivity/CourseTracker/GuidedTour/Onboarding); fix opportunistically. |
@@ -61,6 +60,9 @@ Last updated: 2026-07-10
 
 ## Recently shipped (move log)
 
+- 2026-07-11 — Latest-attempt current-mastery metrics with separately named
+  all-attempt historical accuracy, shared vault constants, verbatim stored-explanation
+  rendering, and the persisted Question Bank browser journey → moved to FEATURES.md.
 - 2026-07-10 — Question Bank Command Center, progress-rich set cards, structured
   quiz feedback, deterministic explanation cleanup, per-stage parser confidence,
   exact answer evidence, source checksums, schema v32 migration, and dev-only

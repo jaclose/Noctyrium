@@ -64,7 +64,7 @@ export function QuestionWorkspacePage() {
   const needsMapping = questions.filter((q) => q.needsReview || !q.correctKey).length;
   const allAttempts = questions.flatMap((q) => q.attempts);
   const correctAttempts = allAttempts.filter((attempt) => attempt.status === "correct").length;
-  const accuracy = allAttempts.length ? Math.round((correctAttempts / allAttempts.length) * 100) : null;
+  const historicalAccuracy = allAttempts.length ? Math.round((correctAttempts / allAttempts.length) * 100) : null;
   const lastSession = [...(s.quizSessions ?? [])].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
   const highConfidenceMisses = questions.filter((q) =>
     q.status === "incorrect" && (q.confidence ?? 0) >= 4).length;
@@ -141,7 +141,7 @@ export function QuestionWorkspacePage() {
     { label: "Total questions", value: questions.length, note: `${runnable} runnable`, icon: HelpCircle },
     { label: "Due review", value: due.length, note: "auto-resurfaced", icon: ListFilter },
     { label: "Unseen", value: unseen, note: "ready to study", icon: BookOpen },
-    { label: "Accuracy", value: accuracy === null ? "—" : `${accuracy}%`, note: `${allAttempts.length} attempts`, icon: BarChart3 },
+    { label: "Historical accuracy", value: historicalAccuracy === null ? "—" : `${historicalAccuracy}%`, note: `${allAttempts.length} attempts`, icon: BarChart3 },
     { label: "Active sets", value: (s.questionSets ?? []).length, note: `${(s.documents ?? []).length} sources`, icon: Files },
     { label: "Needs mapping", value: needsMapping, note: "review before trust", icon: Microscope },
   ];

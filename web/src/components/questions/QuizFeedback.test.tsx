@@ -13,7 +13,7 @@ const question: QuestionRecord = {
     { key: "C", text: "Mast cells" },
   ],
   correctKey: "B", correctAnswerText: "CD4+ T lymphocytes",
-  explanation: `${stem}\nA. B lymphocytes\nB. CD4+ T lymphocytes\nC. Mast cells\nAnswer: B. CD4+ T lymphocytes\nExplanation: The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.\nObjective: delayed hypersensitivity\nSource: Week 4 set`,
+  explanation: "The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.",
   objective: "Recognize delayed-type hypersensitivity.",
   bank: "Week 4 set", sourcePage: 1, citation: "Week 4 source",
   extraction: {
@@ -27,7 +27,7 @@ const question: QuestionRecord = {
 afterEach(cleanup);
 
 describe("QuizFeedback", () => {
-  it("shows a short incorrect banner, distinct answers, and only the clean explanation", () => {
+  it("shows a short incorrect banner, distinct answers, and the stored clean explanation", () => {
     render(<QuizFeedback question={question} pickedKey="A" />);
     expect(screen.getByRole("status").textContent).toContain("Incorrect — you picked A, answer is B");
     expect(screen.getByText("B. CD4+ T lymphocytes")).toBeTruthy();
@@ -43,6 +43,12 @@ describe("QuizFeedback", () => {
     expect(screen.getByRole("status").textContent).toContain("Correct — you picked B");
     expect(screen.getByText("Source & evidence")).toBeTruthy();
     expect(screen.getByText("Recognize delayed-type hypersensitivity.")).toBeTruthy();
+  });
+
+  it("renders a manually edited answer-line-shaped explanation verbatim", () => {
+    const edited = "Answer choice B is wrong because receptor affinity alone does not determine signaling.";
+    render(<QuizFeedback question={{ ...question, explanation: `  ${edited}  ` }} pickedKey="A" />);
+    expect(screen.getByText(edited).textContent).toBe(edited);
   });
 
   it("exposes repair actions through explicit callbacks", () => {

@@ -15,7 +15,6 @@ import { newSchedule } from "../../lib/ankiCards";
 import { Modal, TextAreaField, SelectField } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
-import { cleanExplanationText } from "../../lib/questionExplanation";
 import { QuizFeedback } from "./QuizFeedback";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
@@ -69,7 +68,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
       front: `You missed this: ${question.stem.slice(0, 300)}${question.stem.length > 300 ? "…" : ""}`,
       back: [
         correct ? `Correct: ${correct.key}. ${correct.text}` : "Set the correct answer on the question first.",
-        cleanExplanationText(question.explanation, question),
+        question.explanation?.trim() ?? "",
         errorType ? `Why missed: ${ERROR_TYPE_LABEL[errorType as QuestionErrorType]}` : "",
       ].filter(Boolean).join("\n\n"),
       source: question.citation ?? "Question Workspace",

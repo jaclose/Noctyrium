@@ -1,11 +1,14 @@
 import { BUILD_INFO, type BuildInfo } from "./buildInfo";
 import { STORAGE_KEYS } from "./brand";
+import {
+  BACKUP_STORE_NAME,
+  DB_NAME,
+  DB_VERSION as VAULT_DB_VERSION,
+  STORE_NAME as VAULT_STORE_NAME,
+} from "./localVault";
 
 const BACKUP_SCHEMA_VERSION = 1;
 const DEFAULT_BACKUP_LIMIT = 8;
-const VAULT_STORE_NAME = "state";
-const BACKUP_STORE_NAME = "backups";
-const VAULT_DB_VERSION = 2;
 
 export interface LocalBackupSnapshot {
   schemaVersion: number;
@@ -211,7 +214,7 @@ async function readVaultIndexedDb(): Promise<NonNullable<LocalBackupSnapshot["in
     keys.forEach((key, index) => {
       records[String(key)] = serializeStoredValue(values[index]);
     });
-    return { dbName: STORAGE_KEYS.vaultDb, storeName: VAULT_STORE_NAME, records };
+    return { dbName: DB_NAME, storeName: VAULT_STORE_NAME, records };
   } finally {
     db.close();
   }
@@ -219,7 +222,7 @@ async function readVaultIndexedDb(): Promise<NonNullable<LocalBackupSnapshot["in
 
 function openVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(STORAGE_KEYS.vaultDb, VAULT_DB_VERSION);
+    const request = indexedDB.open(DB_NAME, VAULT_DB_VERSION);
     let blocked = false;
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
@@ -247,7 +250,7 @@ function openVault(): Promise<IDBDatabase> {
 
 function openExistingVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(STORAGE_KEYS.vaultDb);
+    const request = indexedDB.open(DB_NAME);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
         request.result.createObjectStore(VAULT_STORE_NAME);

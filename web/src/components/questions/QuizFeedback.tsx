@@ -1,6 +1,5 @@
 import { AlertTriangle, BookMarked, FileSearch, PencilLine, WandSparkles } from "lucide-react";
 import type { QuestionRecord } from "../../lib/questions";
-import { cleanExplanationText } from "../../lib/questionExplanation";
 import { GhostButton } from "../ui/primitives";
 
 export function QuizFeedback({
@@ -23,7 +22,8 @@ export function QuizFeedback({
   const correct = question.options.find((option) => option.key === question.correctKey);
   const picked = question.options.find((option) => option.key === pickedKey);
   const result = !question.correctKey ? "review" : pickedKey === question.correctKey ? "correct" : "incorrect";
-  const explanation = cleanExplanationText(question.explanation ?? "", question);
+  // Import owns cleanup; display must preserve legitimate user edits.
+  const explanation = (question.explanation ?? "").trim();
   const extraction = question.extraction;
 
   return (

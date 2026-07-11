@@ -2,10 +2,10 @@ import type { StateStorage } from "zustand/middleware";
 import { userIdFromName } from "./userIdentity";
 import { STORAGE_KEYS } from "./brand";
 
-const DB_NAME = STORAGE_KEYS.vaultDb;
-const STORE_NAME = "state";
-const BACKUP_STORE_NAME = "backups";
-const DB_VERSION = 2;
+export const DB_NAME = STORAGE_KEYS.vaultDb;
+export const STORE_NAME = "state";
+export const BACKUP_STORE_NAME = "backups";
+export const DB_VERSION = 2;
 const activeUserKey = (name: string) => `${name}:active-user`;
 const scopedStateKey = (name: string, userId: string) => `${name}:user:${userId}`;
 

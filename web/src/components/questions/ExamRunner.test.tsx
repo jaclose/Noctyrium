@@ -156,4 +156,17 @@ describe("ExamRunner saved blocks and selection semantics", () => {
       confidence: 4,
     }));
   });
+
+  it("renders a manually edited explanation verbatim in deferred results", async () => {
+    const edited = "Answer choice B is wrong because receptor affinity alone does not determine signaling.";
+    setStore();
+    mocked.store = { ...mocked.store, questions: [{ ...question, explanation: edited }] };
+    const user = userEvent.setup();
+    render(<ExamRunner mode="exam" retakeIds={[question.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "A. Alpha" }));
+    await user.click(screen.getByRole("button", { name: "Submit & finish" }));
+
+    expect(screen.getByText(edited).textContent).toBe(edited);
+  });
 });

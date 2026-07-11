@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // base: "./" keeps all asset URLs relative, so the same build works
@@ -7,6 +7,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   base: "./",
+  test: {
+    exclude: [...configDefaults.exclude, "e2e/**"],
+  },
   build: {
     outDir: "dist",
     sourcemap: false,

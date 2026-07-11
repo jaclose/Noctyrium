@@ -21,7 +21,6 @@ import { Modal, SelectField } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { QuizFeedback } from "./QuizFeedback";
-import { cleanExplanationText } from "../../lib/questionExplanation";
 import { accuracyTone } from "../../lib/library";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
@@ -462,7 +461,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                   <div className="stack" style={{ gap: 4 }}>
                     <span style={{ fontWeight: 600 }}>{q.stem}</span>
                     <span className="sub">You picked {a?.answerKey ?? "nothing"} · correct {q.correctKey}</span>
-                    {q.explanation && <span className="sub">{cleanExplanationText(q.explanation, q)}</span>}
+                    {/* Import owns cleanup; display must preserve legitimate user edits. */}
+                    {q.explanation && <span className="sub">{q.explanation.trim()}</span>}
                     <div className="row">
                       <GhostButton onClick={() => makeRepairCard(q)}><WandSparkles size={13} /> Repair card</GhostButton>
                     </div>
