@@ -186,4 +186,72 @@ describe("portable backup safety", () => {
     const reverse = mergeStates(imported, current);
     expect(reverse.dailyWordPuzzles).toEqual(merged.dailyWordPuzzles);
   });
+
+  it("round-trips daily requirements, saved Pomodoro presets, and academic stage", () => {
+    const state = makeSeed();
+    state.profile.academicStageId = "dedicated-board-prep";
+    state.profile.customAcademicStage = undefined;
+    state.profile.dailySuccess = {
+      version: 1,
+      configuredAt: "2026-07-12",
+      requirements: [{
+        id: "req-questions",
+        label: "Practice questions",
+        enabled: true,
+        source: { kind: "practice-questions" },
+        target: 20,
+        unit: "questions",
+        schedule: { kind: "weekdays", weekdays: [1, 3, 5] },
+        trackingStartsAt: "2026-07-12",
+        createdAt: "2026-07-12T12:00:00.000Z",
+        updatedAt: "2026-07-12T12:00:00.000Z",
+      }],
+    };
+    state.profile.pomodoroPreferences = {
+      autoStartBreak: false,
+      autoStartFocus: true,
+      savedPresets: [{
+        id: "preset-deep",
+        label: "Deep 90",
+        focus: 90,
+        break: 20,
+        longBreak: 30,
+        cyclesBeforeLongBreak: 2,
+        intention: "No tabs",
+        createdAt: "2026-07-12T12:00:00.000Z",
+        updatedAt: "2026-07-12T12:00:00.000Z",
+        useCount: 4,
+        lastUsedAt: "2026-07-12T13:00:00.000Z",
+      }],
+    };
+
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.profile.academicStageId).toBe("dedicated-board-prep");
+    expect(parsed.profile.dailySuccess?.requirements).toHaveLength(1);
+    expect(parsed.profile.dailySuccess?.requirements[0]).toMatchObject({
+      id: "req-questions",
+      target: 20,
+      trackingStartsAt: "2026-07-12",
+      schedule: { kind: "weekdays", weekdays: [1, 3, 5] },
+    });
+    expect(parsed.profile.pomodoroPreferences?.savedPresets).toHaveLength(1);
+    expect(parsed.profile.pomodoroPreferences?.savedPresets[0]).toMatchObject({
+      id: "preset-deep", focus: 90, break: 20, longBreak: 30, cyclesBeforeLongBreak: 2, useCount: 4,
+    });
+    expect(parsed.profile.pomodoroPreferences?.autoStartFocus).toBe(true);
+
+    // A legacy import without the new optional fields hydrates without inventing them.
+    const legacy = makeSeed();
+    delete (legacy.profile as Partial<typeof legacy.profile>).dailySuccess;
+    delete (legacy.profile as Partial<typeof legacy.profile>).pomodoroPreferences;
+    delete (legacy.profile as Partial<typeof legacy.profile>).academicStageId;
+    const parsedLegacy = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(legacy) }));
+    expect(parsedLegacy.profile.dailySuccess).toBeUndefined();
+    expect(parsedLegacy.profile.academicStageId).toBeUndefined();
+
+    // Merge keeps the current device's requirements/presets and duplicates nothing.
+    const merged = mergeStates(state, parsedLegacy);
+    expect(merged.profile.dailySuccess?.requirements).toHaveLength(1);
+    expect(merged.profile.pomodoroPreferences?.savedPresets).toHaveLength(1);
+  });
 });

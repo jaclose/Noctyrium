@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib";
 const assetsDir = new URL("../dist/assets/", import.meta.url);
 const names = await readdir(assetsDir);
 const scripts = names.filter((name) => name.endsWith(".js"));
-const sentinel = "AXOM_WORD_LIST_SENTINEL_GENERAL_1";
+const sentinel = "AXOM_WORD_LIST_SENTINEL_GENERAL_2_SCOWL_2026_02_25";
 const contents = new Map();
 for (const name of scripts) contents.set(name, await readFile(new URL(name, assetsDir), "utf8"));
 

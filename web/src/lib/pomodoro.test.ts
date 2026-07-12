@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { usePomodoro, ensurePomodoroClock, reconcilePomodoro, effectivePreset, getBreakDurationMinutes } from "./pomodoro";
+import { usePomodoro, ensurePomodoroClock, reconcilePomodoro, effectivePreset, getBreakDurationMinutes, POMODORO_PRESETS, PRIMARY_POMODORO_PRESET_IDS } from "./pomodoro";
 import { useStore } from "./store";
-import { dayKey } from "./scoring";
 
 let logSpy: ReturnType<typeof vi.spyOn>;
 const originalLogStudy = useStore.getState().logStudy;
@@ -11,8 +10,9 @@ function resetPomo(patch: Partial<ReturnType<typeof usePomodoro.getState>> = {})
   usePomodoro.getState().pause(); // stops any running interval
   usePomodoro.setState({
     presetId: "custom", phase: "focus", secondsLeft: 25 * 60, running: false,
-    autoLog: true, anchorDay: dayKey(), sessionsToday: 0, loggedMinutesToday: 0,
+    autoLog: true, anchorDay: useStore.getState().activeDayKey, sessionsToday: 0, loggedMinutesToday: 0,
     targetKind: "free", targetId: undefined, targetLabel: undefined, intention: "",
+    activeSavedPresetId: undefined, focusRunStarted: false,
     customFocus: 25, customBreak: 5, customLongBreak: 15, customCycles: 4,
     lastTickAt: Date.now(), completedAt: null, completedMinutes: 0,
     ...patch,
@@ -31,7 +31,15 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-07-11T12:00:00.000Z"));
   // updateProfile() replaces the Zustand state object while preserving action
   // references, so explicitly restore this action before installing each spy.
-  useStore.setState({ logStudy: originalLogStudy });
+  useStore.setState({
+    logStudy: originalLogStudy,
+    activeDayKey: "2026-07-11",
+    profile: {
+      ...useStore.getState().profile,
+      pomodoroCustom: { focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 },
+      pomodoroPreferences: undefined,
+    },
+  });
   logSpy = vi.spyOn(useStore.getState(), "logStudy").mockImplementation(() => {});
   resetPomo();
 });
@@ -160,6 +168,35 @@ describe("pomodoro completion accounting", () => {
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("emits a zero-minute completion signal when auto-log is off", () => {
+    resetPomo({
+      autoLog: false,
+      completedAt: "2026-07-10T12:00:00.000Z",
+      completedMinutes: 25,
+    });
+    completeFocusNaturally();
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(usePomodoro.getState().completedAt).not.toBe("2026-07-10T12:00:00.000Z");
+    expect(usePomodoro.getState().completedMinutes).toBe(0);
+  });
+
+  it.each(["reset", "skip"] as const)("logs a partial %s without emitting another natural-completion signal", (action) => {
+    const priorCompletion = "2026-07-10T12:00:00.000Z";
+    resetPomo({
+      phase: "focus",
+      secondsLeft: 20 * 60,
+      running: false,
+      completedAt: priorCompletion,
+      completedMinutes: 25,
+    });
+    usePomodoro.getState()[action]();
+    expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({ minutes: 5 }));
+    expect(usePomodoro.getState()).toMatchObject({
+      completedAt: priorCompletion,
+      completedMinutes: 25,
+    });
+  });
+
   it("does not advance the cycle when a focus sprint is cancelled (reset)", () => {
     resetPomo({ phase: "focus", secondsLeft: 100, running: true, sessionsToday: 2 });
     usePomodoro.getState().reset();
@@ -232,7 +269,7 @@ describe("pomodoro snapshot restore", () => {
     const backing = new Map<string, string>();
     backing.set("noctyrium-pomodoro-session", JSON.stringify({
       presetId: "custom", phase: "break", secondsLeft: 14 * 60, running: false,
-      autoLog: true, anchorDay: dayKey(), sessionsToday: 4, loggedMinutesToday: 100,
+      autoLog: true, anchorDay: useStore.getState().activeDayKey, sessionsToday: 4, loggedMinutesToday: 100,
       targetKind: "free", intention: "",
       customFocus: 25, customBreak: 5, customLongBreak: 15, customCycles: 4,
       updatedAt: Date.now(),
@@ -253,5 +290,121 @@ describe("pomodoro snapshot restore", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("preset and custom workflow", () => {
+  it("exposes the restrained primary defaults and keeps 25 / 5 secondary", () => {
+    expect(PRIMARY_POMODORO_PRESET_IDS).toEqual(["90-20", "50-10", "120-25", "custom"]);
+    expect(PRIMARY_POMODORO_PRESET_IDS.map((id) => POMODORO_PRESETS.find((preset) => preset.id === id)?.label)).toEqual([
+      "90 / 20", "50 / 10", "120 / 25", "Custom",
+    ]);
+    expect(POMODORO_PRESETS.find((preset) => preset.id === "25-5")?.label).toBe("25 / 5");
+  });
+
+  it("runs a custom snapshot once without saving it to the profile", () => {
+    const originalProfile = useStore.getState().profile;
+    useStore.setState({ profile: { ...originalProfile, pomodoroCustom: { focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 } } });
+    usePomodoro.getState().runCustom({ focus: 90, break: 20, longBreak: 35, cyclesBeforeLongBreak: 3, intention: "Renal questions" });
+    expect(usePomodoro.getState()).toMatchObject({
+      presetId: "custom",
+      secondsLeft: 90 * 60,
+      customFocus: 90,
+      customBreak: 20,
+      customLongBreak: 35,
+      customCycles: 3,
+      intention: "Renal questions",
+    });
+    expect(useStore.getState().profile.pomodoroCustom).toEqual({ focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 });
+  });
+
+  it("uses the store active day instead of the legacy shifted calendar key", () => {
+    useStore.setState({ activeDayKey: "2026-07-12" });
+    resetPomo({ anchorDay: "2026-07-11", sessionsToday: 3, loggedMinutesToday: 75 });
+    usePomodoro.getState().start();
+    expect(usePomodoro.getState()).toMatchObject({
+      anchorDay: "2026-07-12",
+      sessionsToday: 0,
+      loggedMinutesToday: 0,
+    });
+  });
+
+  it("logs elapsed paused focus before changing a preset", () => {
+    const priorCompletion = "2026-07-10T12:00:00.000Z";
+    resetPomo({
+      customFocus: 25,
+      secondsLeft: 18 * 60,
+      completedAt: priorCompletion,
+      completedMinutes: 25,
+    });
+    usePomodoro.getState().setPreset("50-10");
+    expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
+      minutes: 7,
+      note: expect.stringContaining("preset change"),
+    }));
+    expect(usePomodoro.getState()).toMatchObject({
+      presetId: "50-10",
+      secondsLeft: 50 * 60,
+      completedAt: priorCompletion,
+      completedMinutes: 25,
+    });
+  });
+
+  it("logs elapsed paused focus before running a custom snapshot", () => {
+    resetPomo({ customFocus: 25, secondsLeft: 19 * 60 });
+    usePomodoro.getState().runCustom({
+      focus: 75,
+      break: 15,
+      longBreak: 30,
+      cyclesBeforeLongBreak: 3,
+    });
+    expect(logSpy).toHaveBeenCalledWith(expect.objectContaining({
+      minutes: 6,
+      note: expect.stringContaining("preset change"),
+    }));
+    expect(usePomodoro.getState()).toMatchObject({
+      presetId: "custom",
+      secondsLeft: 75 * 60,
+      customFocus: 75,
+      focusRunStarted: false,
+    });
+  });
+
+  it("honors both auto-start directions without changing cadence", () => {
+    const profile = useStore.getState().profile;
+    useStore.setState({ profile: { ...profile, pomodoroPreferences: { autoStartBreak: false, autoStartFocus: true, savedPresets: [] } } });
+    resetPomo({ sessionsToday: 3, customCycles: 4, customLongBreak: 15 });
+    completeFocusNaturally();
+    expect(usePomodoro.getState()).toMatchObject({ phase: "break", running: false, secondsLeft: 15 * 60 });
+
+    usePomodoro.setState({ phase: "break", secondsLeft: 1, running: true, lastTickAt: Date.now() });
+    vi.setSystemTime(Date.now() + 2000);
+    usePomodoro.getState()._tick();
+    expect(usePomodoro.getState()).toMatchObject({ phase: "focus", running: true, focusRunStarted: true });
+  });
+
+  it("counts a saved preset only when its focus run actually starts", () => {
+    const timestamp = new Date().toISOString();
+    const profile = useStore.getState().profile;
+    useStore.setState({
+      profile: {
+        ...profile,
+        pomodoroPreferences: {
+          autoStartBreak: true,
+          autoStartFocus: false,
+          savedPresets: [{
+            id: "saved-1", label: "Boards", focus: 50, break: 10, longBreak: 25,
+            cyclesBeforeLongBreak: 4, createdAt: timestamp, updatedAt: timestamp, useCount: 0,
+          }],
+        },
+      },
+    });
+    usePomodoro.getState().runCustom({ focus: 50, break: 10, longBreak: 25, cyclesBeforeLongBreak: 4 }, "saved-1");
+    expect(useStore.getState().profile.pomodoroPreferences?.savedPresets[0].useCount).toBe(0);
+    usePomodoro.getState().start();
+    expect(useStore.getState().profile.pomodoroPreferences?.savedPresets[0].useCount).toBe(1);
+    usePomodoro.getState().pause();
+    usePomodoro.getState().start();
+    expect(useStore.getState().profile.pomodoroPreferences?.savedPresets[0].useCount).toBe(1);
   });
 });

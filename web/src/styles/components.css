@@ -29,7 +29,7 @@
 .glass-card.hoverable:hover {
   border-color: var(--glass-card-border-hover);
   transform: translateY(-2px);
-  box-shadow: 0 24px 54px rgba(0,0,0,0.46), inset 0 1px 0 rgba(230,226,214,0.06), 0 0 22px rgba(200,169,106,0.07);
+  box-shadow: 0 24px 54px rgba(0,0,0,0.46), inset 0 1px 0 rgba(230,226,214,0.06);
 }
 
 /* Glass button (glassButton) */
@@ -103,8 +103,8 @@
   letter-spacing: 0.01em;
   border-radius: 999px;
   color: var(--cyan);
-  background: var(--gold-soft);
-  border: 1px solid rgba(200, 169, 106, 0.18);
+  background: var(--cool-accent-soft);
+  border: 1px solid var(--cool-accent-line);
 }
 .tag.green { color: var(--green); background: rgba(127,184,148,0.13); border-color: rgba(127,184,148,0.2); }
 .tag.gold { color: var(--gold); background: rgba(200,169,106,0.13); border-color: rgba(200,169,106,0.22); }
@@ -208,13 +208,16 @@ select.field, .scope-select {
 .settings-intro {
   display: grid;
   gap: 4px;
-  padding: 12px 13px;
-  border-radius: 15px;
+  padding: 9px 11px;
+  border-radius: 12px;
   background:
-    radial-gradient(circle at 0% 0%, rgba(200,169,106,0.1), transparent 38%),
+    radial-gradient(circle at 0% 0%, rgba(230,226,214,0.07), transparent 38%),
     rgba(255,255,255,0.04);
   border: 1px solid rgba(230,226,214,0.1);
 }
+.settings-tabs { gap: 5px; padding: 3px; }
+.settings-tabs .filter-pill { min-height: 34px; padding: 6px 9px; border-radius: 9px; font-size: 10.5px; }
+.settings-tabs .filter-pill svg { margin-right: 4px !important; }
 .settings-intro b {
   font-size: 13.5px;
 }
@@ -227,11 +230,17 @@ select.field, .scope-select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px;
-  border-radius: 16px;
+  padding: 10px 11px;
+  border-radius: 13px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(230,226,214,0.09);
 }
+.settings-profile-disclosure { padding: 9px 11px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-1); }
+.settings-profile-disclosure > summary { min-height: 28px; cursor: pointer; color: var(--text-60); font-size: 11px; font-weight: 800; }
+.settings-profile-disclosure[open] > summary { margin-bottom: 8px; color: var(--text); }
+.settings-profile-disclosure > p { margin: 0 0 10px; }
+.settings-profile-disclosure > .gbtn { margin-top: 9px; }
+.promise-settings-card { border-color: var(--hairline) !important; background: var(--surface-1) !important; box-shadow: none !important; }
 .settings-target-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -266,7 +275,7 @@ select.field, .scope-select {
 }
 .settings-inline-toggle input,
 .settings-compact-grid input,
-.settings-timezone-fieldset input { accent-color: var(--cyan); }
+.settings-timezone-fieldset input { accent-color: var(--gold); }
 .settings-compact-grid {
   width: 100%;
   display: grid;
@@ -906,6 +915,36 @@ select.field, .scope-select {
   letter-spacing: .04em;
   text-transform: uppercase;
 }
+.onboarding-disclosure {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface-1);
+  padding: 10px 12px;
+}
+.onboarding-disclosure > summary {
+  min-height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-70);
+}
+.onboarding-disclosure[open] > summary { margin-bottom: 10px; color: var(--text); }
+.onboarding-disclosure .sub { margin: 0 0 10px; }
+.onboarding-quick-requirements { display: grid; gap: 8px; }
+.onboarding-quick-requirements label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.onboarding-quick-requirements input { width: 18px; height: 18px; accent-color: var(--gold); }
+.onboarding-quick-requirements b,
+.onboarding-quick-requirements small { display: block; }
+.onboarding-quick-requirements b { font-size: 12px; }
+.onboarding-quick-requirements small { margin-top: 2px; color: var(--text-45); font-size: 11px; }
 .onboarding-choice-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

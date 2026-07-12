@@ -42,6 +42,8 @@ export const STORAGE_KEYS = {
   lastSeenBuild: "axom.lastSeenBuild",
   /** Small device-only UI preference; never part of the workspace payload. */
   themePreference: "axom.theme",
+  /** Stable announcement ids only; never stores routes, profile data, or workspace content. */
+  dismissedAnnouncements: "axom.announcements.dismissed.v1",
   /** Small device-only reminder ledger; contains date keys only, never journal content. */
   missedStandupReminder: "noctyrium-missed-standup-alert",
   localBackupPrefix: "axom.backups.local.",

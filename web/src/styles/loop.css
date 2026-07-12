@@ -71,6 +71,46 @@
 .brief-change.good { color: var(--grade-green, #46d27e); }
 .brief-change.watch { color: var(--grade-orange, #ff9f43); }
 .brief-change.neutral { color: var(--text-80); }
+.brief-learning-title {
+  margin: 16px 0 4px;
+  color: var(--text-95);
+  font-size: 18px;
+  font-weight: 800;
+}
+.brief-evidence-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.brief-evidence-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-60);
+}
+.brief-evidence-list li.ready { color: var(--grade-green, #46d27e); }
+.brief-evidence-list li > div { min-width: 0; }
+.brief-evidence-list b { color: var(--text-80); font-size: 12.5px; }
+.brief-evidence-list span { font-size: 11px; font-weight: 800; }
+.brief-evidence-list small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-45);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.brief-learning-actions { margin-top: 14px; }
+@media (max-width: 720px) {
+  .brief-evidence-list { grid-template-columns: 1fr; }
+  .brief-learning-actions .gbtn { width: 100%; justify-content: center; }
+}
 
 /* --- Session bar + focus mode ---------------------------------------------- */
 .session-bar {

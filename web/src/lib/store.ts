@@ -32,7 +32,7 @@ import {
 import { localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
-import { inferTrackFromFocus, resolveTrack } from "./tracks";
+import { inferTrackFromFocus, isAcademicStageId, resolveTrack } from "./tracks";
 import type { EducationTrack } from "./tracks";
 import type { EducationTrackId, ExperienceFocusId } from "./types";
 
@@ -47,6 +47,8 @@ interface ApplyTrackOptions {
 }
 import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
 import { normalizeResourceUrl } from "./resourceUtils";
+import { normalizeDailySuccessConfig } from "./dailySuccess";
+import { normalizePomodoroPreferences } from "./pomodoroPreferences";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import {
   closeOpenSegment, findLiveSession, openNewSegment, restoreSession, sessionElapsedMinutes,
@@ -133,6 +135,15 @@ interface Actions {
 
   // productivity
   logStudy: (entry: { type: string; minutes?: number; cards?: number; note?: string }) => void;
+  logActivity: (entry: {
+    label: string;
+    trackerId?: string;
+    minutes?: number;
+    quantity?: number;
+    quantityKind?: "cards" | "questions" | "count";
+    quantityLabel?: string;
+    note?: string;
+  }) => void;
   logProductivity: (entry: { trackerId: string; quantity?: number; minutes?: number; note?: string }) => void;
   addProductivityTracker: (tracker: Omit<ProductivityTracker, "id" | "createdAt" | "updatedAt">) => void;
   updateProductivityTracker: (id: string, patch: Partial<ProductivityTracker>) => void;
@@ -145,7 +156,7 @@ interface Actions {
   removeEnergyFactor: (id: string) => void;
 
   // habits (experimental — §6)
-  addHabit: (habit: Omit<Habit, "id" | "createdAt" | "updatedAt">) => void;
+  addHabit: (habit: Omit<Habit, "id" | "createdAt" | "updatedAt">) => string;
   updateHabit: (id: string, patch: Partial<Habit>) => void;
   removeHabit: (id: string) => void;
   checkHabit: (habitId: string, date: string, status: HabitCheckStatus, value?: number, note?: string) => void;
@@ -463,6 +474,42 @@ export const useStore = create<Store>()(
           return { logs: [entry, ...s.logs] };
         }),
 
+      logActivity: ({ label, trackerId, minutes = 0, quantity = 0, quantityKind, quantityLabel, note }) =>
+        set((s) => {
+          const tracker = trackerId
+            ? s.productivityTrackers.find((item) => item.id === trackerId && !item.archived)
+            : undefined;
+          const cleanLabel = label.trim().slice(0, 160);
+          const nextMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
+          const nextQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
+          if (!cleanLabel && !tracker?.name) return {};
+          // A named activity is a valid yes/no event even without a duration or
+          // quantity. This keeps logging fast without fabricating study minutes.
+          const semanticQuantity = nextQuantity || (!nextMinutes ? 1 : 0);
+          const kind = quantityKind ?? (nextQuantity ? "count" : undefined);
+          const entry: StudyLog = {
+            id: uid(),
+            dayKey: s.activeDayKey,
+            ts: now(),
+            type: cleanLabel || tracker?.name || "Activity",
+            minutes: nextMinutes,
+            cards: kind === "cards" ? semanticQuantity : 0,
+            note: note?.trim() || undefined,
+            trackerId: tracker?.id,
+            unitType: nextMinutes && !semanticQuantity
+              ? "minutes"
+              : semanticQuantity && !nextMinutes
+                ? (semanticQuantity === 1 && !kind ? "yesno" : "count")
+                : tracker?.unitType ?? "custom",
+            quantity: semanticQuantity,
+            quantityKind: kind,
+            quantityLabel: quantityLabel?.trim().slice(0, 40) || undefined,
+            academic: tracker ? tracker.contributesToAcademicStudy : true,
+            productive: tracker ? tracker.contributesToTotalProductiveTime : true,
+          };
+          return { logs: [entry, ...s.logs] };
+        }),
+
       logProductivity: ({ trackerId, quantity = 0, minutes, note }) =>
         set((s) => {
           const tracker = s.productivityTrackers.find((item) => item.id === trackerId);
@@ -535,13 +582,16 @@ export const useStore = create<Store>()(
         set((s) => ({ energyFactors: (s.energyFactors ?? []).filter((factor) => factor.id !== id) })),
 
       // habits (experimental — §6) -------------------------------------------
-      addHabit: (habit) =>
+      addHabit: (habit) => {
+        const id = uid();
         set((s) => ({
           habits: [
             ...(s.habits ?? []),
-            { ...habit, name: habit.name.trim() || "Habit", id: uid(), createdAt: now(), updatedAt: now() },
+            { ...habit, name: habit.name.trim() || "Habit", id, createdAt: now(), updatedAt: now() },
           ],
-        })),
+        }));
+        return id;
+      },
       updateHabit: (id, patch) =>
         set((s) => ({
           habits: (s.habits ?? []).map((h) => (h.id === id ? { ...h, ...patch, updatedAt: now() } : h)),
@@ -1679,8 +1729,13 @@ function normalizeProfile(value: unknown): Profile {
     onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
     tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
     promise: normalizePromise(profile.promise),
+    promisePromptStatus: normalizePromisePromptStatus(profile.promisePromptStatus),
     phase: phase ?? focus?.phase,
     educationTrack,
+    academicStageId: isAcademicStageId(profile.academicStageId) ? profile.academicStageId : undefined,
+    customAcademicStage: typeof profile.customAcademicStage === "string"
+      ? profile.customAcademicStage.slice(0, 120)
+      : undefined,
     showSguResources: typeof profile.showSguResources === "boolean"
       ? profile.showSguResources
       : educationTrack === "sgu",
@@ -1701,7 +1756,14 @@ function normalizeProfile(value: unknown): Profile {
     experimentalFlags: normalizeExperimentalFlags(profile.experimentalFlags),
     timeZonePreference: normalizeTimeZonePreference(profile.timeZonePreference),
     clockPreferences: normalizeClockPreferences(profile.clockPreferences),
+    dailySuccess: profile.dailySuccess === undefined
+      ? undefined
+      : normalizeDailySuccessConfig(profile.dailySuccess),
+    hiddenActivityShortcuts: Array.isArray(profile.hiddenActivityShortcuts)
+      ? [...new Set(profile.hiddenActivityShortcuts.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.slice(0, 240)))].slice(0, 100)
+      : undefined,
     pomodoroCustom: isRecord(profile.pomodoroCustom) ? profile.pomodoroCustom as Profile["pomodoroCustom"] : undefined,
+    pomodoroPreferences: normalizePomodoroPreferences(profile.pomodoroPreferences),
   };
 }
 
@@ -1846,7 +1908,7 @@ function normalizeDashboardWidgetOrder(value: unknown): Profile["dashboardWidget
 }
 
 function normalizeDashboardWidgetList(value: unknown): Profile["hiddenDashboardWidgets"] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) return [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS];
   const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
   return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
@@ -1902,6 +1964,14 @@ function normalizePromise(value: unknown): Profile["promise"] {
     promiseTextVersion: typeof value.promiseTextVersion === "string" ? value.promiseTextVersion : "promise-of-use-v1",
     journalEntryId: typeof value.journalEntryId === "string" ? value.journalEntryId : undefined,
   };
+}
+
+function normalizePromisePromptStatus(value: unknown): Profile["promisePromptStatus"] {
+  if (!isRecord(value) || (value.state !== "deferred" && value.state !== "skipped")) return undefined;
+  const updatedAt = typeof value.updatedAt === "string" && !Number.isNaN(new Date(value.updatedAt).getTime())
+    ? new Date(value.updatedAt).toISOString()
+    : new Date().toISOString();
+  return { state: value.state, updatedAt };
 }
 
 function addResourceToState(resources: Resource[], payload: Omit<Resource, "id" | "created">) {

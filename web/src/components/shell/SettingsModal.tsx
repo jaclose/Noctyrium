@@ -12,9 +12,9 @@ import { DataHealthPanel } from "./DataHealthPanel";
 import { RecoveryStatusCard } from "./RecoveryStatusCard";
 import { PromiseCutscene } from "./PromiseCutscene";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
-import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
+import { academicStagesForTrack, EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
 import { prettyDate } from "../../lib/scoring";
-import type { DashboardWidgetId, EducationTrackId, ExperienceFocusId } from "../../lib/types";
+import type { AcademicStageId, DashboardWidgetId, EducationTrackId, ExperienceFocusId } from "../../lib/types";
 import { HardDrive } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { DEFAULT_DASHBOARD_WIDGETS, SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
@@ -81,6 +81,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   const localBackups = listLocalBackups();
   const exportedAt = lastBackupAt();
   const track = resolveTrack(profile.educationTrack);
+  const stageGroup = academicStagesForTrack(track.id);
   const focus = focusOption(profile.activeFocusId);
 
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, section: SettingsSection) {
@@ -144,7 +145,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       onClose={onClose}
       footer={<GButton variant="primary" onClick={onClose}>Done</GButton>}
     >
-      <div className="filter-bar" style={{ marginBottom: 4 }} role="tablist" aria-label="Settings sections">
+      <div className="filter-bar settings-tabs" style={{ marginBottom: 4 }} role="tablist" aria-label="Settings sections">
         {SETTINGS_SECTIONS.map(({ id, label, icon: Icon }) => {
           const active = tab === id;
           return (
@@ -175,7 +176,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       {tab === "profile" && (
         <section role="tabpanel" id={`${tabsId}-panel-profile`} aria-labelledby={`${tabsId}-tab-profile`}>
           <div className="settings-profile-card">
-            <span className="avatar" style={{ width: 52, height: 52 }}>
+            <span className="avatar" style={{ width: 44, height: 44 }}>
               {profile.avatarDataUrl
                 ? <img src={profile.avatarDataUrl} alt="" />
                 : <span className="avatar-mono">{(profile.name || "A").slice(0, 1)}</span>}
@@ -197,22 +198,30 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             onChange={(e) => store.updateProfile({ name: e.target.value })} />
           <div className="settings-target-grid">
             <Field label="Academic path" value={track.label} readOnly />
-            <Field label="Current term / exam focus" value={focus?.label ?? "Choose in Personalization"} readOnly />
+            <label className="stack gap6"><span className="field-label">Current stage</span><select className="field" value={profile.academicStageId ?? stageGroup.defaultStageId} onChange={(event) => store.updateProfile({ academicStageId: event.target.value as AcademicStageId, customAcademicStage: event.target.value === "other" ? profile.customAcademicStage : undefined })}>
+              {stageGroup.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            </select></label>
+            <Field label="Current focus" value={focus?.label ?? "Choose in Personalization"} readOnly />
           </div>
+          {(profile.academicStageId ?? stageGroup.defaultStageId) === "other" && <Field label="Custom stage (optional)" value={profile.customAcademicStage ?? ""} onChange={(event) => store.updateProfile({ customAcademicStage: event.target.value })} />}
           <Field label="Optional goal" value={profile.tagline}
             onChange={(e) => store.updateProfile({ tagline: e.target.value })} />
 
-          <div className="settings-target-grid">
-            <Field label="Daily card target" type="number" value={String(profile.dailyCardTarget ?? 120)}
-              onChange={(e) => store.updateProfile({ dailyCardTarget: Number(e.target.value) || 0 })} />
-            <Field label="Daily minute target" type="number" value={String(profile.dailyMinuteTarget ?? 240)}
-              onChange={(e) => store.updateProfile({ dailyMinuteTarget: Number(e.target.value) || 0 })} />
-            <Field label="Journal follow-up time" type="time" value={profile.journalReviewTime ?? "20:00"}
-              onChange={(e) => store.updateProfile({ journalReviewTime: e.target.value || "20:00" })} />
-          </div>
-          <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
+          <details className="settings-profile-disclosure">
+            <summary>Legacy targets and reminder time</summary>
+            <p className="sub">These minute/card targets are used only while an existing workspace has not configured Daily requirements. Cards are optional in the new model.</p>
+            <div className="settings-target-grid">
+              <Field label="Legacy card target" type="number" value={String(profile.dailyCardTarget ?? 120)}
+                onChange={(e) => store.updateProfile({ dailyCardTarget: Number(e.target.value) || 0 })} />
+              <Field label="Legacy minute target" type="number" value={String(profile.dailyMinuteTarget ?? 240)}
+                onChange={(e) => store.updateProfile({ dailyMinuteTarget: Number(e.target.value) || 0 })} />
+              <Field label="Journal follow-up time" type="time" value={profile.journalReviewTime ?? "20:00"}
+                onChange={(e) => store.updateProfile({ journalReviewTime: e.target.value || "20:00" })} />
+            </div>
+            <a className="gbtn sm" href="#productivity" onClick={onClose}>Configure daily requirements</a>
+          </details>
 
-          <div className="backup-actions-panel" style={{ marginTop: 14 }}>
+          <div className="backup-actions-panel promise-settings-card" style={{ marginTop: 14 }}>
             <div>
               <div className="sync-title"><ScrollText size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Your promise</div>
               <div className="sub">{promise?.signedName
@@ -221,7 +230,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             </div>
             <div className="row wrap gap8">
               {promise?.signedName && <GButton size="sm" onClick={() => setViewingPromise(true)}><ScrollText size={15} /> View signed promise</GButton>}
-              <GButton size="sm" variant="primary" onClick={() => setResigning(true)}>
+              <GButton size="sm" onClick={() => setResigning(true)}>
                 <ScrollText size={15} /> {promise?.signedName ? "Re-sign promise" : "Sign your promise"}
               </GButton>
             </div>
@@ -380,7 +389,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
 const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   winDay: "Win the day",
-  todayScore: "Today’s score",
+  todayScore: "Today’s requirements",
   examCountdown: "Exam countdown",
   pomodoro: "Pomodoro timer",
   weekly: "Weekly overview",

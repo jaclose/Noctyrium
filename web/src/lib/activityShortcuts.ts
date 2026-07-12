@@ -1,0 +1,99 @@
+import type { StudyLog } from "./types";
+
+export interface ActivityShortcut {
+  signature: string;
+  label: string;
+  trackerId?: string;
+  minutes: number;
+  quantity: number;
+  quantityKind?: StudyLog["quantityKind"];
+  quantityLabel?: string;
+  uses: number;
+  lastUsedAt: string;
+}
+
+/** Notes are deliberately excluded: shortcuts must never surface private text. */
+export function activitySignature(log: Pick<StudyLog, "type" | "trackerId" | "minutes" | "cards" | "quantity" | "quantityKind" | "quantityLabel">): string {
+  const legacyCards = safeNumber(log.cards);
+  const quantity = safeNumber(log.quantity) || legacyCards;
+  const quantityKind = log.quantityKind ?? (legacyCards > 0 ? "cards" : "");
+  return [
+    normalize(log.type),
+    log.trackerId ?? "",
+    safeNumber(log.minutes),
+    quantity,
+    quantityKind,
+    normalize(log.quantityLabel ?? ""),
+  ].join("|");
+}
+
+export function recentActivityShortcuts(
+  logs: StudyLog[],
+  hidden: string[] = [],
+  limit = 3,
+): ActivityShortcut[] {
+  if (limit <= 0) return [];
+  const hiddenSet = new Set(hidden);
+  const seen = new Set<string>();
+  const sorted = [...logs].sort((a, b) => b.ts.localeCompare(a.ts) || b.id.localeCompare(a.id));
+  const result: ActivityShortcut[] = [];
+  for (const log of sorted) {
+    const signature = activitySignature(log);
+    if (seen.has(signature) || hiddenSet.has(signature)) continue;
+    seen.add(signature);
+    result.push(toShortcut(log, signature, 1));
+    if (result.length >= Math.max(0, limit)) break;
+  }
+  return result;
+}
+
+export function frequentActivityShortcuts(
+  logs: StudyLog[],
+  hidden: string[] = [],
+  limit = 2,
+  threshold = 3,
+  exclude: Iterable<string> = [],
+): ActivityShortcut[] {
+  if (limit <= 0) return [];
+  const hiddenSet = new Set(hidden);
+  const excludedSet = new Set(exclude);
+  const grouped = new Map<string, { latest: StudyLog; uses: number }>();
+  for (const log of logs) {
+    const signature = activitySignature(log);
+    if (hiddenSet.has(signature)) continue;
+    const current = grouped.get(signature);
+    if (!current) grouped.set(signature, { latest: log, uses: 1 });
+    else {
+      current.uses += 1;
+      if (log.ts > current.latest.ts || log.ts === current.latest.ts && log.id > current.latest.id) current.latest = log;
+    }
+  }
+  return [...grouped.entries()]
+    .filter(([signature, value]) => value.uses >= threshold && !excludedSet.has(signature))
+    .map(([signature, value]) => toShortcut(value.latest, signature, value.uses))
+    .sort((a, b) => b.uses - a.uses || b.lastUsedAt.localeCompare(a.lastUsedAt) || a.signature.localeCompare(b.signature))
+    .slice(0, Math.max(0, limit));
+}
+
+function toShortcut(log: StudyLog, signature: string, uses: number): ActivityShortcut {
+  return {
+    signature,
+    label: log.type,
+    trackerId: log.trackerId,
+    minutes: safeNumber(log.minutes),
+    quantity: safeNumber(log.quantity) || safeNumber(log.cards),
+    quantityKind: log.quantityKind ?? (log.cards > 0 ? "cards" : undefined),
+    quantityLabel: log.quantityLabel,
+    uses,
+    lastUsedAt: log.ts,
+  };
+}
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function safeNumber(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}

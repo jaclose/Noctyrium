@@ -87,6 +87,36 @@ export function getCalendarDateKey(date: Date, timeZone: string): string {
   return key;
 }
 
+/**
+ * Milliseconds until the next calendar date in an explicit IANA timezone.
+ * A bounded binary search delegates DST and offset rules to Intl rather than
+ * duplicating timezone arithmetic in the game.
+ */
+export function millisecondsUntilNextCalendarDate(date: Date, timeZone: string): number {
+  if (!Number.isFinite(date.getTime())) throw new RangeError("A valid date is required.");
+  const zone = canonicalTimeZone(timeZone);
+  if (!zone) throw new RangeError("A valid IANA timezone is required.");
+  const currentDate = getCalendarDateKey(date, zone);
+  const start = date.getTime();
+  let low = start;
+  let high = start + 36 * 60 * 60 * 1000;
+  const limit = start + 72 * 60 * 60 * 1000;
+
+  while (high < limit && getCalendarDateKey(new Date(high), zone) === currentDate) {
+    high += 6 * 60 * 60 * 1000;
+  }
+  if (getCalendarDateKey(new Date(high), zone) === currentDate) {
+    throw new RangeError("The next calendar date could not be resolved.");
+  }
+
+  while (high - low > 1) {
+    const middle = low + Math.floor((high - low) / 2);
+    if (getCalendarDateKey(new Date(middle), zone) === currentDate) low = middle;
+    else high = middle;
+  }
+  return Math.max(0, high - start);
+}
+
 export function isCalendarDateKey(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const match = DATE_KEY.exec(value);
@@ -217,6 +247,17 @@ export function selectDailyWordPuzzle(options: SelectDailyWordPuzzleOptions): Da
   const puzzleId = buildDailyWordPuzzleId(options.wordListVersion, candidateDate);
   const existing = history.find((puzzle) => puzzle.puzzleId === puzzleId);
   if (existing) return { puzzle: existing, history, created: false, status: "current" };
+
+  // One playable puzzle per local calendar date. If the dictionary changed
+  // while that date's legacy puzzle was active, keep the same record through
+  // completion instead of silently switching to a second answer that day.
+  const historicalVersionForDate = history
+    .filter((puzzle) => puzzle.puzzleDate === candidateDate)
+    .sort(comparePuzzleCompleteness)
+    .at(-1);
+  if (historicalVersionForDate) {
+    return { puzzle: historicalVersionForDate, history, created: false, status: "current" };
+  }
 
   const puzzle = createDailyWordPuzzle(candidateDate, currentZone, options.wordListVersion, now);
   return {

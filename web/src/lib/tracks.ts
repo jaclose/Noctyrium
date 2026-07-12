@@ -11,7 +11,7 @@
 // "mastered", a clinical block is "covered"). This is what makes adding, say, a
 // pre-med prerequisite actually mean something instead of "it's a lecture now".
 // ===========================================================================
-import type { EducationTrackId, ExperienceFocusId, TrackerKind, Yield } from "./types";
+import type { AcademicStageId, EducationTrackId, ExperienceFocusId, TrackerKind, Yield } from "./types";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS } from "./experience";
 
 export type TrackGroup = "Medical School" | "Pre-Health" | "Other Health Professions";
@@ -69,6 +69,59 @@ export interface EducationTrack {
   progress: ProgressModel;
   terms: BlueprintTerm[];
   trackerRows: BlueprintTrackerRow[];
+}
+
+export interface AcademicStageOption {
+  id: AcademicStageId;
+  label: string;
+}
+
+const MEDICAL_STAGES: AcademicStageOption[] = [
+  { id: "preclinical", label: "Pre-clinical" },
+  { id: "clinical-rotations", label: "Clinical rotations" },
+  { id: "dedicated-board-prep", label: "Dedicated board preparation" },
+  { id: "residency-application", label: "Residency application" },
+  { id: "other", label: "Other / Custom" },
+];
+
+const PREHEALTH_STAGES: AcademicStageOption[] = [
+  { id: "coursework", label: "Coursework" },
+  { id: "exam-prep", label: "Exam preparation" },
+  { id: "application", label: "Application" },
+  { id: "other", label: "Other / Custom" },
+];
+
+const CLINICAL_PROGRAM_STAGES: AcademicStageOption[] = [
+  { id: "didactic", label: "Didactic / classroom" },
+  { id: "clinical-training", label: "Clinical training" },
+  { id: "licensure-prep", label: "Licensure preparation" },
+  { id: "application", label: "Job or residency application" },
+  { id: "other", label: "Other / Custom" },
+];
+
+/** Stage is deliberately separate from exam/focus; every accepted track resolves. */
+export const ACADEMIC_STAGES_BY_TRACK: Record<EducationTrackId, {
+  defaultStageId: AcademicStageId;
+  options: AcademicStageOption[];
+}> = {
+  sgu: { defaultStageId: "preclinical", options: MEDICAL_STAGES },
+  usmd: { defaultStageId: "preclinical", options: MEDICAL_STAGES },
+  do: { defaultStageId: "preclinical", options: MEDICAL_STAGES },
+  img: { defaultStageId: "preclinical", options: MEDICAL_STAGES },
+  premed: { defaultStageId: "coursework", options: PREHEALTH_STAGES },
+  mcat: { defaultStageId: "exam-prep", options: PREHEALTH_STAGES },
+  undergrad: { defaultStageId: "coursework", options: PREHEALTH_STAGES },
+  nursing: { defaultStageId: "didactic", options: CLINICAL_PROGRAM_STAGES },
+  pa: { defaultStageId: "didactic", options: CLINICAL_PROGRAM_STAGES },
+};
+
+export function academicStagesForTrack(trackId: EducationTrackId) {
+  return ACADEMIC_STAGES_BY_TRACK[trackId];
+}
+
+export function isAcademicStageId(value: unknown): value is AcademicStageId {
+  return typeof value === "string"
+    && Object.values(ACADEMIC_STAGES_BY_TRACK).some((group) => group.options.some((option) => option.id === value));
 }
 
 // --- Reusable blueprint pieces ---------------------------------------------
@@ -200,6 +253,31 @@ export const EDUCATION_TRACKS: EducationTrack[] = [
     ],
     trackerRows: [
       { path: "OMM · Longitudinal/OMM/Muscle Energy", label: "Example: Muscle energy for the lumbar spine", kind: "Lab", yield: "high", note: "Done once you can perform and explain it." },
+    ],
+  },
+  {
+    id: "img",
+    label: "International Medical School",
+    short: "IMG",
+    program: "International medical degree · school-specific curriculum",
+    blurb: "A school-agnostic medical spine that you can rename around your curriculum and board pathway.",
+    group: "Medical School",
+    tier: 4,
+    status: "live",
+    icon: "Globe2",
+    showsSguResources: false,
+    focusIds: ["step1", "step2", "step3", "shelf"],
+    defaultFocusId: "step1",
+    seedsStructure: true,
+    progress: {
+      unit: "stage",
+      summary: "A flexible pre-clinical and clinical spine for international programs, with board lanes available when useful.",
+      passMeaning: "One focused study pass over a course block, clinical topic, or question set.",
+      doneMeaning: "Done follows the target you set for the course or clinical block; the starter structure is fully editable.",
+    },
+    terms: medSchoolSpine({ boardLabel: "Board exam" }),
+    trackerRows: [
+      { path: "Pre-Clinical · Year 1/M1 · Foundations", label: "Example: Current foundational block", kind: "Lecture", yield: "none" },
     ],
   },
   {

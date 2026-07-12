@@ -10,7 +10,9 @@ import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
-import { resolveTrack } from "./tracks";
+import { isAcademicStageId, resolveTrack } from "./tracks";
+import { normalizeDailySuccessConfig } from "./dailySuccess";
+import { normalizePomodoroPreferences } from "./pomodoroPreferences";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
@@ -236,8 +238,13 @@ export function parseImport(text: string): NoctyriumState {
       onboarded: typeof profile.onboarded === "boolean" ? profile.onboarded : true,
       tourDone: typeof profile.tourDone === "boolean" ? profile.tourDone : undefined,
       promise: normalizePromise(profile.promise),
+      promisePromptStatus: normalizePromisePromptStatus(profile.promisePromptStatus),
       phase: typeof profile.phase === "string" ? profile.phase as NoctyriumState["profile"]["phase"] : activeFocus?.phase,
       educationTrack,
+      academicStageId: isAcademicStageId(profile.academicStageId) ? profile.academicStageId : undefined,
+      customAcademicStage: typeof profile.customAcademicStage === "string"
+        ? profile.customAcademicStage.slice(0, 120)
+        : undefined,
       showSguResources: typeof profile.showSguResources === "boolean"
         ? profile.showSguResources
         : educationTrack === "sgu",
@@ -256,8 +263,15 @@ export function parseImport(text: string): NoctyriumState {
       experimentalFlags: normalizeExperimentalFlags(profile.experimentalFlags),
       timeZonePreference: normalizeTimeZonePreference(profile.timeZonePreference),
       clockPreferences: normalizeClockPreferences(profile.clockPreferences),
+      dailySuccess: profile.dailySuccess === undefined
+        ? undefined
+        : normalizeDailySuccessConfig(profile.dailySuccess),
+      hiddenActivityShortcuts: Array.isArray(profile.hiddenActivityShortcuts)
+        ? [...new Set(profile.hiddenActivityShortcuts.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.slice(0, 240)))].slice(0, 100)
+        : undefined,
       pomodoroCustom: profile.pomodoroCustom && typeof profile.pomodoroCustom === "object"
         ? profile.pomodoroCustom as NoctyriumState["profile"]["pomodoroCustom"] : undefined,
+      pomodoroPreferences: normalizePomodoroPreferences(profile.pomodoroPreferences),
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],
@@ -385,6 +399,14 @@ function normalizePromise(value: unknown): NoctyriumState["profile"]["promise"] 
     promiseTextVersion: typeof record.promiseTextVersion === "string" ? record.promiseTextVersion : "promise-of-use-v1",
     journalEntryId: typeof record.journalEntryId === "string" ? record.journalEntryId : undefined,
   };
+}
+
+function normalizePromisePromptStatus(value: unknown): NoctyriumState["profile"]["promisePromptStatus"] {
+  if (!isRecord(value) || (value.state !== "deferred" && value.state !== "skipped")) return undefined;
+  const updatedAt = typeof value.updatedAt === "string" && !Number.isNaN(new Date(value.updatedAt).getTime())
+    ? new Date(value.updatedAt).toISOString()
+    : new Date().toISOString();
+  return { state: value.state, updatedAt };
 }
 
 function normalizeExperimentalFlags(value: unknown): NoctyriumState["profile"]["experimentalFlags"] {

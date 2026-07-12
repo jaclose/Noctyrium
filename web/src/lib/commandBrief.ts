@@ -8,7 +8,7 @@
 // AI layer (lib/ai) may later PROPOSE a brief through the same schema, but a
 // proposal never mutates the plan without user review.
 // ===========================================================================
-import type { NoctyriumState, Task, TrackerItem } from "./types";
+import type { Course, NoctyriumState, Task, TrackerItem } from "./types";
 import type { StudySession, SessionLink } from "./sessions";
 import type { DailyCloseout } from "./closeout";
 import { suggestMoves, targetPassesForItem, isQuestionKind } from "./tracker";
@@ -19,6 +19,9 @@ import type { QuestionRecord } from "./questions";
 import { dueQuestions, weakTopics } from "./questions";
 import type { AnkiCard } from "./ankiCards";
 import { dueCards } from "./ankiCards";
+import type { QuestionSet, SourceDocument } from "./library";
+import { EDUCATION_TRACKS } from "./tracks";
+import { normalizeTrackerPath, trackerItemKey } from "./pathUtils";
 
 export type BriefMode = "maintain" | "catch-up" | "recovery" | "sprint" | "exam-week";
 
@@ -93,6 +96,178 @@ export interface BriefStateSlice {
   closeouts: DailyCloseout[];
   questions: QuestionRecord[];
   ankiCards: AnkiCard[];
+}
+
+export interface BriefEvidenceState {
+  courses: Course[];
+  tracker: TrackerItem[];
+  logs: NoctyriumState["logs"];
+  tasks: Task[];
+  questions: QuestionRecord[];
+  documents: SourceDocument[];
+  questionSets: QuestionSet[];
+}
+
+export interface BriefEvidenceCriterion {
+  ready: boolean;
+  count: number;
+  required: number;
+  label: string;
+  explanation: string;
+}
+
+export interface CommandBriefEvidenceAssessment {
+  ready: boolean;
+  workload: BriefEvidenceCriterion;
+  activeItems: BriefEvidenceCriterion;
+  activity: BriefEvidenceCriterion;
+}
+
+type EvidenceOrigin = "seed" | "template" | "user" | "import";
+
+const STARTER_TASK_TITLES = new Set([
+  "create today's standup",
+  "add your real lecture/DLA/PQ list",
+  "save progress from settings",
+].map(normalizeEvidenceText));
+
+const TEMPLATE_COURSE_FINGERPRINTS = new Set(
+  EDUCATION_TRACKS.flatMap((track) => track.terms.flatMap((term) => term.courses.map(courseFingerprint))),
+);
+
+const TEMPLATE_TRACKER_BASELINES = new Map<string, { passes: number; ankiPasses: number }>();
+for (const row of EDUCATION_TRACKS.flatMap((track) => track.trackerRows)) {
+  TEMPLATE_TRACKER_BASELINES.set(
+    trackerFingerprint(row),
+    { passes: 0, ankiPasses: 0 },
+  );
+}
+// The original SGU seed includes two additional illustrative rows with one
+// pass already applied. Their shipped progress is presentation, not evidence.
+TEMPLATE_TRACKER_BASELINES.set(
+  trackerFingerprint({
+    path: "Term 2/BPM 501/NB3/Lectures",
+    label: "Example lecture: Sleep and biological rhythms",
+    kind: "Lecture",
+  }),
+  { passes: 1, ankiPasses: 1 },
+);
+TEMPLATE_TRACKER_BASELINES.set(
+  trackerFingerprint({
+    path: "Term 2/BPM 501/NB3/PQs",
+    label: "Example PQ set: Psych foundations",
+    kind: "PQ",
+  }),
+  { passes: 1, ankiPasses: 0 },
+);
+
+/**
+ * Decide whether the brief has enough user evidence to make a recommendation.
+ * This gate is deliberately conservative: seed/template structure can teach
+ * the UI, but it cannot diagnose a workload until the user adds or advances
+ * real records. It is pure so every surface can apply the same boundary.
+ */
+export function assessCommandBriefEvidence(state: BriefEvidenceState): CommandBriefEvidenceAssessment {
+  const realCourses = state.courses.filter(isRealWorkloadCourse).length;
+  const importedSourceKeys = new Set<string>();
+  for (const document of state.documents) importedSourceKeys.add(`document:${document.id}`);
+  for (const set of state.questionSets) importedSourceKeys.add(`set:${set.id}`);
+  for (const question of state.questions) {
+    const sourceKey = question.sourceDocumentId
+      ? `document:${question.sourceDocumentId}`
+      : question.setId
+        ? `set:${question.setId}`
+        : question.sourceFile?.name
+          ? `file:${normalizeEvidenceText(question.sourceFile.name)}`
+          : ["pasted", "screenshot", "image", "pdf", "imported"].includes(question.source)
+            ? `question-source:${question.id}`
+            : null;
+    if (sourceKey) importedSourceKeys.add(sourceKey);
+  }
+  const workloadCount = realCourses + importedSourceKeys.size;
+
+  const activeItemCount = state.tracker.filter(isMeaningfulActiveTrackerItem).length;
+  const activityCount = state.logs.filter((log) => (
+    Math.max(0, Number(log.minutes) || 0) > 0
+    || Math.max(0, Number(log.cards) || 0) > 0
+    || Math.max(0, Number(log.quantity) || 0) > 0
+  )).length;
+  const realTaskCount = state.tasks.filter((task) => (
+    task.title.trim().length > 0 && !STARTER_TASK_TITLES.has(normalizeEvidenceText(task.title))
+  )).length;
+  const practicedQuestionCount = state.questions.filter((question) => (
+    question.attempts.length > 0
+    || Boolean(question.attemptedAt)
+    || Boolean(question.userAnswerKey)
+  )).length;
+  const signalCount = activityCount + realTaskCount + practicedQuestionCount;
+
+  const workload: BriefEvidenceCriterion = {
+    ready: workloadCount >= 1,
+    count: workloadCount,
+    required: 1,
+    label: "Real workload",
+    explanation: "Add a course or import a source so AXOM knows what the work belongs to.",
+  };
+  const activeItems: BriefEvidenceCriterion = {
+    ready: activeItemCount >= 2,
+    count: activeItemCount,
+    required: 2,
+    label: "Meaningful active items",
+    explanation: "Track at least two real items; untouched examples do not count.",
+  };
+  const activity: BriefEvidenceCriterion = {
+    ready: signalCount >= 1,
+    count: signalCount,
+    required: 1,
+    label: "Current signal",
+    explanation: "Log activity, add a real task, or practise a question.",
+  };
+  return {
+    ready: workload.ready && activeItems.ready && activity.ready,
+    workload,
+    activeItems,
+    activity,
+  };
+}
+
+function recordOrigin(value: unknown): EvidenceOrigin | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const origin = (value as { origin?: unknown }).origin;
+  return origin === "seed" || origin === "template" || origin === "user" || origin === "import"
+    ? origin
+    : undefined;
+}
+
+function isRealWorkloadCourse(course: Course): boolean {
+  const origin = recordOrigin(course);
+  if (origin === "user" || origin === "import") return true;
+  return !TEMPLATE_COURSE_FINGERPRINTS.has(courseFingerprint(course));
+}
+
+function isMeaningfulActiveTrackerItem(item: TrackerItem): boolean {
+  if (item.passes >= targetPassesForItem(item)) return false;
+  const origin = recordOrigin(item);
+  if (origin === "user" || origin === "import") return true;
+  const baseline = TEMPLATE_TRACKER_BASELINES.get(trackerFingerprint(item));
+  if (baseline) return item.passes > baseline.passes || item.ankiPasses > baseline.ankiPasses;
+  if (/^example(?:[:\s]|$)/i.test(item.label.trim())) return item.passes > 0 || item.ankiPasses > 0;
+  return true;
+}
+
+function courseFingerprint(course: Pick<Course, "code" | "name" | "modules"> | { code: string; name: string; modules: string[] }): string {
+  const modules = course.modules.map((module) => (
+    typeof module === "string" ? module : module.name
+  ));
+  return [course.code, course.name, ...modules].map(normalizeEvidenceText).join("\u001f");
+}
+
+function trackerFingerprint(item: Pick<TrackerItem, "path" | "label" | "kind">): string {
+  return `${trackerItemKey(normalizeTrackerPath(item.path), item.label)}::${item.kind}`;
+}
+
+function normalizeEvidenceText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function previousDayKey(key: string, back = 1): string {

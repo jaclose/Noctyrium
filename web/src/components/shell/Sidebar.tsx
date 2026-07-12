@@ -4,8 +4,10 @@ import {
 } from "lucide-react";
 import {
   DAILY_GAMES_FOLDER,
+  getNavAnnouncementId,
   getNavModuleStatus,
   isDailyGamesEnabled,
+  isDailyGamesRoute,
   MODULE_STATUS_META,
   navById,
   SIDEBAR_BOTTOM,
@@ -17,6 +19,8 @@ import {
 import { useStore } from "../../lib/store";
 import { AxomBrandLockup } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
+import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../../lib/announcements";
+import { QuickThemeControl } from "./QuickThemeControl";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 880px)";
 const PREP_FOLDER_TOGGLE_ID = "sidebar-academic-prep-toggle";
@@ -55,9 +59,11 @@ export function Sidebar({
   const profile = useStore((s) => s.profile);
   const updateProfile = useStore((s) => s.updateProfile);
   const [manage, setManage] = useState(false);
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState(readDismissedAnnouncements);
   const sidebarRef = useRef<HTMLElement>(null);
   const mobile = useMobileSidebar();
   const hiddenOffscreen = mobile && !collapsed;
+  const dailyGamesOn = isDailyGamesEnabled(profile.experimentalFlags);
 
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current;
@@ -71,6 +77,15 @@ export function Sidebar({
     const frame = window.requestAnimationFrame(() => sidebarRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [collapsed, mobile]);
+
+  useEffect(() => {
+    const announcementId = getNavAnnouncementId(active);
+    if (!announcementId || isAnnouncementDismissed(announcementId, dismissedAnnouncements)) return;
+    // The optional-route gate is an enablement explanation, not a meaningful
+    // open of the game itself. Dismiss only once the module can render.
+    if (isDailyGamesRoute(active) && !dailyGamesOn) return;
+    setDismissedAnnouncements(dismissAnnouncement(announcementId));
+  }, [active, dailyGamesOn, dismissedAnnouncements]);
 
   const hidden = new Set(profile.hiddenNav ?? []);
   const toolsOpen = !profile.toolsCollapsed;
@@ -89,7 +104,11 @@ export function Sidebar({
     if (!item) return null;
     const I = item.icon;
     const isHidden = hidden.has(id);
-    const moduleStatus = getNavModuleStatus(id);
+    const assignedStatus = getNavModuleStatus(id);
+    const announcementId = getNavAnnouncementId(id);
+    const moduleStatus = assignedStatus === "new" && isAnnouncementDismissed(announcementId, dismissedAnnouncements)
+      ? undefined
+      : assignedStatus;
     const status = moduleStatus ? MODULE_STATUS_META[moduleStatus] : undefined;
     const accessibleLabel = status ? `${item.label}, ${status.accessibleLabel}` : item.label;
     const statusBadge = status && (
@@ -129,7 +148,6 @@ export function Sidebar({
   const navGate = (id: string) => id !== "habits" || habitsOn;
   const toolItems = (manage ? SIDEBAR_TOOLS : SIDEBAR_TOOLS.filter((id) => !hidden.has(id))).filter(navGate);
   const prepItems = (manage ? SIDEBAR_PREP : SIDEBAR_PREP.filter((id) => !hidden.has(id)));
-  const dailyGamesOn = isDailyGamesEnabled(profile.experimentalFlags);
   const dailyGamesOpen = !profile.dailyGamesCollapsed;
   const dailyGameItems = (manage
     ? DAILY_GAMES_FOLDER.routes
@@ -312,6 +330,7 @@ export function Sidebar({
               </span>
             </button>
             <div className="user-actions">
+              <QuickThemeControl />
               <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("data")} title="Local data and backups" data-tour="data-safety-settings">
                 <UserCircle2 size={17} />
               </button>

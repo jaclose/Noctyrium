@@ -1,24 +1,27 @@
-/**
- * AXOM Daily Word list metadata.
- *
- * This is an original AXOM curation assembled independently from common
- * English vocabulary. It was not sourced from any external game's answer or
- * guess list. The answer ordering is part of the
- * deterministic `general-1` contract and must not be changed in place.
- */
+import {
+  SCOWL_GENERAL_2_ALLOWED_GUESSES,
+  SCOWL_GENERAL_2_ANSWERS,
+} from "./dailyWordScowlGeneral2";
+
+/** AXOM's current versioned Daily Word dictionary contract. */
 export const DAILY_WORD_LIST_METADATA = Object.freeze({
-  version: "general-1",
+  version: "general-2",
   language: "en-US",
-  provenance: "Original AXOM curation of common five-letter English vocabulary.",
+  provenance: "SCOWLv2 2026.02.25, filtered and curated locally for AXOM.",
+  upstream: "https://github.com/en-wl/wordlist",
+  upstreamCommit: "7e99edab8e32f9f9ea2b15f249ca8d4d67237410",
+  license: "SCOWL permissive notice; see public/third-party/DAILY_WORD_SCOWL_LICENSE.txt.",
+  answersSha256: "5847d238f353fc55217a0c3183a226212316c74e581b2d17a1f0d89b4e6c3cae",
+  allowedGuessesSha256: "c5db32f9c4c3cd17b042451d9adf29f175773a111fd5491bb96efdcc4cd0215d",
   affiliation: "No affiliation with any external word-game publisher.",
-  bundleSentinel: "AXOM_WORD_LIST_SENTINEL_GENERAL_1",
+  bundleSentinel: "AXOM_WORD_LIST_SENTINEL_GENERAL_2_SCOWL_2026_02_25",
 } as const);
 
 export const WORD_LIST_VERSION = DAILY_WORD_LIST_METADATA.version;
 export const DAILY_WORD_LIST_SENTINEL = DAILY_WORD_LIST_METADATA.bundleSentinel;
 
-/** Immutable within general-1. Publish a new version before changing order. */
-export const DAILY_WORD_ANSWERS = Object.freeze([
+/** Immutable legacy list required to finish active general-1 puzzles safely. */
+export const DAILY_WORD_GENERAL_1_ANSWERS = Object.freeze([
   "ABIDE", "ACORN", "ADAPT", "AGILE", "AISLE", "ALBUM", "ALERT", "ALIVE", "AMBER", "AMPLE",
   "ANGEL", "APPLE", "APRON", "ARGUE", "ARISE", "ARMOR", "ARRAY", "AVOID", "AWAKE", "BADGE",
   "BAKER", "BANAL", "BASIC", "BEACH", "BEARD", "BENCH", "BERRY", "BIRTH", "BLACK", "BLEND",
@@ -46,43 +49,19 @@ export const DAILY_WORD_ANSWERS = Object.freeze([
   "YOUTH",
 ] as const);
 
-const EXTRA_ALLOWED_GUESSES = [
-  "ABOUT", "ABOVE", "ACTOR", "ACUTE", "ADMIT", "ADOPT", "AFTER", "AGAIN", "AGENT", "AGREE",
-  "AHEAD", "ALARM", "ALIEN", "ALLOW", "ALONE", "ALONG", "ALTER", "AMONG", "ANGER", "ANGLE",
-  "ANKLE", "APPLY", "ARENA", "ARROW", "ASIDE", "ASSET", "AUDIO", "AUDIT", "BACON", "BATCH",
-  "BATON", "BEGIN", "BELOW", "BLADE", "BLAME", "BLANK", "BLAST", "BLEED", "BLESS", "BLIND",
-  "BLOCK", "BLOOD", "BONUS", "BOOST", "BOOTH", "BOUND", "BOWEL", "BOXER", "BRAND", "BREAK",
-  "BREED", "BRIEF", "BRING", "BROKE", "BROOK", "BROOM", "BURST", "BUYER", "CACTI",
-  "CANOE", "CARGO", "CATCH", "CAUSE", "CHAIN", "CHAOS", "CHEAP", "CHECK", "CHESS", "CHIEF",
-  "CHILD", "CHILI", "CHOIR", "CHUNK", "CIVIC", "CLASS", "CLIFF", "CLOSE", "COACH", "COMET",
-  "COMIC", "COUCH", "COULD", "COURT", "COVER", "CRACK", "CREAM", "CRIME", "CROSS", "CURVE",
-  "DAILY", "DAIRY", "DECAY", "DELAY", "DENSE", "DIGIT", "DINER", "DIZZY", "DOUBT", "DOZEN",
-  "DRAFT", "DRAMA", "DRESS", "DRILL", "DROVE", "EAGER", "EARLY", "EASEL", "EATEN",
-  "EERIE", "EQUAL", "ERROR", "EVENT", "EVERY", "EXACT", "EXTRA", "FAIRY", "FALSE", "FANCY",
-  "FAVOR", "FERRY", "FEVER", "FIBER", "FINAL", "FIRST", "FLAKE", "FLASH", "FLEET",
-  "FLESH", "FLOAT", "FLOOD", "FORCE", "FORGE", "FORTH", "FORTY", "FOUND", "FOXES", "FRAIL",
-  "FRANK", "FROST", "FUNNY", "GHOST", "GLOBE", "GLORY", "GOING", "GOOSE", "GRADE", "GRANT",
-  "GUARD", "GUEST", "HAPPY", "HEARD", "HEAVY", "HEDGE", "HOTEL", "HOVER", "HURRY", "IDEAS",
-  "IMPLY", "INBOX", "INPUT", "ISSUE", "IVORY", "JUDGE", "KAYAK", "KNEAD", "KNOCK", "KNOWN",
-  "LANCE", "LARGE", "LAUGH", "LEAST", "LEAVE", "LEVER", "LLAMA", "LOCAL", "LOGIC", "LOOSE",
-  "LOVER", "LUCKY", "LUNCH", "MAJOR", "MAKER", "MANGO", "MARCH", "MATCH", "MAYBE", "MAYOR",
-  "MEDIA", "MERIT", "MIGHT", "MINOR", "MIXED", "MOTOR", "MOUNT", "MOVIE", "NEVER", "NEWER",
-  "NINTH", "NOISE", "NURSE", "OCCUR", "OTHER", "OUGHT", "OUNCE", "OWNER", "PATCH", "PAUSE",
-  "PEACE", "PEEPS", "PITCH", "PLACE", "PLANE", "PLAZA", "POISE", "POUCH", "PRESS", "PRICE",
-  "PROUD", "QUEEN", "QUEST", "REACH", "REACT", "READY", "REPLY", "RIGHT", "RIVAL", "ROAST",
-  "ROUTE", "RURAL", "SALAD", "SAUCE", "SCORE", "SCOUT", "SERVE", "SEVEN", "SHADE", "SHAKE",
-  "SHARE", "SHINE", "SHIRT", "SHOCK", "SHOOT", "SHOWN", "SIGHT", "SINCE", "SIXTH", "SLEEP",
-  "SLICE", "SMART", "SMOKE", "SOLID", "SOLVE", "SORRY", "SPEED", "SPELL", "SPEND", "SPINE",
-  "SPOON", "STACK", "STAIR", "STAKE", "STAND", "START", "STATE", "STEEP", "STILL", "STOCK",
-  "STOOD", "STUCK", "SWEET", "SWING", "TASTE", "TEETH", "THANK", "THEIR", "THERE", "THICK",
-  "THING", "THINK", "THIRD", "THOSE", "THREE", "THROW", "TIGHT", "TIMER", "TIRED", "TOTAL",
-  "TOUCH", "TOUGH", "TRADE", "TREAT", "TREND", "TRIAL", "TRUCK", "TRULY", "TWICE", "UNDER",
-  "UNITY", "UPPER", "URBAN", "USAGE", "USUAL", "VALID", "VISIT", "WASTE", "WATCH", "WEARY",
-  "WEIGH", "WEIRD", "WHILE", "WOMAN", "WOMEN", "WOULD", "WRONG", "WROTE", "YEARN",
-  "YIELD", "YOUNG", "ZEBRA",
-] as const;
+/** Current deterministic answer list. Immutable within general-2. */
+export const DAILY_WORD_ANSWERS = SCOWL_GENERAL_2_ANSWERS;
 
-/** Larger validation dictionary; every answer is always accepted as a guess. */
-export const DAILY_WORD_ALLOWED_GUESSES: readonly string[] = Object.freeze([
-  ...new Set<string>([...DAILY_WORD_ANSWERS, ...EXTRA_ALLOWED_GUESSES]),
-]);
+/** Current local validation dictionary. */
+export const DAILY_WORD_ALLOWED_GUESSES = SCOWL_GENERAL_2_ALLOWED_GUESSES;
+
+/**
+ * Resolve a historical answer contract without changing the current validation
+ * dictionary. This keeps an unfinished general-1 puzzle on its original answer
+ * after general-2 ships.
+ */
+export function dailyWordAnswersForVersion(version: string): readonly string[] | undefined {
+  if (version === "general-1") return DAILY_WORD_GENERAL_1_ANSWERS;
+  if (version === WORD_LIST_VERSION) return DAILY_WORD_ANSWERS;
+  return undefined;
+}

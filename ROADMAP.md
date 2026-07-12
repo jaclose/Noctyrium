@@ -40,7 +40,7 @@ Last updated: 2026-07-12
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
 | Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; Daily Word and its versioned word lists now ship as isolated lazy assets. The App shell chunk still exceeds 500 kB, so broader route-level splitting remains proposed. |
 | First-navigation offline precache | proposed | The current worker caches hashed assets after a controlled successful fetch. Daily Word reopens offline after that boundary, but a first-ever offline bootstrap before worker control is not supported; improving that requires a build-aware precache design. |
-| Remaining React hook warnings (6, page-level) | in-progress | Pre-existing warnings remain in Dashboard, Journal, Productivity, and CourseTracker; fix opportunistically. |
+| Remaining React hook warnings (5, page-level) | in-progress | Pre-existing warnings remain in Dashboard, Journal, and CourseTracker; fix opportunistically. |
 | Cloud sync hardening (PIN auth, sessions) | blocked | No cloud/account claim is exposed in primary Settings. Retained experimental code needs real auth, consent, and security review before it can become a product surface. |
 | Restore-history audit trail | proposed | Settings accurately shows local snapshots and last portable export, but does not yet persist a separate restore-event history. |
 | Exact vault-write timestamp | proposed | Autosave is active, but the vault does not currently retain a user-visible timestamp for every successful write. |
@@ -65,6 +65,15 @@ Last updated: 2026-07-12
 
 ## Recently shipped (move log)
 
+- 2026-07-12 — Wave 5.5A/B Daily Loop Stabilization: inclusive academic stages,
+  configurable daily-success requirements with a neutral-by-default new-profile
+  path, simplified Productivity Console with cycling placeholders and a neutral
+  progress vessel, recent/frequent activity shortcuts, Pomodoro quick/custom
+  saved presets, honest low-data Reports, evidence-gated Command Brief,
+  focused Dashboard defaults, quick theme control, and persistent NEW-badge
+  dismissal. The checkpoint also keeps the reviewed SCOWLv2 `general-2` Daily
+  Word expansion with bundled license/provenance, checksum-pinned lazy lists,
+  and non-destructive `general-1` puzzle continuity → moved to FEATURES.md.
 - 2026-07-12 — Wave 5 optional daily utilities: disabled-by-default Daily Games
   disclosure and direct-route gate, original deterministic AXOM Daily Word with
   local history/stats/share, static Doctordle WIP boundary, compact digital and

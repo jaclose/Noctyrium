@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Flame, Target, Activity, CalendarCheck, Layers, ListChecks, Download, BatteryCharging, Gauge, AlertTriangle, CalendarDays } from "lucide-react";
+import { Flame, Target, Activity, CalendarCheck, Layers, ListChecks, Download, BatteryCharging, Gauge, AlertTriangle } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
-import { dayTotals, todayGrade, gradeColor, gradeLabel, lastNDays, isoDate, studyStreak, prettyDate } from "../lib/scoring";
+import { dayTotals, todayGrade, gradeColor, gradeLabel, prettyDate } from "../lib/scoring";
 import { PASS_COLOR, PASS_LABEL, YIELD_LABEL, YIELD_TONE, passStage, scopeMastery } from "../lib/tracker";
 import { resolveTrack } from "../lib/tracks";
 import { exportState } from "../lib/backup";
@@ -10,6 +10,7 @@ import { analyzePerformance } from "../lib/performance";
 import { calculateReadiness } from "../lib/energy";
 import type { PassStage } from "../lib/tracker";
 import type { TrackerKind, Yield } from "../lib/types";
+import { buildCanonicalReportSummary, type ReportMetric } from "../lib/reports";
 
 const RANGES = [14, 30] as const;
 const STAGES: PassStage[] = ["untouched", "red", "young", "mature", "mastered"];
@@ -22,6 +23,7 @@ export function ReportsPage() {
   const track = resolveTrack(s.profile.educationTrack);
   const minTarget = s.profile.dailyMinuteTarget || 240;
   const cardTarget = s.profile.dailyCardTarget || 120;
+  const reportSummary = useMemo(() => buildCanonicalReportSummary(s, range), [s, range]);
   const performance = analyzePerformance({
     logs: s.logs,
     journal: s.journal,
@@ -43,20 +45,14 @@ export function ReportsPage() {
     productivityTrackers: s.productivityTrackers,
   }), [s.activeDayKey, s.energyFactors, s.journal, s.logs, s.tasks, s.dayPlans, s.productivityTrackers]);
 
-  const days = useMemo(() => lastNDays(range).map((d) => {
-    const key = isoDate(d);
+  const days = useMemo(() => reportSummary.observedDates.map((key) => {
+    const d = new Date(`${key}T12:00:00`);
     const { minutes, cards } = dayTotals(s.logs, key);
     return { key, date: d, minutes, cards, grade: todayGrade(minutes, cards), active: minutes > 0 || cards > 0 };
-  }), [s.logs, range]);
+  }), [s.logs, reportSummary.observedDates]);
 
   const activeDays = days.filter((d) => d.active);
-  const totalMin = activeDays.reduce((a, d) => a + d.minutes, 0);
-  const totalCards = activeDays.reduce((a, d) => a + d.cards, 0);
-  const consistency = Math.round((activeDays.length / range) * 100);
-  const onFloorDays = days.filter((d) => d.minutes >= minTarget && d.cards >= cardTarget).length;
-  const adherence = Math.round((onFloorDays / range) * 100);
   const bestDay = days.reduce<typeof days[number] | null>((best, d) => (!best || d.minutes > best.minutes ? d : best), null);
-  const streak = studyStreak(s.logs);
   const maxMin = Math.max(1, ...days.map((d) => d.minutes));
 
   const dist = { blue: 0, green: 0, orange: 0, red: 0 };
@@ -66,13 +62,70 @@ export function ReportsPage() {
   const stageCounts = STAGES.map((stage) => ({ stage, n: s.tracker.filter((t) => passStage(t.passes) === stage).length }));
   const yieldCounts = YIELDS.map((y) => ({ y, n: s.tracker.filter((t) => t.yield === y).length }));
   const kindCounts = KINDS.map((k) => ({ k, n: s.tracker.filter((t) => t.kind === k).length })).filter((x) => x.n > 0);
-  const mastery = scopeMastery(s.tracker);
   const ankiAnchored = s.tracker.filter((t) => t.ankiPasses > 0).length;
   const reviewFlags = s.tracker.filter((t) => t.yield === "review").length;
 
-  const completedTasks = s.tasks.filter((t) => t.done);
-  const openTasks = s.tasks.filter((t) => !t.done);
+  const completedTasks = s.tasks.filter((t) => t.done && !t.archived);
   const latestStandups = s.journal.slice(0, 3);
+  const readinessEvidenceIds = [...new Set([
+    ...(readiness.selfReportedEnergy.source ? [readiness.selfReportedEnergy.source] : []),
+    ...readiness.contributions
+      .filter((contribution) => contribution.userConfirmed)
+      .map((contribution) => contribution.factorId ?? contribution.id),
+  ])];
+  const readinessMetric: ReportMetric = {
+    id: "readiness",
+    label: "Readiness",
+    value: readinessEvidenceIds.length ? `${readiness.estimatedReadiness}` : "No input",
+    note: readinessEvidenceIds.length ? readiness.primarySignal : "No readiness input yet",
+    numerator: readinessEvidenceIds.length ? readiness.estimatedReadiness : 0,
+    denominator: readinessEvidenceIds.length ? 100 : 0,
+    period: reportSummary.metrics.consistency.period,
+    sourceLabel: "Confirmed readiness contributions and energy check-ins",
+    sourceRecordIds: readinessEvidenceIds,
+    calculation: readinessEvidenceIds.length
+      ? `Baseline plus ${readiness.totalImpact >= 0 ? "+" : ""}${readiness.totalImpact} net contribution; ${readiness.carryoverImpact >= 0 ? "+" : ""}${readiness.carryoverImpact} carryover.`
+      : "No confirmed factor, energy check-in, or qualifying activity supplied a readiness observation.",
+    interpretation: readinessEvidenceIds.length ? readiness.recommendation : "AXOM will not present the default baseline as if you reported it.",
+    action: "Open the full calculation",
+    state: readinessEvidenceIds.length ? "ready" : "neutral",
+  };
+  const performanceSourceIds = [
+    ...reportSummary.metrics.study.sourceRecordIds,
+    ...reportSummary.metrics.tasks.sourceRecordIds,
+    ...reportSummary.metrics["tracker-mastery"].sourceRecordIds,
+  ];
+  // The legacy performance engine still considers some lifetime journal/plan
+  // signals. Never let those older records unlock a directional score for a
+  // report window that does not yet contain five canonical active eligible days.
+  const performancePreliminary = performance.preliminary || reportSummary.activeDates.length < 5;
+  const performanceMetric: ReportMetric = {
+    id: "performance",
+    label: "Performance",
+    value: performancePreliminary ? "Building baseline" : `${performance.performanceScore}`,
+    note: performancePreliminary ? `${reportSummary.activeDates.length}/5 active days with signal` : performance.performanceLabel,
+    numerator: performancePreliminary ? reportSummary.activeDates.length : performance.performanceScore,
+    denominator: performancePreliminary ? 5 : 100,
+    period: reportSummary.metrics.consistency.period,
+    sourceLabel: "Eligible activity, tasks, plans, journal, and tracker state",
+    sourceRecordIds: [...new Set(performanceSourceIds)],
+    calculation: performancePreliminary
+      ? "AXOM waits for at least five active eligible days before presenting a personalized score."
+      : `Deterministic performance score ${performance.performanceScore}/100 (${performance.performanceLabel}).`,
+    interpretation: performancePreliminary ? "There is not enough evidence for a directional claim yet." : performance.performanceLabel,
+    action: performancePreliminary ? "Keep logging ordinary work" : "Review the performance calculation",
+    state: performancePreliminary ? "low-data" : "ready",
+  };
+  const primaryMetrics: Array<{ metric: ReportMetric; icon: React.ReactNode }> = [
+    { metric: reportSummary.metrics.study, icon: <Activity size={17} /> },
+    { metric: reportSummary.metrics.streak, icon: <Flame size={17} /> },
+    { metric: reportSummary.metrics.consistency, icon: <CalendarCheck size={17} /> },
+    { metric: reportSummary.metrics["daily-success"], icon: <Target size={17} /> },
+    { metric: readinessMetric, icon: <BatteryCharging size={17} /> },
+    { metric: performanceMetric, icon: <Gauge size={17} /> },
+    { metric: reportSummary.metrics["tracker-mastery"], icon: <Layers size={17} /> },
+    { metric: reportSummary.metrics.tasks, icon: <ListChecks size={17} /> },
+  ];
 
   return (
     <>
@@ -90,26 +143,25 @@ export function ReportsPage() {
       </GlassCard>
 
       <div className="grid grid-stats">
-        <ReportStat icon={<Activity size={17} />} label={`Study · ${range}d`} value={`${Math.round(totalMin / 60)}h`} note={`${totalMin} min · ${totalCards} cards`} />
-        <ReportStat icon={<Flame size={17} />} label="Current streak" value={`${streak}`} note={`${streak === 1 ? "day" : "days"} in a row`} tone="orange" />
-        <ReportStat icon={<CalendarCheck size={17} />} label="Consistency" value={`${consistency}%`} note={`${activeDays.length}/${range} active days`} tone={consistency >= 70 ? "green" : consistency >= 40 ? "orange" : "red"} />
-        <ReportStat icon={<Target size={17} />} label="Hit the floor" value={`${adherence}%`} note={`${onFloorDays}/${range} days at target`} tone={adherence >= 60 ? "green" : adherence >= 30 ? "orange" : "red"} />
-        <ReportStat icon={<BatteryCharging size={17} />} label="Readiness" value={`${readiness.estimatedReadiness}`} note={`Energy ${readiness.selfReportedEnergy.score} · ${readiness.primarySignal}`} tone={readiness.estimatedReadiness >= 78 ? "green" : readiness.estimatedReadiness >= 58 ? "orange" : "red"} />
-        <ReportStat icon={<Gauge size={17} />} label="Performance" value={`${performance.performanceScore}`} note={performance.performanceLabel} tone={performance.performanceScore >= 62 ? "green" : performance.performanceScore >= 38 ? "orange" : "red"} />
-        <ReportStat icon={<Layers size={17} />} label="Tracker mastery" value={`${mastery}%`} note={`${s.tracker.length} items · ${ankiAnchored} in Anki`} tone={mastery >= 60 ? "green" : mastery >= 30 ? "orange" : "neutral"} />
-        <ReportStat icon={<ListChecks size={17} />} label="Tasks done" value={`${completedTasks.length}`} note={`${openTasks.length} still open`} />
+        {primaryMetrics.map(({ metric, icon }) => <ReportStat key={metric.label} icon={icon} metric={metric} />)}
       </div>
 
       <GlassCard pad className="report-performance-card">
-        <PanelHeader title="Energy, readiness, and performance" sub="Readiness uses confirmed ledger factors, tracker/goal signals, carryover decay, and self-reported energy."
-          action={<Tag tone={performance.preliminary ? "orange" : "green"}>{performance.preliminary ? "Preliminary" : "Enough signal"}</Tag>} />
-        {performance.preliminary && (
+        <PanelHeader title="Energy, readiness, and performance" sub="Deterministic calculations with visible local sources."
+          action={<Tag tone={!readinessEvidenceIds.length ? "neutral" : performancePreliminary ? "orange" : "green"}>{!readinessEvidenceIds.length ? "No input" : performancePreliminary ? "Preliminary" : "Enough signal"}</Tag>} />
+        {!readinessEvidenceIds.length && (
+          <div className="report-prelim neutral">
+            <BatteryCharging size={15} />
+            <span>No readiness input yet. AXOM will not present its default baseline as if it were a real observation.</span>
+          </div>
+        )}
+        {performancePreliminary && (
           <div className="report-prelim">
             <AlertTriangle size={15} />
             <span>Here are preliminary statistics. AXOM needs about 5 days of use before the energy/performance rating becomes meaningfully personalized.</span>
           </div>
         )}
-        <div className="report-insight-grid">
+        {readinessEvidenceIds.length > 0 && <div className="report-insight-grid">
           <div>
             <b>Readiness recommendation</b>
             <span>{readiness.recommendation}</span>
@@ -122,7 +174,7 @@ export function ReportsPage() {
             <b>Possible journal signals</b>
             <span>{readiness.possibleSignals.length ? readiness.possibleSignals.map((signal) => signal.label).join(", ") : "No unconfirmed journal signals."}</span>
           </div>
-        </div>
+        </div>}
       </GlassCard>
 
       <GlassCard pad data-tour="reports-top">
@@ -130,30 +182,15 @@ export function ReportsPage() {
           action={<Tag tone={bestDay && bestDay.minutes > 0 ? "cyan" : "neutral"}>{bestDay && bestDay.minutes > 0 ? `Best: ${bestDay.minutes}m on ${prettyDate(`${bestDay.key}T12:00:00`)}` : "No effort logged yet"}</Tag>} />
         <div className="report-trend">
           {days.map((d) => (
-            <div className="report-trend-col" key={d.key} title={`${prettyDate(`${d.key}T12:00:00`)}: ${d.minutes}m, ${d.cards} cards`}>
+            <button type="button" className="report-trend-col" key={d.key} aria-label={`${prettyDate(`${d.key}T12:00:00`)}: ${d.minutes} minutes, ${d.cards} cards`}>
               <div className="report-trend-shell">
                 <div className="report-trend-fill" style={{ height: `${Math.max(d.minutes ? 5 : 0, (d.minutes / maxMin) * 100)}%`, background: gradeColor(d.grade) }} />
               </div>
               <span>{d.date.getDate()}</span>
-            </div>
+            </button>
           ))}
         </div>
-        <div className="report-target-line"><span>Daily floor: {minTarget} min · {cardTarget} cards</span></div>
-      </GlassCard>
-
-      <GlassCard pad className="week-planner-lab under-construction">
-        <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><CalendarDays size={15} /> Week planner lab</span>
-        <PanelHeader title="Hourly week map" sub="Future calendar: map each hour, note what happened, score the block, and feed energy/performance logic." />
-        <div className="week-planner-grid">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <div className="week-planner-day" key={day}>
-              <b>{day}</b>
-              {["6a", "9a", "12p", "3p", "6p", "9p"].map((slot) => <span key={slot}>{slot}</span>)}
-            </div>
-          ))}
-        </div>
-        <div className="sub">This will factor roadblocks, illness/injury, praise-worthy moments, addictions, sleep, exercise, and goal-relative performance into recommendations.</div>
+        <div className="report-target-line"><span>{reportSummary.metrics["daily-success"].note}</span></div>
       </GlassCard>
 
       <div className="grid grid-2">
@@ -289,30 +326,39 @@ export function ReportsPage() {
         </GlassCard>
       </div>
 
-      <GlassCard pad>
-        <PanelHeader title="Traceability" sub="Every number above is computed from your local data" />
-        <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>
-          Reports read directly from your study log, tracker, course, and task data stored in this browser.
-          No external service is involved — export a JSON backup any time to keep an audit trail.
-        </div>
-      </GlassCard>
     </>
   );
 }
 
-function ReportStat({ icon, label, value, note, tone = "neutral" }: {
-  icon: React.ReactNode; label: string; value: string; note: string;
-  tone?: "neutral" | "green" | "orange" | "red" | "cyan";
-}) {
+function ReportStat({ icon, metric }: { icon: React.ReactNode; metric: ReportMetric }) {
+  const tone = metric.state === "neutral" ? "neutral" : metric.state === "low-data" ? "orange" : "cyan";
   return (
-    <GlassCard pad className="stat-card report-stat">
-      <div className="report-stat-top">
-        <span className={`report-stat-icon ${tone}`}>{icon}</span>
-        <div className="stat-title">{label}</div>
+    <details className="glass-card pad stat-card report-stat report-stat-disclosure">
+      <summary>
+        <div className="report-stat-top">
+          <span className={`report-stat-icon ${tone}`}>{icon}</span>
+          <div className="stat-title">{metric.label}</div>
+          <span className="report-stat-state">{metric.state === "low-data" ? "Low data" : metric.state === "neutral" ? "Neutral" : "Details"}</span>
+        </div>
+        <div className="stat-value">{metric.value}</div>
+        <div className="stat-note">{metric.note}</div>
+      </summary>
+      <div className="report-stat-detail">
+        <dl>
+          <div><dt>Meaning</dt><dd>{metric.interpretation}</dd></div>
+          <div><dt>Denominator</dt><dd>{metric.denominator || "None yet"} · {metric.period}</dd></div>
+          <div><dt>Source</dt><dd>{metric.sourceLabel}</dd></div>
+          <div><dt>Calculation</dt><dd>{metric.calculation}</dd></div>
+          {metric.action && <div><dt>Next action</dt><dd>{metric.action}</dd></div>}
+        </dl>
+        <div className="report-source-records">
+          <span>Source records</span>
+          {metric.sourceRecordIds.length
+            ? <code>{metric.sourceRecordIds.slice(0, 4).join(", ")}{metric.sourceRecordIds.length > 4 ? ` +${metric.sourceRecordIds.length - 4} more` : ""}</code>
+            : <em>No source record contributed yet.</em>}
+        </div>
       </div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-note">{note}</div>
-    </GlassCard>
+    </details>
   );
 }
 

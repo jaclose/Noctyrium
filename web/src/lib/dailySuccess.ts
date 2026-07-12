@@ -1,0 +1,438 @@
+import type {
+  DailySuccessConfig,
+  DailySuccessRequirement,
+  DailySuccessSchedule,
+  DailySuccessSource,
+  Habit,
+  NoctyriumState,
+  ProductivityTracker,
+  StudyLog,
+} from "./types";
+import { addLocalDays, localDateKey } from "./dailyRollover";
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+export type DailyRequirementStatus =
+  | "not-eligible"
+  | "awaiting"
+  | "in-progress"
+  | "met"
+  | "missed"
+  | "unavailable";
+
+export interface DailyRequirementResult {
+  requirement: DailySuccessRequirement;
+  eligible: boolean;
+  current: number;
+  target: number;
+  ratio: number;
+  status: DailyRequirementStatus;
+  sourceLabel: string;
+  sourceRecordIds: string[];
+  calculation: string;
+}
+
+export interface DailySuccessResult {
+  mode: "configured" | "legacy";
+  dayKey: string;
+  requirements: DailyRequirementResult[];
+  eligibleCount: number;
+  metCount: number;
+  progress: number;
+  status: "neutral" | "in-progress" | "met" | "missed";
+  statusLabel: string;
+}
+
+export type DailySuccessState = Pick<
+  NoctyriumState,
+  "profile" | "logs" | "productivityTrackers" | "habits" | "habitEntries" | "closeouts" | "activeDayKey"
+>;
+
+/**
+ * One canonical daily-success selector for Productivity, Dashboard, and Reports.
+ * It reads existing records; it never writes a parallel completion ledger.
+ */
+export function evaluateDailySuccess(
+  state: DailySuccessState,
+  dayKey: string = state.activeDayKey,
+  today: string = state.activeDayKey,
+): DailySuccessResult {
+  const configured = state.profile.dailySuccess;
+  const requirements = configured
+    ? configured.requirements
+    : legacyRequirements(state);
+  const mode = configured ? "configured" : "legacy";
+  const results = requirements.map((requirement) => evaluateRequirement(requirement, state, dayKey, today));
+  const eligible = results.filter((result) => result.eligible && result.status !== "unavailable");
+  const progress = eligible.length
+    ? Math.round((eligible.reduce((sum, result) => sum + result.ratio, 0) / eligible.length) * 100)
+    : 0;
+  const metCount = eligible.filter((result) => result.status === "met").length;
+  const anyActivity = eligible.some((result) => result.current > 0);
+  const anyMissed = eligible.some((result) => result.status === "missed");
+  const allMet = eligible.length > 0 && metCount === eligible.length;
+  const enabledCount = requirements.filter((requirement) => requirement.enabled).length;
+  const unavailableCount = results.filter((result) => result.status === "unavailable").length;
+  const status = eligible.length === 0 || (!anyActivity && dayKey >= today)
+    ? "neutral"
+    : allMet
+      ? "met"
+      : anyMissed
+        ? "missed"
+        : "in-progress";
+
+  return {
+    mode,
+    dayKey,
+    requirements: results,
+    eligibleCount: eligible.length,
+    metCount,
+    progress,
+    status,
+    statusLabel: status === "neutral"
+      ? eligible.length
+        ? "Awaiting first activity"
+        : requirements.length === 0
+          ? "No requirements selected"
+          : unavailableCount > 0
+            ? `${unavailableCount === 1 ? "Requirement source" : "Requirement sources"} unavailable`
+            : enabledCount > 0
+              ? "No requirements scheduled today"
+              : "No requirements enabled"
+      : status === "met"
+        ? "Daily requirements met"
+        : status === "missed"
+          ? "Requirements not completed"
+          : "In progress",
+  };
+}
+
+export function evaluateRequirement(
+  requirement: DailySuccessRequirement,
+  state: DailySuccessState,
+  dayKey: string,
+  today: string,
+): DailyRequirementResult {
+  const target = safePositive(requirement.target, 1);
+  const base = {
+    requirement,
+    current: 0,
+    target,
+    ratio: 0,
+    sourceLabel: sourceLabel(requirement.source),
+    sourceRecordIds: [] as string[],
+    calculation: "Not eligible on this date.",
+  };
+  if (!requirement.enabled || dayKey < requirement.trackingStartsAt) {
+    return { ...base, eligible: false, status: "not-eligible" };
+  }
+
+  const sourceExists = hasSource(requirement.source, state.productivityTrackers, state.habits);
+  if (!sourceExists) {
+    return {
+      ...base,
+      eligible: true,
+      status: "unavailable",
+      calculation: "The linked source is no longer available. Existing activity history was not removed.",
+    };
+  }
+
+  if (requirement.schedule.kind === "weekdays" && !requirement.schedule.weekdays.includes(weekday(dayKey))) {
+    return { ...base, eligible: false, status: "not-eligible" };
+  }
+
+  if (requirement.schedule.kind === "times-per-week") {
+    return evaluateWeeklyRequirement(requirement, state, dayKey, today, base);
+  }
+
+  const observed = observedValue(requirement.source, state, dayKey);
+  const current = observed.value;
+  const ratio = clampRatio(current / target);
+  const met = current >= target;
+  const isTodayOrFuture = dayKey >= today;
+  const status: DailyRequirementStatus = met
+    ? "met"
+    : current > 0
+      ? "in-progress"
+      : isTodayOrFuture
+        ? "awaiting"
+        : "missed";
+  return {
+    ...base,
+    eligible: true,
+    current,
+    ratio,
+    status,
+    sourceRecordIds: observed.ids,
+    calculation: `${formatNumber(current)} of ${formatNumber(target)} ${requirement.unit}`,
+  };
+}
+
+function evaluateWeeklyRequirement(
+  requirement: DailySuccessRequirement,
+  state: DailySuccessState,
+  dayKey: string,
+  today: string,
+  base: Omit<DailyRequirementResult, "eligible" | "status">,
+): DailyRequirementResult {
+  const schedule = requirement.schedule as Extract<DailySuccessSchedule, { kind: "times-per-week" }>;
+  const weekStartsOn = schedule.weekStartsOn === 1 ? 1 : 0;
+  const start = weekStart(dayKey, weekStartsOn);
+  const end = addLocalDays(start, 6);
+  // A weekly quota contributes one historical result per week (on that week's
+  // final day), not seven repeated daily failures/successes. The current day
+  // remains eligible so the live dashboard can show progress during the week.
+  if (dayKey < today && dayKey !== end) {
+    return { ...base, eligible: false, status: "not-eligible" };
+  }
+  const availableDays: string[] = [];
+  for (let cursor = start; cursor <= end; cursor = addLocalDays(cursor, 1)) {
+    if (cursor >= requirement.trackingStartsAt) availableDays.push(cursor);
+  }
+  const cutoff = dayKey < today ? end : today;
+  const days: string[] = [];
+  for (let cursor = start; cursor <= end; cursor = addLocalDays(cursor, 1)) {
+    if (cursor >= requirement.trackingStartsAt && cursor <= cutoff) days.push(cursor);
+  }
+  const matching: Array<{ value: number; ids: string[] }> = [];
+  for (const date of days) {
+    const observed = observedValue(requirement.source, state, date);
+    if (observed.value >= base.target) matching.push(observed);
+  }
+  // A requirement created late in its first week can never demand more
+  // occurrences than calendar opportunities that remained in that week.
+  const targetOccurrences = Math.max(1, Math.min(
+    availableDays.length || 1,
+    Math.min(7, Math.round(safePositive(schedule.times, 1))),
+  ));
+  const current = matching.length;
+  const met = current >= targetOccurrences;
+  const closed = dayKey < today && dayKey === end;
+  return {
+    ...base,
+    eligible: true,
+    current,
+    target: targetOccurrences,
+    ratio: clampRatio(current / targetOccurrences),
+    status: met ? "met" : closed ? "missed" : current ? "in-progress" : "awaiting",
+    sourceRecordIds: matching.flatMap((result) => result.ids),
+    calculation: `${current} of ${targetOccurrences} scheduled completions for ${start}–${end}`,
+  };
+}
+
+function observedValue(source: DailySuccessSource, state: DailySuccessState, dayKey: string): { value: number; ids: string[] } {
+  const dayLogs = state.logs.filter((log) => log.dayKey === dayKey);
+  if (source.kind === "study-minutes") {
+    const logs = dayLogs.filter((log) => log.academic !== false && finite(log.minutes) !== 0);
+    return sumSignedObserved(logs, (log) => finite(log.minutes));
+  }
+  if (source.kind === "cards-reviewed") {
+    const logs = dayLogs.filter((log) => finite(log.cards) !== 0 || log.quantityKind === "cards");
+    return sumSignedObserved(logs, (log) => finite(log.quantity) !== 0 ? finite(log.quantity) : finite(log.cards));
+  }
+  if (source.kind === "practice-questions") {
+    const logs = dayLogs.filter((log) => log.quantityKind === "questions");
+    return sumObserved(logs, (log) => positive(log.quantity));
+  }
+  if (source.kind === "productivity-tracker") {
+    const logs = dayLogs.filter((log) => log.trackerId === source.trackerId);
+    return sumObserved(logs, (log) => positive(log.quantity) || positive(log.minutes) || positive(log.cards));
+  }
+  if (source.kind === "habit") {
+    const entries = state.habitEntries.filter((entry) => entry.habitId === source.habitId && entry.date === dayKey);
+    return {
+      value: entries.reduce((sum, entry) => sum + (entry.status === "done" ? positive(entry.value) || 1 : entry.status === "partial" ? positive(entry.value) || 0.5 : 0), 0),
+      ids: entries.map((entry) => entry.id),
+    };
+  }
+  const closeout = state.closeouts.find((entry) => entry.dayKey === dayKey);
+  return { value: closeout ? 1 : 0, ids: closeout ? [closeout.id] : [] };
+}
+
+function sumObserved(logs: StudyLog[], value: (log: StudyLog) => number) {
+  return { value: logs.reduce((sum, log) => sum + positive(value(log)), 0), ids: logs.map((log) => log.id) };
+}
+
+function sumSignedObserved(logs: StudyLog[], value: (log: StudyLog) => number) {
+  return {
+    value: Math.max(0, logs.reduce((sum, log) => sum + finite(value(log)), 0)),
+    ids: logs.map((log) => log.id),
+  };
+}
+
+function hasSource(source: DailySuccessSource, trackers: ProductivityTracker[], habits: Habit[]): boolean {
+  if (source.kind === "productivity-tracker") {
+    return trackers.some((tracker) => tracker.id === source.trackerId && !tracker.archived);
+  }
+  if (source.kind === "habit") return habits.some((habit) => habit.id === source.habitId && !habit.archived);
+  return true;
+}
+
+export function makeDailyRequirement(
+  input: Pick<DailySuccessRequirement, "id" | "label" | "source" | "target" | "unit"> &
+    Partial<Pick<DailySuccessRequirement, "enabled" | "schedule" | "trackingStartsAt" | "createdAt" | "updatedAt">>,
+  today: string = localDateKey(),
+): DailySuccessRequirement {
+  const timestamp = new Date().toISOString();
+  return {
+    id: input.id,
+    label: input.label.trim() || sourceLabel(input.source),
+    source: input.source,
+    enabled: input.enabled ?? true,
+    target: safePositive(input.target, 1),
+    unit: input.unit.trim() || "times",
+    schedule: normalizeSchedule(input.schedule),
+    trackingStartsAt: validDate(input.trackingStartsAt) ?? today,
+    createdAt: input.createdAt ?? timestamp,
+    updatedAt: input.updatedAt ?? timestamp,
+  };
+}
+
+/** Boundary normalizer shared by IndexedDB hydration and portable imports. */
+export function normalizeDailySuccessConfig(value: unknown): DailySuccessConfig | undefined {
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.requirements)) return undefined;
+  const configuredAt = validDate(value.configuredAt) ?? localDateKey();
+  const requirements: DailySuccessRequirement[] = [];
+  const seen = new Set<string>();
+  for (const candidate of value.requirements) {
+    if (!isRecord(candidate)) continue;
+    const id = typeof candidate.id === "string" ? candidate.id.trim().slice(0, 160) : "";
+    const source = normalizeSource(candidate.source);
+    if (!id || seen.has(id) || !source) continue;
+    seen.add(id);
+    const createdAt = safeTimestamp(candidate.createdAt);
+    const updatedAt = safeTimestamp(candidate.updatedAt, createdAt);
+    requirements.push({
+      id,
+      label: typeof candidate.label === "string" && candidate.label.trim()
+        ? candidate.label.trim().slice(0, 120)
+        : sourceLabel(source),
+      enabled: candidate.enabled !== false,
+      source,
+      target: safePositive(candidate.target, 1),
+      unit: typeof candidate.unit === "string" && candidate.unit.trim() ? candidate.unit.trim().slice(0, 40) : "times",
+      schedule: normalizeSchedule(candidate.schedule),
+      trackingStartsAt: validDate(candidate.trackingStartsAt) ?? configuredAt,
+      createdAt,
+      updatedAt,
+    });
+  }
+  return { version: 1, configuredAt, requirements };
+}
+
+function legacyRequirements(state: DailySuccessState): DailySuccessRequirement[] {
+  const firstLog = [...state.logs].sort((a, b) => a.dayKey.localeCompare(b.dayKey))[0]?.dayKey;
+  const trackingStartsAt = validDate(firstLog) ?? state.activeDayKey;
+  const createdAt = `${trackingStartsAt}T12:00:00.000Z`;
+  return [
+    makeDailyRequirement({
+      id: "legacy-study-minutes",
+      label: "Study minutes",
+      source: { kind: "study-minutes" },
+      target: safePositive(state.profile.dailyMinuteTarget, 240),
+      unit: "minutes",
+      trackingStartsAt,
+      createdAt,
+      updatedAt: createdAt,
+    }, trackingStartsAt),
+    makeDailyRequirement({
+      id: "legacy-cards-reviewed",
+      label: "Cards reviewed",
+      source: { kind: "cards-reviewed" },
+      target: safePositive(state.profile.dailyCardTarget, 120),
+      unit: "cards",
+      trackingStartsAt,
+      createdAt,
+      updatedAt: createdAt,
+    }, trackingStartsAt),
+  ];
+}
+
+function normalizeSource(value: unknown): DailySuccessSource | undefined {
+  if (!isRecord(value) || typeof value.kind !== "string") return undefined;
+  if (["study-minutes", "cards-reviewed", "practice-questions", "journal-closeout"].includes(value.kind)) {
+    return { kind: value.kind } as DailySuccessSource;
+  }
+  if (value.kind === "productivity-tracker" && typeof value.trackerId === "string" && value.trackerId.trim()) {
+    return { kind: value.kind, trackerId: value.trackerId.trim() };
+  }
+  if (value.kind === "habit" && typeof value.habitId === "string" && value.habitId.trim()) {
+    return { kind: value.kind, habitId: value.habitId.trim() };
+  }
+  return undefined;
+}
+
+function normalizeSchedule(value: unknown): DailySuccessSchedule {
+  if (!isRecord(value)) return { kind: "daily" };
+  if (value.kind === "weekdays") {
+    const weekdays = Array.isArray(value.weekdays)
+      ? [...new Set(value.weekdays.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))]
+      : [];
+    return weekdays.length ? { kind: "weekdays", weekdays } : { kind: "daily" };
+  }
+  if (value.kind === "times-per-week") {
+    return {
+      kind: "times-per-week",
+      times: Math.max(1, Math.min(7, Math.round(safePositive(value.times, 1)))),
+      weekStartsOn: value.weekStartsOn === 1 ? 1 : 0,
+    };
+  }
+  return { kind: "daily" };
+}
+
+function sourceLabel(source: DailySuccessSource): string {
+  if (source.kind === "study-minutes") return "Study activity";
+  if (source.kind === "cards-reviewed") return "Card reviews";
+  if (source.kind === "practice-questions") return "Practice questions";
+  if (source.kind === "journal-closeout") return "Daily closeout";
+  if (source.kind === "habit") return "Habit activity";
+  return "Productivity activity";
+}
+
+function weekStart(dayKey: string, weekStartsOn: 0 | 1): string {
+  const day = weekday(dayKey);
+  const offset = (day - weekStartsOn + 7) % 7;
+  return addLocalDays(dayKey, -offset);
+}
+
+function weekday(dayKey: string): number {
+  return new Date(`${dayKey}T12:00:00`).getDay();
+}
+
+function validDate(value: unknown): string | undefined {
+  return typeof value === "string" && DATE_KEY.test(value) && !Number.isNaN(new Date(`${value}T12:00:00`).getTime())
+    ? value
+    : undefined;
+}
+
+function positive(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function finite(value: unknown): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function safePositive(value: unknown, fallback: number): number {
+  return positive(value) || fallback;
+}
+
+function clampRatio(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+}
+
+function formatNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function safeTimestamp(value: unknown, fallback: string = new Date().toISOString()): string {
+  if (typeof value !== "string") return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}

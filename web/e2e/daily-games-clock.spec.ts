@@ -19,17 +19,17 @@ test("Daily Games opt-in, Daily Word history, and shared clock preferences persi
   await page.getByRole("button", { name: "Enable Daily Games" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Daily Games", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Daily Word, New" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Daily Word", exact: true })).toBeVisible();
 
-  // ABOUT is a known allowed guess but never an answer in general-1, so this
+  // FOXES is a known allowed guess but not an answer in general-2, so this
   // always leaves a durable, unfinished puzzle without coupling to today's key.
-  await page.keyboard.type("ABOUT");
+  await page.keyboard.type("FOXES");
   await page.keyboard.press("Enter");
   await expect(page.locator(".daily-word-status")).toContainText(/correct position|positions/);
-  await expect.poll(async () => (await readPersistedWorkspace(page)).dailyWordPuzzles?.[0]?.guesses?.[0]).toBe("ABOUT");
+  await expect.poll(async () => (await readPersistedWorkspace(page)).dailyWordPuzzles?.[0]?.guesses?.[0]).toBe("FOXES");
 
   await page.reload({ waitUntil: "networkidle" });
-  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter F/ })).toBeVisible();
 
   // The TopBar action opens the exact Personalization surface rather than a
   // nested settings dialog.
@@ -51,11 +51,11 @@ test("Daily Games opt-in, Daily Word history, and shared clock preferences persi
   await settings.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Daily Games is currently disabled" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Daily Games", exact: true })).toHaveCount(0);
-  expect((await readPersistedWorkspace(page)).dailyWordPuzzles[0].guesses).toEqual(["ABOUT"]);
+  expect((await readPersistedWorkspace(page)).dailyWordPuzzles[0].guesses).toEqual(["FOXES"]);
 
   await page.getByRole("button", { name: "Enable Daily Games" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeVisible();
-  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter F/ })).toBeVisible();
 
   await page.reload({ waitUntil: "networkidle" });
   const persisted = await readPersistedWorkspace(page);
@@ -68,7 +68,7 @@ test("Daily Games opt-in, Daily Word history, and shared clock preferences persi
     showDigitalSeconds: true,
     showTimezoneLabel: true,
   });
-  expect(persisted.dailyWordPuzzles[0]).toMatchObject({ guesses: ["ABOUT"], timezone: expect.any(String) });
+  expect(persisted.dailyWordPuzzles[0]).toMatchObject({ guesses: ["FOXES"], timezone: expect.any(String) });
   await expect(page.getByRole("button", { name: /Open clock, .*America\/Grenada/ })).toBeVisible();
 
   await page.evaluate((themeKey) => localStorage.setItem(themeKey, "light"), STORAGE_KEYS.themePreference);

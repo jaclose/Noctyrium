@@ -22,6 +22,7 @@ describe("rebrand readiness", () => {
     // A future rebrand changes BRAND.productName but must never change these.
     expect(STORAGE_KEYS.persistedState).toBe("noctyrium-state");
     expect(STORAGE_KEYS.vaultDb).toBe("noctyrium-local-vault");
+    expect(STORAGE_KEYS.dismissedAnnouncements).toBe("axom.announcements.dismissed.v1");
     expect(BRAND.productName.length).toBeGreaterThan(0);
   });
 });

@@ -21,12 +21,15 @@ import {
   type OnboardingDestination,
   type OnboardingDraft,
   type OnboardingMode,
+  type OnboardingQuickRequirement,
   type OnboardingWidgetPreset,
 } from "../../lib/onboardingProgress";
 import { DEFAULT_HIDDEN_DASHBOARD_WIDGETS } from "../../lib/seed";
 import { useStore } from "../../lib/store";
-import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
-import type { ExperienceFocusId } from "../../lib/types";
+import { academicStagesForTrack, EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
+import { makeDailyRequirement } from "../../lib/dailySuccess";
+import { localDateKey } from "../../lib/dailyRollover";
+import type { AcademicStageId, ExperienceFocusId } from "../../lib/types";
 import { AxomMark, AxomWordmark } from "../ui/BrandMark";
 import { Field, SelectField } from "../ui/Modal";
 import { GButton, GhostButton } from "../ui/primitives";
@@ -67,6 +70,7 @@ export function OnboardingWizard({
   const descriptionId = useId();
 
   const track = resolveTrack(draft.trackId);
+  const stageChoices = academicStagesForTrack(track.id).options;
   const focusChoices = FOCUS_OPTIONS.filter((option) => track.focusIds.includes(option.id));
   const activeFocus = focusOption(draft.focusId) ?? focusOption(track.defaultFocusId)!;
 
@@ -117,7 +121,13 @@ export function OnboardingWizard({
 
   function chooseTrack(trackId: OnboardingDraft["trackId"]) {
     const next = resolveTrack(trackId);
-    updateDraft({ trackId, focusId: next.defaultFocusId });
+    const stages = academicStagesForTrack(trackId);
+    updateDraft({
+      trackId,
+      focusId: next.defaultFocusId,
+      stageId: stages.defaultStageId,
+      customStage: "",
+    });
   }
 
   function move(step: number) {
@@ -146,14 +156,17 @@ export function OnboardingWizard({
     const profilePatch = {
       ...(name ? { name } : {}),
       onboarded: true,
+      academicStageId: draft.stageId,
+      customAcademicStage: draft.stageId === "other" ? draft.customStage.trim() || undefined : undefined,
       ...(shouldApplyWidgets ? {
         hiddenDashboardWidgets: draft.widgetPreset === "focused"
-          ? [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS]
+          ? focusedHiddenWidgets(chosenTrack.group === "Medical School")
           : [],
       } : {}),
       ...(effectiveMode === "first-run" || draft.launchTour ? { tourDone: !draft.launchTour } : {}),
     };
     store.updateProfile(profilePatch);
+    applyQuickRequirements(draft.quickRequirements);
     const shouldApplyTrack = effectiveMode === "first-run"
       || draft.trackId !== currentProfile.educationTrack
       || draft.focusId !== currentProfile.activeFocusId;
@@ -173,6 +186,45 @@ export function OnboardingWizard({
     clearOnboardingDraft();
     if (downloadBackup) exportState(useStore.getState());
     onComplete?.(draft.launchTour ? "dashboard" : draft.destination);
+  }
+
+  function applyQuickRequirements(selected: OnboardingQuickRequirement[]) {
+    const current = useStore.getState().profile.dailySuccess;
+    // A completed first run always leaves an explicit configuration. An empty
+    // selection records "no requirements selected" so a new profile is neutral
+    // instead of inheriting the legacy minutes+cards defaults. Reruns without a
+    // selection leave the existing configuration untouched.
+    if (!selected.length && (current || effectiveMode !== "first-run")) return;
+    const today = useStore.getState().activeDayKey || localDateKey();
+    const existing = current?.requirements ?? [];
+    const additions = selected.map((id) => id === "study-minutes"
+      ? makeDailyRequirement({
+          id: "onboarding-study-minutes-v1",
+          label: "Focused study",
+          source: { kind: "study-minutes" },
+          target: 60,
+          unit: "minutes",
+          trackingStartsAt: today,
+        }, today)
+      : makeDailyRequirement({
+          id: "onboarding-closeout-v1",
+          label: "Daily closeout",
+          source: { kind: "journal-closeout" },
+          target: 1,
+          unit: "closeout",
+          trackingStartsAt: today,
+        }, today));
+    const byId = new Map(existing.map((requirement) => [requirement.id, requirement]));
+    for (const addition of additions) {
+      if (!byId.has(addition.id)) byId.set(addition.id, addition);
+    }
+    store.updateProfile({
+      dailySuccess: {
+        version: 1,
+        configuredAt: current?.configuredAt ?? today,
+        requirements: [...byId.values()],
+      },
+    });
   }
 
   async function enableNotifications() {
@@ -253,10 +305,26 @@ export function OnboardingWizard({
                 <option key={option.id} value={option.id}>{option.label}{option.status === "planned" ? " — lighter setup" : ""}</option>
               ))}
             </SelectField>
-            <SelectField label="Current term or exam focus" value={draft.focusId}
-              onChange={(event) => updateDraft({ focusId: event.target.value as ExperienceFocusId })}>
-              {focusChoices.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+            <SelectField label="Current stage" value={draft.stageId}
+              onChange={(event) => updateDraft({ stageId: event.target.value as AcademicStageId })}>
+              {stageChoices.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
             </SelectField>
+            {draft.stageId === "other" && (
+              <Field
+                label="Your stage (optional)"
+                placeholder="Describe your current stage"
+                value={draft.customStage}
+                onChange={(event) => updateDraft({ customStage: event.target.value })}
+              />
+            )}
+            <details className="onboarding-disclosure">
+              <summary>Exam or term focus</summary>
+              <p className="sub">Optional. This tunes study lanes and targets; it does not define your training stage.</p>
+              <SelectField label="Current focus" value={draft.focusId}
+                onChange={(event) => updateDraft({ focusId: event.target.value as ExperienceFocusId })}>
+                {focusChoices.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </SelectField>
+            </details>
             <div className="onboarding-track-note">
               <ShieldCheck size={15} aria-hidden="true" />
               <span>{track.progress.summary} No course or imported work is removed when you change this later.</span>
@@ -298,6 +366,29 @@ export function OnboardingWizard({
               <BookOpen size={15} aria-hidden="true" />
               <span>Question import is optional and uses the same review-first workflow as the main Question Bank.</span>
             </div>
+            <details className="onboarding-disclosure">
+              <summary>Optional daily requirements</summary>
+              <p className="sub">Choose up to two calm starting signals. Cards/Anki stays off unless you add it later.</p>
+              <div className="onboarding-quick-requirements">
+                {([
+                  ["study-minutes", "Focused study", "60 minutes a day"],
+                  ["journal-closeout", "Daily closeout", "One short reflection"],
+                ] as Array<[OnboardingQuickRequirement, string, string]>).map(([id, title, detail]) => (
+                  <label key={id}>
+                    <input
+                      type="checkbox"
+                      checked={draft.quickRequirements.includes(id)}
+                      onChange={(event) => updateDraft({
+                        quickRequirements: event.target.checked
+                          ? [...new Set([...draft.quickRequirements, id])].slice(0, 2)
+                          : draft.quickRequirements.filter((item) => item !== id),
+                      })}
+                    />
+                    <span><b>{title}</b><small>{detail}</small></span>
+                  </label>
+                ))}
+              </div>
+            </details>
             <StepActions onBack={() => move(0)} onNext={() => move(2)} />
           </div>
         )}
@@ -358,6 +449,7 @@ export function OnboardingWizard({
             </label>
             <div className="onboarding-summary compact">
               <div><span>Study path</span><b>{track.label}</b></div>
+              <div><span>Current stage</span><b>{draft.stageId === "other" ? draft.customStage.trim() || "Custom" : stageChoices.find((stage) => stage.id === draft.stageId)?.label}</b></div>
               <div><span>Current focus</span><b>{activeFocus.label}</b></div>
               <div><span>Start in</span><b>{WORKFLOWS.find((workflow) => workflow.id === draft.destination)?.title}</b></div>
               <div><span>Backup</span><b>Optional</b></div>
@@ -378,6 +470,13 @@ export function OnboardingWizard({
   );
 }
 
+function focusedHiddenWidgets(medical: boolean) {
+  return [...new Set([
+    ...DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+    ...(medical ? [] : ["examCountdown", "weekly"] as const),
+  ])];
+}
+
 function StepActions({ onBack, onNext }: { onBack?: () => void; onNext: () => void }) {
   return (
     <div className="onboarding-actions">
@@ -393,17 +492,31 @@ function defaultDraft(store: ReturnType<typeof useStore.getState>, mode: Onboard
     ? store.profile.activeFocusId
     : track.defaultFocusId;
   const hidden = store.profile.hiddenDashboardWidgets ?? DEFAULT_HIDDEN_DASHBOARD_WIDGETS;
+  const stages = academicStagesForTrack(track.id);
+  const stageId = store.profile.academicStageId && stages.options.some((stage) => stage.id === store.profile.academicStageId)
+    ? store.profile.academicStageId
+    : stages.defaultStageId;
+  const quickRequirements: OnboardingQuickRequirement[] = [];
+  if (store.profile.dailySuccess?.requirements.some((requirement) => requirement.id === "onboarding-study-minutes-v1" && requirement.enabled)) {
+    quickRequirements.push("study-minutes");
+  }
+  if (store.profile.dailySuccess?.requirements.some((requirement) => requirement.id === "onboarding-closeout-v1" && requirement.enabled)) {
+    quickRequirements.push("journal-closeout");
+  }
   return {
     version: 1,
     mode,
     step: 0,
     name: /^(axom|noctyrium)$/i.test(store.profile.name) ? "" : store.profile.name,
     trackId: track.id,
+    stageId,
+    customStage: store.profile.customAcademicStage ?? "",
     focusId: focus,
     firstCourse: "",
     destination: "dashboard",
     widgetPreset: hidden.length === 0 ? "expanded" : "focused",
     launchTour: false,
+    quickRequirements,
   };
 }
 

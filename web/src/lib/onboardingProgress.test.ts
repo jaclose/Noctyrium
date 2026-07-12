@@ -19,11 +19,14 @@ const fallback: OnboardingDraft = {
   step: 0,
   name: "",
   trackId: "sgu",
+  stageId: "preclinical",
+  customStage: "",
   focusId: "term1",
   firstCourse: "",
   destination: "dashboard",
   widgetPreset: "focused",
   launchTour: false,
+  quickRequirements: [],
 };
 
 const values = new Map<string, string>();

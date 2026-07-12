@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildCommandBrief, deriveMinimumViableWin, deriveMode, deriveNextBestMove, deriveSignals,
+  assessCommandBriefEvidence, buildCommandBrief, deriveMinimumViableWin, deriveMode, deriveNextBestMove, deriveSignals,
   type BriefStateSlice, type BriefSignals,
 } from "./commandBrief";
 import type { NoctyriumState, Task, TrackerItem } from "./types";
 import { newSchedule, type AnkiCard } from "./ankiCards";
+import { makeSeed } from "./seed";
 
 const TODAY = "2026-07-07";
 
@@ -172,3 +173,89 @@ describe("full brief assembly", () => {
 function detectMode(value: BriefSignals) {
   return deriveMode(value).mode;
 }
+
+describe("Command Brief evidence readiness", () => {
+  it("excludes every canonical seed course, example tracker row, and starter task", () => {
+    const seed = makeSeed();
+    const evidence = assessCommandBriefEvidence({
+      courses: seed.courses,
+      tracker: seed.tracker,
+      logs: seed.logs,
+      tasks: seed.tasks,
+      questions: seed.questions,
+      documents: seed.documents,
+      questionSets: seed.questionSets,
+    });
+
+    expect(evidence.ready).toBe(false);
+    expect(evidence.workload.count).toBe(0);
+    expect(evidence.activeItems.count).toBe(0);
+    expect(evidence.activity.count).toBe(0);
+  });
+
+  it("requires all three independent evidence boundaries", () => {
+    const seed = makeSeed();
+    const evidence = assessCommandBriefEvidence({
+      courses: [{ id: "course-real", termId: "term-1", code: "RENAL", name: "Renal block", files: 0, modules: [] }],
+      tracker: [
+        tracker({ id: "real-1", path: "Renal/Week 1", label: "Glomerular physiology", passes: 0 }),
+        tracker({ id: "real-2", path: "Renal/Week 1", label: "Tubular transport", passes: 1 }),
+      ],
+      logs: [],
+      tasks: seed.tasks,
+      questions: [],
+      documents: [],
+      questionSets: [],
+    });
+
+    expect(evidence.workload.ready).toBe(true);
+    expect(evidence.activeItems.ready).toBe(true);
+    expect(evidence.activity.ready).toBe(false);
+    expect(evidence.ready).toBe(false);
+  });
+
+  it("activates only after a real workload, two active items, and a real signal exist", () => {
+    const evidence = assessCommandBriefEvidence({
+      courses: [{ id: "course-real", termId: "term-real", code: "CARD", name: "Cardiology", files: 0, modules: [] }],
+      tracker: [
+        tracker({ id: "real-1", path: "Cardiology/Lectures", label: "Heart failure", passes: 0 }),
+        tracker({ id: "real-2", path: "Cardiology/PQs", label: "Cardiology questions", kind: "PQ", passes: 1 }),
+      ],
+      logs: [{
+        id: "log-real", dayKey: TODAY, ts: `${TODAY}T09:00:00.000Z`, type: "Study",
+        minutes: 30, cards: 0, academic: true, productive: true,
+      }],
+      tasks: [],
+      questions: [],
+      documents: [],
+      questionSets: [],
+    });
+
+    expect(evidence.ready).toBe(true);
+    expect(evidence.workload.count).toBe(1);
+    expect(evidence.activeItems.count).toBe(2);
+    expect(evidence.activity.count).toBe(1);
+  });
+
+  it("treats progress beyond a template baseline as meaningful without counting shipped progress", () => {
+    const seed = makeSeed();
+    const progressed = seed.tracker.slice(0, 2).map((item) => ({ ...item, passes: item.passes + 1 }));
+    const evidence = assessCommandBriefEvidence({
+      courses: seed.courses,
+      tracker: progressed,
+      logs: [],
+      tasks: [{ id: "user-task", title: "Review renal notes", done: false, created: `${TODAY}T08:00:00.000Z` }],
+      questions: [],
+      documents: [{
+        id: "source-1", title: "Renal notes", fileName: "renal.pdf", fileType: "application/pdf",
+        uploadedAt: `${TODAY}T08:00:00.000Z`, rawText: "", sizeBytes: 100, tags: [], linkedQuestionSetIds: [], libraryOnly: true,
+      }],
+      questionSets: [],
+    });
+
+    expect(evidence.workload.ready).toBe(true);
+    expect(evidence.activeItems.count).toBe(2);
+    expect(evidence.activity.ready).toBe(true);
+    expect(evidence.ready).toBe(true);
+  });
+});

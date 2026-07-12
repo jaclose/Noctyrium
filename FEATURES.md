@@ -6,6 +6,60 @@ and items move from there to here when they ship.
 
 Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 
+## Daily loop (Wave 5.5A/B — Daily Loop Stabilization)
+
+- **Inclusive academic stages** — setup asks for a training stage per track
+  (US MD/DO: Pre-clinical, Clinical rotations, Dedicated board preparation,
+  Residency application, Other/Custom; comparable choices for pre-health and
+  clinical programs). Stage is separate from the optional exam focus, fits inside
+  the accepted four-step onboarding, and reruns never reseed or overwrite it.
+- **Configurable daily success** — optional requirements (study minutes, cards,
+  practice questions, journal closeout, a habit, or a productivity tracker) with
+  per-requirement targets, tracking-start dates, weekday or times-per-week
+  schedules, and disabled/future exclusion. New profiles record an explicit
+  configuration (empty means neutral — no cards/Anki requirement by default);
+  existing profiles keep their legacy minute/card targets until they configure
+  the new system. One canonical evaluator feeds Productivity, Dashboard, and
+  Reports; no second habit engine exists.
+- **Simplified Productivity Console** — one dominant fast logger (label →
+  optional duration → optional quantity → optional note → Log) with cycling
+  example placeholders that stop on focus, content, or reduced motion. Quantity
+  supports cards, practice questions, and custom counts; neutral copy replaces
+  hostile red before the first eligible activity.
+- **Neutral daily progress vessel** — a restrained CSS fill derived from the
+  canonical evaluator, with a true progressbar role, value text, clamped 0–100
+  fill, reduced-motion static rendering, and a dash (not 0%) in the neutral state.
+- **Recent and frequent activity shortcuts** — up to three deduplicated recent
+  and two frequent (≥3 uses) one-tap configurations derived from history;
+  notes are excluded from identity, removal never deletes history.
+- **Pomodoro quick and custom presets** — visible 90/20, 50/10, 120/25 and
+  Custom (classic 25/5 under secondary options); custom focus/short/long/cycles
+  with run-once (never mutates the profile), named saved presets with a
+  three-preset soft limit and explanatory override, deterministic quick ordering,
+  auto-start break/focus options, and full survival across reload and
+  backup/restore. The accepted root timer lifecycle is unchanged.
+- **Honest low-data Reports** — every primary card exposes its meaning, source,
+  denominator, and interpretation; date ranges floor at tracking start, new
+  workspaces read neutral instead of "off-track", and detail disclosures are
+  keyboard-reachable.
+- **Focused Dashboard defaults** — today's plan, daily-success progress, and an
+  evidence-gated Command Brief lead; all fifteen accepted widgets, Customize,
+  ordering, and hidden-widget preferences remain intact and compatible.
+- **Quick theme control and persistent NEW badges** — a compact sidebar theme
+  switch, restrained dark-gold token refinements, and device-local NEW-badge
+  dismissal keyed by stable announcement IDs (badges never reappear after an
+  update unless a new announcement ID ships).
+- **Expanded local Daily Word dictionary** — new puzzles use the versioned
+  `general-2` contract derived from SCOWLv2 `rel-2026.02.25` (commit
+  `7e99edab8e32f9f9ea2b15f249ca8d4d67237410`), with its permissive notices
+  bundled under `web/public/third-party/`. The 1,981-answer and 8,659-guess
+  lists are checksum-pinned, remain lazy/offline assets, and use no publisher
+  game data. Incomplete `general-1` puzzles retain their original answer and
+  stored progress; unknown historical versions remain unavailable rather than
+  being silently rescored. The derivation is documented, though the repository
+  does not yet contain a self-contained regeneration script or a completed
+  human review of every possible answer.
+
 ## Question Bank (flagship)
 
 ### Flagship entry experience (2026-07-11)
@@ -175,8 +229,10 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 - **AXOM Daily Word** — an original six-guess, five-letter daily puzzle with physical
   and on-screen keyboards, duplicate-safe two-pass scoring, local word validation,
   color-independent tile marks, accessible row/tile labels, win/loss locking, and
-  answer reveal only after completion. The independently curated answer and allowed-
-  guess lists are bundled locally and versioned as `general-1`.
+  answer reveal only after completion. The current answer and allowed-guess lists
+  are derived locally from SCOWLv2, bundled with license/provenance, and versioned
+  as `general-2`; the original `general-1` sequence remains only for historical
+  puzzle continuity.
 - **Deterministic local history** — an explicit IANA timezone determines the calendar
   date, FNV-1a over the versioned puzzle ID selects the answer, and an active puzzle
   retains its recorded timezone across preference changes. Submitted guesses persist

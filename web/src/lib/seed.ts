@@ -101,12 +101,17 @@ export function makeSeed(): NoctyriumState {
       dailyMinuteTarget: 240,
       onboarded: false,
       educationTrack: "sgu",
+      academicStageId: "preclinical",
       showSguResources: true,
       activeFocusId: "term1",
       focusSubscriptions: DEFAULT_FOCUS_IDS,
       dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
       hiddenDashboardWidgets: DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
       journalReviewTime: "20:00",
+      // New workspaces begin neutral: support for a metric never makes it a
+      // requirement automatically. Existing profiles without this field keep
+      // their accepted legacy targets until they configure daily success.
+      dailySuccess: { version: 1, configuredAt: localDate(), requirements: [] },
       experimentalFlags: { dailyGames: false },
       timeZonePreference: { ...DEFAULT_TIME_ZONE_PREFERENCE },
       clockPreferences: { ...DEFAULT_CLOCK_PREFERENCES },

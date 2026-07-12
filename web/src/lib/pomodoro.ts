@@ -11,7 +11,7 @@
 // ===========================================================================
 import { create } from "zustand";
 import { useStore } from "./store";
-import { dayKey } from "./scoring";
+import { effectivePomodoroPreferences } from "./pomodoroPreferences";
 
 export interface PomodoroPreset {
   id: string;
@@ -24,13 +24,14 @@ export interface PomodoroPreset {
 }
 
 export const POMODORO_PRESETS: PomodoroPreset[] = [
-  { id: "deep-study", label: "Deep Study", focus: 50, break: 10, longBreak: 25, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
-  { id: "anki", label: "Anki", focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
-  { id: "lecture-review", label: "Lecture Review", focus: 45, break: 10, longBreak: 20, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-study" },
-  { id: "coding", label: "Coding", focus: 60, break: 10, longBreak: 25, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-coding" },
-  { id: "reading", label: "Reading", focus: 30, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
+  { id: "90-20", label: "90 / 20", focus: 90, break: 20, longBreak: 30, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-study" },
+  { id: "50-10", label: "50 / 10", focus: 50, break: 10, longBreak: 25, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
+  { id: "120-25", label: "120 / 25", focus: 120, break: 25, longBreak: 40, cyclesBeforeLongBreak: 3, defaultTrackerId: "tracker-study" },
+  { id: "25-5", label: "25 / 5", focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4, defaultTrackerId: "tracker-study" },
   { id: "custom", label: "Custom", focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 },
 ];
+
+export const PRIMARY_POMODORO_PRESET_IDS = ["90-20", "50-10", "120-25", "custom"] as const;
 
 export const DEFAULT_CUSTOM = { focus: 25, break: 5, longBreak: 15, cyclesBeforeLongBreak: 4 };
 const clampMin = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(Number.isFinite(n) ? n : lo)));
@@ -39,6 +40,23 @@ function validCyclesBeforeLongBreak(value: number | undefined): number {
   return Number.isFinite(value) && Number(value) > 0
     ? clampMin(Number(value), 1, 12)
     : DEFAULT_CUSTOM.cyclesBeforeLongBreak;
+}
+
+export interface PomodoroCustomDurations {
+  focus: number;
+  break: number;
+  longBreak: number;
+  cyclesBeforeLongBreak: number;
+}
+
+/** Clamp a custom timer before it reaches either session or profile storage. */
+export function clampPomodoroCustomDurations(input: PomodoroCustomDurations): PomodoroCustomDurations {
+  return {
+    focus: clampMin(input.focus, 1, 180),
+    break: clampMin(input.break, 1, 90),
+    longBreak: clampMin(input.longBreak, 1, 120),
+    cyclesBeforeLongBreak: validCyclesBeforeLongBreak(input.cyclesBeforeLongBreak),
+  };
 }
 
 /**
@@ -89,6 +107,8 @@ interface PersistedPomodoro extends CustomDurations {
   targetId?: string;
   targetLabel?: string;
   intention?: string;
+  activeSavedPresetId?: string;
+  focusRunStarted?: boolean;
   updatedAt: number;
 }
 
@@ -105,6 +125,8 @@ interface PomodoroState extends CustomDurations {
   targetId?: string;
   targetLabel?: string;
   intention: string;
+  activeSavedPresetId?: string;
+  focusRunStarted: boolean;
   lastTickAt: number;
   // FX signal — bumped each time a focus sprint completes so the app root can
   // fire the page glow + completion toast (kept here so it works on any page).
@@ -119,15 +141,18 @@ interface PomodoroState extends CustomDurations {
   setPreset: (id: string) => void;
   setAutoLog: (value: boolean) => void;
   setCustom: (patch: Partial<{ focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number }>) => void;
+  runCustom: (preset: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number; intention?: string }, savedPresetId?: string) => void;
   setTarget: (target: { kind: PomodoroTargetKind; id?: string; label?: string }) => void;
   setIntention: (value: string) => void;
   _tick: () => void;
 }
 
 const PRESET_ALIASES: Record<string, string> = {
-  "25-5": "anki",
-  "50-10": "deep-study",
-  "90-20": "deep-study",
+  "deep-study": "50-10",
+  "anki": "25-5",
+  "lecture-review": "50-10",
+  "coding": "50-10",
+  "reading": "25-5",
 };
 
 const presetById = (id: string): PomodoroPreset =>
@@ -203,6 +228,8 @@ function readPersisted(): Partial<PersistedPomodoro> {
       presetId: PRESET_ALIASES[parsed.presetId] ?? parsed.presetId,
       targetKind: parsed.targetKind ?? "free",
       intention: parsed.intention ?? "",
+      activeSavedPresetId: typeof parsed.activeSavedPresetId === "string" ? parsed.activeSavedPresetId : undefined,
+      focusRunStarted: parsed.focusRunStarted === true,
     };
   } catch {
     return fallbackCustom;
@@ -224,6 +251,8 @@ function persistSnapshot(s: PomodoroState) {
       targetId: s.targetId,
       targetLabel: s.targetLabel,
       intention: s.intention,
+      activeSavedPresetId: s.activeSavedPresetId,
+      focusRunStarted: s.focusRunStarted,
       customFocus: s.customFocus,
       customBreak: s.customBreak,
       customLongBreak: s.customLongBreak,
@@ -236,11 +265,30 @@ function persistSnapshot(s: PomodoroState) {
   }
 }
 
-function logNote(reason: "complete" | "reset" | "skip", targetLabel?: string, intention?: string): string {
-  const prefix = reason === "complete" ? "Pomodoro focus sprint" : `Pomodoro ${reason}: partial focus sprint`;
+function logNote(reason: "complete" | "reset" | "skip" | "switch", targetLabel?: string, intention?: string): string {
+  const prefix = reason === "complete"
+    ? "Pomodoro focus sprint"
+    : reason === "switch"
+      ? "Pomodoro preset change: partial focus sprint"
+      : `Pomodoro ${reason}: partial focus sprint`;
   return [prefix, targetLabel ? `target: ${targetLabel}` : "", intention ? `intention: ${intention}` : ""]
     .filter(Boolean)
     .join(" - ");
+}
+
+function recordSavedPresetUse(id: string) {
+  const store = useStore.getState();
+  const preferences = effectivePomodoroPreferences(store.profile.pomodoroPreferences);
+  if (!preferences.savedPresets.some((preset) => preset.id === id)) return;
+  const timestamp = new Date().toISOString();
+  store.updateProfile({
+    pomodoroPreferences: {
+      ...preferences,
+      savedPresets: preferences.savedPresets.map((preset) => preset.id === id
+        ? { ...preset, useCount: preset.useCount + 1, lastUsedAt: timestamp, updatedAt: timestamp }
+        : preset),
+    },
+  });
 }
 
 // A short, gentle two-tone chime so a finished sprint is noticeable without a
@@ -272,11 +320,11 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
   const initialCustom = profileCustom();
   // Reset the per-day counters when the active study day rolls over.
   const syncDay = () => {
-    const today = dayKey();
+    const today = useStore.getState().activeDayKey;
     if (get().anchorDay !== today) set({ anchorDay: today, sessionsToday: 0, loggedMinutesToday: 0 });
   };
 
-  const logPartialFocus = (reason: "reset" | "skip") => {
+  const logPartialFocus = (reason: "reset" | "skip" | "switch") => {
     syncDay();
     const { phase, secondsLeft, autoLog, targetLabel, intention } = get();
     if (phase !== "focus" || !autoLog) return 0;
@@ -287,8 +335,6 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     useStore.getState().logStudy({ type: "Pomodoro", minutes, note: logNote(reason, targetLabel, intention) });
     set((s) => ({
       loggedMinutesToday: s.loggedMinutesToday + minutes,
-      completedAt: new Date().toISOString(),
-      completedMinutes: minutes,
     }));
     persistSnapshot(get());
     return minutes;
@@ -301,6 +347,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     syncDay();
     const { phase, autoLog, targetLabel, intention } = get();
     const preset = effectivePreset(get());
+    const preferences = effectivePomodoroPreferences(useStore.getState().profile.pomodoroPreferences);
     if (phase === "focus") {
       if (natural && autoLog) {
         useStore.getState().logStudy({ type: "Pomodoro", minutes: preset.focus, note: logNote("complete", targetLabel, intention) });
@@ -315,22 +362,33 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         shortBreak: preset.break,
         longBreak: preset.longBreak,
       });
+      const continueIntoBreak = natural && preferences.autoStartBreak;
       set((s) => ({
         phase: "break",
         secondsLeft: breakMinutes * 60,
-        running: natural,
+        running: continueIntoBreak,
         lastTickAt: Date.now(),
+        focusRunStarted: false,
         sessionsToday: natural ? s.sessionsToday + 1 : s.sessionsToday,
         loggedMinutesToday: natural && autoLog ? s.loggedMinutesToday + preset.focus : s.loggedMinutesToday,
         completedAt: natural ? new Date().toISOString() : s.completedAt,
-        completedMinutes: natural && autoLog ? preset.focus : s.completedMinutes,
+        completedMinutes: natural ? (autoLog ? preset.focus : 0) : s.completedMinutes,
       }));
       persistSnapshot(get());
-      if (natural) startInterval(() => get()._tick());
+      if (continueIntoBreak) startInterval(() => get()._tick());
     } else {
       if (natural) chime(false);
-      set({ phase: "focus", secondsLeft: preset.focus * 60, running: false, lastTickAt: Date.now() });
+      const continueIntoFocus = natural && preferences.autoStartFocus;
+      if (continueIntoFocus && get().activeSavedPresetId) recordSavedPresetUse(get().activeSavedPresetId!);
+      set({
+        phase: "focus",
+        secondsLeft: preset.focus * 60,
+        running: continueIntoFocus,
+        focusRunStarted: continueIntoFocus,
+        lastTickAt: Date.now(),
+      });
       persistSnapshot(get());
+      if (continueIntoFocus) startInterval(() => get()._tick());
     }
   };
 
@@ -340,13 +398,15 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     secondsLeft: initial.secondsLeft ?? 25 * 60,
     running: initial.running ?? false,
     autoLog: initial.autoLog ?? true,
-    anchorDay: initial.anchorDay ?? dayKey(),
+    anchorDay: initial.anchorDay ?? useStore.getState().activeDayKey,
     sessionsToday: initial.sessionsToday ?? 0,
     loggedMinutesToday: initial.loggedMinutesToday ?? 0,
     targetKind: initial.targetKind ?? "free",
     targetId: initial.targetId,
     targetLabel: initial.targetLabel,
     intention: initial.intention ?? "",
+    activeSavedPresetId: initial.activeSavedPresetId,
+    focusRunStarted: initial.focusRunStarted ?? false,
     customFocus: initial.customFocus ?? initialCustom.customFocus,
     customBreak: initial.customBreak ?? initialCustom.customBreak,
     customLongBreak: initial.customLongBreak ?? initialCustom.customLongBreak,
@@ -363,7 +423,15 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
         Notification.requestPermission().catch(() => { /* ignore */ });
       }
-      set({ running: true, lastTickAt: Date.now() });
+      const state = get();
+      if (state.phase === "focus" && !state.focusRunStarted && state.activeSavedPresetId) {
+        recordSavedPresetUse(state.activeSavedPresetId);
+      }
+      set({
+        running: true,
+        focusRunStarted: state.phase === "focus" ? true : state.focusRunStarted,
+        lastTickAt: Date.now(),
+      });
       persistSnapshot(get());
       startInterval(() => get()._tick());
     },
@@ -377,7 +445,7 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
       stopInterval();
       logPartialFocus("reset");
       const preset = effectivePreset(get());
-      set({ running: false, phase: "focus", secondsLeft: preset.focus * 60, lastTickAt: Date.now() });
+      set({ running: false, phase: "focus", secondsLeft: preset.focus * 60, focusRunStarted: false, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
     skip: () => {
@@ -386,9 +454,10 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
     },
     setPreset: (id) => {
       stopInterval();
+      logPartialFocus("switch");
       const presetId = PRESET_ALIASES[id] ?? id;
       const preset = effectivePreset({ presetId, customFocus: get().customFocus, customBreak: get().customBreak, customLongBreak: get().customLongBreak, customCycles: get().customCycles });
-      set({ presetId, phase: "focus", secondsLeft: preset.focus * 60, running: false, lastTickAt: Date.now() });
+      set({ presetId, phase: "focus", secondsLeft: preset.focus * 60, running: false, activeSavedPresetId: undefined, focusRunStarted: false, lastTickAt: Date.now() });
       persistSnapshot(get());
     },
     setAutoLog: (autoLog) => { set({ autoLog }); persistSnapshot(get()); },
@@ -419,6 +488,28 @@ export const usePomodoro = create<PomodoroState>((set, get) => {
         });
         set({ secondsLeft: (get().phase === "focus" ? preset.focus : breakMinutes) * 60, lastTickAt: Date.now() });
       }
+      persistSnapshot(get());
+    },
+    runCustom: (input, savedPresetId) => {
+      stopInterval();
+      logPartialFocus("switch");
+      const normalized = clampPomodoroCustomDurations(input);
+      set({
+        presetId: "custom",
+        phase: "focus",
+        secondsLeft: normalized.focus * 60,
+        running: false,
+        customFocus: normalized.focus,
+        customBreak: normalized.break,
+        customLongBreak: normalized.longBreak,
+        customCycles: normalized.cyclesBeforeLongBreak,
+        activeSavedPresetId: savedPresetId,
+        focusRunStarted: false,
+        intention: input.intention?.trim().slice(0, 240) ?? get().intention,
+        lastTickAt: Date.now(),
+      });
+      // Deliberately snapshot only the active timer. Run-once values do not
+      // mutate the profile or its saved-preset collection.
       persistSnapshot(get());
     },
     setTarget: (target) => {

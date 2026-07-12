@@ -195,6 +195,19 @@ describe("v26 → v27 migration", () => {
     expect(migratePersistedState(structuredClone(migrated), SCHEMA_VERSION)).toEqual(migrated);
   });
 
+  it("uses the same focused widget fallback as backup hydration while preserving an explicit show-all choice", () => {
+    const missing = makeSeed() as unknown as Record<string, unknown>;
+    const missingProfile = { ...(missing.profile as Record<string, unknown>) };
+    delete missingProfile.hiddenDashboardWidgets;
+    missing.profile = missingProfile;
+    expect(migratePersistedState(structuredClone(missing), SCHEMA_VERSION).profile.hiddenDashboardWidgets)
+      .toEqual(makeSeed().profile.hiddenDashboardWidgets);
+
+    const explicit = makeSeed();
+    explicit.profile.hiddenDashboardWidgets = [];
+    expect(migratePersistedState(structuredClone(explicit), SCHEMA_VERSION).profile.hiddenDashboardWidgets).toEqual([]);
+  });
+
   it("preserves and de-duplicates existing Daily Word history without altering unrelated records", () => {
     const state = makeSeed();
     const incomplete = {

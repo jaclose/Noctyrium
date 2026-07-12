@@ -2,6 +2,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportState } from "../../lib/backup";
+import { evaluateDailySuccess } from "../../lib/dailySuccess";
+import { localDateKey } from "../../lib/dailyRollover";
 import { ONBOARDING_DRAFT_KEY } from "../../lib/onboardingProgress";
 import { makeSeed } from "../../lib/seed";
 import { useStore } from "../../lib/store";
@@ -48,7 +50,8 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("list", { name: "Setup progress" }).querySelector('[aria-current="step"]')?.textContent).toContain("Identity");
     expect(screen.getByLabelText("Display name (optional)")).toBeTruthy();
     expect(screen.getByLabelText("Study path")).toBeTruthy();
-    expect(screen.getByLabelText("Current term or exam focus")).toBeTruthy();
+    expect(screen.getByLabelText("Current stage")).toBeTruthy();
+    expect(screen.getByLabelText("Current focus")).toBeTruthy();
 
     continueSetup();
     expect(screen.getByRole("dialog", { name: "Core setup" })).toBeTruthy();
@@ -67,6 +70,64 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/Nothing is automatically uploaded to a cloud account/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Finish and export backup/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Finish" })).toBeTruthy();
+  });
+
+  it("offers inclusive medical stages and optional non-Anki requirements without duplication", () => {
+    render(<OnboardingWizard mode="first-run" />);
+    const path = screen.getByLabelText("Study path") as HTMLSelectElement;
+    fireEvent.change(path, { target: { value: "usmd" } });
+    const stage = screen.getByLabelText("Current stage") as HTMLSelectElement;
+    expect([...stage.options].map((option) => option.text)).toEqual([
+      "Pre-clinical",
+      "Clinical rotations",
+      "Dedicated board preparation",
+      "Residency application",
+      "Other / Custom",
+    ]);
+    fireEvent.change(path, { target: { value: "do" } });
+    expect([...stage.options].map((option) => option.text)).toContain("Pre-clinical");
+    fireEvent.change(stage, { target: { value: "other" } });
+    fireEvent.change(screen.getByLabelText("Your stage (optional)"), { target: { value: "Research year" } });
+
+    continueSetup();
+    expect(screen.queryByText(/Anki/, { selector: "label" })).toBeNull();
+    fireEvent.click(screen.getByLabelText(/Focused study/));
+    fireEvent.click(screen.getByLabelText(/Daily closeout/));
+    continueSetup(2);
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+
+    const profile = useStore.getState().profile;
+    expect(profile).toMatchObject({
+      educationTrack: "do",
+      academicStageId: "other",
+      customAcademicStage: "Research year",
+    });
+    expect(profile.dailySuccess?.requirements.map((item) => item.id)).toEqual([
+      "onboarding-study-minutes-v1",
+      "onboarding-closeout-v1",
+    ]);
+
+    cleanup();
+    render(<OnboardingWizard mode="rerun" />);
+    continueSetup(3);
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    expect(useStore.getState().profile.dailySuccess?.requirements).toHaveLength(2);
+  });
+
+  it("records an explicit empty configuration when a first run selects no requirements", () => {
+    render(<OnboardingWizard mode="first-run" />);
+    continueSetup(3);
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+
+    const profile = useStore.getState().profile;
+    // A new profile is explicitly configured as "nothing selected" — it must not
+    // fall back to the legacy minutes+cards defaults (no Anki by default).
+    expect(profile.dailySuccess).toBeDefined();
+    expect(profile.dailySuccess?.requirements).toEqual([]);
+    const evaluated = evaluateDailySuccess({ ...useStore.getState(), activeDayKey: localDateKey() });
+    expect(evaluated.status).toBe("neutral");
+    expect(evaluated.statusLabel).toBe("No requirements selected");
+    expect(evaluated.requirements.some((item) => item.requirement.source.kind === "cards-reviewed")).toBe(false);
   });
 
   it("sanely resumes the current step and draft after reload", async () => {

@@ -1,39 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Layers, Clock, ListChecks, BookText, Sparkles, ArrowRight,
-  Flame, Database, Download, ShieldCheck, PackageCheck, CalendarDays,
+  Clock, BookText, Sparkles, ArrowRight,
+  Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
   SlidersHorizontal, GripVertical, PlusCircle, X, Link as LinkIcon, Brain,
   AlertTriangle, CalendarClock,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, studyStreak, lastNDays, isoDate } from "../lib/scoring";
+import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, lastNDays, isoDate } from "../lib/scoring";
 import { missedStandupDays, planForDay, standupStatusToday } from "../lib/journal";
 import type { Grade } from "../lib/scoring";
-import type { Course, EnergyFactor, Term, TrackerItem } from "../lib/types";
+import type { Course, Term, TrackerItem } from "../lib/types";
 import type { DashboardWidgetId } from "../lib/types";
-import { PASS_COLOR, scopeMastery, suggestMoves } from "../lib/tracker";
+import { PASS_COLOR, suggestMoves } from "../lib/tracker";
 import { exportState } from "../lib/backup";
 import { gotoTrackerItem, gotoJournalDay } from "../lib/uiStore";
 import { useInView } from "../lib/useInView";
 import { canAutoFocus } from "../lib/device";
-import { APP_RELEASE_VERSION, SCHEMA_VERSION, DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
+import { DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
-import { calculateReadiness, QUICK_ENERGY_FACTORS, type ReadinessResult } from "../lib/energy";
+import { calculateReadiness } from "../lib/energy";
 import { pickFocusExam, buildExamCountdown, countdownHeadline, type PrepIntensity } from "../lib/examPlan";
 import { AnimatedProgressBar } from "../components/ui/motion";
-import { StatCard } from "../components/ui/StatCard";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Pomodoro } from "../components/productivity/Pomodoro";
 import { CommandBrief } from "../components/brief/CommandBrief";
+import { DailyProgressVessel } from "../components/productivity/DailyProgressVessel";
+import { evaluateDailySuccess, type DailySuccessResult } from "../lib/dailySuccess";
 import { runAi } from "../services/aiClient";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
 const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
   { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
-  { id: "todayScore", label: "Today's score", note: "Cards/minutes against your daily floor.", preview: "rings" },
+  { id: "todayScore", label: "Today's requirements", note: "Progress against only the requirements you selected.", preview: "rings" },
   { id: "examCountdown", label: "Exam countdown", note: "Days to your exam, phase, and a daily question target.", preview: "calendar" },
   { id: "pomodoro", label: "Pomodoro timer", note: "Focus sprints that auto-log their minutes.", preview: "rings" },
   { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
@@ -53,27 +54,11 @@ export function DashboardPage() {
   const s = useStore();
   const [editDashboard, setEditDashboard] = useState(false);
   const track = resolveTrack(s.profile.educationTrack);
-  const today = dayTotals(s.logs, s.activeDayKey);
-  const productiveToday = productiveTotals(s.logs, s.activeDayKey);
-  const grade = todayGrade(today.minutes, today.cards);
-  const openTasks = s.tasks.filter((t) => !t.done).length;
-  const doneToday = s.tasks.filter((t) => t.done && t.completedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)).length;
-  const matureItems = s.tracker.filter((t) => t.passes >= 3).length;
-  const masteredItems = s.tracker.filter((t) => t.passes >= 4).length;
-  const ankiActive = s.tracker.filter((t) => t.ankiPasses > 0).length;
-  const trackerReady = scopeMastery(s.tracker);
-  const reviewItems = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
-
-  const streak = studyStreak(s.logs);
+  const dailyProgress = useMemo(() => evaluateDailySuccess(s, s.activeDayKey, s.activeDayKey), [s]);
   const missedSet = useMemo(() => new Set(missedStandupDays(s)), [s.journal, s.logs, s.dayPlans]);
   const week = weeklySummary(s);
   const cardTarget = s.profile.dailyCardTarget || 120;
   const minTarget = s.profile.dailyMinuteTarget || 240;
-  const cardPct = Math.min(100, Math.round((today.cards / cardTarget) * 100));
-  const minPct = Math.min(100, Math.round((today.minutes / minTarget) * 100));
-  const targetsMet = today.cards >= cardTarget && today.minutes >= minTarget;
-  const floorFill = Math.min(100, Math.round((cardPct + minPct) / 2));
-  const strongDay = grade === "green" || grade === "blue" || floorFill >= 80;
 
   const suggestions = buildSuggestions(s);
   const schedule = buildDashboardSchedule(s.logs, s.tasks);
@@ -105,13 +90,7 @@ export function DashboardPage() {
     if (!showWidget(widgetId)) return null;
     if (widgetId === "winDay") return <WinTheDay key={widgetId} />;
     if (widgetId === "todayScore") {
-      return (
-        <TodayScoreWidget key={widgetId}
-          today={today} grade={grade} streak={streak}
-          cardTarget={cardTarget} minTarget={minTarget}
-          cardPct={cardPct} minPct={minPct}
-          targetsMet={targetsMet} activeDayKey={s.activeDayKey} />
-      );
+      return <TodayScoreWidget key={widgetId} result={dailyProgress} activeDayKey={s.activeDayKey} />;
     }
     if (widgetId === "examCountdown") return <ExamCountdownWidget key={widgetId} />;
     if (widgetId === "pomodoro") return <Pomodoro key={widgetId} compact />;
@@ -134,10 +113,6 @@ export function DashboardPage() {
       <AlphaBuildBanner
         profileName={s.profile.name}
         activeDayKey={s.activeDayKey}
-        termCount={s.terms.length}
-        performanceLabel={performance.performanceLabel}
-        energyScore={readiness.selfReportedEnergy.score}
-        readinessScore={readiness.estimatedReadiness}
       />
 
       <CommandBrief readiness={readiness} />
@@ -147,25 +122,9 @@ export function DashboardPage() {
       <GlassCard pad className="dashboard-control-card">
         <div className="spread">
           <div className="dashboard-control-copy">
-            <div className="dashboard-control-kicker">Personal command surface</div>
-            <div className="dashboard-control-titlerow">
-              <div className="dashboard-control-title">Tailored to {track.short}</div>
-              <span className={`streak-chip ${streak > 0 ? "lit" : ""}`} title="Consecutive days with logged study">
-                <Flame size={15} />
-                <b>{streak}</b>
-                <span>day{streak === 1 ? "" : "s"}</span>
-              </span>
-            </div>
-            <div className="dashboard-control-meta">
-              <span>{performance.performanceLabel}</span>
-              <span>Energy {readiness.selfReportedEnergy.score}/100</span>
-              <span>Readiness {readiness.estimatedReadiness}/100</span>
-              <span>{hiddenWidgets.size} widgets in the library</span>
-            </div>
-            <div className={`day-fluid-pill dashboard-mini-fluid ${strongDay ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
-              <span className="day-fluid-fill" style={{ width: `${floorFill}%` }} />
-              <span className="day-fluid-label">{strongDay && <span className="fire-emoji" aria-hidden="true">🔥</span>} {floorFill}% daily floor</span>
-            </div>
+            <div className="dashboard-control-kicker">Your workspace</div>
+            <div className="dashboard-control-title">{track.short} · {widgetOrder.length - hiddenWidgets.size} focused widgets</div>
+            <div className="dashboard-control-meta"><span>Reorder, hide, or restore widgets without deleting their data.</span></div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
             <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
@@ -174,62 +133,16 @@ export function DashboardPage() {
         {editDashboard && <DashboardWidgetEditor order={widgetOrder} hidden={hiddenWidgets} />}
       </GlassCard>
 
-      <div className="grid dashboard-stat-row">
-        <StatCard title="Anki" value={`${today.cards}`} note="cards today" icon={<Layers size={18} />}
-          trend="🃏" trendTone="neutral"
-          overview={<OverviewPanel title="Anki today" rows={[
-            { label: "Cards today", value: `${today.cards}`, tone: today.cards >= cardTarget ? "green" : "" },
-            { label: "Daily card floor", value: `${cardTarget}`, },
-            { label: "Floor progress", value: `${cardPct}%`, tone: cardPct >= 100 ? "green" : cardPct >= 60 ? "cyan" : "orange" },
-            { label: "Decks in rotation", value: `${ankiActive} item${ankiActive === 1 ? "" : "s"}` },
-            { label: "This week", value: `${week.cards} cards` },
-          ]} foot={today.cards >= cardTarget ? "Card floor cleared — protect the streak, not the maximum." : `${Math.max(0, cardTarget - today.cards)} cards to clear today's floor.`} />} />
-        <StatCard title="Study" value={`${today.minutes}m`} note="logged today" icon={<Clock size={18} />}
-          trend={gradeLabel(grade)} trendTone={grade === "red" ? "red" : grade === "orange" ? "orange" : grade === "green" ? "green" : "cyan"}
-          overview={<OverviewPanel title="Study time" rows={[
-            { label: "Minutes today", value: `${today.minutes}m`, tone: today.minutes >= minTarget ? "green" : "" },
-            { label: "Total productive", value: `${productiveToday.minutes}m` },
-            { label: "Daily minute floor", value: `${minTarget}m` },
-            { label: "Day grade", value: gradeLabel(grade).replace("👑 ", ""), tone: grade === "green" || grade === "blue" ? "green" : grade === "orange" ? "orange" : "red" },
-            { label: "Current streak", value: `${streak} day${streak === 1 ? "" : "s"}` },
-            { label: "This week", value: `${Math.round(week.minutes / 60)}h · ${week.activeDays}/7 active` },
-          ]} foot={today.minutes >= minTarget ? "Minute floor cleared for today." : `${Math.max(0, minTarget - today.minutes)}m to clear today's floor.`} />} />
-        <TasksJournalStatCard openTasks={openTasks} doneToday={doneToday} journalCount={s.journal.length}
-          firstTasks={s.tasks.filter((t) => !t.done && !t.archived).slice(0, 3).map((t) => t.title)}
-          lastStandup={s.journal[0]?.date} />
-        <StatCard title="Tracker" value={`${trackerReady}%`} note={`${matureItems} mature · ${reviewItems} need attention`} icon={<BadgeDot />}
-          trend={`${masteredItems} mastered`} trendTone="green"
-          overview={<OverviewPanel title="Tracker mastery" rows={[
-            { label: "Overall readiness", value: `${trackerReady}%`, tone: trackerReady >= 70 ? "green" : trackerReady >= 40 ? "cyan" : "orange" },
-            { label: "Tracked rows", value: `${s.tracker.length}` },
-            { label: "Mastered (4+)", value: `${masteredItems}`, tone: "green" },
-            { label: "Mature (3)", value: `${matureItems}` },
-            { label: "Needs attention", value: `${reviewItems}`, tone: reviewItems ? "orange" : "green" },
-          ]} foot={reviewItems ? `${reviewItems} item${reviewItems === 1 ? "" : "s"} flagged review or under two passes.` : "No review flags — keep cycling fresh evidence."} />} />
-        <StatCard title="Readiness" value={`${readiness.estimatedReadiness}`} note={`Energy ${readiness.selfReportedEnergy.label} · ${readiness.primarySignal}`} icon={<Sunrise size={18} />}
-          trend={readiness.readinessLabel} trendTone={readiness.estimatedReadiness >= 78 ? "green" : readiness.estimatedReadiness >= 58 ? "cyan" : readiness.estimatedReadiness >= 38 ? "orange" : "red"}
-          overview={<EnergyLedgerPopover
-            readiness={readiness}
-            onAdd={(factor) => s.addEnergyFactor(factor)}
-            onUpdate={s.updateEnergyFactor}
-            onRemove={s.removeEnergyFactor}
-          />} />
-      </div>
-
       {widgetOrder.map(renderWidget)}
     </>
   );
 }
 
 function AlphaBuildBanner({
-  profileName, activeDayKey, termCount, performanceLabel, energyScore, readinessScore,
+  profileName, activeDayKey,
 }: {
   profileName: string;
   activeDayKey: string;
-  termCount: number;
-  performanceLabel: string;
-  energyScore: number;
-  readinessScore: number;
 }) {
   const displayName = profileName && !/^(axom|noctyrium)$/i.test(profileName) ? profileName : "JD";
   const quote = dailyDashboardMessage(activeDayKey);
@@ -247,14 +160,6 @@ function AlphaBuildBanner({
         <span>{date}</span>
         <b>Welcome, {displayName}</b>
         <p>{quote}</p>
-      </div>
-      <div className="alpha-build-meta">
-        <span><Sparkles size={13} /> {performanceLabel}</span>
-        <span><Sunrise size={13} /> Energy {energyScore}/100</span>
-        <span><Brain size={13} /> Readiness {readinessScore}/100</span>
-        <span><ShieldCheck size={13} /> Version v{APP_RELEASE_VERSION}</span>
-        <span><Database size={13} /> Schema {SCHEMA_VERSION}</span>
-        <span>{termCount} active map nodes</span>
       </div>
     </GlassCard>
   );
@@ -289,177 +194,6 @@ const WRAP_MESSAGES = [
 function wrapUpMessage(key: string) {
   const code = key.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
   return WRAP_MESSAGES[code % WRAP_MESSAGES.length];
-}
-
-function BadgeDot() {
-  return <span className="badge-dot-icon" aria-hidden="true" />;
-}
-
-function TasksJournalStatCard({
-  openTasks, doneToday, journalCount, firstTasks, lastStandup,
-}: {
-  openTasks: number;
-  doneToday: number;
-  journalCount: number;
-  firstTasks: string[];
-  lastStandup?: string;
-}) {
-  return (
-    <div className="stat-card-wrap">
-      <GlassCard className="stat-card tasks-journal-stat has-overview" pad>
-        <div className="stat-top">
-          <span className="stat-icon"><ListChecks size={18} /></span>
-          <Tag tone={openTasks ? "orange" : "green"}>{openTasks ? `${openTasks} open` : "Clear"}</Tag>
-        </div>
-        <div className="tasks-journal-split">
-          <div>
-            <b>{openTasks}</b>
-            <span>open tasks</span>
-          </div>
-          <div>
-            <b>{journalCount}</b>
-            <span>standups</span>
-          </div>
-        </div>
-        <div className="stat-title">Tasks + Journal</div>
-        <div className="stat-note">{doneToday} done today · execute, then reflect</div>
-      </GlassCard>
-      <div className="stat-overview" role="tooltip">
-        <div className="stat-ov-title">Tasks &amp; Journal</div>
-        <div className="stat-ov-row"><span>Open tasks</span><b className={openTasks ? "orange" : "green"}>{openTasks}</b></div>
-        <div className="stat-ov-row"><span>Done today</span><b className="green">{doneToday}</b></div>
-        <div className="stat-ov-row"><span>Standups logged</span><b>{journalCount}</b></div>
-        <div className="stat-ov-row"><span>Last standup</span><b>{lastStandup ? prettyDate(lastStandup) : "None yet"}</b></div>
-        {firstTasks.length > 0 && (
-          <div className="stat-ov-list">
-            {firstTasks.map((title) => <span key={title}><Circle size={9} /> {title}</span>)}
-          </div>
-        )}
-        <div className="stat-ov-foot">{openTasks ? "Clear the open loop, then write the standup." : "Inbox clear — reflect and set tomorrow's intention."}</div>
-      </div>
-    </div>
-  );
-}
-
-// Shared hover-popover body for the dashboard stat cards.
-function OverviewPanel({
-  title, rows, foot,
-}: {
-  title: string;
-  rows: Array<{ label: string; value: string; tone?: string }>;
-  foot?: string;
-}) {
-  return (
-    <>
-      <div className="stat-ov-title">{title}</div>
-      {rows.map((row) => (
-        <div className="stat-ov-row" key={row.label}>
-          <span>{row.label}</span><b className={row.tone}>{row.value}</b>
-        </div>
-      ))}
-      {foot && <div className="stat-ov-foot">{foot}</div>}
-    </>
-  );
-}
-
-function EnergyLedgerPopover({
-  readiness,
-  onAdd,
-  onUpdate,
-  onRemove,
-}: {
-  readiness: ReadinessResult;
-  onAdd: (factor: Omit<EnergyFactor, "id" | "createdAt" | "updatedAt"> & { id?: string }) => void;
-  onUpdate: (id: string, patch: Partial<EnergyFactor>) => void;
-  onRemove: (id: string) => void;
-}) {
-  const editable = readiness.contributions.filter((item) => item.factorId && item.editable).slice(0, 4);
-  const topContributions = readiness.contributions.slice(0, 5);
-  return (
-    <div className="energy-ledger-popover">
-      <div className="stat-ov-title">Energy and readiness</div>
-      <div className="energy-score-grid">
-        <div>
-          <span>Self-reported</span>
-          <b>{readiness.selfReportedEnergy.score}</b>
-          <small>{readiness.selfReportedEnergy.label}</small>
-        </div>
-        <div>
-          <span>Estimated</span>
-          <b>{readiness.estimatedReadiness}</b>
-          <small>{readiness.readinessLabel}</small>
-        </div>
-      </div>
-      <div className="stat-ov-row"><span>Baseline</span><b>{readiness.baseline}/100</b></div>
-      <div className="stat-ov-row"><span>Net factor impact</span><b className={toneForDelta(readiness.totalImpact)}>{formatDelta(readiness.totalImpact)}</b></div>
-      <div className="stat-ov-row"><span>Carryover impact</span><b className={toneForDelta(readiness.carryoverImpact)}>{formatDelta(readiness.carryoverImpact)}</b></div>
-
-      {topContributions.length > 0 && (
-        <div className="energy-factor-list">
-          {topContributions.map((item) => (
-            <div className="energy-factor-row" key={item.id}>
-              <div>
-                <b>{item.label}</b>
-                <span>{item.source} · {item.category}{item.daysSince ? ` · carryover d${item.daysSince}` : ""}</span>
-                <small>{item.explanation}</small>
-              </div>
-              <strong className={toneForDelta(item.appliedDelta)}>{formatDelta(item.appliedDelta)}</strong>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {editable.length > 0 && (
-        <div className="energy-edit-list">
-          {editable.map((item) => (
-            <div className="energy-edit-row" key={item.factorId}>
-              <span>{item.label}</span>
-              <div className="row gap4">
-                <GButton size="tiny" iconOnly title="Lower factor weight" onClick={() => item.factorId && onUpdate(item.factorId, { delta: item.delta - 1 })}>-</GButton>
-                <GButton size="tiny" iconOnly title="Raise factor weight" onClick={() => item.factorId && onUpdate(item.factorId, { delta: item.delta + 1 })}>+</GButton>
-                <GButton size="tiny" iconOnly title="Remove factor" onClick={() => item.factorId && onRemove(item.factorId)}><X size={11} /></GButton>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="energy-quick-row">
-        {QUICK_ENERGY_FACTORS.slice(0, 5).map((preset) => (
-          <button type="button" key={preset.label} onClick={() => onAdd({ ...preset, date: readiness.date, userConfirmed: true })}>
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      {readiness.possibleSignals.length > 0 && (
-        <div className="energy-signal-box">
-          <b>Possible signal detected</b>
-          {readiness.possibleSignals.slice(0, 3).map((signal) => (
-            <div className="energy-signal-row" key={signal.id}>
-              <span>{signal.label} {formatDelta(signal.delta * signal.confidence)}</span>
-              <div className="row gap4">
-                <GButton size="tiny" onClick={() => onAdd({ ...signal, userConfirmed: true })}>Confirm</GButton>
-                <GButton size="tiny" onClick={() => onAdd({ ...signal, delta: 0, userConfirmed: false, notes: "Ignored by the user; kept only to avoid suggesting it again." })}>Ignore</GButton>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="stat-ov-foot">{readiness.recommendation}</div>
-    </div>
-  );
-}
-
-function formatDelta(value: number) {
-  const rounded = Math.round(value * 10) / 10;
-  return `${rounded > 0 ? "+" : ""}${rounded}`;
-}
-
-function toneForDelta(value: number) {
-  if (value > 0) return "green";
-  if (value < 0) return "red";
-  return "cyan";
 }
 
 function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
@@ -585,53 +319,31 @@ function normalizeWidgetOrder(value: unknown): DashboardWidgetId[] {
 }
 
 function TodayScoreWidget({
-  today, grade, streak, cardTarget, minTarget, cardPct, minPct, targetsMet, activeDayKey,
+  result, activeDayKey,
 }: {
-  today: { minutes: number; cards: number };
-  grade: Grade;
-  streak: number;
-  cardTarget: number;
-  minTarget: number;
-  cardPct: number;
-  minPct: number;
-  targetsMet: boolean;
+  result: DailySuccessResult;
   activeDayKey: string;
 }) {
-  const fill = Math.min(100, Math.round((cardPct + minPct) / 2));
-  const strong = grade === "green" || grade === "blue" || fill >= 80;
   return (
-    <GlassCard pad>
+    <GlassCard pad data-tour="requirements">
       <div className="panel-head">
         <div>
-          <div className="panel-title">Today's score</div>
-          <div className="panel-sub">A “good enough” day, not a maximum to grind past</div>
+          <div className="panel-title">Today's requirements</div>
+          <div className="panel-sub">Only the signals you selected for {prettyDate(`${activeDayKey}T12:00:00`)}</div>
         </div>
-        <span className="streak-badge" title="Consecutive study days">
-          <Flame size={14} /> {streak} day{streak === 1 ? "" : "s"}
-        </span>
+        <a className="gbtn sm" href="#productivity">Adjust</a>
       </div>
-      <div className={`day-fluid-pill ${strong ? "hot" : ""}`} title="Daily floor fill from minutes and cards">
-        <span className="day-fluid-fill" style={{ width: `${fill}%` }} />
-        <span className="day-fluid-label">{strong && <span className="fire-emoji" aria-hidden="true">🔥</span>} {fill}% daily floor</span>
-      </div>
-      <div className="ring-wrap">
-        <div className="ring">
-          <svg width="116" height="116" viewBox="0 0 116 116">
-            <circle cx="58" cy="58" r="51" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="14" />
-            <circle cx="58" cy="58" r="51" fill="none" stroke={gradeColor(grade)} strokeWidth="14" strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 51} strokeDashoffset={2 * Math.PI * 51 * (1 - Math.min(today.minutes / 480, 1))}
-              transform="rotate(-90 58 58)" style={{ transition: "stroke-dashoffset .5s ease" }} />
-          </svg>
-          <div className="ring-label" style={{ color: gradeColor(grade) }}>{gradeLabel(grade).replace("👑 ", "")}</div>
+      <DailyProgressVessel result={result} compact />
+      {result.requirements.filter((item) => item.eligible && item.status !== "unavailable").length > 0 && (
+        <div className="dashboard-requirement-list">
+          {result.requirements.filter((item) => item.eligible && item.status !== "unavailable").map((item) => (
+            <div key={item.requirement.id}>
+              <span>{item.requirement.label}</span>
+              <b>{item.calculation}</b>
+              <Tag tone={item.status === "met" ? "green" : item.status === "awaiting" ? "neutral" : "cyan"}>{item.status === "met" ? "Met" : item.status === "awaiting" ? "Awaiting" : "In progress"}</Tag>
+            </div>
+          ))}
         </div>
-        <div className="stack gap8 grow">
-          <ProgressBar label="Cards" value={today.cards} target={cardTarget} pct={cardPct} color="var(--grade-green)" />
-          <ProgressBar label="Minutes" value={today.minutes} target={minTarget} pct={minPct} color="var(--cyan)" />
-          <div className="dim" style={{ fontSize: 11.5 }}>Study day {activeDayKey}</div>
-        </div>
-      </div>
-      {targetsMet && (
-        <div className="enough-note">✓ You've hit today's target. Stopping here is a win — protect the streak, not the maximum.</div>
       )}
     </GlassCard>
   );

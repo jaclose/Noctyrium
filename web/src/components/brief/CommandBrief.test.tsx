@@ -39,7 +39,28 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("CommandBrief recommendation provenance", () => {
+  it("renders a neutral evidence checklist for a seed-only workspace", () => {
+    useStore.setState({ ...makeSeed(), activeDayKey: "2026-07-12" });
+    render(<CommandBrief />);
+
+    expect(screen.getByRole("heading", { name: "Command Brief" })).toBeTruthy();
+    expect(screen.getByText("AXOM is learning your current workload.")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Command Brief evidence readiness" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Add or import workload" }).getAttribute("href")).toBe("#tracker");
+    expect(screen.queryByText("Next best move")).toBeNull();
+    expect(screen.queryByText(/Minimum viable win/i)).toBeNull();
+    expect(screen.queryByText(/Since yesterday/i)).toBeNull();
+  });
+
   it("explains the threshold, calculation, unchanged data, and user overrides", () => {
+    useStore.setState({
+      courses: [{ id: "course-real", termId: "term-real", code: "RENAL", name: "Renal block", files: 0, modules: [] }],
+      tracker: [
+        { id: "tracker-real-1", path: "Renal/Lectures", label: "Glomerular physiology", kind: "Lecture", passes: 0, ankiPasses: 0, yield: "high", updated: "2026-07-12T08:00:00.000Z" },
+        { id: "tracker-real-2", path: "Renal/PQs", label: "Renal practice", kind: "PQ", passes: 1, ankiPasses: 0, yield: "review", updated: "2026-07-12T08:00:00.000Z" },
+      ],
+      logs: [{ id: "log-real", dayKey: "2026-07-12", ts: "2026-07-12T09:00:00.000Z", type: "Study", minutes: 30, cards: 0, academic: true, productive: true }],
+    });
     const state = useStore.getState();
     const readiness = calculateReadiness({
       date: state.activeDayKey,
@@ -68,5 +89,22 @@ describe("CommandBrief recommendation provenance", () => {
     expect(screen.queryByRole("heading", { name: "Lower-energy option" })).toBeNull();
     expect(useStore.getState().tasks).toEqual([]);
     expect(useStore.getState().dayPlans).toEqual([]);
+  });
+
+  it("renders the accepted brief once every evidence criterion is ready", () => {
+    useStore.setState({
+      courses: [{ id: "course-real", termId: "term-real", code: "RENAL", name: "Renal block", files: 0, modules: [] }],
+      tracker: [
+        { id: "tracker-real-1", path: "Renal/Lectures", label: "Glomerular physiology", kind: "Lecture", passes: 0, ankiPasses: 0, yield: "high", updated: "2026-07-12T08:00:00.000Z" },
+        { id: "tracker-real-2", path: "Renal/PQs", label: "Renal practice", kind: "PQ", passes: 1, ankiPasses: 0, yield: "review", updated: "2026-07-12T08:00:00.000Z" },
+      ],
+      logs: [{ id: "log-real", dayKey: "2026-07-12", ts: "2026-07-12T09:00:00.000Z", type: "Study", minutes: 30, cards: 0, academic: true, productive: true }],
+    });
+
+    render(<CommandBrief />);
+    expect(screen.queryByText("AXOM is learning your current workload.")).toBeNull();
+    expect(screen.getByText("Next best move")).toBeTruthy();
+    expect(screen.getByText(/Minimum viable win/i)).toBeTruthy();
+    expect(screen.getByText(/Since yesterday/i)).toBeTruthy();
   });
 });

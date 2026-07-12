@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, CircleDot, Copy, Delete, Minus, ShieldCheck } from "lucide-react";
+import { Check, CircleDot, Clock3, Copy, Delete, Minus, ShieldCheck } from "lucide-react";
 import { GlassCard, GButton } from "../components/ui/primitives";
 import {
   buildDailyWordShare,
   DAILY_WORD_MAX_GUESSES,
   deriveDailyWordStats,
+  millisecondsUntilNextCalendarDate,
   resolveTimeZone,
   scoreGuess,
   selectDailyWordAnswer,
@@ -16,7 +17,7 @@ import { useStore } from "../lib/store";
 import "../styles/daily-games.css";
 
 interface WordData {
-  answers: readonly string[];
+  answersForVersion: (version: string) => readonly string[] | undefined;
   allowed: ReadonlySet<string>;
   version: string;
   marker: string;
@@ -51,7 +52,7 @@ export function DailyWordPage() {
       .then((module) => {
         if (cancelled) return;
         setWords({
-          answers: module.DAILY_WORD_ANSWERS,
+          answersForVersion: module.dailyWordAnswersForVersion,
           allowed: new Set(module.DAILY_WORD_ALLOWED_GUESSES),
           version: module.WORD_LIST_VERSION,
           marker: module.DAILY_WORD_LIST_SENTINEL,
@@ -68,9 +69,10 @@ export function DailyWordPage() {
     wordListVersion: words.version,
   }) : null, [history, now, timeZone, words]);
   const puzzle = selection?.puzzle;
+  const puzzleAnswers = puzzle && words ? words.answersForVersion(puzzle.wordListVersion) : undefined;
   const answer = useMemo(
-    () => puzzle && words ? selectDailyWordAnswer(puzzle.puzzleId, words.answers) : "",
-    [puzzle, words],
+    () => puzzle && puzzleAnswers ? selectDailyWordAnswer(puzzle.puzzleId, puzzleAnswers) : "",
+    [puzzle, puzzleAnswers],
   );
   const evaluations = useMemo(
     () => puzzle && answer ? puzzle.guesses.map((guess) => scoreGuess(guess, answer)) : [],
@@ -78,6 +80,10 @@ export function DailyWordPage() {
   );
   const keyStates = useMemo(() => deriveKeyStates(puzzle?.guesses ?? [], evaluations), [evaluations, puzzle?.guesses]);
   const stats = useMemo(() => deriveDailyWordStats(history), [history]);
+  const nextPuzzleCountdown = useMemo(
+    () => puzzle?.completed ? formatCountdown(millisecondsUntilNextCalendarDate(now, puzzle.timezone)) : "",
+    [now, puzzle?.completed, puzzle?.timezone],
+  );
 
   useEffect(() => {
     if (selection?.created) upsertPuzzle(selection.puzzle);
@@ -186,6 +192,14 @@ export function DailyWordPage() {
 
   if (loadError) return <GlassCard pad><h1>AXOM Daily Word</h1><p role="alert">{loadError}</p></GlassCard>;
   if (!words || !puzzle) return <div className="route-loading" role="status">Opening the local daily puzzle…</div>;
+  if (!answer) {
+    return (
+      <GlassCard pad>
+        <h1>AXOM Daily Word</h1>
+        <p role="alert">This historical puzzle uses an unavailable dictionary version. Its saved guesses were preserved and were not rescored.</p>
+      </GlassCard>
+    );
+  }
 
   return (
     <div className="daily-word-page" data-list-marker={words.marker}>
@@ -266,6 +280,10 @@ export function DailyWordPage() {
             </div>
             <GButton onClick={shareResult}><Copy size={15} /> Share result</GButton>
           </div>
+          <div className="daily-word-countdown" aria-label={`Time until the next Daily Word puzzle: ${nextPuzzleCountdown}`}>
+            <Clock3 size={15} aria-hidden="true" />
+            <span>Next puzzle in <b>{nextPuzzleCountdown}</b></span>
+          </div>
           <div className="daily-word-stats" aria-label="Daily Word statistics">
             <Stat label="Played" value={stats.gamesPlayed} />
             <Stat label="Wins" value={stats.wins} />
@@ -311,6 +329,15 @@ function summarizeEvaluation(row: readonly LetterEvaluation[]) {
 function distributionWidth(value: number, wins: number) {
   if (!wins) return 0;
   return Math.max(value ? 8 : 0, Math.round((value / wins) * 100));
+}
+
+function formatCountdown(milliseconds: number): string {
+  const totalMinutes = Math.max(0, Math.ceil(milliseconds / 60_000));
+  if (totalMinutes < 1) return "less than a minute";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (!hours) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
 }
 
 function Stat({ label, value }: { label: string; value: number }) {

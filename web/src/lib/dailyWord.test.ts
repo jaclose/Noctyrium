@@ -11,6 +11,7 @@ import {
   isCalendarDateKey,
   isNextCalendarDate,
   isValidTimeZone,
+  millisecondsUntilNextCalendarDate,
   mergeDailyWordHistories,
   normalizeDailyWordHistory,
   resolveTimeZone,
@@ -32,6 +33,22 @@ describe("Daily Word calendar and deterministic answer selection", () => {
     expect(getCalendarDateKey(new Date("2025-03-09T05:00:00.000Z"), "America/New_York")).toBe("2025-03-09");
     expect(getCalendarDateKey(new Date("2025-11-02T03:59:00.000Z"), "America/New_York")).toBe("2025-11-01");
     expect(getCalendarDateKey(new Date("2025-11-02T04:00:00.000Z"), "America/New_York")).toBe("2025-11-02");
+  });
+
+  it("calculates the next puzzle boundary through fixed-offset and DST days", () => {
+    expect(millisecondsUntilNextCalendarDate(
+      new Date("2026-07-12T14:00:00.000Z"),
+      "America/Grenada",
+    )).toBe(14 * 60 * 60 * 1000);
+    expect(millisecondsUntilNextCalendarDate(
+      new Date("2025-03-09T05:00:00.000Z"),
+      "America/New_York",
+    )).toBe(23 * 60 * 60 * 1000);
+    expect(millisecondsUntilNextCalendarDate(
+      new Date("2025-11-02T04:00:00.000Z"),
+      "America/New_York",
+    )).toBe(25 * 60 * 60 * 1000);
+    expect(() => millisecondsUntilNextCalendarDate(new Date(), "invalid")).toThrow(/IANA timezone/);
   });
 
   it("validates, canonicalizes, and safely resolves timezone preferences", () => {
@@ -149,16 +166,26 @@ describe("Daily Word durable puzzle selection", () => {
     expect(selected.history).toHaveLength(1);
   });
 
-  it("uses a new namespace after a list update without replacing an unfinished old puzzle", () => {
+  it("keeps one legacy puzzle for its date, then uses the new namespace on the next date", () => {
     const completed = completedPuzzle("2026-07-12", true, 2, "2026-07-12T15:00:00Z");
-    const nextVersion = selectDailyWordPuzzle({
+    const sameDate = selectDailyWordPuzzle({
       history: [completed],
       now: new Date("2026-07-12T18:00:00Z"),
       timeZone: "America/Grenada",
       wordListVersion: "general-2",
     });
+    expect(sameDate.created).toBe(false);
+    expect(sameDate.puzzle.puzzleId).toBe(completed.puzzleId);
+    expect(sameDate.history).toHaveLength(1);
+
+    const nextVersion = selectDailyWordPuzzle({
+      history: [completed],
+      now: new Date("2026-07-13T18:00:00Z"),
+      timeZone: "America/Grenada",
+      wordListVersion: "general-2",
+    });
     expect(nextVersion.created).toBe(true);
-    expect(nextVersion.puzzle.puzzleId).toBe("daily-word:general-2:2026-07-12");
+    expect(nextVersion.puzzle.puzzleId).toBe("daily-word:general-2:2026-07-13");
     expect(nextVersion.history).toHaveLength(2);
   });
 });

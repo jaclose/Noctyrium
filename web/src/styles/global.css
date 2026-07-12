@@ -125,7 +125,7 @@ input, textarea, select { font-family: inherit; }
   .axom-brand-lockup__subtitle { color: var(--axom-text); }
 }
 
-/* Custom scrollbars — slim, bone, gold on hover */
+/* Custom scrollbars — slim, bone, and cool-mineral on hover. */
 *::-webkit-scrollbar { width: 9px; height: 9px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
@@ -134,7 +134,7 @@ input, textarea, select { font-family: inherit; }
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background: var(--gold-line); background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--cool-accent-line); background-clip: padding-box; }
 
 /* Gold focus ring for keyboard users — consistent, premium, accessible. */
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
@@ -160,9 +160,9 @@ input, textarea, select { font-family: inherit; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 22% 8%, rgba(200,169,106,0.07), transparent 26%),
+    radial-gradient(circle at 22% 8%, rgba(174,184,195,0.04), transparent 26%),
     radial-gradient(circle at 78% 18%, rgba(230,226,214,0.045), transparent 25%),
-    radial-gradient(circle at 50% 95%, rgba(200,169,106,0.05), transparent 34%),
+    radial-gradient(circle at 50% 95%, rgba(200,169,106,0.018), transparent 34%),
     linear-gradient(135deg, var(--bg-1), var(--bg-2) 52%, var(--bg-3));
   overflow: hidden;
 }
@@ -187,7 +187,7 @@ input, textarea, select { font-family: inherit; }
 }
 .orb.cyan {
   width: 460px; height: 460px;
-  background: radial-gradient(circle, rgba(200,169,106,0.12), rgba(200,169,106,0.025) 55%, transparent 72%);
+  background: radial-gradient(circle, rgba(174,184,195,0.075), rgba(174,184,195,0.018) 55%, transparent 72%);
   top: -260px; left: -200px;
   animation: drift1 26s ease-in-out infinite;
 }
@@ -199,7 +199,7 @@ input, textarea, select { font-family: inherit; }
 }
 .orb.blue {
   width: 380px; height: 380px;
-  background: radial-gradient(circle, rgba(200,169,106,0.06), rgba(200,169,106,0.012) 55%, transparent 72%);
+  background: radial-gradient(circle, rgba(147,167,196,0.055), rgba(147,167,196,0.012) 55%, transparent 72%);
   bottom: 8%; left: 36%;
   animation: drift3 38s ease-in-out infinite;
 }
@@ -233,7 +233,7 @@ input, textarea, select { font-family: inherit; }
   pointer-events: none;
   z-index: 2;
 }
-/* Slow, whisper-quiet diagonal luster — calm, not flashy. */
+/* One quiet diagonal luster on shell entry; it never loops while idle. */
 .shell::after {
   content: "";
   position: absolute;
@@ -243,7 +243,7 @@ input, textarea, select { font-family: inherit; }
   height: 220%;
   background: linear-gradient(to bottom, transparent, rgba(243,240,232,0.05), rgba(200,169,106,0.035), transparent);
   transform: rotate(17deg);
-  animation: luster 15s ease-in-out infinite;
+  animation: luster 1.8s ease-out 0.35s 1 both;
   pointer-events: none;
 }
 @keyframes luster {

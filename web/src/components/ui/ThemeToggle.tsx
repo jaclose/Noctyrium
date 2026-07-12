@@ -1,12 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import {
-  THEME_CHANGE_EVENT,
-  readThemePreference,
   setThemePreference,
-  type ThemeChangeDetail,
   type ThemePreference,
 } from "../../lib/theme";
+import { useThemePreference } from "../../lib/useThemePreference";
 
 const OPTIONS: Array<{
   value: ThemePreference;
@@ -21,16 +19,7 @@ const OPTIONS: Array<{
 
 export function ThemeToggle() {
   const groupId = useId();
-  const [preference, setPreference] = useState<ThemePreference>(() => readThemePreference());
-
-  useEffect(() => {
-    const onThemeChange = (event: Event) => {
-      const detail = (event as CustomEvent<ThemeChangeDetail>).detail;
-      setPreference(detail?.preference ?? readThemePreference());
-    };
-    window.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
-    return () => window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange);
-  }, []);
+  const preference = useThemePreference();
 
   return (
     <fieldset className="theme-setting">
@@ -48,10 +37,7 @@ export function ThemeToggle() {
                 name={`${groupId}-theme`}
                 value={option.value}
                 checked={preference === option.value}
-                onChange={() => {
-                  setThemePreference(option.value);
-                  setPreference(option.value);
-                }}
+                onChange={() => setThemePreference(option.value)}
               />
               <Icon size={16} aria-hidden="true" />
               <span><b>{option.label}</b><small>{option.detail}</small></span>

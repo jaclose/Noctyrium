@@ -1,39 +1,30 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Target, Timer, TrendingUp, Zap } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Target, Timer, TrendingUp, X, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayTotals, gradeColor, Grade, isoDate, lastNDays, prettyDate, productiveTotals, todayGrade } from "../lib/scoring";
+import { dayTotals, gradeColor, Grade, isoDate, prettyDate, productiveTotals, todayGrade } from "../lib/scoring";
 import { previousLocalDateKey } from "../lib/dailyRollover";
 import type { StudyLog } from "../lib/types";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
-import { Ring } from "../components/ui/Ring";
 import { Pomodoro } from "../components/productivity/Pomodoro";
+import { ActivityLabelInput } from "../components/productivity/ActivityLabelInput";
+import { DailyProgressVessel } from "../components/productivity/DailyProgressVessel";
+import { DailyRequirementsEditor } from "../components/productivity/DailyRequirementsEditor";
 import { useInView } from "../lib/useInView";
 import { missedStandupDays } from "../lib/journal";
 import { gotoJournalDay } from "../lib/uiStore";
-
-function stepVal(current: string, delta: number): string {
-  return String((Number(current) || 0) + delta);
-}
-
-type QuickLogItem = { label: string; type: string; minutes?: number; cards?: number; icon?: boolean };
-
-const QUICK_BASE: QuickLogItem[] = [
-  { label: "+50 cards · 15m", type: "Anki", cards: 50, minutes: 15 },
-  { label: "+100 cards · 30m", type: "Anki", cards: 100, minutes: 30 },
-  { label: "+150 cards · 45m", type: "Anki", cards: 150, minutes: 45 },
-  { label: "+200 cards · 60m", type: "Anki", cards: 200, minutes: 60 },
-  { label: "Deep Study +180m", type: "Deep Study", minutes: 180 },
-];
+import { evaluateDailySuccess } from "../lib/dailySuccess";
+import { frequentActivityShortcuts, recentActivityShortcuts, type ActivityShortcut } from "../lib/activityShortcuts";
 
 export function ProductivityPage() {
   const s = useStore();
   const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [manualType, setManualType] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
-  const [manualCards, setManualCards] = useState("");
+  const [manualQuantity, setManualQuantity] = useState("");
+  const [manualQuantityKind, setManualQuantityKind] = useState<"cards" | "questions" | "count">("count");
   const [manualNote, setManualNote] = useState("");
-  const [manualTrackerId, setManualTrackerId] = useState("tracker-study");
+  const [manualTrackerId, setManualTrackerId] = useState("");
   const strip = useInView<HTMLDivElement>();
 
   const viewKey = pickedDay ?? s.activeDayKey;
@@ -41,122 +32,115 @@ export function ProductivityPage() {
   const productive = productiveTotals(s.logs, viewKey);
   const isActive = viewKey === s.activeDayKey;
   const yesterdayKey = previousLocalDateKey(s.activeDayKey);
-  const carryover = s.tasks.filter((task) => !task.done && !task.archived && (task.carryoverFrom?.length ?? 0) > 0);
-  const weekly = useMemo(() => summarizePeriod(s.logs, lastNDays(7), "week"), [s.logs]);
-  const monthly = useMemo(() => summarizePeriod(s.logs, currentMonthDays(), "month"), [s.logs]);
+  // Cheap selector over the current store snapshot. Memoizing the whole store
+  // object here was both unnecessary and dependency-fragile; calculate it on
+  // render so new requirements/logs can never leave the period floor stale.
+  const trackingFloor = productivityTrackingFloor(s);
+  const weekly = useMemo(() => summarizePeriod(s.logs, daysEndingOn(s.activeDayKey, 7).filter((date) => isoDate(date) >= trackingFloor), "week", s.activeDayKey), [s.logs, s.activeDayKey, trackingFloor]);
+  const monthly = useMemo(() => summarizePeriod(s.logs, currentMonthDays(s.activeDayKey).filter((date) => isoDate(date) >= trackingFloor), "month", s.activeDayKey), [s.logs, s.activeDayKey, trackingFloor]);
   const monthCells = useMemo(() => buildMonthCells(monthly.days), [monthly.days]);
-  const calendarToday = isoDate(new Date());
-  const missedSet = useMemo(() => new Set(missedStandupDays(s)), [s.journal, s.logs, s.dayPlans]);
-  const quickItems = useMemo(() => {
-    const primary: QuickLogItem = s.profile.educationTrack === "sgu"
-      ? { label: "Lecture 60min", type: "Lecture", minutes: 60 }
-      : { label: "Study 60min", type: "Study", minutes: 60 };
-    return [primary, ...QUICK_BASE];
-  }, [s.profile.educationTrack]);
+  const calendarToday = s.activeDayKey;
+  const missedSet = useMemo(() => new Set(missedStandupDays({ journal: s.journal, logs: s.logs, dayPlans: s.dayPlans }, s.activeDayKey)), [s.journal, s.logs, s.dayPlans, s.activeDayKey]);
   const visibleTrackers = s.productivityTrackers.filter((tracker) => tracker.visible && !tracker.archived);
-  const selectedTracker = visibleTrackers.find((tracker) => tracker.id === manualTrackerId) ?? visibleTrackers[0];
+  const dailyProgress = useMemo(() => evaluateDailySuccess(s, viewKey, s.activeDayKey), [s, viewKey]);
+  const recent = useMemo(() => recentActivityShortcuts(s.logs, s.profile.hiddenActivityShortcuts), [s.logs, s.profile.hiddenActivityShortcuts]);
+  const recentSignatures = useMemo(() => new Set(recent.map((item) => item.signature)), [recent]);
+  const frequent = useMemo(() => frequentActivityShortcuts(s.logs, s.profile.hiddenActivityShortcuts, 2, 3, recentSignatures), [s.logs, s.profile.hiddenActivityShortcuts, recentSignatures]);
+  const patternDays = new Set(s.logs.filter((log) => log.dayKey >= trackingFloor).map((log) => log.dayKey)).size;
 
   function logManual() {
     const minutes = Number(manualMinutes) || 0;
-    const cards = Number(manualCards) || 0;
-    if (!minutes && !cards) return;
-    const type = manualType.trim() || selectedTracker?.name || (minutes < 0 || cards < 0 ? "Correction" : "Study");
-    s.logStudy({ type, minutes, cards, note: manualNote || undefined });
-    setManualMinutes(""); setManualCards(""); setManualNote("");
+    const quantity = Number(manualQuantity) || 0;
+    if (!manualType.trim()) return;
+    s.logActivity({
+      label: manualType,
+      trackerId: manualTrackerId || undefined,
+      minutes,
+      quantity,
+      quantityKind: quantity ? manualQuantityKind : undefined,
+      quantityLabel: quantity ? manualQuantityKind : undefined,
+      note: manualNote || undefined,
+    });
+    setManualType(""); setManualMinutes(""); setManualQuantity(""); setManualNote("");
+  }
+
+  function fillShortcut(shortcut: ActivityShortcut) {
+    setManualType(shortcut.label);
+    setManualTrackerId(shortcut.trackerId ?? "");
+    setManualMinutes(shortcut.minutes ? String(shortcut.minutes) : "");
+    setManualQuantity(shortcut.quantity ? String(shortcut.quantity) : "");
+    setManualQuantityKind(shortcut.quantityKind ?? "count");
+  }
+
+  function hideShortcut(signature: string) {
+    s.updateProfile({
+      hiddenActivityShortcuts: [...new Set([...(s.profile.hiddenActivityShortcuts ?? []), signature])].slice(-100),
+    });
   }
 
   return (
     <>
-      <GlassCard pad>
-        <PanelHeader title="Study Day Controls"
-          sub="Automatic local-date rollover is on. Use these controls to review history without mutating today." />
-        <div className="row wrap gap8">
-          <GButton variant="primary" onClick={() => setPickedDay(yesterdayKey)}>
-            <History size={15} /> Review Yesterday
-          </GButton>
-          <GButton onClick={() => gotoJournalDay(yesterdayKey)}>
-            <BookOpen size={14} /> Open Previous Standup
-          </GButton>
-          <GButton onClick={() => s.logStudy({ type: "Anki", cards: 20 })}><Plus size={14} /> 20 Anki Cards</GButton>
-          <GButton onClick={() => s.logStudy({ type: "Study", minutes: 30 })}><Plus size={14} /> 30 Minutes</GButton>
-          <div className="right sub">Device-local day: <span className="mono" style={{ color: "var(--cyan)" }}>{s.activeDayKey}</span></div>
-        </div>
-        <div className="sub" style={{ marginTop: 10 }}>
-          Last rollover check: <span className="mono">{s.lastActiveLocalDate}</span>.
-          {" "}Academic: <b>{totals.minutes}m</b>. Total productive: <b>{productive.minutes}m</b>.
-          {carryover.length ? ` ${carryover.length} carried task${carryover.length === 1 ? "" : "s"} are still open.` : " No carried tasks are open."}
-        </div>
-      </GlassCard>
-
       <GlassCard pad data-tour="log">
         <PanelHeader
           title="Productivity Console"
-          sub={isActive ? "Logging to today's study day" : `Viewing ${viewKey}`}
-          action={!isActive ? <GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton> : undefined} />
-        <Ring minutes={totals.minutes} cards={totals.cards} />
-        <div className={`quick-grid ${isActive ? "" : "is-locked"}`}>
-          {quickItems.map((q) => (
-            <GButton key={q.label} onClick={() => s.logStudy({ type: q.type, minutes: q.minutes, cards: q.cards })}>
-              {q.type === "Anki" ? <Layers size={14} /> : q.type === "Deep Study" ? <Zap size={14} /> : <Clock size={14} />}
-              {q.label}
-            </GButton>
-          ))}
-        </div>
+          sub={isActive ? "One useful record in a few seconds" : `Viewing ${prettyDate(`${viewKey}T12:00:00`)}`}
+          action={isActive ? (
+            <div className="row wrap gap6">
+              <GButton size="sm" onClick={() => setPickedDay(yesterdayKey)}><History size={14} /> Yesterday</GButton>
+              <GButton size="sm" onClick={() => gotoJournalDay(yesterdayKey)}><BookOpen size={14} /> Catch-up</GButton>
+            </div>
+          ) : <GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton>} />
+        <DailyProgressVessel result={dailyProgress} />
 
-        <div className={`manual-logger ${isActive ? "" : "is-locked"}`}>
-          <div className="manual-logger-head"><span>Manual Activity Logger</span></div>
-          <div className="tracker-breakdown-mini">
-            {visibleTrackers.slice(0, 7).map((tracker) => {
-              const trackerMinutes = s.logs
-                .filter((log) => log.dayKey === viewKey && log.trackerId === tracker.id)
-                .reduce((sum, log) => sum + Math.max(0, log.minutes), 0);
-              return (
-                <button key={tracker.id} type="button" className={`tracker-mini-chip ${manualTrackerId === tracker.id ? "on" : ""}`}
-                  style={{ borderColor: tracker.color }} onClick={() => setManualTrackerId(tracker.id)}>
-                  <span style={{ background: tracker.color }} />
-                  <b>{tracker.name}</b>
-                  <small>{tracker.unitType === "minutes" ? `${trackerMinutes}m` : tracker.unitType}</small>
-                </button>
-              );
-            })}
-          </div>
-          <div className="manual-log">
-            <select className="field manual-type" aria-label="Productivity tracker" value={manualTrackerId} onChange={(e) => setManualTrackerId(e.target.value)}>
-              {visibleTrackers.map((tracker) => (
-                <option key={tracker.id} value={tracker.id}>{tracker.name}{tracker.contributesToAcademicStudy ? " · academic" : " · productive"}</option>
-              ))}
-            </select>
-            <input className="field manual-type" placeholder="Activity type" value={manualType} onChange={(e) => setManualType(e.target.value)} />
-            <div className="stepper" title="Minutes (±10)">
-              <button type="button" className="step-btn" aria-label="Minus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, -10))}><Minus size={14} /></button>
-              <input className="field" type="number" placeholder="Min" value={manualMinutes} onChange={(e) => setManualMinutes(e.target.value)} />
-              <button type="button" className="step-btn" aria-label="Plus 10 minutes" onClick={() => setManualMinutes(stepVal(manualMinutes, 10))}><Plus size={14} /></button>
+        {isActive ? (
+          <>
+            <div className="fast-activity-logger">
+              <ActivityLabelInput value={manualType} onChange={setManualType} />
+              <label className="fast-field"><span>Duration</span><div><input className="field" aria-label="Duration in minutes" type="number" min="0" placeholder="Optional" value={manualMinutes} onChange={(event) => setManualMinutes(event.target.value)} /><small>min</small></div></label>
+              <div className="fast-field quantity"><span>Quantity</span><div>
+                <select className="field" aria-label="Quantity type" value={manualQuantityKind} onChange={(event) => setManualQuantityKind(event.target.value as typeof manualQuantityKind)}>
+                  <option value="count">Count</option>
+                  <option value="questions">Questions</option>
+                  <option value="cards">Cards</option>
+                </select>
+                <input className="field" aria-label="Quantity" type="number" min="0" placeholder="Optional" value={manualQuantity} onChange={(event) => setManualQuantity(event.target.value)} />
+              </div></div>
+              <input className="field fast-activity-note" aria-label="Activity note" placeholder="Note (optional)" value={manualNote} onChange={(event) => setManualNote(event.target.value)} />
+              <GButton variant="primary" onClick={logManual} disabled={!manualType.trim()}><Plus size={14} /> Log</GButton>
             </div>
-            <div className="stepper" title="Anki cards (±10)">
-              <button type="button" className="step-btn" aria-label="Minus 10 cards" onClick={() => setManualCards(stepVal(manualCards, -10))}><Minus size={14} /></button>
-              <input className="field" type="number" placeholder="Cards" value={manualCards} onChange={(e) => setManualCards(e.target.value)} />
-              <button type="button" className="step-btn" aria-label="Plus 10 cards" onClick={() => setManualCards(stepVal(manualCards, 10))}><Plus size={14} /></button>
-            </div>
-            <input className="field manual-note" placeholder="Note (optional)" value={manualNote} onChange={(e) => setManualNote(e.target.value)} />
-            <GButton variant="primary" onClick={logManual}><Plus size={14} /> Log</GButton>
+            <details className="activity-category-disclosure">
+              <summary>Category and contribution (optional)</summary>
+              <label><span>Use existing category</span><select className="field" aria-label="Productivity category" value={manualTrackerId} onChange={(event) => setManualTrackerId(event.target.value)}>
+                <option value="">Infer from this activity</option>
+                {visibleTrackers.map((tracker) => <option key={tracker.id} value={tracker.id}>{tracker.name}</option>)}
+              </select></label>
+            </details>
+
+            {(recent.length > 0 || frequent.length > 0) && (
+              <div className="activity-shortcuts">
+                {recent.length > 0 && <ShortcutGroup title="Recent" items={recent} onFill={fillShortcut} onHide={hideShortcut} />}
+                {frequent.length > 0 && <ShortcutGroup title="Frequent" items={frequent} onFill={fillShortcut} onHide={hideShortcut} />}
+              </div>
+            )}
+            <DailyRequirementsEditor />
+          </>
+        ) : (
+          <div className="historical-log-lock">
+            <History size={18} aria-hidden="true" />
+            <span><b>History is read-only.</b><small>Return to today before logging so an old view cannot change the current day.</small></span>
           </div>
-          <div className="log-presets">
-            <span className="preset-label">Minutes</span>
-            {[10, 20, 25, 50, 90].map((m) => (
-              <button key={m} type="button" className="preset-chip" onClick={() => setManualMinutes(String(m))}>{m}m</button>
-            ))}
-            <span className="preset-label">Cards</span>
-            {[10, 20, 25, 50, 100].map((c) => (
-              <button key={c} type="button" className="preset-chip" onClick={() => setManualCards(String(c))}>{c}</button>
-            ))}
-          </div>
+        )}
+        <div className="console-totals" aria-label="Viewed day totals">
+          <span><Clock size={13} /> {totals.minutes} study minutes</span>
+          {totals.cards > 0 && <span><Layers size={13} /> {totals.cards} cards</span>}
+          {productive.minutes !== totals.minutes && <span>{productive.minutes} total productive minutes</span>}
         </div>
       </GlassCard>
 
-      <div className="productivity-analytics">
+      {patternDays >= 3 && <div className="productivity-analytics">
         <GlassCard pad className="productivity-intel" data-tour="insights">
           <PanelHeader title="Weekly Productivity Intelligence" sub="Calendar-aligned 7-day signal from minutes and cards"
-            action={<Tag tone={scoreTone(weekly.grade)}>{weekly.activeDays}/7 active</Tag>} />
+            action={<Tag tone={weekly.activeDays ? scoreTone(weekly.grade) : "neutral"}>{weekly.activeDays}/{weekly.days.length} eligible</Tag>} />
           <div className="period-metrics">
             <Metric icon={<Clock size={15} />} label="Study time" value={`${Math.round(weekly.minutes / 60)}h ${weekly.minutes % 60}m`} note={`${weekly.avgMinutes}m / active day`} />
             <Metric icon={<Layers size={15} />} label="Cards" value={`${weekly.cards}`} note={`${weekly.avgCards} / active day`} />
@@ -171,7 +155,7 @@ export function ProductivityPage() {
 
         <GlassCard pad className="month-intel">
           <PanelHeader title="Monthly Productivity Calendar" sub={`${monthly.label} · each cell follows the real calendar day`}
-            action={<Tag tone={scoreTone(monthly.grade)}>{monthly.activeDays}/{monthly.days.length} active</Tag>} />
+            action={<Tag tone={monthly.activeDays ? scoreTone(monthly.grade) : "neutral"}>{monthly.activeDays}/{monthly.days.length} eligible</Tag>} />
           <div className="month-summary">
             <Metric icon={<Activity size={15} />} label="Month result" value={`${Math.round(monthly.minutes / 60)}h`} note={`${monthly.cards} cards`} />
             <Metric icon={<CalendarDays size={15} />} label="Best day" value={monthly.bestDay ? shortDate(monthly.bestDay.key) : "None"} note={monthly.bestDay ? `${monthly.bestDay.minutes}m · ${monthly.bestDay.cards} cards` : "log a session"} />
@@ -196,19 +180,11 @@ export function ProductivityPage() {
             <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> 👑 Blue: excellent day</span>
           </div>
         </GlassCard>
-      </div>
+      </div>}
 
-      <ActivityLog logs={s.logs} />
+      <ActivityLog logs={s.logs} activeDayKey={s.activeDayKey} />
 
       <Pomodoro />
-
-      <GlassCard pad>
-        <PanelHeader title="Future Integration Slots" sub="Auto-logging from connected tools (coming soon)" />
-        <div className="stack gap8">
-          <div className="slot"><Layers size={16} /> Anki review counts → auto cards/day</div>
-          <div className="slot"><Clock size={16} /> Calendar study blocks → auto minutes</div>
-        </div>
-      </GlassCard>
     </>
   );
 }
@@ -237,6 +213,42 @@ interface PeriodSummary {
   needsWorkDays: PeriodDay[];
   bestDay?: PeriodDay;
   insights: { tone: "green" | "orange" | "red" | "cyan" | "neutral"; title: string; body: string }[];
+}
+
+function ShortcutGroup({
+  title,
+  items,
+  onFill,
+  onHide,
+}: {
+  title: string;
+  items: ActivityShortcut[];
+  onFill: (item: ActivityShortcut) => void;
+  onHide: (signature: string) => void;
+}) {
+  return (
+    <section className="activity-shortcut-group" aria-label={`${title} activity shortcuts`}>
+      <span>{title}</span>
+      <div>
+        {items.map((item) => (
+          <div className="activity-shortcut" key={item.signature}>
+            <button type="button" onClick={() => onFill(item)}>
+              <b>{item.label}</b>
+              <small>{shortcutDetail(item)}{title === "Frequent" ? ` · ${item.uses} uses` : ""}</small>
+            </button>
+            <button type="button" aria-label={`Hide ${item.label} shortcut`} onClick={() => onHide(item.signature)}><X size={12} /></button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function shortcutDetail(item: ActivityShortcut): string {
+  const parts = [];
+  if (item.minutes) parts.push(`${item.minutes} min`);
+  if (item.quantity) parts.push(`${item.quantity} ${item.quantityKind ?? "count"}`);
+  return parts.join(" · ") || "One completion";
 }
 
 function Metric({
@@ -289,7 +301,7 @@ function InsightList({
   );
 }
 
-function summarizePeriod(logs: ReturnType<typeof useStore.getState>["logs"], dates: Date[], span: "week" | "month"): PeriodSummary {
+function summarizePeriod(logs: ReturnType<typeof useStore.getState>["logs"], dates: Date[], span: "week" | "month", activeDayKey: string): PeriodSummary {
   const days = dates.map((date) => {
     const key = isoDate(date);
     const totals = dayTotals(logs, key);
@@ -303,7 +315,7 @@ function summarizePeriod(logs: ReturnType<typeof useStore.getState>["logs"], dat
   const activeDays = active.length;
   const strongDays = days.filter((d) => d.grade === "green" || d.grade === "blue");
   const redActiveDays = days.filter((d) => d.active && d.grade === "red");
-  const quietDays = days.filter((d) => !d.active);
+  const quietDays = days.filter((d) => !d.active && d.key < activeDayKey);
   const needsWorkDays = [...redActiveDays, ...quietDays];
   const avgMinutes = activeDays ? Math.round(minutes / activeDays) : 0;
   const avgCards = activeDays ? Math.round(cards / activeDays) : 0;
@@ -372,13 +384,13 @@ function buildInsights({
     insights.push({
       tone: "orange",
       title: "Pick up the pace gently",
-      body: `${quietDays.length} quiet day${quietDays.length === 1 ? "" : "s"} in this ${span}. It is okay - restart with one focused block and a small card target.`,
+      body: `${quietDays.length} eligible quiet day${quietDays.length === 1 ? "" : "s"} in this ${span}. Restart with one selected requirement; cards are optional.`,
     });
   } else if (redActiveDays.length) {
     insights.push({
       tone: "orange",
       title: "Fragile days need a floor",
-      body: `${redActiveDays.length} active day${redActiveDays.length === 1 ? "" : "s"} stayed in red. A 30-minute minimum plus 50 cards would stabilize the floor.`,
+      body: `${redActiveDays.length} active day${redActiveDays.length === 1 ? "" : "s"} stayed below the current floor. Review the requirements you actually want to protect.`,
     });
   }
 
@@ -386,27 +398,51 @@ function buildInsights({
     insights.push({
       tone: "neutral",
       title: "No logged activity yet",
-      body: "Log minutes or cards and this panel will start giving real weekly and monthly feedback.",
+      body: "Log any named activity and this panel will start building a real weekly and monthly pattern.",
     });
   } else {
     insights.push({
       tone: "cyan",
       title: "Current active-day average",
-      body: `${avgMinutes} minutes and ${avgCards} cards per active day. The next useful target is consistency before intensity.`,
+      body: `${avgMinutes} minutes${avgCards ? ` and ${avgCards} cards` : ""} per active day. The next useful target is consistency before intensity.`,
     });
   }
 
   return insights.slice(0, 4);
 }
 
-function currentMonthDays(): Date[] {
-  const now = new Date();
+function currentMonthDays(activeDayKey: string): Date[] {
+  const now = localDateFromKey(activeDayKey);
   const first = new Date(now.getFullYear(), now.getMonth(), 1);
   const days: Date[] = [];
-  for (let d = new Date(first); d.getMonth() === first.getMonth(); d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(first); d <= now; d.setDate(d.getDate() + 1)) {
     days.push(new Date(d));
   }
   return days;
+}
+
+function daysEndingOn(activeDayKey: string, count: number): Date[] {
+  const end = localDateFromKey(activeDayKey);
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(end);
+    date.setDate(end.getDate() - (count - index - 1));
+    return date;
+  });
+}
+
+function localDateFromKey(dayKey: string): Date {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function productivityTrackingFloor(state: ReturnType<typeof useStore.getState>): string {
+  const starts = state.profile.dailySuccess?.requirements
+    .filter((requirement) => requirement.enabled)
+    .map((requirement) => requirement.trackingStartsAt)
+    .filter(Boolean) ?? [];
+  if (starts.length) return [...starts].sort()[0];
+  const firstLog = [...state.logs].sort((a, b) => a.dayKey.localeCompare(b.dayKey))[0]?.dayKey;
+  return firstLog ?? state.activeDayKey;
 }
 
 function buildMonthCells(days: PeriodDay[]): Array<PeriodDay | null> {
@@ -417,12 +453,12 @@ function buildMonthCells(days: PeriodDay[]): Array<PeriodDay | null> {
 
 // GitHub-style activity feed: every logged study event as a timeline row,
 // grouped by day, newest first — "you logged a lecture at this time".
-function ActivityLog({ logs }: { logs: StudyLog[] }) {
+function ActivityLog({ logs, activeDayKey }: { logs: StudyLog[]; activeDayKey: string }) {
   const [expanded, setExpanded] = useState(false);
   const limit = expanded ? 200 : 14;
   const visible = logs.slice(0, limit);
   const groups = useMemo(() => groupLogsByDay(visible), [visible]);
-  const todayKey = isoDate(new Date());
+  const todayKey = activeDayKey;
 
   return (
     <GlassCard pad className="activity-log-card">
@@ -438,7 +474,7 @@ function ActivityLog({ logs }: { logs: StudyLog[] }) {
           <History size={20} />
           <div>
             <b>No activity yet</b>
-            <span>Log minutes or cards above and each entry will appear here as a timeline.</span>
+            <span>Log any named activity above and each entry will appear here as a timeline.</span>
           </div>
         </div>
       ) : (
@@ -501,6 +537,10 @@ function describeLog(log: StudyLog): { text: string; tone: string; icon: ReactNo
   const lower = type.toLowerCase();
   const parts: string[] = [];
   if (log.cards) parts.push(`${log.cards > 0 ? "+" : ""}${log.cards} card${Math.abs(log.cards) === 1 ? "" : "s"}`);
+  if (log.quantity && log.quantityKind && log.quantityKind !== "cards") {
+    const unit = log.quantityLabel || log.quantityKind;
+    parts.push(`${log.quantity} ${unit}`);
+  }
   if (log.minutes) parts.push(`${log.minutes > 0 ? "+" : ""}${log.minutes}m`);
   const detail = parts.length ? ` · ${parts.join(" · ")}` : "";
   const correction = log.minutes < 0 || log.cards < 0;
@@ -509,6 +549,7 @@ function describeLog(log: StudyLog): { text: string; tone: string; icon: ReactNo
   if (correction) { icon = <Minus size={13} />; tone = "red"; }
   else if (lower.includes("anki") || lower.includes("card")) { icon = <Layers size={13} />; tone = "green"; }
   else if (lower.includes("pomodoro")) { icon = <Timer size={13} />; tone = "purple"; }
+  else if (log.quantityKind === "questions") { icon = <Target size={13} />; tone = "cyan"; }
   else if (lower.includes("lecture")) { icon = <BookOpen size={13} />; tone = "cyan"; }
   else if (lower.includes("deep")) { icon = <Zap size={13} />; tone = "orange"; }
   return { text: `${correction ? "Corrected" : "Logged"} ${type}${detail}`, tone, icon };

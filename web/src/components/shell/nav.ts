@@ -21,6 +21,12 @@ export interface ModuleStatusMetadata {
   accessibleLabel: string;
 }
 
+export interface ModuleStatusAssignment {
+  status: ModuleStatus;
+  /** Stable across deployments; changing it intentionally announces a new item. */
+  announcementId?: string;
+}
+
 // One presentation vocabulary for module maturity across every sidebar mode.
 export const MODULE_STATUS_META = {
   new: { badgeLabel: "NEW", accessibleLabel: "New" },
@@ -73,21 +79,29 @@ export type NavItemId = (typeof NAV)[number]["id"];
 // Status assignments live beside the navigation model rather than being
 // re-declared by each rendering mode or page.
 export const MODULE_STATUS_BY_NAV_ID = {
-  questions: "new",
-  methods: "new",
-  "daily-word": "new",
-  doctordle: "wip",
-  anki: "wip",
-  habits: "wip",
-  step: "wip",
-  premed: "wip",
-  integrations: "wip",
-  appchecker: "under-construction",
-  leaderboards: "under-construction",
-} as const satisfies Partial<Record<NavItemId, ModuleStatus>>;
+  questions: { status: "new", announcementId: "question-bank-entry-v1" },
+  methods: { status: "new", announcementId: "study-methods-library-v1" },
+  "daily-word": { status: "new", announcementId: "daily-word-launch-v1" },
+  doctordle: { status: "wip" },
+  anki: { status: "wip" },
+  habits: { status: "wip" },
+  step: { status: "wip" },
+  premed: { status: "wip" },
+  integrations: { status: "wip" },
+  appchecker: { status: "under-construction" },
+  leaderboards: { status: "under-construction" },
+} as const satisfies Partial<Record<NavItemId, ModuleStatusAssignment>>;
+
+export function getNavModuleStatusAssignment(id: string): ModuleStatusAssignment | undefined {
+  return MODULE_STATUS_BY_NAV_ID[id as keyof typeof MODULE_STATUS_BY_NAV_ID];
+}
 
 export function getNavModuleStatus(id: string): ModuleStatus | undefined {
-  return MODULE_STATUS_BY_NAV_ID[id as keyof typeof MODULE_STATUS_BY_NAV_ID];
+  return getNavModuleStatusAssignment(id)?.status;
+}
+
+export function getNavAnnouncementId(id: string): string | undefined {
+  return getNavModuleStatusAssignment(id)?.announcementId;
 }
 
 export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id === id);

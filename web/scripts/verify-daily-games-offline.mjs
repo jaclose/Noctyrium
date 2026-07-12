@@ -50,9 +50,9 @@ try {
 
   await page.getByRole("button", { name: "Enable Daily Games" }).click();
   await page.getByRole("heading", { level: 1, name: "AXOM Daily Word" }).waitFor();
-  await page.keyboard.type("ABOUT");
+  await page.keyboard.type("FOXES");
   await page.keyboard.press("Enter");
-  await page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ }).waitFor();
+  await page.getByRole("gridcell", { name: /Row 1, column 1, letter F/ }).waitFor();
 
   // Cache writes are intentionally best-effort and happen just after the
   // successful network response, so observe their completion before going
@@ -89,7 +89,7 @@ try {
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { level: 1, name: "AXOM Daily Word" }).waitFor();
-  await page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ }).waitFor();
+  await page.getByRole("gridcell", { name: /Row 1, column 1, letter F/ }).waitFor();
 
   const privacy = await page.evaluate(() => ({
     offline: navigator.onLine === false,

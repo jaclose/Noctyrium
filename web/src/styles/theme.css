@@ -13,15 +13,15 @@
   --axom-bg-soft: #0d0c0a;
   --axom-surface: rgba(255, 255, 255, 0.055);
   --axom-surface-strong: rgba(255, 255, 255, 0.085);
-  --axom-border: rgba(246, 226, 178, 0.18);
-  --axom-border-strong: rgba(246, 226, 178, 0.32);
+  --axom-border: rgba(216, 213, 205, 0.14);
+  --axom-border-strong: rgba(216, 213, 205, 0.26);
   --axom-text: #f7f1e6;
   --axom-text-muted: rgba(247, 241, 230, 0.66);
   --axom-gold: #d7b46a;
   --axom-gold-soft: #f1ddaa;
   --axom-silver: #d8d3c8;
   --axom-success: #55c987;
-  --axom-warning: #d7b46a;
+  --axom-warning: #c58a55;
   --axom-orange: #d98b43;
   --axom-danger: #e25b5b;
 
@@ -39,10 +39,17 @@
   --bg-2: #0c0c0e;
   --bg-3: #121214;
 
-  /* Accent slot (--cyan) → AXOM muted gold. Used with discipline: primary
-     actions, active states, focus, key highlights — never as wallpaper. */
-  --cyan: #cdb078;
-  --cyan-strong: #dcc38a;
+  /* Legacy `--cyan` is now the cool-mineral interactive slot. Explicit gold
+     tokens remain reserved for primary selections, achievements, and brand
+     edges instead of coloring every ordinary icon and label. */
+  --cool-accent: #aeb8c3;
+  --cool-accent-strong: #cbd1d7;
+  --cool-accent-soft: rgba(174, 184, 195, 0.1);
+  --cool-accent-line: rgba(174, 184, 195, 0.24);
+  --neutral-hover: rgba(230, 226, 214, 0.075);
+  --neutral-border-hover: rgba(216, 213, 205, 0.22);
+  --cyan: var(--cool-accent);
+  --cyan-strong: var(--cool-accent-strong);
   --gold: #c8a96a;
   --gold-soft: rgba(200, 169, 106, 0.14);
   --gold-line: rgba(200, 169, 106, 0.34);
@@ -94,7 +101,7 @@
   --surface-2: rgba(30, 30, 34, 0.72);
   --glass-card-fill: rgba(22, 22, 25, 0.60);
   --glass-card-border: rgba(230, 226, 214, 0.09);
-  --glass-card-border-hover: rgba(200, 169, 106, 0.30);
+  --glass-card-border-hover: var(--neutral-border-hover);
 
   --hairline: rgba(230, 226, 214, 0.09);
   --hairline-soft: rgba(230, 226, 214, 0.05);
@@ -132,7 +139,7 @@
   --axom-gold-soft: #6f4d1d;
   --axom-silver: #5f5a52;
   --axom-success: #267048;
-  --axom-warning: #865f20;
+  --axom-warning: #8c5b31;
   --axom-orange: #985a19;
   --axom-danger: #a63f39;
   --axom-shadow-glass: 0 22px 60px rgba(74, 55, 31, 0.16);
@@ -141,8 +148,14 @@
   --bg-1: #eee7da;
   --bg-2: #f7f3ec;
   --bg-3: #e5dccd;
-  --cyan: #8a6429;
-  --cyan-strong: #704b16;
+  --cool-accent: #526171;
+  --cool-accent-strong: #354453;
+  --cool-accent-soft: rgba(82, 97, 113, 0.1);
+  --cool-accent-line: rgba(82, 97, 113, 0.25);
+  --neutral-hover: rgba(67, 51, 31, 0.065);
+  --neutral-border-hover: rgba(67, 51, 31, 0.24);
+  --cyan: var(--cool-accent);
+  --cyan-strong: var(--cool-accent-strong);
   --gold: #8a6429;
   --gold-soft: rgba(138, 100, 41, 0.12);
   --gold-line: rgba(138, 100, 41, 0.42);
@@ -183,7 +196,7 @@
   --surface-2: rgba(255, 255, 255, 0.78);
   --glass-card-fill: rgba(255, 253, 248, 0.74);
   --glass-card-border: rgba(67, 51, 31, 0.12);
-  --glass-card-border-hover: rgba(138, 100, 41, 0.34);
+  --glass-card-border-hover: var(--neutral-border-hover);
   --hairline: rgba(67, 51, 31, 0.13);
   --hairline-soft: rgba(67, 51, 31, 0.075);
   --shadow-shell: 0 32px 80px rgba(65, 48, 28, 0.19), 0 1px 0 rgba(255, 255, 255, 0.9) inset;

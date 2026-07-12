@@ -1,9 +1,11 @@
 import { EDUCATION_TRACKS, resolveTrack } from "./tracks";
-import type { EducationTrackId, ExperienceFocusId } from "./types";
+import { academicStagesForTrack, isAcademicStageId } from "./tracks";
+import type { AcademicStageId, EducationTrackId, ExperienceFocusId } from "./types";
 
 export type OnboardingMode = "first-run" | "rerun";
 export type OnboardingDestination = "dashboard" | "tracker" | "questions";
 export type OnboardingWidgetPreset = "focused" | "expanded";
+export type OnboardingQuickRequirement = "study-minutes" | "journal-closeout";
 
 export interface OnboardingDraft {
   version: 1;
@@ -11,11 +13,14 @@ export interface OnboardingDraft {
   step: number;
   name: string;
   trackId: EducationTrackId;
+  stageId: AcademicStageId;
+  customStage: string;
   focusId: ExperienceFocusId;
   firstCourse: string;
   destination: OnboardingDestination;
   widgetPreset: OnboardingWidgetPreset;
   launchTour: boolean;
+  quickRequirements: OnboardingQuickRequirement[];
 }
 
 export const ONBOARDING_DRAFT_KEY = "axom.onboarding-draft.v1";
@@ -58,6 +63,11 @@ export function readOnboardingDraft(
 
     const trackId = isTrackId(parsed.trackId) ? parsed.trackId : fallback.trackId;
     const track = resolveTrack(trackId);
+    const stages = academicStagesForTrack(trackId);
+    const stageId = isAcademicStageId(parsed.stageId)
+      && stages.options.some((option) => option.id === parsed.stageId)
+      ? parsed.stageId
+      : fallback.stageId;
     const focusId = typeof parsed.focusId === "string" && track.focusIds.includes(parsed.focusId as ExperienceFocusId)
       ? parsed.focusId as ExperienceFocusId
       : track.defaultFocusId;
@@ -68,6 +78,8 @@ export function readOnboardingDraft(
       step: clampStep(parsed.step),
       name: safeText(parsed.name, fallback.name, 120),
       trackId,
+      stageId,
+      customStage: safeText(parsed.customStage, fallback.customStage, 120),
       focusId,
       firstCourse: safeText(parsed.firstCourse, fallback.firstCourse, 160),
       destination: isDestination(parsed.destination) ? parsed.destination : fallback.destination,
@@ -75,6 +87,9 @@ export function readOnboardingDraft(
         ? parsed.widgetPreset
         : fallback.widgetPreset,
       launchTour: typeof parsed.launchTour === "boolean" ? parsed.launchTour : fallback.launchTour,
+      quickRequirements: Array.isArray(parsed.quickRequirements)
+        ? [...new Set(parsed.quickRequirements.filter(isQuickRequirement))].slice(0, 2)
+        : fallback.quickRequirements,
     };
   } catch {
     return fallback;
@@ -151,4 +166,8 @@ function isTrackId(value: unknown): value is EducationTrackId {
 
 function isDestination(value: unknown): value is OnboardingDestination {
   return value === "dashboard" || value === "tracker" || value === "questions";
+}
+
+function isQuickRequirement(value: unknown): value is OnboardingQuickRequirement {
+  return value === "study-minutes" || value === "journal-closeout";
 }

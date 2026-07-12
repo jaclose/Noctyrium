@@ -5,9 +5,15 @@
 // the same schema, always behind user review.
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { Play, Zap, LifeBuoy, ClipboardCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Play, Zap, LifeBuoy, ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
 import { useStore } from "../../lib/store";
-import { buildCommandBrief, MODE_LABEL, type BriefMode } from "../../lib/commandBrief";
+import {
+  assessCommandBriefEvidence,
+  buildCommandBrief,
+  MODE_LABEL,
+  type BriefEvidenceCriterion,
+  type BriefMode,
+} from "../../lib/commandBrief";
 import { detectRecoveryTriggers } from "../../lib/recovery";
 import { findLiveSession } from "../../lib/sessions";
 import { closeoutForDay } from "../../lib/closeout";
@@ -33,8 +39,17 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const [showEnergyCalculation, setShowEnergyCalculation] = useState(false);
   const [energyPreviewDismissed, setEnergyPreviewDismissed] = useState(false);
 
+  const evidence = useMemo(() => assessCommandBriefEvidence({
+    courses: s.courses,
+    tracker: s.tracker,
+    logs: s.logs,
+    tasks: s.tasks,
+    questions: s.questions ?? [],
+    documents: s.documents ?? [],
+    questionSets: s.questionSets ?? [],
+  }), [s.courses, s.tracker, s.logs, s.tasks, s.questions, s.documents, s.questionSets]);
   const brief = useMemo(
-    () => buildCommandBrief({
+    () => evidence.ready ? buildCommandBrief({
       tasks: s.tasks,
       tracker: s.tracker,
       logs: s.logs,
@@ -44,10 +59,10 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
       closeouts: s.closeouts ?? [],
       questions: s.questions ?? [],
       ankiCards: s.ankiCards ?? [],
-    }),
-    [s.tasks, s.tracker, s.logs, s.boardPrep, s.activeDayKey, s.sessions, s.closeouts, s.questions, s.ankiCards],
+    }) : null,
+    [evidence.ready, s.tasks, s.tracker, s.logs, s.boardPrep, s.activeDayKey, s.sessions, s.closeouts, s.questions, s.ankiCards],
   );
-  const recovery = useMemo(() => detectRecoveryTriggers(brief.signals), [brief.signals]);
+  const recovery = useMemo(() => brief ? detectRecoveryTriggers(brief.signals) : null, [brief]);
   const recoveryDismissedToday = (s.recoveryPlans ?? []).some((plan) =>
     (plan.status === "deferred" || plan.status === "dismissed")
     && (plan.dayKey ?? plan.createdAt.slice(0, 10)) === s.activeDayKey);
@@ -55,8 +70,11 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const liveSession = findLiveSession(s.sessions ?? []);
   const todayCloseout = closeoutForDay(s.closeouts ?? [], s.activeDayKey);
 
+  if (!brief) return <CommandBriefLearningState evidence={evidence} />;
+  const readyBrief = brief;
+
   function begin(kind: "move" | "mvw") {
-    const target = kind === "move" ? brief.move : undefined;
+    const target = kind === "move" ? readyBrief.move : undefined;
     if (target) {
       s.startSession({
         title: target.title,
@@ -68,10 +86,10 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
       });
     } else {
       s.startSession({
-        title: brief.minimumViableWin.title,
-        link: brief.minimumViableWin.link,
-        plannedMinutes: brief.minimumViableWin.estimatedMinutes,
-        reason: brief.minimumViableWin.reason,
+        title: readyBrief.minimumViableWin.title,
+        link: readyBrief.minimumViableWin.link,
+        plannedMinutes: readyBrief.minimumViableWin.estimatedMinutes,
+        reason: readyBrief.minimumViableWin.reason,
         source: "minimum-viable-win",
       });
     }
@@ -88,7 +106,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
           <div className="sub" style={{ maxWidth: 640 }}>{brief.modeReason}</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          {recovery.triggered && !recoveryDismissedToday && (
+          {recovery?.triggered && !recoveryDismissedToday && (
             <GButton size="sm" onClick={() => setShowRecovery(true)}>
               <LifeBuoy size={14} /> Recovery plan
             </GButton>
@@ -192,7 +210,47 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
       </div>
 
       {showCloseout && <CloseoutModal onClose={() => setShowCloseout(false)} />}
-      {showRecovery && <RecoveryPanel signals={brief.signals} trigger={recovery} onClose={() => setShowRecovery(false)} />}
+      {showRecovery && recovery && <RecoveryPanel signals={brief.signals} trigger={recovery} onClose={() => setShowRecovery(false)} />}
     </GlassCard>
+  );
+}
+
+function CommandBriefLearningState({ evidence }: { evidence: ReturnType<typeof assessCommandBriefEvidence> }) {
+  return (
+    <GlassCard className="brief brief-learning" data-tour="command-brief">
+      <div className="row wrap gap8">
+        <h2 className="h-section" style={{ margin: 0 }}>Command Brief</h2>
+        <Tag tone="neutral">Learning</Tag>
+      </div>
+      <p className="brief-learning-title">AXOM is learning your current workload.</p>
+      <p className="sub">Recommendations stay neutral until your workspace has enough real evidence. Examples and starter records are excluded.</p>
+      <ul className="brief-evidence-list" aria-label="Command Brief evidence readiness" data-tour="recommendation-provenance">
+        <EvidenceItem criterion={evidence.workload} />
+        <EvidenceItem criterion={evidence.activeItems} />
+        <EvidenceItem criterion={evidence.activity} />
+      </ul>
+      <div className="row wrap gap8 brief-learning-actions">
+        <a className="gbtn primary sm" href="#tracker">Add or import workload</a>
+        <a className="gbtn sm" href="#productivity">Log activity</a>
+        <a className="gbtn sm" href="#tasks">Add a task</a>
+      </div>
+    </GlassCard>
+  );
+}
+
+function EvidenceItem({ criterion }: { criterion: BriefEvidenceCriterion }) {
+  return (
+    <li className={criterion.ready ? "ready" : "needed"}>
+      {criterion.ready
+        ? <CheckCircle2 size={16} aria-hidden="true" />
+        : <Circle size={16} aria-hidden="true" />}
+      <div>
+        <div className="spread gap8">
+          <b>{criterion.label}</b>
+          <span>{criterion.ready ? "Ready" : `${criterion.count}/${criterion.required}`}</span>
+        </div>
+        <small>{criterion.explanation}</small>
+      </div>
+    </li>
   );
 }

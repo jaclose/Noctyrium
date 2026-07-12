@@ -15,9 +15,10 @@ vi.mock("../lib/clock", () => ({
 
 vi.mock("../data/dailyWordWords", () => ({
   DAILY_WORD_ANSWERS: ["APPLE"],
-  DAILY_WORD_ALLOWED_GUESSES: ["APPLE", "ALLEY", "LEVEL", "SHEEP", "BANAL", "SASSY", "CRANE", "BLUSH", "POINT", "MIGHT"],
-  WORD_LIST_VERSION: "general-1",
-  DAILY_WORD_LIST_SENTINEL: "AXOM_WORD_LIST_SENTINEL_GENERAL_1",
+  DAILY_WORD_ALLOWED_GUESSES: ["APPLE", "ALLEY", "LEVEL", "SHEEP", "BANAL", "SASSY", "CRANE", "BLUSH", "POINT", "MIGHT", "HELLO", "ENVOY"],
+  dailyWordAnswersForVersion: (version: string) => ["general-1", "general-2"].includes(version) ? ["APPLE"] : undefined,
+  WORD_LIST_VERSION: "general-2",
+  DAILY_WORD_LIST_SENTINEL: "AXOM_WORD_LIST_SENTINEL_GENERAL_2_SCOWL_2026_02_25",
 }));
 
 beforeEach(() => {
@@ -85,6 +86,19 @@ describe("DailyWordPage input and scoring integration", () => {
     expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual([]);
   });
 
+  it("accepts HELLO and ENVOY through the expanded local dictionary", async () => {
+    render(<DailyWordPage />);
+    await openPuzzle();
+
+    enterPhysicalWord("HELLO");
+    fireEvent.keyDown(window, { key: "Enter" });
+    await waitFor(() => expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual(["HELLO"]));
+
+    enterPhysicalWord("ENVOY");
+    fireEvent.keyDown(window, { key: "Enter" });
+    await waitFor(() => expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual(["HELLO", "ENVOY"]));
+  });
+
   it("wins through the on-screen keyboard, reveals the answer only then, and locks all input", async () => {
     const user = userEvent.setup();
     render(<DailyWordPage />);
@@ -128,6 +142,18 @@ describe("DailyWordPage input and scoring integration", () => {
 });
 
 describe("DailyWordPage persistence, sharing, and accessibility", () => {
+  it("preserves an incomplete unknown-version puzzle without rescoring it", async () => {
+    const unsupported = {
+      ...createDailyWordPuzzle("2026-07-12", "America/Grenada", "missing-1", FIXED_NOW),
+      guesses: ["HELLO"],
+    };
+    act(() => { useStore.setState({ dailyWordPuzzles: [unsupported] }); });
+    render(<DailyWordPage />);
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/unavailable dictionary version/i);
+    expect(useStore.getState().dailyWordPuzzles).toEqual([unsupported]);
+  });
+
   it("rehydrates submitted rows from durable store state without duplicating them on remount", async () => {
     const first = render(<DailyWordPage />);
     await openPuzzle();
@@ -180,13 +206,23 @@ describe("DailyWordPage persistence, sharing, and accessibility", () => {
     expect(screen.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeTruthy();
     expect(screen.getByText("A daily five-letter word puzzle.")).toBeTruthy();
     expect(screen.getByText(/Submit a valid five-letter word in six guesses/)).toBeTruthy();
+    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(false);
     const grid = screen.getByRole("grid", { name: "Six-row Daily Word puzzle for 2026-07-12" });
     expect(within(grid).getAllByRole("row")).toHaveLength(6);
     expect(within(grid).getAllByRole("gridcell")).toHaveLength(30);
     expect(within(grid).getByRole("gridcell", { name: "Row 1, column 1, blank." })).toBeTruthy();
     expect(screen.getByRole("group", { name: "On-screen keyboard" })).toBeTruthy();
     expect(screen.getAllByRole("status")).toHaveLength(1);
-    expect(document.querySelector('[data-list-marker="AXOM_WORD_LIST_SENTINEL_GENERAL_1"]')).toBeTruthy();
+    expect(document.querySelector('[data-list-marker="AXOM_WORD_LIST_SENTINEL_GENERAL_2_SCOWL_2026_02_25"]')).toBeTruthy();
+  });
+
+  it("shows a deterministic next-puzzle countdown after completion", async () => {
+    act(() => { useStore.setState({ dailyWordPuzzles: [completedPuzzle(["APPLE"], true)] }); });
+    render(<DailyWordPage />);
+    await openPuzzle();
+
+    expect(screen.getByText(/Next puzzle in/).textContent).toMatch(/Next puzzle in \d+h \d+m/);
+    expect(screen.getByLabelText(/Time until the next Daily Word puzzle:/)).toBeTruthy();
   });
 });
 
@@ -199,9 +235,9 @@ function enterPhysicalWord(word: string) {
   for (const letter of word) fireEvent.keyDown(window, { key: letter });
 }
 
-function activePuzzle(guesses: string[] = []): DailyWordPuzzleState {
+function activePuzzle(guesses: string[] = [], version = "general-1"): DailyWordPuzzleState {
   return {
-    ...createDailyWordPuzzle("2026-07-12", "America/Grenada", "general-1", FIXED_NOW),
+    ...createDailyWordPuzzle("2026-07-12", "America/Grenada", version, FIXED_NOW),
     guesses,
     updatedAt: new Date(FIXED_NOW.getTime() + guesses.length * 1_000).toISOString(),
   };
@@ -210,7 +246,7 @@ function activePuzzle(guesses: string[] = []): DailyWordPuzzleState {
 function completedPuzzle(guesses: string[], won: boolean): DailyWordPuzzleState {
   const completedAt = "2026-07-12T14:10:00.000Z";
   return {
-    ...activePuzzle(guesses),
+    ...activePuzzle(guesses, "general-2"),
     completed: true,
     won,
     completedAt,

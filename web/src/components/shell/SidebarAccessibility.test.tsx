@@ -6,9 +6,28 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import App from "../../App";
 import { useStore } from "../../lib/store";
-import { DAILY_GAMES_FOLDER, getNavModuleStatus, isDailyGamesEnabled, MODULE_STATUS_META } from "./nav";
+import { STORAGE_KEYS } from "../../lib/brand";
+import {
+  DAILY_GAMES_FOLDER,
+  getNavAnnouncementId,
+  getNavModuleStatus,
+  isDailyGamesEnabled,
+  MODULE_STATUS_META,
+} from "./nav";
+
+const localValues = new Map<string, string>();
+const memoryLocalStorage: Storage = {
+  get length() { return localValues.size; },
+  clear: () => localValues.clear(),
+  getItem: (key) => localValues.get(key) ?? null,
+  key: (index) => [...localValues.keys()][index] ?? null,
+  removeItem: (key) => { localValues.delete(key); },
+  setItem: (key, value) => { localValues.set(key, String(value)); },
+};
 
 beforeEach(() => {
+  vi.stubGlobal("localStorage", memoryLocalStorage);
+  localStorage.clear();
   window.location.hash = "#dashboard";
   useStore.setState((state) => ({
     profile: {
@@ -52,6 +71,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("mobile sidebar accessibility", () => {
@@ -142,6 +162,10 @@ describe("sidebar module status", () => {
     expect(getNavModuleStatus("appchecker")).toBe("under-construction");
     expect(getNavModuleStatus("leaderboards")).toBe("under-construction");
     expect(getNavModuleStatus("dashboard")).toBeUndefined();
+    expect(getNavAnnouncementId("questions")).toBe("question-bank-entry-v1");
+    expect(getNavAnnouncementId("methods")).toBe("study-methods-library-v1");
+    expect(getNavAnnouncementId("daily-word")).toBe("daily-word-launch-v1");
+    expect(getNavAnnouncementId("doctordle")).toBeUndefined();
     expect(MODULE_STATUS_META["under-construction"]).toEqual({
       badgeLabel: "BUILDING",
       accessibleLabel: "Under construction",
@@ -192,6 +216,48 @@ describe("sidebar module status", () => {
     expect(hiddenModule.classList.contains("off")).toBe(true);
     expect(hiddenModule.getAttribute("aria-pressed")).toBe("false");
     expect(hiddenModule.querySelector(".nav-status")?.textContent).toBe("NEW");
+  });
+
+  it("dismisses each NEW badge only after its meaningful active-route open and persists the stable id", () => {
+    const props = {
+      onSelect: vi.fn(),
+      onOpenSettings: vi.fn(),
+      collapsed: true,
+      onClose: vi.fn(),
+    };
+    const { rerender, unmount } = render(<Sidebar {...props} active="dashboard" />);
+    const questions = screen.getByRole("button", { name: "Question Bank, New" });
+    fireEvent.mouseEnter(questions);
+    expect(localStorage.getItem(STORAGE_KEYS.dismissedAnnouncements)).toBeNull();
+
+    rerender(<Sidebar {...props} active="questions" />);
+    expect(screen.getByRole("button", { name: "Question Bank" }).querySelector(".nav-status")).toBeNull();
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.dismissedAnnouncements) ?? "[]")).toEqual([
+      "question-bank-entry-v1",
+    ]);
+    expect(screen.getByRole("button", { name: "Study Methods, New" })).toBeTruthy();
+
+    unmount();
+    render(<Sidebar {...props} active="dashboard" />);
+    expect(screen.getByRole("button", { name: "Question Bank" }).querySelector(".nav-status")).toBeNull();
+    expect(screen.getByRole("button", { name: "Study Methods, New" })).toBeTruthy();
+  });
+
+  it("does not dismiss an optional NEW route at its disabled gate and never dismisses WIP or BUILDING", () => {
+    const props = {
+      onSelect: vi.fn(),
+      onOpenSettings: vi.fn(),
+      collapsed: true,
+      onClose: vi.fn(),
+    };
+    const { rerender } = render(<Sidebar {...props} active="daily-word" />);
+    expect(localStorage.getItem(STORAGE_KEYS.dismissedAnnouncements)).toBeNull();
+
+    rerender(<Sidebar {...props} active="anki" />);
+    expect(screen.getByRole("button", { name: "Anki Lab, Work in progress" })).toBeTruthy();
+    rerender(<Sidebar {...props} active="appchecker" />);
+    expect(screen.getByRole("button", { name: "Application Checker, Under construction" })).toBeTruthy();
+    expect(localStorage.getItem(STORAGE_KEYS.dismissedAnnouncements)).toBeNull();
   });
 });
 
@@ -297,7 +363,7 @@ describe("sidebar folder disclosure accessibility", () => {
 
     const toggle = screen.getByRole("button", { name: DAILY_GAMES_FOLDER.label });
     const region = document.getElementById(DAILY_GAMES_FOLDER.regionId)!;
-    const activeRoute = screen.getByRole("button", { name: "Daily Word, New" });
+    const activeRoute = screen.getByRole("button", { name: "Daily Word" });
     expect(toggle.id).toBe(DAILY_GAMES_FOLDER.toggleId);
     expect(toggle.getAttribute("aria-controls")).toBe(region.id);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");

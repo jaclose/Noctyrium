@@ -232,6 +232,26 @@ export interface ClockPreferences {
   hourCycle: "12" | "24";
 }
 
+export interface PomodoroSavedPreset {
+  id: string;
+  label: string;
+  focus: number;
+  break: number;
+  longBreak: number;
+  cyclesBeforeLongBreak: number;
+  intention?: string;
+  createdAt: string;
+  updatedAt: string;
+  useCount: number;
+  lastUsedAt?: string;
+}
+
+export interface PomodoroPreferences {
+  autoStartBreak: boolean;
+  autoStartFocus: boolean;
+  savedPresets: PomodoroSavedPreset[];
+}
+
 /** Persisted submitted rows only; the unsubmitted row remains component-local. */
 export interface DailyWordPuzzleState {
   puzzleId: string;
@@ -282,6 +302,9 @@ export interface StudyLog {
   trackerId?: string;
   unitType?: ProductivityUnitType;
   quantity?: number;
+  /** Optional semantic count for fast activity logging (cards/questions/general count). */
+  quantityKind?: "cards" | "questions" | "count";
+  quantityLabel?: string;
   academic?: boolean;
   productive?: boolean;
 }
@@ -431,6 +454,57 @@ export type EducationTrackId =
   | "nursing" // Nursing school
   | "pa"; // Physician Assistant school
 
+/** Inclusive training stage, independent from the user's current exam/focus lane. */
+export type AcademicStageId =
+  | "preclinical"
+  | "clinical-rotations"
+  | "dedicated-board-prep"
+  | "residency-application"
+  | "coursework"
+  | "exam-prep"
+  | "application"
+  | "didactic"
+  | "clinical-training"
+  | "licensure-prep"
+  | "other";
+
+export type DailySuccessSchedule =
+  | { kind: "daily" }
+  | { kind: "weekdays"; weekdays: number[] }
+  | { kind: "times-per-week"; times: number; weekStartsOn?: 0 | 1 };
+
+export type DailySuccessSource =
+  | { kind: "study-minutes" }
+  | { kind: "cards-reviewed" }
+  | { kind: "practice-questions" }
+  | { kind: "productivity-tracker"; trackerId: string }
+  | { kind: "habit"; habitId: string }
+  | { kind: "journal-closeout" };
+
+/**
+ * A reference layer over existing logs/habits/closeouts. It intentionally does
+ * not duplicate those engines or create a separate completion ledger.
+ */
+export interface DailySuccessRequirement {
+  id: ID;
+  label: string;
+  enabled: boolean;
+  source: DailySuccessSource;
+  target: number;
+  unit: string;
+  schedule: DailySuccessSchedule;
+  /** Local yyyy-MM-dd floor. Dates before this can never be missed. */
+  trackingStartsAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailySuccessConfig {
+  version: 1;
+  configuredAt: string;
+  requirements: DailySuccessRequirement[];
+}
+
 export type DashboardWidgetId =
   | "winDay"
   | "todayScore"
@@ -567,9 +641,13 @@ export interface Profile {
     promiseTextVersion?: string;
     journalEntryId?: string;
   }; // the signed "promise to yourself"
+  /** Automatic post-guide prompt suppression; signing remains available in Settings. */
+  promisePromptStatus?: { state: "deferred" | "skipped"; updatedAt: string };
   phase?: AcademicPhase;
   // The program chosen during onboarding (drives structure, resources, lanes).
   educationTrack?: EducationTrackId;
+  academicStageId?: AcademicStageId;
+  customAcademicStage?: string;
   // Whether SGU-specific shared drives are shown on the Resources page.
   showSguResources?: boolean;
   activeFocusId?: ExperienceFocusId;
@@ -586,8 +664,13 @@ export interface Profile {
   /** Shared by the clock and new date-based utilities. */
   timeZonePreference?: TimeZonePreference;
   clockPreferences?: ClockPreferences;
+  /** Undefined keeps accepted legacy scoring; an explicit empty list is neutral. */
+  dailySuccess?: DailySuccessConfig;
+  /** Device-owned presentation preference; hiding a shortcut never removes logs. */
+  hiddenActivityShortcuts?: string[];
   // Custom Pomodoro durations (§3), persisted with the profile.
   pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
+  pomodoroPreferences?: PomodoroPreferences;
 }
 
 // New daily-loop record types live in their own modules (kept out of this file
