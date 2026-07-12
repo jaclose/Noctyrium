@@ -20,26 +20,31 @@
   position: absolute; top: 0; left: 6%; right: 6%; height: 1px;
   background: linear-gradient(90deg, transparent, rgba(200, 169, 106, 0.55), transparent);
 }
-.qb-hero-inner { position: relative; padding: 26px 28px; display: flex; flex-direction: column; gap: 22px; }
+.qb-hero-inner { position: relative; padding: 24px 28px; display: flex; flex-direction: column; gap: 14px; }
 
 .qb-hero-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.qb-heading-copy { gap: 6px; min-width: 0; }
 .qb-eyebrow {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
   color: var(--gold);
 }
-.qb-title {
+.qb-page-title {
   font-family: var(--font-display);
-  font-size: clamp(21px, 2.4vw, 27px); font-weight: 600; letter-spacing: -0.02em;
-  color: var(--bone); margin: 0; line-height: 1.15; max-width: 20ch;
+  font-size: clamp(28px, 3.2vw, 38px); font-weight: 650; letter-spacing: -0.035em;
+  color: var(--bone); margin: 3px 0 0; line-height: 1.05;
 }
 .qb-lede { font-size: 13px; color: var(--text-60); margin: 0; line-height: 1.55; max-width: 58ch; }
+.qb-format-note,
+.qb-session-note { margin: 0; color: var(--text-45); font-size: 11.5px; line-height: 1.5; }
+.qb-first-use .qb-hero-inner { padding-block: 28px; }
+.qb-first-use .qb-lede { font-size: 14px; }
 
 .qb-hero-actions { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Framed CTA — black glass, thin gold edge, bone label. Never a yellow fill. */
 .qb-cta {
   display: inline-flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 18px; border-radius: 12px;
+  min-height: 44px; padding: 0 18px; border-radius: 12px;
   font-size: 13px; font-weight: 650; color: var(--bone);
   background: linear-gradient(180deg, rgba(230,226,214,0.05), rgba(0,0,0,0.2)), rgba(10,10,11,0.7);
   border: 1px solid rgba(200, 169, 106, 0.55);
@@ -47,6 +52,7 @@
   cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease, transform .12s ease, color .15s ease;
 }
+.qb-cta.primary { min-height: 48px; font-size: 13.5px; }
 .qb-cta svg { color: var(--gold); }
 .qb-cta:hover:not(:disabled) {
   color: #fff; border-color: rgba(210, 180, 118, 0.9); transform: translateY(-1px);
@@ -121,6 +127,53 @@
   border-color: rgba(200, 169, 106, 0.45);
   box-shadow: inset 0 1px 0 rgba(230,226,214,0.06), 0 2px 10px rgba(0,0,0,0.4);
 }
+.qb-tabpanel { min-width: 0; }
+
+/* ---- Focused first-use path ------------------------------------------- */
+.qb-first-process {
+  display: grid;
+  grid-template-columns: minmax(180px, .55fr) minmax(0, 1.45fr);
+  gap: 24px;
+  align-items: start;
+  padding: 22px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 18px;
+  background: var(--surface-1);
+}
+.qb-first-process h2 { margin: 5px 0 0; color: var(--text); font-size: 18px; }
+.qb-first-process ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: qb-process;
+}
+.qb-first-process li {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 14px;
+  background: var(--surface-2);
+  counter-increment: qb-process;
+}
+.qb-first-process li::before {
+  content: counter(qb-process);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 10px;
+  border: 1px solid var(--gold-line);
+  border-radius: 50%;
+  color: var(--gold);
+  font: 700 11px/1 var(--font-mono);
+}
+.qb-first-process b,
+.qb-first-process span { display: block; }
+.qb-first-process b { color: var(--text); font-size: 12.5px; }
+.qb-first-process span { margin-top: 4px; color: var(--text-45); font-size: 11px; line-height: 1.45; }
 
 @media (max-width: 720px) {
   .qb-hero-inner { padding: 20px; }
@@ -131,7 +184,7 @@
 /* ---- Command-center overview ------------------------------------------- */
 .qb-command-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 14px;
 }
 .qb-next-card,
@@ -145,8 +198,23 @@
 }
 .qb-next-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .qb-next-copy { display: grid; gap: 7px; max-width: 58ch; }
+.qb-next-copy h2,
 .qb-next-copy h3 { margin: 0; font-size: 19px; color: var(--bone); }
 .qb-next-copy p { margin: 0; color: var(--text-60); font-size: 13px; line-height: 1.55; }
+.qb-begin-button { flex: 0 0 auto; min-height: 44px; }
+.qb-mapping-alert {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--orange) 38%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--orange) 7%, var(--surface-1));
+}
+.qb-mapping-icon { display: grid; place-items: center; color: var(--orange); }
+.qb-mapping-alert h2 { margin: 0; color: var(--text); font-size: 15px; }
+.qb-mapping-alert p { margin: 3px 0 0; color: var(--text-60); font-size: 11.5px; }
+.qb-mapping-alert .filter-pill { flex: 0 0 auto; min-height: 44px; }
 .qb-loop-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -171,7 +239,8 @@
 .qb-loop-card svg { color: var(--gold); }
 .qb-loop-card b { color: var(--bone); font-size: 13px; }
 .qb-loop-card span { font-size: 11px; line-height: 1.4; color: var(--text-45); }
-.qb-library-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.qb-library-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.qb-secondary-intelligence .qb-library-strip { grid-template-columns: 1fr; align-content: start; }
 .qb-library-link {
   padding: 14px 15px; border-radius: 14px; border: 1px solid rgba(230,226,214,.08);
   background: rgba(255,255,255,.022); color: var(--text-80); text-align: left;
@@ -184,6 +253,7 @@
 
 /* ---- Question-set card -------------------------------------------------- */
 .qset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+.qset-grid.compact { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
 .qset-card {
   padding: 20px;
   border-radius: 20px;
@@ -193,7 +263,7 @@
 }
 .qset-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .qset-title-wrap { gap: 7px; min-width: 0; }
-.qset-title-wrap h3 { margin: 0; font-size: 17px; line-height: 1.28; color: var(--bone); }
+.qset-title-wrap h3 { margin: 0; font-size: 17px; line-height: 1.28; color: var(--bone); overflow-wrap: anywhere; }
 .qset-kicker { color: var(--gold); font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qset-accuracy { flex: 0 0 auto; min-width: 68px; text-align: right; }
 .qset-accuracy strong, .qset-accuracy span { display: block; }
@@ -216,6 +286,16 @@
 .qset-progress.red span { background: var(--red); }
 .qset-progress.neutral span { background: var(--text-30); }
 .qset-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.qset-card.compact { padding: 17px; gap: 12px; }
+.qset-card.compact .qset-actions > * { min-height: 44px; }
+.mapping-repair {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--orange) 35%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--orange) 6%, var(--surface-1));
+}
 
 /* ---- Structured quiz feedback ----------------------------------------- */
 .quiz-feedback { display: grid; gap: 12px; }
@@ -283,14 +363,21 @@
 @media (max-width: 900px) {
   .qb-command-grid { grid-template-columns: 1fr; }
   .qb-loop-grid, .qb-library-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .qb-first-process { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .qb-next-card { flex-direction: column; }
-  .qb-next-card .qb-cta { flex: 0 0 40px; width: 100%; min-height: 40px; }
+  .qb-begin-button { width: 100%; justify-content: center; }
   .qb-loop-grid, .qb-library-strip { grid-template-columns: 1fr; }
+  .qb-first-process ol { grid-template-columns: 1fr; }
+  .qb-mapping-alert { align-items: flex-start; flex-wrap: wrap; }
+  .qb-mapping-alert .filter-pill { width: 100%; justify-content: center; }
   .qset-metric-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .qset-card-head { flex-wrap: wrap; }
+  .qset-accuracy { min-width: 0; text-align: left; }
+  .qset-progress-copy { flex-wrap: wrap; }
   .answer-compare { grid-template-columns: 1fr; }
-  .qset-actions > * { min-height: 42px; }
+  .qset-actions > * { min-height: 44px; }
   .quiz-player-modal { max-height: 100dvh; height: 100dvh; border-radius: 0; padding: 16px; }
   .quiz-player-modal .modal-actions { bottom: -16px; margin: 18px -16px -16px; padding-inline: 16px; flex-wrap: wrap; }
   .quiz-player-modal .modal-actions > * { flex: 1 1 auto; min-height: 46px; }
@@ -298,6 +385,18 @@
   .import-dropzone { flex-direction: column; text-align: center; }
   .import-dropzone > div { flex: none; }
   .import-confidence-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 440px) {
+  .qb-hero-inner { padding: 20px 17px; }
+  .qb-hero-actions { display: grid; grid-template-columns: 1fr; }
+  .qb-cta { width: 100%; min-height: 46px; justify-content: center; }
+  .qb-cta.primary { min-height: 50px; }
+  .qb-first-process { padding: 17px; }
+  .qb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .qb-stat { padding: 12px; }
+  .qb-stat-value { font-size: 22px; }
+  .qb-seg { min-height: 44px; padding-inline: 12px; }
 }
 
 /* Light-theme treatment for the bank workspace. The marble command hero keeps
@@ -311,6 +410,14 @@
   background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(230,220,204,.74));
   border-color: var(--gold-line);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 9px rgba(65,48,28,.12);
+}
+:root[data-theme="light"] :is(.qb-next-card, .qb-insight-card, .qb-stat) {
+  background: var(--surface-1);
+  border-color: var(--hairline);
+  box-shadow: var(--shadow-card);
+}
+:root[data-theme="light"] .qb-tabpanel .filter-pill.on {
+  color: #f8f4ec;
 }
 :root[data-theme="light"] :is(.qb-loop-card, .qb-library-link, .answer-row, .feedback-explanation, .learning-objective) {
   background-color: rgba(255,255,255,.56);

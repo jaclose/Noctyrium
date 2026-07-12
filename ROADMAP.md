@@ -55,11 +55,16 @@ Last updated: 2026-07-11
 | Application Checker maturation | proposed | Shell exists; no data gathering yet. |
 | Leaderboards | proposed | Deliberately deprioritized — conflicts with the calm tone. |
 | DAT / CASPer lanes | proposed | Light surfaces only. |
-| Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, 44px mobile nav targets, disclosure relationships for sidebar folders, and modal/drawer reduced motion are verified. A broader contrast/screen-reader audit remains. |
+| Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, 44px mobile nav targets, disclosure relationships for sidebar folders, Question Bank roving tabs/labelled panels, and modal/drawer/tour reduced motion are verified. A broader contrast/screen-reader audit remains. |
 | In-app privacy/data inventory page | next | Documented in ASK report; not in-app yet. |
 
 ## Recently shipped (move log)
 
+- 2026-07-11 — Wave 3 Question Bank entry experience: focused first use,
+  prioritized returning command center, deterministic recent sets, explicit
+  Current mastery vs Attempt accuracy labels, canonical mapping-review counts and
+  repair routing, accessible tabs, and responsive/theme browser coverage → moved
+  to FEATURES.md.
 - 2026-07-11 — Wave 2 identity and shell foundation: real inline AXOM SVG
   wordmark, centralized sidebar module maturity badges, corrected folder
   disclosure semantics, and flash-free Light/Dark/System theming with a

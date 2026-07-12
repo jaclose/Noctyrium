@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { FileText, Sparkles, Trash2, BookOpen, Search } from "lucide-react";
 import { useStore } from "../../lib/store";
-import { questionSetMetrics, type QuestionSet, type SourceDocument } from "../../lib/library";
+import { questionSetMetrics, sortQuestionSetsByRecency, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
 import { GlassCard, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Modal } from "../ui/Modal";
@@ -38,6 +38,7 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
     <GlassCard>
       <PanelHeader
         title="Source Library"
+        headingLevel={2}
         sub="Every uploaded file, with its extracted text and linked question sets. Reference-only documents live here too."
       />
       {documents.length > 0 && (
@@ -95,10 +96,26 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
   );
 }
 
-export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
+export function QuestionSetList({
+  onRunSet,
+  onReviewIssues,
+  onReviewMisses,
+  onOpenInsights,
+  recent = false,
+  compact = false,
+  limit,
+  title,
+  sub,
+}: {
   onRunSet: (set: QuestionSet) => void;
+  onReviewIssues?: (ids: string[]) => void;
   onReviewMisses?: (ids: string[]) => void;
   onOpenInsights?: () => void;
+  recent?: boolean;
+  compact?: boolean;
+  limit?: number;
+  title?: string;
+  sub?: string;
 }) {
   const s = useStore();
   const sets = s.questionSets ?? NO_SETS;
@@ -106,12 +123,19 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
   const provider = useMemo(() => resolveActiveProvider(), []);
   const [enhancing, setEnhancing] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const orderedSets = useMemo(
+    () => (recent ? sortQuestionSetsByRecency(sets, questions) : sets),
+    [questions, recent, sets],
+  );
   const filteredSets = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return sets;
-    return sets.filter((set) => set.title.toLowerCase().includes(term)
-      || set.tags.some((tag) => tag.toLowerCase().includes(term)));
-  }, [sets, query]);
+    const matching = term
+      ? orderedSets.filter((set) => set.title.toLowerCase().includes(term)
+        || set.tags.some((tag) => tag.toLowerCase().includes(term)))
+      : orderedSets;
+    if (limit === undefined) return matching;
+    return matching.slice(0, Math.max(0, Math.floor(limit)));
+  }, [limit, orderedSets, query]);
 
   async function enhance(set: QuestionSet) {
     if (!provider) return;
@@ -137,10 +161,13 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
   return (
     <GlassCard>
       <PanelHeader
-        title="Question Sets"
-        sub="Parsed sets with current mastery, historical accuracy, source links, and Question Intelligence digests."
+        title={title ?? (recent ? "Recent sets" : "Question Sets")}
+        headingLevel={2}
+        sub={sub ?? (recent
+          ? "Your most recently studied sets, ordered by activity."
+          : "Parsed sets with current mastery, attempt accuracy, source links, and Question Intelligence digests.")}
       />
-      {sets.length > 0 && (
+      {!compact && sets.length > 0 && (
         <div className="row" style={{ gap: 7, marginBottom: 12 }}>
           <Search size={14} className="dim" />
           <input className="field grow" value={query} onChange={(event) => setQuery(event.target.value)}
@@ -154,7 +181,7 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
           hint="Import questions in the Import Center and save them as a question set — they'll appear here with mastery tracking."
         />
       ) : (
-        <div className="qset-grid">
+        <div className={`qset-grid ${compact ? "compact" : ""}`}>
           {filteredSets.map((set) => {
             const metrics = questionSetMetrics(set, questions, s.documents ?? []);
             return (
@@ -163,14 +190,18 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
                 set={set}
                 metrics={metrics}
                 onStart={() => onRunSet(set)}
-                onReviewMisses={onReviewMisses ? () => onReviewMisses(metrics.missedQuestionIds) : undefined}
-                onInsights={onOpenInsights}
-                onEdit={() => {
+                onReviewIssues={onReviewIssues && metrics.mapping.issueCount > 0
+                  ? () => onReviewIssues(metrics.mapping.issueQuestionIds)
+                  : undefined}
+                onReviewMisses={!compact && onReviewMisses ? () => onReviewMisses(metrics.missedQuestionIds) : undefined}
+                onInsights={!compact ? onOpenInsights : undefined}
+                onEdit={!compact ? () => {
                   const title = prompt("Rename this question set:", set.title)?.trim();
                   if (title && title !== set.title) s.updateQuestionSet(set.id, { title });
-                }}
+                } : undefined}
+                compact={compact}
               >
-                {set.digest && (
+                {!compact && set.digest && (
                   <div className="stack" style={{ gap: 6, marginTop: 10 }}>
                     <div className="question-explanation">
                       <b>{set.digest.generatedBy}:</b> {set.digest.summary}
@@ -183,7 +214,7 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
                     )}
                   </div>
                 )}
-                <div className="row wrap gap6">
+                {!compact && <div className="row wrap gap6">
                   {provider && !set.digest && (
                     <GhostButton disabled={enhancing === set.id} onClick={() => void enhance(set)}>
                       <Sparkles size={13} /> {enhancing === set.id ? "Analyzing…" : "Build digest"}
@@ -194,7 +225,7 @@ export function QuestionSetList({ onRunSet, onReviewMisses, onOpenInsights }: {
                   }}>
                     <Trash2 size={13} /> Remove set
                   </GhostButton>
-                </div>
+                </div>}
               </QuestionSetCard>
             );
           })}

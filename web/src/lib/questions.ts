@@ -175,6 +175,174 @@ export interface QuestionRecord {
   updatedAt: string;
 }
 
+// --- collection metrics + mapping review --------------------------------------
+
+/** User-facing readiness of a saved question's imported answer mapping. */
+export type QuestionMappingStatus = "ready" | "review-suggested" | "unresolved";
+
+export const QUESTION_MAPPING_STATUS_LABEL: Record<QuestionMappingStatus, string> = {
+  ready: "Ready",
+  "review-suggested": "Review suggested",
+  unresolved: "Unresolved",
+};
+
+export interface QuestionMappingSummary {
+  ready: number;
+  reviewSuggested: number;
+  unresolved: number;
+  issueCount: number;
+  issueQuestionIds: ID[];
+  reviewSuggestedQuestionIds: ID[];
+  unresolvedQuestionIds: ID[];
+}
+
+/**
+ * Canonical mapping readiness. Explicit uncertainty or a missing key is always
+ * unresolved. A keyed imported question is merely suggested for review until
+ * its extraction metadata is confirmed. Legacy/manual keyed questions have no
+ * extraction review gate and are therefore ready.
+ *
+ * Deliberately do not consult `question.status`: it is the latest practice
+ * outcome and can remain `needs-review` after a user repairs the mapping.
+ */
+export function questionMappingStatus(question: QuestionRecord): QuestionMappingStatus {
+  if (!question.correctKey || question.needsReview === true) return "unresolved";
+  if (question.extraction && question.extraction.reviewed !== true) return "review-suggested";
+  return "ready";
+}
+
+/** One canonical issue count and routing list for landing, cards, and filters. */
+export function summarizeQuestionMappings(
+  questions: readonly QuestionRecord[],
+): QuestionMappingSummary {
+  const summary: QuestionMappingSummary = {
+    ready: 0,
+    reviewSuggested: 0,
+    unresolved: 0,
+    issueCount: 0,
+    issueQuestionIds: [],
+    reviewSuggestedQuestionIds: [],
+    unresolvedQuestionIds: [],
+  };
+
+  for (const question of questions) {
+    const status = questionMappingStatus(question);
+    if (status === "ready") {
+      summary.ready += 1;
+      continue;
+    }
+    summary.issueCount += 1;
+    summary.issueQuestionIds.push(question.id);
+    if (status === "review-suggested") {
+      summary.reviewSuggested += 1;
+      summary.reviewSuggestedQuestionIds.push(question.id);
+    } else {
+      summary.unresolved += 1;
+      summary.unresolvedQuestionIds.push(question.id);
+    }
+  }
+  return summary;
+}
+
+export interface QuestionCollectionMetrics {
+  total: number;
+  completed: number;
+  remaining: number;
+  completionPct: number;
+  currentMasteryCorrect: number;
+  currentMasteryQuestions: number;
+  currentMasteryPct: number | null;
+  historicalCorrectAttempts: number;
+  historicalAttemptCount: number;
+  historicalAccuracyPct: number | null;
+  lastStudiedAt?: string;
+  missedQuestionIds: ID[];
+}
+
+function parsedTimestamp(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function latestAttempt(question: QuestionRecord): QuestionAttempt | undefined {
+  return question.attempts.reduce<QuestionAttempt | undefined>((current, attempt) => {
+    if (!current) return attempt;
+    const currentTime = parsedTimestamp(current.at);
+    const attemptTime = parsedTimestamp(attempt.at);
+    if (currentTime !== undefined && attemptTime !== undefined) {
+      return attemptTime >= currentTime ? attempt : current;
+    }
+    if (attemptTime !== undefined) return attempt;
+    if (currentTime !== undefined) return current;
+    // Imported malformed timestamps still have a deterministic append order.
+    return attempt;
+  }, undefined);
+}
+
+function latestValidTimestamp(values: readonly (string | undefined)[]): string | undefined {
+  let latest: string | undefined;
+  let latestTime: number | undefined;
+  for (const value of values) {
+    const time = parsedTimestamp(value);
+    if (time === undefined) continue;
+    if (latestTime === undefined || time >= latestTime) {
+      latest = value;
+      latestTime = time;
+    }
+  }
+  return latest;
+}
+
+/**
+ * Frozen Question Bank semantics shared by the whole-bank landing and set
+ * summaries: latest attempt per active question drives current mastery, while
+ * every stored attempt drives historical accuracy. Unattempted questions do
+ * not enter either accuracy denominator.
+ */
+export function questionCollectionMetrics(
+  questions: readonly QuestionRecord[],
+  totalQuestions = questions.length,
+): QuestionCollectionMetrics {
+  const latestAttempts = questions.flatMap((question) => {
+    const latest = latestAttempt(question);
+    return latest ? [{ question, attempt: latest }] : [];
+  });
+  const historicalAttempts = questions.flatMap((question) => question.attempts);
+  const currentMasteryCorrect = latestAttempts.filter(({ attempt }) => attempt.status === "correct").length;
+  const currentMasteryPct = latestAttempts.length
+    ? Math.round((currentMasteryCorrect / latestAttempts.length) * 100)
+    : null;
+  const historicalCorrectAttempts = historicalAttempts.filter((attempt) => attempt.status === "correct").length;
+  const historicalAccuracyPct = historicalAttempts.length
+    ? Math.round((historicalCorrectAttempts / historicalAttempts.length) * 100)
+    : null;
+  const total = Number.isFinite(totalQuestions)
+    ? Math.max(0, Math.floor(totalQuestions))
+    : questions.length;
+  const completed = latestAttempts.length;
+
+  return {
+    total,
+    completed,
+    remaining: Math.max(0, total - completed),
+    completionPct: total ? Math.round((completed / total) * 100) : 0,
+    currentMasteryCorrect,
+    currentMasteryQuestions: latestAttempts.length,
+    currentMasteryPct,
+    historicalCorrectAttempts,
+    historicalAttemptCount: historicalAttempts.length,
+    historicalAccuracyPct,
+    lastStudiedAt: latestValidTimestamp(questions.flatMap((question) => [
+      question.attemptedAt,
+      ...question.attempts.map((attempt) => attempt.at),
+    ])),
+    missedQuestionIds: latestAttempts
+      .filter(({ attempt }) => attempt.status === "incorrect" || attempt.status === "guessed")
+      .map(({ question }) => question.id),
+  };
+}
+
 // --- validation ---------------------------------------------------------------
 
 export interface ValidationResult<T> {
@@ -417,6 +585,7 @@ export function dueQuestions(questions: QuestionRecord[], now: Date = new Date()
 
 export type QuestionMode =
   | "study"
+  | "mapping-review"
   | "timed-block"
   | "review"
   | "weakness"
@@ -429,6 +598,7 @@ export type QuestionMode =
 
 export const MODE_META: Record<QuestionMode, { label: string; note: string; ready: boolean }> = {
   study: { label: "Study Mode", note: "Untimed, explanation after each answer.", ready: true },
+  "mapping-review": { label: "Mapping Review", note: "Unresolved and review-suggested imported mappings.", ready: true },
   review: { label: "Review Mode", note: "Everything due for another look.", ready: true },
   "incorrects-only": { label: "Incorrects Only", note: "Only questions you missed.", ready: true },
   "guessed-correctly": { label: "Guessed Correctly", note: "Right answer, shaky ground.", ready: true },
@@ -444,6 +614,8 @@ export function filterForMode(questions: QuestionRecord[], mode: QuestionMode, n
   switch (mode) {
     case "study":
       return questions.filter((q) => q.status === "unseen" || q.status === "in-progress");
+    case "mapping-review":
+      return questions.filter((q) => questionMappingStatus(q) !== "ready");
     case "review":
       return dueQuestions(questions, now);
     case "incorrects-only":

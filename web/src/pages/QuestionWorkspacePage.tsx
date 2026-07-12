@@ -4,14 +4,15 @@
 // files become reusable question ecosystems: parse → review → save → block →
 // results → weakness intelligence.
 // ===========================================================================
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
-  BarChart3, BookOpen, Boxes, FileInput, Files, HelpCircle, ListFilter,
+  AlertTriangle, BarChart3, BookOpen, FileInput, Files, ListFilter,
   Microscope, Play, RotateCcw, Sparkles,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import {
-  analyzeQuestionStyle, dueQuestions, errorPatterns, weakTopics,
+  analyzeQuestionStyle, dueQuestions, errorPatterns, questionCollectionMetrics,
+  summarizeQuestionMappings, weakTopics,
   ERROR_TYPE_LABEL,
   type QuestionRecord,
 } from "../lib/questions";
@@ -31,8 +32,27 @@ import { coachWeakness, resolveActiveProvider } from "../lib/ai";
 import { pushToast } from "../lib/toast";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
+const NO_SETS: QuestionSet[] = [];
+const NO_DOCUMENTS: SourceDocument[] = [];
 
 type BankTab = "overview" | "import" | "mass" | "sets" | "library" | "blocks" | "bank" | "insights";
+
+const ALL_TABS: Array<[BankTab, string]> = [
+  ["overview", "Command Center"],
+  ["import", "Import Center"],
+  ["mass", "Mass Import"],
+  ["sets", "Question Sets"],
+  ["library", "Source Library"],
+  ["blocks", "Block Builder"],
+  ["bank", "Bank"],
+  ["insights", "Insights"],
+];
+
+function timestamp(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
 
 interface RunnerLaunch {
   mode: QuizMode;
@@ -45,27 +65,38 @@ interface RunnerLaunch {
 export function QuestionWorkspacePage() {
   const s = useStore();
   const questions = s.questions ?? NO_QUESTIONS;
+  const questionSets = s.questionSets ?? NO_SETS;
+  const documents = s.documents ?? NO_DOCUMENTS;
   const [tab, setTab] = useState<BankTab>("overview");
   const [open, setOpen] = useState<QuestionRecord | null>(null);
   const [showStyle, setShowStyle] = useState(false);
   const [runner, setRunner] = useState<RunnerLaunch | null>(null);
   const [importSeed, setImportSeed] = useState<ImportSeed | null>(null);
+  const [importEntry, setImportEntry] = useState<"file" | "paste">("file");
+  const [bankReview, setBankReview] = useState<{ ids?: string[]; key: number }>({ key: 0 });
   const [coach, setCoach] = useState<{ diagnosis: string; suggestedBlock: string } | null>(null);
   const [coachBusy, setCoachBusy] = useState(false);
+  const entryRef = useRef<HTMLDivElement>(null);
   const provider = useMemo(() => resolveActiveProvider(), []);
 
+  const isFirstUse = questionSets.length === 0 && questions.length === 0;
   const due = useMemo(() => dueQuestions(questions), [questions]);
   const incorrect = questions.filter((q) => q.status === "incorrect");
   const weak = useMemo(() => weakTopics(questions, 5), [questions]);
   const patterns = useMemo(() => errorPatterns(questions).slice(0, 5), [questions]);
   const style = useMemo(() => (showStyle ? analyzeQuestionStyle(questions) : null), [showStyle, questions]);
+  const collectionMetrics = useMemo(() => questionCollectionMetrics(questions), [questions]);
+  const mapping = useMemo(() => summarizeQuestionMappings(questions), [questions]);
   const runnable = questions.filter((q) => q.options.length >= 2).length;
   const unseen = questions.filter((q) => q.attempts.length === 0).length;
-  const needsMapping = questions.filter((q) => q.needsReview || !q.correctKey).length;
-  const allAttempts = questions.flatMap((q) => q.attempts);
-  const correctAttempts = allAttempts.filter((attempt) => attempt.status === "correct").length;
-  const historicalAccuracy = allAttempts.length ? Math.round((correctAttempts / allAttempts.length) * 100) : null;
-  const lastSession = [...(s.quizSessions ?? [])].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+  const lastSession = useMemo(() => (s.quizSessions ?? [])
+    .map((session, index) => ({ session, index, time: timestamp(session.startedAt) }))
+    .sort((a, b) => {
+      if (a.time !== undefined && b.time !== undefined) return b.time - a.time || a.index - b.index;
+      if (a.time !== undefined) return -1;
+      if (b.time !== undefined) return 1;
+      return a.index - b.index;
+    })[0]?.session, [s.quizSessions]);
   const highConfidenceMisses = questions.filter((q) =>
     q.status === "incorrect" && (q.confidence ?? 0) >= 4).length;
   const recentImprovement = useMemo(() => {
@@ -97,6 +128,26 @@ export function QuestionWorkspacePage() {
       .sort((a, b) => b.seconds - a.seconds)[0];
   }, [questions]);
 
+  const visibleTabs = useMemo(() => {
+    if (!isFirstUse) return ALL_TABS.map(([id, label]) => [id, tabLabel(id, label, questionSets.length, documents.length, questions.length, s.quizBlocks?.length ?? 0)] as [BankTab, string]);
+    const tabs: Array<[BankTab, string]> = [
+      ["overview", "Overview"],
+      ["import", "Import"],
+    ];
+    if (documents.length > 0) tabs.push(["library", `Source Library (${documents.length})`]);
+    return tabs;
+  }, [documents.length, isFirstUse, questionSets.length, questions.length, s.quizBlocks?.length]);
+
+  useEffect(() => {
+    const scroller = entryRef.current?.closest(".surface-scroll") as HTMLElement | null;
+    if (!scroller) return;
+    scroller.scrollTop = 0;
+  }, []);
+
+  useEffect(() => {
+    if (!visibleTabs.some(([id]) => id === tab)) setTab("overview");
+  }, [tab, visibleTabs]);
+
   function runSet(set: QuestionSet) {
     setRunner({ mode: "tutor", presetFilters: { setIds: [set.id], count: Math.min(set.questionIds.length, 20) } });
   }
@@ -105,7 +156,51 @@ export function QuestionWorkspacePage() {
   }
   function generateFrom(doc: SourceDocument) {
     setImportSeed({ reference: { title: doc.title, text: doc.rawText } });
+    setImportEntry("file");
     setTab("import");
+  }
+
+  function openImport(entry: "file" | "paste" = "file") {
+    setImportSeed(null);
+    setImportEntry(entry);
+    setTab("import");
+  }
+
+  function openMappingReview(ids = mapping.issueQuestionIds) {
+    setBankReview((current) => ({ ids, key: current.key + 1 }));
+    setTab("bank");
+  }
+
+  function selectTab(nextTab: BankTab) {
+    if (nextTab === "bank") setBankReview((current) => ({ key: current.key + 1 }));
+    setTab(nextTab);
+  }
+
+  function launchRecommended() {
+    if (lastSession) {
+      setRunner({ mode: lastSession.mode, presetFilters: lastSession.filters, presetTimed: lastSession.timed });
+    } else if (due.length > 0) {
+      setRunner({ mode: "tutor", retakeIds: due.slice(0, 20).map((question) => question.id) });
+    } else if (unseen > 0) {
+      setRunner({ mode: "tutor", presetFilters: { status: "unused", count: Math.min(unseen, 10) } });
+    } else if (runnable > 0) {
+      setRunner({ mode: "tutor" });
+    } else {
+      openImport();
+    }
+  }
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: number;
+    if (event.key === "ArrowRight") next = (index + 1) % visibleTabs.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + visibleTabs.length) % visibleTabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = visibleTabs.length - 1;
+    else return;
+    event.preventDefault();
+    const nextTab = visibleTabs[next][0];
+    selectTab(nextTab);
+    requestAnimationFrame(() => document.getElementById(`question-bank-tab-${nextTab}`)?.focus());
   }
 
   async function runWeaknessCoach() {
@@ -126,145 +221,177 @@ export function QuestionWorkspacePage() {
     }
   }
 
-  const TABS: Array<[BankTab, string]> = [
-    ["overview", "Command Center"],
-    ["import", "Import Center"],
-    ["mass", "Mass Import"],
-    ["sets", `Question Sets (${(s.questionSets ?? []).length})`],
-    ["library", `Source Library (${(s.documents ?? []).length})`],
-    ["blocks", `Block Builder (${(s.quizBlocks ?? []).length})`],
-    ["bank", `Bank (${questions.length})`],
-    ["insights", "Insights"],
-  ];
-
-  const stats: Array<{ label: string; value: number | string; note: string; icon: typeof HelpCircle }> = [
-    { label: "Total questions", value: questions.length, note: `${runnable} runnable`, icon: HelpCircle },
-    { label: "Due review", value: due.length, note: "auto-resurfaced", icon: ListFilter },
-    { label: "Unseen", value: unseen, note: "ready to study", icon: BookOpen },
-    { label: "Historical accuracy", value: historicalAccuracy === null ? "—" : `${historicalAccuracy}%`, note: `${allAttempts.length} attempts`, icon: BarChart3 },
-    { label: "Active sets", value: (s.questionSets ?? []).length, note: `${(s.documents ?? []).length} sources`, icon: Files },
-    { label: "Needs mapping", value: needsMapping, note: "review before trust", icon: Microscope },
+  const stats = [
+    {
+      label: "Current mastery",
+      value: collectionMetrics.currentMasteryPct === null ? "—" : `${collectionMetrics.currentMasteryPct}%`,
+      note: `${collectionMetrics.currentMasteryQuestions} latest scored question${collectionMetrics.currentMasteryQuestions === 1 ? "" : "s"}`,
+      icon: Microscope,
+    },
+    {
+      label: "Attempt accuracy",
+      value: collectionMetrics.historicalAccuracyPct === null ? "—" : `${collectionMetrics.historicalAccuracyPct}%`,
+      note: "all scored attempts",
+      icon: BarChart3,
+    },
+    {
+      label: "Questions attempted",
+      value: collectionMetrics.completed,
+      note: `of ${collectionMetrics.total} active`,
+      icon: BookOpen,
+    },
+    {
+      label: "Total attempts",
+      value: collectionMetrics.historicalAttemptCount,
+      note: `${questionSets.length} saved set${questionSets.length === 1 ? "" : "s"}`,
+      icon: ListFilter,
+    },
   ];
 
   return (
     <>
-      {/* ---- Marble hero: identity, one-line intent, framed primary actions ---- */}
-      <div className="qb-hero tx-marble">
+      <div
+        ref={entryRef}
+        className={`qb-hero tx-marble ${isFirstUse ? "qb-first-use" : "qb-returning-hero"}`}
+        data-tour="question-bank-entry"
+      >
         <div className="qb-hero-inner">
           <div className="qb-hero-head">
-            <div className="stack" style={{ gap: 6, minWidth: 0 }}>
-              <AxomBrandLockup layout="horizontal" size="sm" subtitle="Question Bank" markFramed />
-              <h2 className="qb-title">Turn messy files into clean test blocks.</h2>
-              <p className="qb-lede">Import, map, review uncertainty, practise, repair — then let the next useful action surface itself.</p>
+            <div className="stack qb-heading-copy">
+              <AxomBrandLockup layout="horizontal" size="sm" subtitle="Study engine" markFramed />
+              <h1 className="qb-page-title">Question Bank</h1>
+              <p className="qb-lede">
+                {isFirstUse
+                  ? "Turn lecture files and question documents into reliable practice sets."
+                  : "Continue the right set, resolve uncertain mappings, and understand what your attempts are showing."}
+              </p>
             </div>
             <div className="qb-hero-actions">
-              <button className="qb-cta" onClick={() => setTab("import")}>
-                <FileInput size={15} /> Quick import
-              </button>
-              <button className="qb-cta ghost" onClick={() => setTab("mass")}>
-                <Files size={15} /> Mass import
-              </button>
-              <button className="qb-cta ghost" onClick={() => setTab("blocks")}>
-                <Boxes size={15} /> Build block
-              </button>
-              <button className="qb-cta ghost" disabled={!lastSession && !runnable} onClick={() => {
-                if (lastSession) setRunner({ mode: lastSession.mode, presetFilters: lastSession.filters, presetTimed: lastSession.timed });
-                else setRunner({ mode: "tutor" });
-              }}>
-                <Play size={15} /> Continue last block
-              </button>
-            </div>
-          </div>
-
-          <div className="qb-stats">
-            {stats.map((st) => (
-              <div key={st.label} className="qb-stat">
-                <span className="qb-stat-icon"><st.icon size={15} /></span>
-                <span className="qb-stat-value">{st.value}</span>
-                <span className="qb-stat-label">{st.label}</span>
-                <span className="qb-stat-note">{st.note}</span>
-              </div>
-            ))}
-          </div>
-
-          {runnable > 0 && (due.length > 0 || incorrect.length > 0 || weak.length > 0) && (
-            <div className="qb-quick">
-              <span className="qb-quick-label">Today</span>
-              {due.length > 0 && (
-                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: Math.min(due.length, 20) }, retakeIds: due.slice(0, 20).map((q) => q.id) })}>
-                  Review {Math.min(due.length, 20)} due
-                </button>
-              )}
-              {incorrect.length > 0 && (
-                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) })}>
-                  Retry {Math.min(incorrect.length, 20)} missed
-                </button>
-              )}
-              {weak[0] && (
-                <button className="qb-chip" onClick={() => setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: weak[0].topic ? [weak[0].topic] : undefined } })}>
-                  Weak: {weak[0].topic}
-                </button>
+              {isFirstUse ? (
+                <>
+                  <button className="qb-cta primary" onClick={() => openImport("file")}>
+                    <FileInput size={16} /> Import Questions
+                  </button>
+                  <button className="qb-cta ghost" onClick={() => openImport("paste")}>
+                    <Files size={15} /> Paste text
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="qb-cta primary" onClick={launchRecommended}>
+                    <Play size={16} /> {lastSession ? "Continue last session" : runnable ? "Start practice" : "Import questions"}
+                  </button>
+                  <button className="qb-cta ghost" onClick={() => openImport("file")}>
+                    <FileInput size={15} /> Import
+                  </button>
+                </>
               )}
             </div>
+          </div>
+          {isFirstUse ? (
+            <p className="qb-format-note">PDF, DOCX, TXT, Markdown, CSV, JSON, or pasted text.</p>
+          ) : (
+            <p className="qb-session-note">
+              {lastSession
+                ? `Starts a new ${lastSession.mode} block with the same filters as your last session.${mapping.issueCount > 0 ? ` ${mapping.issueCount} mapping issue${mapping.issueCount === 1 ? "" : "s"} also need review.` : ""}`
+                : mapping.issueCount > 0
+                  ? `${mapping.issueCount} mapping issue${mapping.issueCount === 1 ? "" : "s"} should be checked before the next block.`
+                  : "Your most useful next action is ready below."}
+            </p>
           )}
         </div>
       </div>
 
-      {/* ---- Premium segmented navigation ---- */}
-      <div className="qb-segment" role="tablist">
-        {TABS.map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={`qb-seg ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>
+      <div className="qb-segment" role="tablist" aria-label="Question Bank sections">
+        {visibleTabs.map(([id, label], index) => (
+          <button
+            key={id}
+            id={`question-bank-tab-${id}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            aria-controls={tab === id ? `question-bank-panel-${id}` : undefined}
+            tabIndex={tab === id ? 0 : -1}
+            className={`qb-seg ${tab === id ? "on" : ""}`}
+            onClick={() => selectTab(id)}
+            onKeyDown={(event) => onTabKeyDown(event, index)}
+          >
             {label}
           </button>
         ))}
       </div>
 
+      <section
+        id={`question-bank-panel-${tab}`}
+        role="tabpanel"
+        aria-labelledby={`question-bank-tab-${tab}`}
+        className="qb-tabpanel"
+      >
       {tab === "overview" && (
-        <>
-          <div className="qb-command-grid">
-            <div className="qb-next-card glass-liquid">
-              <div className="qb-next-copy">
-                <span className="qb-eyebrow">Recommended next</span>
-                <h3>{due.length ? `Review ${Math.min(due.length, 20)} due questions` : incorrect.length ? `Retry ${Math.min(incorrect.length, 20)} misses` : unseen ? "Start an unseen tutor block" : "Import your first clean set"}</h3>
-                <p>{due.length
-                  ? "These questions are scheduled to resurface now. A short tutor block keeps the review loop moving."
-                  : incorrect.length
-                    ? "Turn recent misses into a focused block, classify the error, and repair the pattern."
-                    : unseen
-                      ? "You have mapped questions ready to study. Start small and let the performance data build."
-                      : "PDF, DOCX, TXT, CSV, JSON, or pasted text all land in the same review-gated pipeline."}</p>
-              </div>
-              <button className="qb-cta" onClick={() => {
-                if (due.length) setRunner({ mode: "tutor", retakeIds: due.slice(0, 20).map((q) => q.id) });
-                else if (incorrect.length) setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) });
-                else if (unseen) setRunner({ mode: "tutor", presetFilters: { status: "unused", count: Math.min(unseen, 10) } });
-                else setTab("import");
-              }}><Play size={14} /> Begin</button>
+        isFirstUse ? (
+          <section className="qb-first-process" aria-labelledby="question-bank-process-title">
+            <div>
+              <span className="qb-eyebrow">How it works</span>
+              <h2 id="question-bank-process-title">From source to understanding</h2>
             </div>
-            <div className="qb-insight-card">
-              <span className="qb-eyebrow">Live insight</span>
-              <div className="stack gap12" style={{ marginTop: 12 }}>
-                <div><b>{weak[0]?.topic ?? "No weak category yet"}</b><div className="sub">Weakest category</div></div>
-                <div><b>{patterns[0] ? ERROR_TYPE_LABEL[patterns[0].errorType] : "Classify a miss to begin"}</b><div className="sub">Repeated error pattern</div></div>
-                <div><b>{highConfidenceMisses || "None"}</b><div className="sub">High-confidence misses</div></div>
-                <div><b>{slowest ? `${slowest.category} · ${slowest.seconds}s` : "No timing data yet"}</b><div className="sub">Slowest category</div></div>
-                <div><b>{recentImprovement === undefined ? "Needs more attempts" : `${recentImprovement >= 0 ? "+" : ""}${recentImprovement} points`}</b><div className="sub">Recent improvement</div></div>
-                {provider && incorrect.length > 0 && (
-                  <button className="qb-chip" disabled={coachBusy} onClick={() => void runWeaknessCoach()}>
-                    <Sparkles size={12} /> {coachBusy ? "Analyzing misses…" : "Ask weakness coach"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {coach && (
-            <GlassCard className="qb-ai-coach">
-              <PanelHeader title="AI weakness coach" sub={`${provider?.info.label} · grounded in your saved misses; suggestion only`} />
-              <p>{coach.diagnosis}</p>
-              <div className="question-explanation"><b>Suggested next block:</b> {coach.suggestedBlock}</div>
-            </GlassCard>
+            <ol>
+              <li><b>Import a source</b><span>Use a file or paste existing question text.</span></li>
+              <li><b>Review uncertain mappings</b><span>Confirm only the answers the importer flags.</span></li>
+              <li><b>Practice the finalized set</b><span>Build mastery from scored attempts and explanations.</span></li>
+            </ol>
+          </section>
+        ) : (
+        <div className="stack gap16">
+          {questionSets.length > 0 && (
+            <QuestionSetList
+              recent
+              compact
+              limit={3}
+              onRunSet={runSet}
+              onReviewIssues={openMappingReview}
+            />
           )}
+
+          {mapping.issueCount > 0 && (
+            <section className="qb-mapping-alert" aria-labelledby="mapping-review-title" aria-live="polite">
+              <div className="qb-mapping-icon" aria-hidden="true"><AlertTriangle size={18} /></div>
+              <div className="grow">
+                <h2 id="mapping-review-title">{mapping.issueCount} question{mapping.issueCount === 1 ? "" : "s"} need review</h2>
+                <p>
+                  <b>{mapping.unresolved} Unresolved</b> · {mapping.reviewSuggested} Review suggested · {mapping.ready} Ready
+                </p>
+              </div>
+              <button className="filter-pill" onClick={() => openMappingReview()}>Review issues</button>
+            </section>
+          )}
+
+          <section className="qb-next-card glass-liquid" aria-labelledby="recommended-next-title">
+            <div className="qb-next-copy">
+              <span className="qb-eyebrow">Recommended next</span>
+              <h2 id="recommended-next-title">{due.length ? `Review ${Math.min(due.length, 20)} due questions` : incorrect.length ? `Retry ${Math.min(incorrect.length, 20)} misses` : unseen ? "Start an unseen tutor block" : runnable ? "Start a focused practice block" : "Import another clean set"}</h2>
+              <p>{due.length
+                ? "These questions are scheduled to resurface now. A short tutor block keeps the review loop moving."
+                : incorrect.length
+                  ? "Turn recent misses into a focused block, classify the error, and repair the pattern."
+                  : unseen
+                    ? "Mapped questions are ready to study. Start small and let the performance data build."
+                    : runnable
+                      ? "Choose a short block and keep your current mastery signal fresh."
+                      : "Every import enters the same review-gated workflow."}</p>
+            </div>
+            <button className="filter-pill on qb-begin-button" onClick={launchRecommended}><Play size={14} /> Begin</button>
+          </section>
+
+          <section aria-label="Question Bank performance" className="qb-stats">
+            {stats.map((stat) => (
+              <div key={stat.label} className="qb-stat glass-liquid">
+                <span className="qb-stat-icon"><stat.icon size={15} /></span>
+                <span className="qb-stat-value">{stat.value}</span>
+                <span className="qb-stat-label">{stat.label}</span>
+                <span className="qb-stat-note">{stat.note}</span>
+              </div>
+            ))}
+          </section>
 
           <div className="qb-loop-grid" aria-label="Today's AXOM study loop">
             <button className="qb-loop-card" disabled={!due.length} onClick={() => setRunner({ mode: "tutor", retakeIds: due.slice(0, 20).map((q) => q.id) })}>
@@ -276,38 +403,64 @@ export function QuestionWorkspacePage() {
             <button className="qb-loop-card" disabled={!weak[0]} onClick={() => weak[0] && setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: [weak[0].topic] } })}>
               <Microscope size={17} /><b>Weak-topic block</b><span>{weak[0]?.topic ?? "Needs more attempts"}</span>
             </button>
-            <button className="qb-loop-card" onClick={() => setTab("import")}>
+            <button className="qb-loop-card" onClick={() => openImport("file")}>
               <FileInput size={17} /><b>Import questions</b><span>Review uncertainty, not every line</span>
             </button>
           </div>
 
-          <div className="qb-library-strip">
-            <button className="qb-library-link" onClick={() => setTab("sets")}><b>Question Sets</b><span>{(s.questionSets ?? []).length} saved</span></button>
-            <button className="qb-library-link" onClick={() => setTab("library")}><b>Source Documents</b><span>{(s.documents ?? []).length} available</span></button>
-            <button className="qb-library-link" onClick={() => setTab("blocks")}><b>Saved Blocks</b><span>{(s.quizBlocks ?? []).length} reusable</span></button>
-            <button className="qb-library-link" onClick={() => setTab("sets")}><b>AI Generated Sets</b><span>{(s.questionSets ?? []).filter((set) => set.aiEnhanced).length} labeled</span></button>
+          <div className="qb-command-grid qb-secondary-intelligence">
+            <GlassCard className="qb-insight-card">
+              <span className="qb-eyebrow">Live insight</span>
+              <div className="stack gap12" style={{ marginTop: 12 }}>
+                <div><b>{weak[0]?.topic ?? "No weak category yet"}</b><div className="sub">Weakest category</div></div>
+                <div><b>{patterns[0] ? ERROR_TYPE_LABEL[patterns[0].errorType] : "Classify a miss to begin"}</b><div className="sub">Repeated error pattern</div></div>
+                <div><b>{highConfidenceMisses || "None"}</b><div className="sub">High-confidence misses</div></div>
+                <div><b>{slowest ? `${slowest.category} · ${slowest.seconds}s` : "No timing data yet"}</b><div className="sub">Slowest category</div></div>
+                <div><b>{recentImprovement === undefined ? "Needs more attempts" : `${recentImprovement >= 0 ? "+" : ""}${recentImprovement} points`}</b><div className="sub">Recent improvement</div></div>
+                {provider && incorrect.length > 0 && (
+                  <button className="filter-pill" disabled={coachBusy} onClick={() => void runWeaknessCoach()}>
+                    <Sparkles size={12} /> {coachBusy ? "Analyzing misses…" : "Ask weakness coach"}
+                  </button>
+                )}
+              </div>
+            </GlassCard>
+
+            <div className="qb-library-strip" aria-label="Question Bank libraries">
+              <button className="qb-library-link" onClick={() => setTab("sets")}><b>Question Sets</b><span>{questionSets.length} saved</span></button>
+              <button className="qb-library-link" onClick={() => setTab("library")}><b>Source Documents</b><span>{documents.length} available</span></button>
+              <button className="qb-library-link" onClick={() => setTab("blocks")}><b>Saved Blocks</b><span>{(s.quizBlocks ?? []).length} reusable</span></button>
+            </div>
           </div>
 
-          {(s.questionSets ?? []).length > 0 && (
-            <QuestionSetList
-              onRunSet={runSet}
-              onReviewMisses={(ids) => ids.length && setRunner({ mode: "tutor", retakeIds: ids })}
-              onOpenInsights={() => setTab("insights")}
-            />
+          {coach && (
+            <GlassCard className="qb-ai-coach">
+              <PanelHeader title="AI weakness coach" sub={`${provider?.info.label} · grounded in your saved misses; suggestion only`} />
+              <p>{coach.diagnosis}</p>
+              <div className="question-explanation"><b>Suggested next block:</b> {coach.suggestedBlock}</div>
+            </GlassCard>
           )}
-        </>
+        </div>
+        )
       )}
 
-      {tab === "import" && <ImportPanel key={importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"} seed={importSeed} />}
+      {tab === "import" && (
+        <ImportPanel
+          key={`${importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"}-${importEntry}`}
+          seed={importSeed}
+          initialTab={importEntry}
+        />
+      )}
       {tab === "mass" && (
         <MassImport onInspect={(payload) => {
           setImportSeed({ drafts: payload.drafts, rawText: payload.rawText, fileName: payload.fileName, title: payload.title });
+          setImportEntry("file");
           setTab("import");
         }} />
       )}
       {tab === "sets" && (
         <QuestionSetList
           onRunSet={runSet}
+          onReviewIssues={openMappingReview}
           onReviewMisses={(ids) => ids.length && setRunner({ mode: "tutor", retakeIds: ids })}
           onOpenInsights={() => setTab("insights")}
         />
@@ -315,7 +468,14 @@ export function QuestionWorkspacePage() {
       {tab === "library" && <SourceLibrary onGenerateFrom={generateFrom} />}
       {tab === "blocks" && <BlockBuilder onRunBlock={runBlock} onNewBlock={() => setRunner({ mode: "tutor" })} />}
 
-      {tab === "bank" && <BankBrowser onOpen={setOpen} />}
+      {tab === "bank" && (
+        <BankBrowser
+          key={bankReview.key}
+          onOpen={setOpen}
+          initialMode={bankReview.ids ? "mapping-review" : "all"}
+          questionIds={bankReview.ids}
+        />
+      )}
 
       {tab === "insights" && (
         <>
@@ -364,6 +524,7 @@ export function QuestionWorkspacePage() {
           </GlassCard>
         </>
       )}
+      </section>
 
       {open && <QuestionDetailModal question={open} onClose={() => setOpen(null)} />}
       {runner && (
@@ -378,4 +539,19 @@ export function QuestionWorkspacePage() {
       )}
     </>
   );
+}
+
+function tabLabel(
+  id: BankTab,
+  label: string,
+  setCount: number,
+  documentCount: number,
+  questionCount: number,
+  blockCount: number,
+): string {
+  if (id === "sets") return `${label} (${setCount})`;
+  if (id === "library") return `${label} (${documentCount})`;
+  if (id === "bank") return `${label} (${questionCount})`;
+  if (id === "blocks") return `${label} (${blockCount})`;
+  return label;
 }

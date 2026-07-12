@@ -26,7 +26,7 @@ import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
 
-type ImportTab = "paste" | "file" | "ai";
+export type ImportTab = "paste" | "file" | "ai";
 type SaveMode = "set" | "doc" | "both";
 
 interface ReviewDraft extends ParsedQuestionDraft {
@@ -59,9 +59,9 @@ export interface ImportSeed {
   title?: string;
 }
 
-export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
+export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed | null; initialTab?: ImportTab }) {
   const s = useStore();
-  const [tab, setTab] = useState<ImportTab>(seed?.reference ? "ai" : "file");
+  const [tab, setTab] = useState<ImportTab>(seed?.reference ? "ai" : initialTab);
   const [drafts, setDrafts] = useState<ReviewDraft[]>(() =>
     seed?.drafts ? seed.drafts.map((d) => ({ ...d, include: true, source: "imported" as QuestionSource })) : []);
   const [batchWarnings, setBatchWarnings] = useState<string[]>([]);
@@ -322,6 +322,7 @@ export function ImportPanel({ seed }: { seed?: ImportSeed | null }) {
     <GlassCard>
       <PanelHeader
         title="Import Center"
+        headingLevel={2}
         sub="Upload PDF, DOCX, TXT, Markdown, CSV, or JSON — or paste a block. Everything passes through review before it becomes a question set."
       />
       {!reviewing && (

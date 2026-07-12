@@ -8,7 +8,8 @@ import { useMemo, useState } from "react";
 import { Search, SquareCheck, Square, Tags } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
-  filterForMode, MODE_META, QUESTION_CATEGORIES,
+  filterForMode, MODE_META, QUESTION_CATEGORIES, QUESTION_MAPPING_STATUS_LABEL,
+  questionMappingStatus,
   type QuestionMode, type QuestionRecord,
 } from "../../lib/questions";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
@@ -18,10 +19,23 @@ import { pushToast } from "../../lib/toast";
 const MODES = Object.keys(MODE_META) as QuestionMode[];
 const NO_QUESTIONS: QuestionRecord[] = [];
 
-export function BankBrowser({ onOpen }: { onOpen: (q: QuestionRecord) => void }) {
+export function BankBrowser({
+  onOpen,
+  initialMode = "all",
+  questionIds,
+}: {
+  onOpen: (q: QuestionRecord) => void;
+  initialMode?: QuestionMode | "all";
+  questionIds?: readonly string[];
+}) {
   const s = useStore();
-  const questions = s.questions ?? NO_QUESTIONS;
-  const [mode, setMode] = useState<QuestionMode | "all">("all");
+  const allQuestions = s.questions ?? NO_QUESTIONS;
+  const questions = useMemo(() => {
+    if (!questionIds) return allQuestions;
+    const allowed = new Set(questionIds);
+    return allQuestions.filter((question) => allowed.has(question.id));
+  }, [allQuestions, questionIds]);
+  const [mode, setMode] = useState<QuestionMode | "all">(initialMode);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -86,7 +100,9 @@ export function BankBrowser({ onOpen }: { onOpen: (q: QuestionRecord) => void })
     <GlassCard>
       <PanelHeader
         title="Browse the bank"
-        sub="Search, filter, and bulk-edit. Modes filter by what each attempt recorded."
+        sub={mode === "mapping-review"
+          ? "Review unresolved and suggested answer mappings. Open a question to confirm its correct answer."
+          : "Search, filter, and bulk-edit. Modes filter by what each attempt recorded."}
         action={
           <div className="row" style={{ gap: 6 }}>
             <GhostButton onClick={toggleAll}>
@@ -155,7 +171,12 @@ export function BankBrowser({ onOpen }: { onOpen: (q: QuestionRecord) => void })
                 {selected.has(q.id) ? <SquareCheck size={15} /> : <Square size={15} className="dim" />}
               </button>
               <button className="grow truncate qrow-open" onClick={() => onOpen(q)}>{q.stem}</button>
-              {q.needsReview && <Tag tone="red">review</Tag>}
+              {(() => {
+                const mappingStatus = questionMappingStatus(q);
+                return mappingStatus === "ready"
+                  ? null
+                  : <Tag tone={mappingStatus === "unresolved" ? "red" : "orange"}>{QUESTION_MAPPING_STATUS_LABEL[mappingStatus]}</Tag>;
+              })()}
               {q.marked && <Tag tone="purple">marked</Tag>}
               {q.category && <Tag tone="neutral">{q.category}</Tag>}
               {!q.category && q.topic && <Tag tone="neutral">{q.topic}</Tag>}

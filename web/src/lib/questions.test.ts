@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeQuestionStyle, applyAttempt, dueQuestions, errorPatterns, filterForMode,
+  questionCollectionMetrics, questionMappingStatus, summarizeQuestionMappings,
   validateQuestionRecord, weakTopics, type QuestionRecord,
 } from "./questions";
 import { parseQuestionText } from "./questionParse";
@@ -63,6 +64,123 @@ describe("attempts + spaced review", () => {
     const due = makeQuestion({ reviewDueAt: "2026-07-01T00:00:00.000Z" });
     const later = makeQuestion({ reviewDueAt: "2999-01-01T00:00:00.000Z" });
     expect(dueQuestions([due, later], new Date("2026-07-07")).map((q) => q.id)).toEqual([due.id]);
+  });
+});
+
+describe("canonical question collection metrics", () => {
+  it("keeps latest-attempt mastery separate from all-attempt historical accuracy", () => {
+    const questions = [
+      makeQuestion({
+        id: "retried",
+        attempts: [
+          { at: "2026-07-08T10:00:00+02:00", answerKey: "B", status: "incorrect" },
+          { at: "2026-07-08T09:30:00Z", answerKey: "A", status: "correct" },
+        ],
+      }),
+      makeQuestion({
+        id: "guessed",
+        attempts: [{ at: "2026-07-09T10:00:00.000Z", answerKey: "A", status: "guessed" }],
+      }),
+      makeQuestion({ id: "unattempted" }),
+    ];
+
+    const metrics = questionCollectionMetrics(questions, 4);
+
+    expect(metrics).toMatchObject({
+      total: 4,
+      completed: 2,
+      remaining: 2,
+      completionPct: 50,
+      currentMasteryCorrect: 1,
+      currentMasteryQuestions: 2,
+      currentMasteryPct: 50,
+      historicalCorrectAttempts: 1,
+      historicalAttemptCount: 3,
+      historicalAccuracyPct: 33,
+      lastStudiedAt: "2026-07-09T10:00:00.000Z",
+      missedQuestionIds: ["guessed"],
+    });
+  });
+
+  it("ignores malformed timestamps for recency and latest-attempt selection when valid history exists", () => {
+    const question = makeQuestion({
+      id: "mixed-timestamps",
+      attemptedAt: "not-a-date",
+      attempts: [
+        { at: "2026-07-08T10:00:00.000Z", answerKey: "A", status: "correct" },
+        { at: "also-not-a-date", answerKey: "B", status: "incorrect" },
+      ],
+    });
+
+    const metrics = questionCollectionMetrics([question]);
+    expect(metrics.lastStudiedAt).toBe("2026-07-08T10:00:00.000Z");
+    expect(metrics.currentMasteryPct).toBe(100);
+    expect(metrics.missedQuestionIds).toEqual([]);
+  });
+});
+
+describe("mapping readiness", () => {
+  it("classifies and summarizes unresolved, review-suggested, and ready questions", () => {
+    const unresolvedMissingKey = makeQuestion({ id: "missing", correctKey: undefined });
+    const unresolvedFlagged = makeQuestion({
+      id: "flagged",
+      needsReview: true,
+      extraction: { confidence: "high", reviewed: true },
+    });
+    const reviewSuggested = makeQuestion({
+      id: "suggested",
+      extraction: { confidence: "medium", reviewed: false },
+    });
+    const confirmed = makeQuestion({
+      id: "confirmed",
+      extraction: { confidence: "high", reviewed: true },
+    });
+    const legacy = makeQuestion({ id: "legacy", extraction: undefined });
+    const questions = [unresolvedMissingKey, unresolvedFlagged, reviewSuggested, confirmed, legacy];
+    const before = structuredClone(questions);
+
+    expect(questionMappingStatus(unresolvedMissingKey)).toBe("unresolved");
+    expect(questionMappingStatus(unresolvedFlagged)).toBe("unresolved");
+    expect(questionMappingStatus(reviewSuggested)).toBe("review-suggested");
+    expect(questionMappingStatus(confirmed)).toBe("ready");
+    expect(questionMappingStatus(legacy)).toBe("ready");
+    expect(summarizeQuestionMappings(questions)).toEqual({
+      ready: 2,
+      reviewSuggested: 1,
+      unresolved: 2,
+      issueCount: 3,
+      issueQuestionIds: ["missing", "flagged", "suggested"],
+      reviewSuggestedQuestionIds: ["suggested"],
+      unresolvedQuestionIds: ["missing", "flagged"],
+    });
+    expect(questions).toEqual(before);
+  });
+
+  it("treats a repaired mapping as ready even when its practice status is stale", () => {
+    const repaired = makeQuestion({
+      status: "needs-review",
+      correctKey: "A",
+      needsReview: false,
+      extraction: { confidence: "low", reviewed: true },
+    });
+
+    expect(questionMappingStatus(repaired)).toBe("ready");
+    expect(summarizeQuestionMappings([repaired]).issueCount).toBe(0);
+  });
+
+  it("uses the canonical mapping classifier for mapping-review mode", () => {
+    const unresolved = makeQuestion({ id: "unresolved", correctKey: undefined });
+    const suggested = makeQuestion({
+      id: "suggested",
+      extraction: { confidence: "medium", reviewed: false },
+    });
+    const ready = makeQuestion({
+      id: "ready",
+      extraction: { confidence: "high", reviewed: true },
+    });
+
+    expect(filterForMode([ready, unresolved, suggested], "mapping-review").map((question) => question.id))
+      .toEqual(["unresolved", "suggested"]);
   });
 });
 

@@ -23,9 +23,11 @@ test("onboarding → import → block → repair → reload retains the full que
   await page.goto("/#questions", { waitUntil: "networkidle" });
   await completeOnboarding(page);
   await page.evaluate(() => { window.location.hash = "questions"; });
-  await expect(page.getByRole("tab", { name: "Command Center" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Question Bank" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Import Questions" })).toBeVisible();
 
-  await page.getByRole("tab", { name: "Import Center" }).click();
+  await page.getByRole("tab", { name: "Import" }).click();
   await page.getByLabel("Choose a question file to import").setInputFiles({
     name: "ppd-regression.txt",
     mimeType: "text/plain",
@@ -74,9 +76,15 @@ test("onboarding → import → block → repair → reload retains the full que
   const reloadedCard = page.locator("article.qset-card").filter({ hasText: "AXOM persisted journey" });
   await expect(reloadedCard).toBeVisible();
   await expect(reloadedCard.getByLabel("0% current mastery")).toHaveClass(/red/);
-  await expect(reloadedCard.getByText("Historical accuracy 0% · 1 attempt")).toBeVisible();
+  await expect(reloadedCard.getByText("Attempt accuracy 0% · 1 total attempt")).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
+  for (const theme of ["light", "dark"] as const) {
+    await page.locator("html").evaluate((root, resolvedTheme) => root.setAttribute("data-theme", resolvedTheme), theme);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    await expect(reloadedCard).toBeVisible();
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await page.locator(".surface-scroll").evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 
   const persisted = await readPersistedWorkspace(page);
   expect(persisted.schemaVersion).toBe(32);

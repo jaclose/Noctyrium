@@ -56,14 +56,19 @@ export function Tag({
 }
 
 export function PanelHeader({
-  title, sub, action,
+  title, sub, action, headingLevel,
 }: {
-  title: string; sub?: string; action?: React.ReactNode;
+  title: string; sub?: string; action?: React.ReactNode; headingLevel?: 2 | 3;
 }) {
+  const titleNode = headingLevel === 2
+    ? <h2 className="panel-title">{title}</h2>
+    : headingLevel === 3
+      ? <h3 className="panel-title">{title}</h3>
+      : <div className="panel-title">{title}</div>;
   return (
     <div className="panel-head">
       <div>
-        <div className="panel-title">{title}</div>
+        {titleNode}
         {sub && <div className="panel-sub">{sub}</div>}
       </div>
       {action}

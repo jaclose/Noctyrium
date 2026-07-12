@@ -7,6 +7,7 @@ import { QuestionDetailModal } from "./QuestionDetailModal";
 
 const mocked = vi.hoisted(() => ({
   addAnkiCards: vi.fn(() => ({ saved: 1, errors: [] })),
+  updateQuestion: vi.fn(),
 }));
 
 vi.mock("../../lib/store", () => ({
@@ -15,7 +16,7 @@ vi.mock("../../lib/store", () => ({
     recordQuestionAttempt: vi.fn(),
     removeQuestion: vi.fn(),
     toggleQuestionMarked: vi.fn(),
-    updateQuestion: vi.fn(),
+    updateQuestion: mocked.updateQuestion,
   }),
 }));
 vi.mock("../../lib/toast", () => ({ pushToast: vi.fn() }));
@@ -53,5 +54,46 @@ describe("QuestionDetailModal repair cards", () => {
     expect(mocked.addAnkiCards).toHaveBeenCalledWith([
       expect.objectContaining({ back: `Correct: B. Beta\n\n${edited}` }),
     ]);
+  });
+
+  it("repairs mapping metadata without rewriting attempts or practice status", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const unresolved: QuestionRecord = {
+      ...question,
+      id: "unresolved",
+      correctKey: undefined,
+      correctAnswerText: undefined,
+      needsReview: true,
+      status: "incorrect",
+      attempts: [{ at: "2026-07-10T00:00:00.000Z", answerKey: "A", status: "incorrect" }],
+      extraction: {
+        confidence: "low",
+        reviewed: false,
+        answerDetectionConfidence: 0.2,
+      },
+    };
+
+    render(<QuestionDetailModal question={unresolved} onClose={onClose} />);
+    expect(screen.getByText("Unresolved")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Review answer mapping/i }));
+    await user.selectOptions(screen.getByLabelText("Correct answer mapping"), "B");
+    await user.click(screen.getByRole("button", { name: "Confirm mapping" }));
+
+    expect(mocked.updateQuestion).toHaveBeenCalledWith("unresolved", {
+      correctKey: "B",
+      correctAnswerText: "Beta",
+      needsReview: false,
+      extraction: expect.objectContaining({
+        confidence: "low",
+        reviewed: true,
+        reviewedAt: expect.any(String),
+        answerDetectionConfidence: 1,
+      }),
+    });
+    const patch = mocked.updateQuestion.mock.calls[0][1];
+    expect(patch).not.toHaveProperty("attempts");
+    expect(patch).not.toHaveProperty("status");
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

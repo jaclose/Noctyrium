@@ -8,14 +8,39 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
 
 ## Question Bank (flagship)
 
+### Flagship entry experience (2026-07-11)
+
+- **Focused first use** — an empty Question Bank now leads with one semantic
+  heading, one dominant Import Questions action, a secondary Paste text action,
+  a concise format note, and a three-step Import → Review → Practice explanation.
+  Empty analytics and unavailable library tools stay out of the way; first use
+  exposes only Overview and Import (plus Source Library when documents already
+  exist), and both entries use the accepted review-gated Import Center.
+- **Prioritized returning command center** — continuation copy accurately says it
+  starts a new block with the previous session's filters, recent sets are ordered
+  by numeric last-study time with stable invalid-date fallbacks, mapping issues
+  route into a scoped bank filter, and due work appears before secondary insights
+  and library administration.
+- **Explicit performance language** — the landing and set cards distinguish
+  Current mastery (latest scored attempt per active question) from Attempt accuracy
+  (all scored attempts), Questions attempted, and Total attempts. Compact recent-set
+  cards show attempted coverage, mapping issues, last activity, and one contextual
+  primary action: Review issues, Continue, or Start.
+- **One canonical mapping-review path** — Ready, Review suggested, and Unresolved
+  share one classifier across landing counts, set metrics, the Bank Browser filter,
+  and question repair. Confirming an answer mapping updates mapping diagnostics only;
+  practice status and attempt history are not rewritten.
+- **Landing accessibility and resilience** — the two-state hero shares a safe tour
+  target, the tour honors reduced motion, tablists use labelled panels and roving
+  Arrow/Home/End keyboard focus, route entry resets retained content scroll, and the
+  focused layout is overflow-checked at 1360, 1024, 768, and 390 px in both themes.
+
 ### Command-center and integrity pass (2026-07-10c)
 
-- **Question Bank Command Center** — defaults to an overview that answers
-  “what should I do next?” with Quick Import, Mass Import, Build Block, and
-  Continue actions; total/due/unseen/historical-accuracy/set/mapping metrics; a recommended
-  action; due, missed, weak-topic, and import loop cards; library shortcuts; and
-  weakest-category, error-pattern, confidence-mismatch, pacing, and improvement
-  insight. The optional weakness coach is provider-gated and labeled.
+- **Question Bank Command Center foundation** — saved blocks, mass import, library
+  navigation, due/missed/weak-topic loops, and weakest-category, error-pattern,
+  confidence-mismatch, pacing, and improvement insights remain available after the
+  prioritized landing content. The optional weakness coach is provider-gated and labeled.
 - **Parser provenance and confidence** — imported questions now persist separate
   question, answer, explanation, and overall confidence values plus warnings,
   parser rule IDs, source snippets, answer evidence, source page, explanation
@@ -32,11 +57,12 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
   clean rationale, optional learning objective, collapsible source/confidence/rule
   evidence, and repair actions. Tutor mode and question detail reuse the shared
   component; tutor and deferred-result displays preserve the stored rationale.
-- **Progress-rich question-set cards** — reusable set cards show source/category,
-  total/completed/remaining, completion, current mastery from each active question's
-  latest attempt, separately named historical accuracy across all attempts, last
-  studied, aggregate import confidence, mapping-review count, AI labeling, and
-  start/miss/edit/insight actions. Mastery colors are green ≥90, gold 80–89,
+- **Progress-rich question-set cards** — reusable full set cards show source/category,
+  total/completed/remaining, completion, Current mastery from each active question's
+  latest attempt, separately named Attempt accuracy across all attempts, last
+  studied, aggregate import confidence, canonical mapping-review count, AI labeling,
+  and study/miss/edit/insight actions; compact recent cards retain only high-value
+  progress and one contextual primary action. Mastery colors are green ≥90, gold 80–89,
   orange 70–79, red ≤69, and neutral before attempts.
 - **Source identity and duplicate protection** — PDF, DOCX, and text imports receive
   SHA-256 checksums when the browser supports SubtleCrypto. Matching sources are

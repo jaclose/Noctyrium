@@ -21,6 +21,7 @@ const STEPS: TourStep[] = [
   { route: "reports", target: "reports-top", title: "Reports", body: "Today, the week, course distribution, and trend — the traceable record of the work." },
   { route: "tracker", target: "import", title: "Map the schoolwork", body: "Course Tracker is where lectures stop floating in chaos and become a map. Import a list, or add a course manually." },
   { route: "tracker", target: "tracker-help", title: "Keep the spine clean", body: "Tap a pass (1→4), cycle Anki rounds, set each item's yield. The ? button explains the colors. This is the spine of the system." },
+  { route: "questions", target: "question-bank-entry", title: "Question Bank", body: "Import → Review → Practice → Understand. Bring in a source, verify uncertain mappings, practise the finalized set, and let the results surface what needs work." },
   { route: "dashboard", target: "control-surface-menu", title: "Customize the control surface", body: "Use Customize to subscribe or unsubscribe sections. Keep the tools for your current rotation visible, hide the rest, and bring them back when the workflow changes." },
   { route: "resources", target: "resources", title: "Your armory", body: "Resources are external knowledge — ranked, named, kept close. The best tools, within reach." },
   { route: "step", target: "step", title: "The long war room", body: "Step 1 is the long game. Build slowly. Review honestly. Return often." },
@@ -61,7 +62,12 @@ export function GuidedTour({
       if (cancelled) return;
       const el = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null;
       if (!el) return;
-      if (!scrolled) { el.scrollIntoView({ block: "center", behavior: "smooth" }); scrolled = true; }
+      if (!scrolled) {
+        const reduceMotion = typeof window.matchMedia === "function"
+          && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        el.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+        scrolled = true;
+      }
       const r = el.getBoundingClientRect();
       if (r.height > 0) { setRect(r); setReady(true); }
     };

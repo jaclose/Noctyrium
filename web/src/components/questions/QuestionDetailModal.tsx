@@ -5,10 +5,11 @@
 // daily loop).
 // ===========================================================================
 import { useEffect, useState } from "react";
-import { Trash2, WandSparkles } from "lucide-react";
+import { PencilLine, Trash2, WandSparkles } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
   ERROR_TYPE_LABEL,
+  QUESTION_MAPPING_STATUS_LABEL, questionMappingStatus,
   type QuestionErrorType, type QuestionRecord, type QuestionStatus,
 } from "../../lib/questions";
 import { newSchedule } from "../../lib/ankiCards";
@@ -28,6 +29,8 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5 | undefined>();
   const [errorType, setErrorType] = useState<QuestionErrorType | "">("");
   const [note, setNote] = useState("");
+  const [editingMapping, setEditingMapping] = useState(false);
+  const [mappingKey, setMappingKey] = useState(question.correctKey ?? "");
   const [startedAt] = useState(() => Date.now());
 
   // Track answer changes so "Changed Answer" mode has real data.
@@ -36,6 +39,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   }, [picked, firstPick]);
 
   const hasKey = Boolean(question.correctKey);
+  const mappingStatus = questionMappingStatus(question);
   const isCorrect = hasKey && picked === question.correctKey;
   const changed = Boolean(firstPick && picked && firstPick !== picked);
 
@@ -88,6 +92,25 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     onClose();
   }
 
+  function repairMapping() {
+    const correctOption = question.options.find((option) => option.key === mappingKey);
+    if (!correctOption) return;
+    const reviewedAt = new Date().toISOString();
+    s.updateQuestion(question.id, {
+      correctKey: mappingKey,
+      correctAnswerText: correctOption.text,
+      needsReview: false,
+      extraction: question.extraction ? {
+        ...question.extraction,
+        reviewed: true,
+        reviewedAt,
+        answerDetectionConfidence: 1,
+      } : undefined,
+    });
+    pushToast({ title: "Answer mapping confirmed", body: `${mappingKey}. ${correctOption.text}`, tone: "success" });
+    onClose();
+  }
+
   return (
     <Modal
       title={question.topic ? `Question · ${question.topic}` : "Question"}
@@ -107,7 +130,9 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
         {question.system && <Tag tone="neutral">{question.system}</Tag>}
         {question.bank && <Tag tone="neutral">{question.bank}</Tag>}
         {question.ai?.generated && <Tag tone="purple">AI-generated</Tag>}
-        {question.extraction && !question.extraction.reviewed && <Tag tone="orange">Extraction unreviewed</Tag>}
+        {mappingStatus !== "ready" && (
+          <Tag tone={mappingStatus === "unresolved" ? "red" : "orange"}>{QUESTION_MAPPING_STATUS_LABEL[mappingStatus]}</Tag>
+        )}
         {question.citation && <span className="sub">{question.citation}</span>}
         <button className={`filter-pill ${question.marked ? "on" : ""}`} onClick={() => s.toggleQuestionMarked(question.id)}>
           {question.marked ? "Marked ✓" : "Mark for review"}
@@ -115,6 +140,35 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
       </div>
 
       <div className="question-stem">{question.stem}</div>
+
+      {mappingStatus !== "ready" && (
+        <section className="mapping-repair" aria-label="Answer mapping review">
+          <div className="row spread wrap">
+            <div className="stack" style={{ gap: 2 }}>
+              <b>Confirm the correct answer before practice</b>
+              <span className="sub">This updates mapping metadata only. Existing attempts and practice status stay unchanged.</span>
+            </div>
+            <GhostButton onClick={() => setEditingMapping((value) => !value)}>
+              <PencilLine size={13} /> {editingMapping ? "Cancel" : "Review answer mapping"}
+            </GhostButton>
+          </div>
+          {editingMapping && (
+            <div className="stack gap6">
+              <SelectField
+                label="Correct answer mapping"
+                value={mappingKey}
+                onChange={(event) => setMappingKey(event.target.value)}
+              >
+                <option value="">Select the confirmed answer…</option>
+                {question.options.map((option) => (
+                  <option key={option.key} value={option.key}>{option.key}. {option.text}</option>
+                ))}
+              </SelectField>
+              <GButton variant="primary" size="sm" disabled={!mappingKey} onClick={repairMapping}>Confirm mapping</GButton>
+            </div>
+          )}
+        </section>
+      )}
 
       {question.options.length > 0 && (
         <div className="stack gap6">
