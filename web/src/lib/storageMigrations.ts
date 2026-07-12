@@ -11,6 +11,20 @@ type Migration = {
   run: () => Promise<void> | void;
 };
 
+/**
+ * The one canonical unresolved startup-recovery marker. This is intentionally
+ * device metadata rather than workspace state: a failed migration must remain
+ * visible even when the persisted workspace cannot be hydrated yet.
+ */
+export interface StorageMigrationFailure {
+  fromVersion: number;
+  toVersion: number;
+  backupKey: string | null;
+  errorMessage: string;
+  at: string;
+  build: BuildInfo;
+}
+
 export type StorageMigrationResult =
   | {
       ok: true;
@@ -129,7 +143,7 @@ function writeStoredSchemaVersion(version: number) {
   getLocalStorage()?.setItem(STORAGE_SCHEMA_KEY, String(version));
 }
 
-function readLastSeenBuild(): BuildInfo | null {
+export function readLastSeenBuild(): BuildInfo | null {
   const storage = getLocalStorage();
   if (!storage) return null;
   try {
@@ -137,6 +151,34 @@ function readLastSeenBuild(): BuildInfo | null {
     const parsed = raw ? JSON.parse(raw) as unknown : null;
     if (!isBuildInfo(parsed)) return null;
     return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Read and validate the existing failure marker without creating new state. */
+export function readMigrationFailure(): StorageMigrationFailure | null {
+  const storage = getLocalStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(STORAGE_KEYS.migrationFailure);
+    const parsed = raw ? JSON.parse(raw) as unknown : null;
+    if (!isRecord(parsed) || !isBuildInfo(parsed.build)) return null;
+    if (
+      !isNonNegativeInteger(parsed.fromVersion) ||
+      !isNonNegativeInteger(parsed.toVersion) ||
+      typeof parsed.errorMessage !== "string" ||
+      typeof parsed.at !== "string" ||
+      !(parsed.backupKey === null || typeof parsed.backupKey === "string")
+    ) return null;
+    return {
+      fromVersion: parsed.fromVersion,
+      toVersion: parsed.toVersion,
+      backupKey: parsed.backupKey,
+      errorMessage: parsed.errorMessage,
+      at: parsed.at,
+      build: parsed.build,
+    };
   } catch {
     return null;
   }
@@ -199,6 +241,10 @@ function isBuildInfo(value: unknown): value is BuildInfo {
     typeof value.commitSha === "string" &&
     typeof value.buildTime === "string"
   );
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

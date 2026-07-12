@@ -5,7 +5,7 @@
 // 72-hour stabilization plan. Pure functions; persistence lives in store.ts.
 // No red-alert theatrics, no streak guilt — language stays factual and calm.
 // ===========================================================================
-import type { ID, Task, TrackerItem } from "./types";
+import type { ID, StudyLog, Task, TrackerItem } from "./types";
 import type { BriefSignals } from "./commandBrief";
 import { targetPassesForItem, isQuestionKind } from "./tracker";
 
@@ -39,6 +39,8 @@ export interface RecoveryStep {
 
 export interface RecoveryPlan {
   id: ID;
+  /** Local study day this preview belongs to. Additive metadata; schema stays v32. */
+  dayKey?: string;
   createdAt: string;
   updatedAt: string;
   status: RecoveryPlanStatus;
@@ -47,6 +49,7 @@ export interface RecoveryPlan {
   triggers: string[];
   items: RecoveryItem[];
   steps: RecoveryStep[];
+  loadAssessment?: RecoveryLoadAssessment;
 }
 
 // --- trigger detection --------------------------------------------------------
@@ -55,6 +58,8 @@ export interface RecoveryTrigger {
   triggered: boolean;
   signals: string[];
   severity: "none" | "mild" | "moderate" | "serious";
+  score: number;
+  components: Array<{ label: string; points: number }>;
 }
 
 export function detectRecoveryTriggers(signals: BriefSignals): RecoveryTrigger {
@@ -69,17 +74,21 @@ export function detectRecoveryTriggers(signals: BriefSignals): RecoveryTrigger {
   }
   if (signals.reviewFlagged >= 6) hits.push(`${signals.reviewFlagged} items flagged needs-review`);
 
-  const score =
-    (signals.daysSinceLastStudy >= 3 ? 2 : signals.daysSinceLastStudy >= 2 ? 1 : 0) +
-    (signals.missedDaysLast7 >= 3 ? 1 : 0) +
-    (signals.carriedTasks >= 3 ? 1 : 0) +
-    (signals.overdueTasks >= 3 ? 1 : 0) +
-    (signals.backlogScore >= 60 ? 2 : signals.backlogScore >= 40 ? 1 : 0);
+  const components = [
+    { label: "Study inactivity", points: signals.daysSinceLastStudy >= 3 ? 2 : signals.daysSinceLastStudy >= 2 ? 1 : 0 },
+    { label: "Missed study days", points: signals.missedDaysLast7 >= 3 ? 1 : 0 },
+    { label: "Repeated carryover", points: signals.carriedTasks >= 3 ? 1 : 0 },
+    { label: "Overdue tasks", points: signals.overdueTasks >= 3 ? 1 : 0 },
+    { label: "Combined backlog", points: signals.backlogScore >= 60 ? 2 : signals.backlogScore >= 40 ? 1 : 0 },
+  ].filter((component) => component.points > 0);
+  const score = components.reduce((sum, component) => sum + component.points, 0);
 
   return {
     triggered: score >= 2,
     signals: hits,
     severity: score >= 4 ? "serious" : score >= 3 ? "moderate" : score >= 2 ? "mild" : "none",
+    score,
+    components,
   };
 }
 
@@ -93,20 +102,67 @@ export interface RecoveryPlanInputs {
   signals: BriefSignals;
   trigger: RecoveryTrigger;
   activeDayKey: string;
+  logs?: StudyLog[];
+  dailyTargetMinutes?: number;
   now?: Date;
 }
 
-/** Estimate how much work is actually outstanding, in honest ranges. */
-export function estimateGap(inputs: Pick<RecoveryPlanInputs, "tasks" | "tracker" | "signals" | "activeDayKey">): string {
+export interface RecoveryLoadAssessment {
+  openTaskCount: number;
+  belowTargetItemCount: number;
+  activeItemCount: number;
+  estimatedMinutesLow: number;
+  estimatedMinutesHigh: number;
+  configuredDailyTargetMinutes: number | null;
+  historyEvidenceDays: number;
+  usualCompletedMinutes: { low: number; high: number } | null;
+}
+
+/** One canonical, inspectable load calculation used by copy and UI. */
+export function assessRecoveryLoad(inputs: Pick<RecoveryPlanInputs, "tasks" | "tracker" | "activeDayKey" | "logs" | "dailyTargetMinutes">): RecoveryLoadAssessment {
   const openTasks = inputs.tasks.filter((t) => !t.done && !t.archived).length;
   const behindItems = inputs.tracker.filter((t) => t.passes < targetPassesForItem(t)).length;
   const roughMinutes = openTasks * 30 + Math.min(behindItems, 30) * 35;
-  const hoursLow = Math.max(1, Math.floor(roughMinutes / 60 * 0.6));
-  const hoursHigh = Math.max(hoursLow + 1, Math.ceil(roughMinutes / 60));
+  const byDay = new Map<string, number>();
+  for (const log of inputs.logs ?? []) {
+    if (log.dayKey >= inputs.activeDayKey || log.academic === false || log.productive === false) continue;
+    const minutes = Number.isFinite(log.minutes) ? Math.max(0, log.minutes) : 0;
+    if (minutes > 0) byDay.set(log.dayKey, (byDay.get(log.dayKey) ?? 0) + minutes);
+  }
+  const history = [...byDay.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 14)
+    .map(([, minutes]) => minutes)
+    .sort((a, b) => a - b);
+  const usualCompletedMinutes = history.length >= 3
+    ? {
+      low: history[Math.floor((history.length - 1) * 0.25)],
+      high: history[Math.ceil((history.length - 1) * 0.75)],
+    }
+    : null;
+  const configured = Number(inputs.dailyTargetMinutes);
+  return {
+    openTaskCount: openTasks,
+    belowTargetItemCount: behindItems,
+    activeItemCount: openTasks + behindItems,
+    estimatedMinutesLow: roughMinutes === 0 ? 0 : Math.max(30, Math.floor(roughMinutes * 0.6)),
+    estimatedMinutesHigh: roughMinutes,
+    configuredDailyTargetMinutes: Number.isFinite(configured) && configured > 0 ? configured : null,
+    historyEvidenceDays: history.length,
+    usualCompletedMinutes,
+  };
+}
+
+/** Estimate how much work is actually outstanding, in honest ranges. */
+export function estimateGap(inputs: Pick<RecoveryPlanInputs, "tasks" | "tracker" | "signals" | "activeDayKey" | "logs" | "dailyTargetMinutes">): string {
+  const assessment = assessRecoveryLoad(inputs);
+  if (assessment.activeItemCount === 0) return "No outstanding tasks or below-target tracker items were detected.";
+  const hoursLow = Math.max(1, Math.floor(assessment.estimatedMinutesLow / 60));
+  const hoursHigh = Math.max(hoursLow + 1, Math.ceil(assessment.estimatedMinutesHigh / 60));
   const examNote = inputs.signals.examDaysAway !== null && inputs.signals.examDaysAway >= 0
     ? ` with ${inputs.signals.examDaysAway} day${inputs.signals.examDaysAway === 1 ? "" : "s"} until ${inputs.signals.examLabel ?? "the assessment"}`
     : "";
-  return `Roughly ${hoursLow}–${hoursHigh} hours of outstanding work (${openTasks} open tasks, ${behindItems} tracker items below target)${examNote}. Full completion may not be realistic — the plan below prioritizes instead.`;
+  return `Roughly ${hoursLow}–${hoursHigh} hours of outstanding work (${assessment.openTaskCount} open tasks, ${assessment.belowTargetItemCount} tracker items below target)${examNote}. Full completion may not be realistic — the plan below prioritizes instead.`;
 }
 
 function triageTracker(tracker: TrackerItem[], examSoon: boolean): RecoveryItem[] {
@@ -175,6 +231,7 @@ export function buildRecoveryPlan(inputs: RecoveryPlanInputs): RecoveryPlan {
 
   return {
     id: uid(),
+    dayKey: inputs.activeDayKey,
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     status: "proposed",
@@ -183,6 +240,7 @@ export function buildRecoveryPlan(inputs: RecoveryPlanInputs): RecoveryPlan {
     triggers: trigger.signals,
     items,
     steps,
+    loadAssessment: assessRecoveryLoad(inputs),
   };
 }
 

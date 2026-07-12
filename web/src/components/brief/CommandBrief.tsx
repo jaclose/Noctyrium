@@ -14,6 +14,8 @@ import { closeoutForDay } from "../../lib/closeout";
 import { GlassCard, GButton, GhostButton, Tag } from "../ui/primitives";
 import { CloseoutModal } from "./CloseoutModal";
 import { RecoveryPanel } from "./RecoveryPanel";
+import { explainLowEnergy, type ReadinessResult } from "../../lib/energy";
+import { gotoJournalDay } from "../../lib/uiStore";
 
 const MODE_TONE: Record<BriefMode, "cyan" | "green" | "purple" | "orange" | "red" | "neutral"> = {
   maintain: "green",
@@ -23,11 +25,13 @@ const MODE_TONE: Record<BriefMode, "cyan" | "green" | "purple" | "orange" | "red
   "exam-week": "red",
 };
 
-export function CommandBrief() {
+export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const s = useStore();
   const [showCloseout, setShowCloseout] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showChanges, setShowChanges] = useState(true);
+  const [showEnergyCalculation, setShowEnergyCalculation] = useState(false);
+  const [energyPreviewDismissed, setEnergyPreviewDismissed] = useState(false);
 
   const brief = useMemo(
     () => buildCommandBrief({
@@ -44,6 +48,10 @@ export function CommandBrief() {
     [s.tasks, s.tracker, s.logs, s.boardPrep, s.activeDayKey, s.sessions, s.closeouts, s.questions, s.ankiCards],
   );
   const recovery = useMemo(() => detectRecoveryTriggers(brief.signals), [brief.signals]);
+  const recoveryDismissedToday = (s.recoveryPlans ?? []).some((plan) =>
+    (plan.status === "deferred" || plan.status === "dismissed")
+    && (plan.dayKey ?? plan.createdAt.slice(0, 10)) === s.activeDayKey);
+  const energy = readiness ? explainLowEnergy(readiness) : null;
   const liveSession = findLiveSession(s.sessions ?? []);
   const todayCloseout = closeoutForDay(s.closeouts ?? [], s.activeDayKey);
 
@@ -80,7 +88,7 @@ export function CommandBrief() {
           <div className="sub" style={{ maxWidth: 640 }}>{brief.modeReason}</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          {recovery.triggered && (
+          {recovery.triggered && !recoveryDismissedToday && (
             <GButton size="sm" onClick={() => setShowRecovery(true)}>
               <LifeBuoy size={14} /> Recovery plan
             </GButton>
@@ -91,6 +99,41 @@ export function CommandBrief() {
         </div>
       </div>
 
+      {energy?.triggered && !energyPreviewDismissed && (
+        <section className="backup-actions-panel" aria-labelledby="low-energy-title">
+          <div>
+            <h3 className="sync-title" id="low-energy-title" style={{ margin: 0 }}>Lower-energy option</h3>
+            <div className="sub">
+              {energy.trigger}: <b>{energy.currentValue}/100</b>; suggestion threshold: <b>{energy.threshold}/100</b>.
+              AXOM is showing a smaller-work preview because this value is below the threshold.
+            </div>
+          </div>
+          <div className="sub"><b>Suggested adjustment:</b> {energy.adjustment} {energy.recommendation}</div>
+          <div className="sub"><b>Still unchanged:</b> {energy.unchanged.join(", ")}. Nothing was silently edited.</div>
+          {showEnergyCalculation && (
+            <div className="stack gap6" aria-label="Energy calculation">
+              <div className="sub">Baseline {readiness?.baseline}/100 + confirmed impacts {readiness?.totalImpact ?? 0} = estimated readiness {readiness?.estimatedReadiness}/100.</div>
+              {energy.contributions.length ? energy.contributions.map((contribution) => (
+                <div className="sub" key={`${contribution.label}-${contribution.value}`}>
+                  <b>{contribution.label} {contribution.value > 0 ? "+" : ""}{contribution.value}</b> · {contribution.explanation}
+                </div>
+              )) : <div className="sub">The trigger came from today’s self-reported energy; no additional negative factors were applied.</div>}
+              {(readiness?.possibleSignals.length ?? 0) > 0 && <div className="sub">Possible journal-language signals are excluded until you confirm them.</div>}
+            </div>
+          )}
+          <div className="row wrap gap8">
+            <GButton size="sm" variant="primary" onClick={() => document.querySelector<HTMLElement>(".brief-mvw")?.scrollIntoView({ behavior: "smooth", block: "center" })}>
+              Review adjusted plan
+            </GButton>
+            <GButton size="sm" onClick={() => setEnergyPreviewDismissed(true)}>Restore original plan</GButton>
+            <GButton size="sm" onClick={() => gotoJournalDay(s.activeDayKey)}>Update energy</GButton>
+            <GhostButton aria-expanded={showEnergyCalculation} onClick={() => setShowEnergyCalculation((shown) => !shown)}>
+              {showEnergyCalculation ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Show calculation
+            </GhostButton>
+          </div>
+        </section>
+      )}
+
       <div className="brief-body">
         <div className="brief-move">
           <div className="brief-kicker">Next best move</div>
@@ -100,7 +143,7 @@ export function CommandBrief() {
             {brief.move.link.context ? ` · ${brief.move.link.context}` : ""}
             {brief.move.resources.length > 0 ? ` · ${brief.move.resources.join(", ")}` : ""}
           </div>
-          <div className="brief-why">
+          <div className="brief-why" data-tour="recommendation-provenance">
             <b>Why this now:</b> {brief.move.reason}
           </div>
           <div className="brief-why dim">

@@ -128,16 +128,11 @@ test("onboarding → import → block → repair → reload retains the full que
 });
 
 async function completeOnboarding(page: Page): Promise<void> {
-  await page.getByPlaceholder("Your name").fill("AXOM E2E");
-  await page.getByRole("button", { name: /Start setup/ }).click();
-  await page.getByRole("button", { name: /^Continue/ }).click();
-  await page.getByRole("button", { name: /^Continue/ }).click();
-  await page.getByRole("button", { name: /^Continue/ }).click();
-  await page.getByRole("button", { name: /Enter dashboard/ }).click();
-  await page.locator("button.tour-skip").click();
-  const later = page.getByRole("button", { name: "Maybe later" });
-  await later.waitFor({ state: "visible", timeout: 15_000 });
-  await later.click();
+  await page.getByLabel("Display name (optional)").fill("AXOM E2E");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Finish", exact: true }).click();
 }
 
 async function readPersistedWorkspace(page: Page) {

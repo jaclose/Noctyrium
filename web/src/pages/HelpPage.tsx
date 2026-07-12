@@ -7,6 +7,7 @@ import {
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader } from "../components/ui/primitives";
 import { Modal } from "../components/ui/Modal";
+import { clearTourProgress } from "../lib/onboardingProgress";
 
 const BUG_EMAIL = "jdabbagh@sgu.edu";
 
@@ -106,7 +107,7 @@ const FEATURE_GUIDES: GuideEntry[] = [
     icon: Database,
     name: "Local backup and exports",
     status: "Ready to test",
-    lives: "Settings / Account & Sync plus log pages",
+    lives: "Settings / Data and Backup plus log pages",
     start: "Use JSON backup for the whole app; use .xlsx exports for Pre-Med and Activity History.",
     prerequisite: "Exports stay local in the browser.",
     route: "activity",
@@ -131,10 +132,10 @@ export function HelpPage() {
     <>
       <GlassCard pad className="help-card">
         <PanelHeader title="Help" sub="A guided tour, a written field guide, the Anki import flow, and a direct line for feedback"
-          action={<GButton size="sm" variant="primary" onClick={() => { s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
+          action={<GButton size="sm" variant="primary" onClick={() => { clearTourProgress(); s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
             <PlayCircle size={15} /> Replay guided tour
           </GButton>} />
-        <div className="sub" style={{ marginTop: 2 }}>Replaying the tour ends with the promise again. Your data is never erased.</div>
+        <div className="sub" style={{ marginTop: 2 }}>The optional seven-step tour can be skipped at any time. Replaying it never changes your data.</div>
       </GlassCard>
 
       <GlassCard pad>

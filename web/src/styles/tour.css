@@ -19,6 +19,7 @@
 
 .tour-tip {
   position: fixed; z-index: 320; width: 340px; max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain;
   padding: 16px 18px; border-radius: 18px;
   background: linear-gradient(150deg, rgba(22, 30, 48, 0.98), rgba(10, 15, 27, 0.99));
   border: 1px solid rgba(200,169,106, 0.28);
@@ -46,7 +47,10 @@
 .tour-progress { height: 3px; border-radius: 3px; background: rgba(255,255,255,0.08); margin-top: 12px; overflow: hidden; }
 .tour-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); border-radius: 3px; transition: width .3s ease; }
 
-@media (prefers-reduced-motion: reduce) { .tour-ring { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tour-haze, .tour-ring, .tour-tip { animation: none; }
+  .tour-panel, .tour-ring, .tour-progress span { transition: none; }
+}
 
 /* ============================ Promise cutscene ============================ */
 .promise-scrim {
@@ -186,12 +190,15 @@
     max-width: none;
     padding: 14px;
     border-radius: 16px;
+    max-height: calc(100dvh - 24px);
   }
   .tour-tip.centered {
     left: 50% !important;
     right: auto;
     width: calc(100vw - 24px);
   }
+  .tour-skip, .tour-tip-actions .gbtn { min-height: 44px; }
+  .tour-tip-actions .gbtn { padding-inline: 12px; }
   .promise-scrim {
     padding: 12px;
     padding:

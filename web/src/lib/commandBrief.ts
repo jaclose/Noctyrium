@@ -110,13 +110,18 @@ export function deriveSignals(s: BriefStateSlice, now: Date = new Date()): Brief
     s.logs.filter((l) => l.academic !== false && (l.minutes > 0 || l.cards > 0)).map((l) => l.dayKey),
   );
   let daysSinceLastStudy = 0;
-  for (let back = 1; back <= 30; back++) {
-    if (activeDays.has(previousDayKey(today, back))) break;
-    daysSinceLastStudy = back;
-  }
   let missedDaysLast7 = 0;
-  for (let back = 1; back <= 7; back++) {
-    if (!activeDays.has(previousDayKey(today, back))) missedDaysLast7++;
+  // A workspace with no study history has no evidence of missed study days.
+  // Treating absence of history as 30 inactive days made first-use workspaces
+  // enter Recovery before the user had logged anything.
+  if (activeDays.size > 0) {
+    for (let back = 1; back <= 30; back++) {
+      if (activeDays.has(previousDayKey(today, back))) break;
+      daysSinceLastStudy = back;
+    }
+    for (let back = 1; back <= 7; back++) {
+      if (!activeDays.has(previousDayKey(today, back))) missedDaysLast7++;
+    }
   }
 
   const open = s.tasks.filter((t) => !t.done && !t.archived);

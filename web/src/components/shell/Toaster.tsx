@@ -17,25 +17,43 @@ export function Toaster() {
     <div className="toast-stack" role="region" aria-label="Notifications">
       {toasts.map((toast) => {
         const Icon = ICON[toast.tone];
+        const actions = toast.actions?.length
+          ? toast.actions
+          : toast.actionLabel && (toast.href || toast.onAction)
+            ? [{ label: toast.actionLabel, href: toast.href, onAction: toast.onAction }]
+            : [];
         return (
           <div className={`toast toast-${toast.tone}`} key={toast.id} role="status">
             <span className="toast-icon"><Icon size={17} /></span>
             <div className="toast-body">
               <b>{toast.title}</b>
               {toast.body && <span>{toast.body}</span>}
-              {toast.href && toast.actionLabel && (
-                <a className="toast-action" href={toast.href} onClick={() => dismiss(toast.id)}>
-                  {toast.actionLabel} <ArrowRight size={13} />
-                </a>
-              )}
-              {!toast.href && toast.onAction && toast.actionLabel && (
-                <button className="toast-action" type="button" onClick={() => { toast.onAction?.(); dismiss(toast.id); }}>
-                  {toast.actionLabel} <ArrowRight size={13} />
-                </button>
+              {actions.length > 0 && (
+                <div className="toast-actions" role="group" aria-label={`${toast.title} actions`}>
+                  {actions.map((action, index) => action.href ? (
+                    <a
+                      className="toast-action"
+                      href={action.href}
+                      key={`${action.label}-${index}`}
+                      onClick={() => { action.onAction?.(); dismiss(toast.id); }}
+                    >
+                      {action.label} <ArrowRight size={13} aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <button
+                      className="toast-action"
+                      type="button"
+                      key={`${action.label}-${index}`}
+                      onClick={() => { action.onAction?.(); dismiss(toast.id); }}
+                    >
+                      {action.label} <ArrowRight size={13} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            <button type="button" className="toast-close" onClick={() => dismiss(toast.id)} aria-label="Dismiss">
-              <X size={14} />
+            <button type="button" className="toast-close" onClick={() => dismiss(toast.id)} aria-label={`Dismiss ${toast.title}`}>
+              <X size={14} aria-hidden="true" />
             </button>
           </div>
         );

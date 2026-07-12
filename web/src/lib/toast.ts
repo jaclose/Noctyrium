@@ -5,6 +5,12 @@ import { create } from "zustand";
 
 export type ToastTone = "info" | "success" | "warn";
 
+export interface ToastAction {
+  label: string;
+  href?: string;
+  onAction?: () => void;
+}
+
 export interface Toast {
   id: string;
   title: string;
@@ -13,6 +19,8 @@ export interface Toast {
   href?: string;        // optional deep-link the action button follows
   actionLabel?: string;
   onAction?: () => void;
+  /** Multiple named actions. Legacy actionLabel/href/onAction remain supported. */
+  actions?: ToastAction[];
   duration: number;     // ms before auto-dismiss; 0 = sticky
   /** De-dupe key so the same alert isn't stacked repeatedly. */
   dedupe?: string;

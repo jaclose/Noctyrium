@@ -1,25 +1,46 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import {
-  Cloud, Download, FileJson, ImagePlus, RotateCcw, ShieldCheck,
-  SlidersHorizontal, Sparkles, Upload, UserCircle2, Check, ScrollText,
-  MessageCircle,
+  Bell, Database, Download, FileJson, ImagePlus, Palette, RotateCcw, ShieldCheck,
+  Sparkles, Upload, UserCircle2, Check, ScrollText, MessageCircle, Settings2,
 } from "lucide-react";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
 import { exportState, mergeStates, parseImport } from "../../lib/backup";
-import { AccountSyncPanel } from "./AccountSyncPanel";
 import { AiSettingsPanel } from "./AiSettingsPanel";
 import { DataHealthPanel } from "./DataHealthPanel";
+import { RecoveryStatusCard } from "./RecoveryStatusCard";
 import { PromiseCutscene } from "./PromiseCutscene";
 import { FOCUS_OPTIONS, focusOption, normalizedFocusIds } from "../../lib/experience";
 import { EDUCATION_TRACKS, resolveTrack } from "../../lib/tracks";
 import { prettyDate } from "../../lib/scoring";
-import type { EducationTrackId, ExperienceFocusId } from "../../lib/types";
+import type { DashboardWidgetId, EducationTrackId, ExperienceFocusId } from "../../lib/types";
 import { HardDrive } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { DEFAULT_DASHBOARD_WIDGETS, SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
+import { lastBackupAt } from "../../lib/backup";
+import { listLocalBackups } from "../../lib/localBackup";
+import { restoreLocalWorkspaceBackup } from "../../lib/storageRecovery";
+import { runStorageMigrations } from "../../lib/storageMigrations";
+import { requestOnboardingRerun } from "../../lib/uiStore";
 
-export type SettingsTab = "general" | "personalization" | "ai" | "backup" | "account";
+type SettingsSection = "profile" | "data" | "backup" | "personalization" | "advanced";
+/** Legacy names remain accepted so existing deep links keep opening safely. */
+export type SettingsTab = SettingsSection | "general" | "ai" | "account";
+
+const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeof UserCircle2 }> = [
+  { id: "profile", label: "Profile", icon: UserCircle2 },
+  { id: "data", label: "Data", icon: Database },
+  { id: "backup", label: "Backup", icon: FileJson },
+  { id: "personalization", label: "Personalization", icon: Palette },
+  { id: "advanced", label: "Advanced", icon: Settings2 },
+];
+
+function normalizeSettingsTab(tab: SettingsTab): SettingsSection {
+  if (tab === "general") return "profile";
+  if (tab === "ai" || tab === "account") return "advanced";
+  return tab;
+}
 
 export function SettingsModal({ onClose, initialTab = "general" }: { onClose: () => void; initialTab?: SettingsTab }) {
   const store = useStore();
@@ -28,32 +49,52 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   const mergeRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
-  const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const [tab, setTab] = useState<SettingsSection>(() => normalizeSettingsTab(initialTab));
+  const tabsId = useId();
+  const tabRefs = useRef<Partial<Record<SettingsSection, HTMLButtonElement | null>>>({});
   const [resigning, setResigning] = useState(false);
   const [viewingPromise, setViewingPromise] = useState(false);
   const promise = profile.promise;
-  const tabIntro: Record<SettingsTab, { title: string; body: string }> = {
-    general: {
-      title: "Profile & daily targets",
-      body: "Set the identity, avatar, and good-enough daily targets that shape the rest of AXOM on this device.",
+  const tabIntro: Record<SettingsSection, { title: string; body: string }> = {
+    profile: {
+      title: "Profile",
+      body: "Your identity, academic path, current focus, and good-enough daily targets.",
+    },
+    data: {
+      title: "Data on this device",
+      body: "See where your workspace lives, whether storage is healthy, and what AXOM has saved.",
+    },
+    backup: {
+      title: "Backup & recovery",
+      body: "Export a portable copy, restore safely, and review automatic local recovery snapshots.",
     },
     personalization: {
       title: "Personalization",
-      body: "Choose the academic lanes you want AXOM to prioritize in the dashboard, suggestions, and sidebar.",
+      body: "Choose theme, dashboard visibility, study lanes, and device-level preferences.",
     },
-    ai: {
-      title: "AI providers",
-      body: "Local-first AI through Ollama (free, no key), optional cloud later via a secure proxy, or a labeled demo mode. Off by default.",
-    },
-    backup: {
-      title: "Backup & restore",
-      body: "Your work autosaves locally. Backups are your portable safety copy before browsers, devices, or domains change.",
-    },
-    account: {
-      title: "Account vault preview",
-      body: "A friendlier account system is being designed around local-first storage, profile initialization, and recoverable cloud snapshots.",
+    advanced: {
+      title: "Advanced",
+      body: "Technical versions, diagnostics, optional provider tools, and destructive reset controls.",
     },
   };
+  const localBackups = listLocalBackups();
+  const exportedAt = lastBackupAt();
+  const track = resolveTrack(profile.educationTrack);
+  const focus = focusOption(profile.activeFocusId);
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, section: SettingsSection) {
+    const index = SETTINGS_SECTIONS.findIndex((item) => item.id === section);
+    let next: number;
+    if (event.key === "ArrowRight") next = (index + 1) % SETTINGS_SECTIONS.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + SETTINGS_SECTIONS.length) % SETTINGS_SECTIONS.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = SETTINGS_SECTIONS.length - 1;
+    else return;
+    event.preventDefault();
+    const nextSection = SETTINGS_SECTIONS[next].id;
+    setTab(nextSection);
+    tabRefs.current[nextSection]?.focus();
+  }
 
   function doImport(file: File, mode: "replace" | "merge") {
     const reader = new FileReader();
@@ -102,22 +143,27 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       onClose={onClose}
       footer={<GButton variant="primary" onClick={onClose}>Done</GButton>}
     >
-      <div className="filter-bar" style={{ marginBottom: 4 }}>
-        <button className={`filter-pill ${tab === "general" ? "on" : ""}`} onClick={() => setTab("general")}>
-          <SlidersHorizontal size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Profile
-        </button>
-        <button className={`filter-pill ${tab === "personalization" ? "on" : ""}`} onClick={() => setTab("personalization")}>
-          <Sparkles size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Personalization
-        </button>
-        <button className={`filter-pill ${tab === "ai" ? "on" : ""}`} onClick={() => setTab("ai")}>
-          <Sparkles size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> AI
-        </button>
-        <button className={`filter-pill ${tab === "backup" ? "on" : ""}`} onClick={() => setTab("backup")}>
-          <FileJson size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Backup &amp; Restore
-        </button>
-        <button className={`filter-pill ${tab === "account" ? "on" : ""}`} onClick={() => setTab("account")}>
-          <UserCircle2 size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> Account &amp; Sync
-        </button>
+      <div className="filter-bar" style={{ marginBottom: 4 }} role="tablist" aria-label="Settings sections">
+        {SETTINGS_SECTIONS.map(({ id, label, icon: Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              ref={(node) => { tabRefs.current[id] = node; }}
+              id={`${tabsId}-tab-${id}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={active ? `${tabsId}-panel-${id}` : undefined}
+              tabIndex={active ? 0 : -1}
+              className={`filter-pill ${active ? "on" : ""}`}
+              onClick={() => setTab(id)}
+              onKeyDown={(event) => onTabKeyDown(event, id)}
+            >
+              <Icon size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> {label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="settings-intro">
@@ -125,8 +171,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
         <span>{tabIntro[tab].body}</span>
       </div>
 
-      {tab === "general" && (
-        <>
+      {tab === "profile" && (
+        <section role="tabpanel" id={`${tabsId}-panel-profile`} aria-labelledby={`${tabsId}-tab-profile`}>
           <div className="settings-profile-card">
             <span className="avatar" style={{ width: 52, height: 52 }}>
               {profile.avatarDataUrl
@@ -135,7 +181,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             </span>
             <div className="grow">
               <div className="sync-title">{profile.name || "AXOM"}</div>
-              <div className="sub">Local profile · {profile.userId}</div>
+              <div className="sub">Stored in this device’s AXOM workspace</div>
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" onClick={() => avatarRef.current?.click()}>
@@ -148,9 +194,11 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
           <Field label="Display name" value={profile.name}
             onChange={(e) => store.updateProfile({ name: e.target.value })} />
-          <Field label="Local user ID" value={profile.userId} readOnly />
-          <Field label="Build label" value={profile.versionLabel} readOnly />
-          <Field label="Tagline" value={profile.tagline}
+          <div className="settings-target-grid">
+            <Field label="Academic path" value={track.label} readOnly />
+            <Field label="Current term / exam focus" value={focus?.label ?? "Choose in Personalization"} readOnly />
+          </div>
+          <Field label="Optional goal" value={profile.tagline}
             onChange={(e) => store.updateProfile({ tagline: e.target.value })} />
 
           <div className="settings-target-grid">
@@ -162,8 +210,6 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               onChange={(e) => store.updateProfile({ journalReviewTime: e.target.value || "20:00" })} />
           </div>
           <div className="sub">Targets are a “good enough” line to protect against overload — not a ceiling to grind past.</div>
-
-          <ThemeToggle />
 
           <div className="backup-actions-panel" style={{ marginTop: 14 }}>
             <div>
@@ -179,63 +225,60 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               </GButton>
             </div>
           </div>
-        </>
+        </section>
       )}
 
-      {tab === "personalization" && <PersonalizationPanel />}
-
-      {tab === "ai" && <AiSettingsPanel />}
+      {tab === "data" && (
+        <section role="tabpanel" id={`${tabsId}-panel-data`} aria-labelledby={`${tabsId}-tab-data`} className="backup-center">
+          <div className="backup-actions-panel premium-panel">
+            <div>
+              <div className="sync-title">Local-first workspace</div>
+              <div className="sub">
+                Your AXOM workspace is stored on this device. It is not automatically synced to an account or uploaded to the cloud.
+                Changes save locally as you work.
+              </div>
+            </div>
+            <Tag tone="green"><ShieldCheck size={12} /> On this device</Tag>
+          </div>
+          <DataHealthPanel />
+        </section>
+      )}
 
       {tab === "backup" && (
-        <div className="backup-center">
+        <section role="tabpanel" id={`${tabsId}-panel-backup`} aria-labelledby={`${tabsId}-tab-backup`} className="backup-center">
           <div className="sub" style={{ marginBottom: 4 }}>
-            AXOM saves your work on this device automatically. Backups give you an extra copy you can keep, move, or restore later.
+            Automatic local recovery snapshots help protect updates and migrations. Export a backup to keep a portable copy.
           </div>
-          <div className="backup-explainer">
-            <div className="backup-explainer-card">
-              <ShieldCheck size={17} />
-              <div>
-                <b>Automatic saving</b>
-                <span>Your progress is saved on this device while you work.</span>
-              </div>
-            </div>
-            <div className="backup-explainer-card">
-              <Download size={17} />
-              <div>
-                <b>Download backup</b>
-                <span>Save a personal backup file with your profile, courses, tasks, logs, journal, resources, and settings.</span>
-              </div>
-            </div>
-            <div className="backup-explainer-card">
-              <Upload size={17} />
-              <div>
-                <b>Restore backup</b>
-                <span>Bring your AXOM data back from a saved backup file.</span>
-              </div>
-            </div>
-            <div className="backup-explainer-card">
-              <Cloud size={17} />
-              <div>
-                <b>Cloud copy</b>
-                <span>Optional Alpha cloud saving lets you move progress between devices when enabled.</span>
-              </div>
-            </div>
-          </div>
+
+          <RecoveryStatusCard
+            onExport={exportBackup}
+            onChoosePortableRestore={() => fileRef.current?.click()}
+            onRetry={() => runStorageMigrations()}
+            onRestoreAutomatic={async (key) => {
+              if (!confirm("Restore this verified automatic snapshot? This replaces the current device workspace with the snapshot. Export the current workspace first if you made changes after the snapshot; the snapshot itself is retained.")) {
+                throw new Error("Restore cancelled. No data changed.");
+              }
+              await restoreLocalWorkspaceBackup(key);
+              setMsg("Safety snapshot restored. Retry startup to finish recovery.");
+              return true;
+            }}
+            onResolved={() => setMsg("Storage update completed successfully.")}
+          />
 
           <div className="backup-actions-panel">
             <div>
-              <div className="sync-title">Your backup file</div>
-              <div className="sub">Download a backup before switching devices, browsers, or domains.</div>
+              <div className="sync-title">Portable backup file</div>
+              <div className="sub">Export a copy you control, or choose a saved AXOM JSON file to restore or merge.</div>
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" variant="primary" onClick={exportBackup}>
-                <Download size={15} /> Download backup
+                <Download size={15} /> Export backup
               </GButton>
               <GButton size="sm" onClick={() => fileRef.current?.click()}>
-                <Upload size={15} /> Restore (replace)
+                <Upload size={15} /> Import / restore
               </GButton>
               <GButton size="sm" onClick={() => mergeRef.current?.click()}>
-                <Upload size={15} /> Merge import
+                <Upload size={15} /> Merge backup
               </GButton>
               <input ref={fileRef} type="file" accept="application/json,.json" hidden
                 onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0], "replace")} />
@@ -244,22 +287,74 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             </div>
             <div className="backup-note">
               <ShieldCheck size={15} />
-              <span>Restore replaces this device's data (asks first). Merge combines records by id — newer wins, nothing is deleted.</span>
+              <span>Replace asks for confirmation. Merge combines records by ID; newer records win and nothing is deleted.</span>
             </div>
           </div>
 
           <div className="backup-actions-panel">
-            <div>
-              <div className="sync-title">Local data health</div>
-              <div className="sub">Where your data lives right now and how safe it is.</div>
+            <div className="sync-title">Backup status</div>
+            <div className="data-health-grid">
+              <div className="data-health-cell"><b>{localBackups.length}</b><span className="sub">Automatic snapshots</span></div>
+              <div className="data-health-cell"><b>{localBackups[0] ? formatSettingsDate(localBackups[0].savedAt) : "None yet"}</b><span className="sub">Latest local snapshot</span></div>
+              <div className="data-health-cell"><b>{exportedAt ? formatSettingsDate(exportedAt) : "None yet"}</b><span className="sub">Last exported</span></div>
+              <div className="data-health-cell"><b>Checked on import</b><span className="sub">Portable-file verification</span></div>
             </div>
-            <DataHealthPanel />
+            <details>
+              <summary>How backups work</summary>
+              <div className="sub" style={{ marginTop: 8 }}>
+                The live workspace stays in this browser’s local vault. Automatic snapshots are local safety copies made before storage migrations.
+                An exported JSON file is the portable copy you can keep elsewhere. AXOM currently does not retain a separate restore-history log.
+              </div>
+            </details>
+          </div>
+
+          {msg && <div className="backup-status" role="status">{msg}</div>}
+        </section>
+      )}
+
+      {tab === "personalization" && (
+        <section role="tabpanel" id={`${tabsId}-panel-personalization`} aria-labelledby={`${tabsId}-tab-personalization`} className="backup-center">
+          <div className="backup-actions-panel">
+            <div><div className="sync-title">Theme</div><div className="sub">Light, dark, or the current device setting.</div></div>
+            <ThemeToggle />
+          </div>
+          <DashboardVisibilitySettings />
+          <DevicePreferencePanel />
+          <PersonalizationPanel />
+        </section>
+      )}
+
+      {tab === "advanced" && (
+        <section role="tabpanel" id={`${tabsId}-panel-advanced`} aria-labelledby={`${tabsId}-tab-advanced`} className="backup-center">
+          <div className="backup-actions-panel">
+            <div className="sync-title">Technical details</div>
+            <div className="settings-target-grid">
+              <Field label="Schema version" value={`v${store.schemaVersion ?? SCHEMA_VERSION}`} readOnly />
+              <Field label="Build version" value={APP_BUILD_LABEL} readOnly />
+              <Field label="Local workspace ID" value={profile.userId} readOnly />
+            </div>
+          </div>
+
+          <details className="backup-actions-panel">
+            <summary>AI and provider settings (optional)</summary>
+            <div className="sub" style={{ margin: "8px 0 12px" }}>Providers are optional. AXOM’s local calculations, backup, onboarding, and core study tools do not require AI.</div>
+            <AiSettingsPanel />
+          </details>
+
+          <div className="backup-actions-panel">
+            <div>
+              <div className="sync-title">Community and beta feedback</div>
+              <div className="sub">Ask questions or report a rough edge. This does not sync or upload your workspace.</div>
+            </div>
+            <a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
+              <MessageCircle size={15} /> AXOM Discord Channel
+            </a>
           </div>
 
           <div className="backup-actions-panel danger-zone">
             <div>
               <div className="sync-title">Danger zone</div>
-              <div className="sub">Reset is only for starting over or testing the Alpha seed state.</div>
+              <div className="sub">Reset is separated here because it replaces the current local workspace with starter data.</div>
             </div>
             <GButton size="sm" variant="danger"
               onClick={() => {
@@ -271,30 +366,81 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               <RotateCcw size={15} /> Reset to starter data
             </GButton>
           </div>
-
-          {msg && <div className="backup-status">{msg}</div>}
-        </div>
-      )}
-
-      {tab === "account" && (
-        <>
-          <AccountSyncPanel />
-          <div className="backup-actions-panel" style={{ marginTop: 14 }}>
-            <div>
-              <div className="sync-title">Community and beta feedback</div>
-              <div className="sub">Ask questions, report rough edges, and follow pre-beta progress without leaving the settings flow.</div>
-            </div>
-            <a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-              <MessageCircle size={15} /> AXOM Discord Channel
-            </a>
-          </div>
-        </>
+          {msg && <div className="backup-status" role="status">{msg}</div>}
+        </section>
       )}
 
       {resigning && <PromiseCutscene onDone={() => setResigning(false)} />}
       {viewingPromise && promise && <PromiseSheet onClose={() => setViewingPromise(false)} />}
     </Modal>
   );
+}
+
+const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
+  winDay: "Win the day",
+  todayScore: "Today’s score",
+  examCountdown: "Exam countdown",
+  pomodoro: "Pomodoro timer",
+  weekly: "Weekly overview",
+  suggested: "Suggested moves",
+  aiActions: "AI actions",
+  schedule: "Schedule",
+  termMap: "Term map",
+  localData: "Local data",
+  latestStandup: "Latest standup",
+  productivityTrend: "Productivity trend",
+  premedHours: "Pre-med hours",
+  resourceFocus: "Resource focus",
+  boardBlueprint: "Blueprint pulse",
+};
+
+function DashboardVisibilitySettings() {
+  const profile = useStore((state) => state.profile);
+  const updateProfile = useStore((state) => state.updateProfile);
+  const hidden = new Set(profile.hiddenDashboardWidgets ?? []);
+  function setVisible(id: DashboardWidgetId, visible: boolean) {
+    const next = new Set(hidden);
+    if (visible) next.delete(id);
+    else next.add(id);
+    updateProfile({ hiddenDashboardWidgets: [...next] });
+  }
+  return (
+    <details className="backup-actions-panel">
+      <summary>Dashboard widgets</summary>
+      <div className="sub" style={{ margin: "8px 0" }}>Choose what appears on the dashboard. This changes presentation only.</div>
+      <div className="settings-widget-grid">
+        {DEFAULT_DASHBOARD_WIDGETS.map((id) => (
+          <label className="early-feature-row" key={id}>
+            <input type="checkbox" checked={!hidden.has(id)} onChange={(event) => setVisible(id, event.target.checked)} />
+            <span>{DASHBOARD_WIDGET_LABELS[id]}</span>
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function DevicePreferencePanel() {
+  const [permission, setPermission] = useState(() => typeof Notification === "undefined" ? "unavailable" : Notification.permission);
+  const reducedMotion = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  async function requestNotifications() {
+    if (typeof Notification === "undefined") return;
+    setPermission(await Notification.requestPermission());
+  }
+  return (
+    <div className="backup-actions-panel">
+      <div>
+        <div className="sync-title"><Bell size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Device preferences</div>
+        <div className="sub">Reduced motion: <b>{reducedMotion ? "On" : "Off"}</b> (follows this device). Focus-timer notifications: <b>{permission}</b>.</div>
+      </div>
+      {permission === "default" && <GButton size="sm" onClick={requestNotifications}>Enable focus-timer notifications</GButton>}
+    </div>
+  );
+}
+
+function formatSettingsDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleDateString([], { dateStyle: "medium" });
 }
 
 const PROMISE_LINES = [
@@ -394,7 +540,7 @@ function PersonalizationPanel() {
             visible resources, and study lanes. Switching it never deletes existing data.
           </div>
         </div>
-        <GButton size="sm" variant="primary" onClick={() => store.updateProfile({ onboarded: false })}>
+        <GButton size="sm" variant="primary" onClick={requestOnboardingRerun}>
           <Sparkles size={15} /> Run setup again
         </GButton>
       </div>

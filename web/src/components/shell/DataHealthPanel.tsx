@@ -4,12 +4,9 @@
 // pre-migration snapshot recovery path. No silent states.
 // ===========================================================================
 import { useEffect, useState } from "react";
-import { Database, HardDrive, History, ShieldCheck, Wrench } from "lucide-react";
+import { Database, HardDrive, ShieldCheck, Wrench } from "lucide-react";
 import { useStore } from "../../lib/store";
-import { lastBackupAt } from "../../lib/backup";
-import { listLocalBackups } from "../../lib/localBackup";
 import { findOrphans } from "../../lib/orphanRepair";
-import { SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
 import { STORAGE_KEYS } from "../../lib/brand";
 import { GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
@@ -27,24 +24,10 @@ async function probeIndexedDb(): Promise<boolean> {
   });
 }
 
-function readPreMigrationSnapshot(): { fromVersion: number; savedAt: string } | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.preMigrationSnapshot);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { fromVersion?: number; savedAt?: string };
-    if (typeof parsed.fromVersion !== "number" || typeof parsed.savedAt !== "string") return null;
-    return { fromVersion: parsed.fromVersion, savedAt: parsed.savedAt };
-  } catch {
-    return null;
-  }
-}
-
 export function DataHealthPanel() {
   const s = useStore();
   const [idbOk, setIdbOk] = useState<boolean | null>(null);
-  const snapshot = readPreMigrationSnapshot();
-  const backup = lastBackupAt();
-  const localBackups = listLocalBackups();
+  const [storageUsed, setStorageUsed] = useState<string>("Checking…");
 
   useEffect(() => {
     let stopped = false;
@@ -52,16 +35,26 @@ export function DataHealthPanel() {
     return () => { stopped = true; };
   }, []);
 
-  const backupAgeDays = backup ? Math.floor((Date.now() - Date.parse(backup)) / 86_400_000) : null;
-  const questionCount = (s.questions ?? []).length;
+  useEffect(() => {
+    let stopped = false;
+    if (!navigator.storage?.estimate) {
+      setStorageUsed("Unavailable");
+      return;
+    }
+    navigator.storage.estimate()
+      .then(({ usage }) => {
+        if (!stopped) setStorageUsed(formatBytes(usage ?? 0));
+      })
+      .catch(() => { if (!stopped) setStorageUsed("Unavailable"); });
+    return () => { stopped = true; };
+  }, []);
+
   const orphans = findOrphans(s);
   const checksumCounts = new Map<string, number>();
   for (const document of s.documents ?? []) {
     if (document.checksum) checksumCounts.set(document.checksum, (checksumCounts.get(document.checksum) ?? 0) + 1);
   }
   const duplicateSources = [...checksumCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
-  // Nudge a backup when there's meaningful work and no recent export.
-  const backupReminder = questionCount >= 20 && (backupAgeDays === null || backupAgeDays > 7);
   const counts: Array<[string, number]> = [
     ["Tracker items", s.tracker.length],
     ["Tasks", s.tasks.length],
@@ -79,12 +72,8 @@ export function DataHealthPanel() {
         <Tag tone={idbOk === false ? "orange" : "green"}>
           <Database size={12} /> {idbOk === null ? "Checking storage…" : idbOk ? "IndexedDB vault active" : "localStorage fallback"}
         </Tag>
-        <Tag tone="neutral"><HardDrive size={12} /> Schema v{s.schemaVersion ?? SCHEMA_VERSION} / app v{SCHEMA_VERSION}</Tag>
-        <Tag tone={backupAgeDays === null ? "orange" : backupAgeDays > 14 ? "orange" : "green"}>
-          <ShieldCheck size={12} /> {backupAgeDays === null
-            ? "No backup exported yet"
-            : backupAgeDays === 0 ? "Backed up today" : `Last backup ${backupAgeDays}d ago`}
-        </Tag>
+        <Tag tone="neutral"><HardDrive size={12} /> Approx. storage used: {storageUsed}</Tag>
+        <Tag tone="green"><ShieldCheck size={12} /> Autosave active</Tag>
         <Tag tone={duplicateSources ? "orange" : "green"}>
           <FileFingerprintIcon /> {duplicateSources ? `${duplicateSources} duplicate source${duplicateSources === 1 ? "" : "s"}` : "Source checksums healthy"}
         </Tag>
@@ -106,31 +95,7 @@ export function DataHealthPanel() {
         ))}
       </div>
 
-      <div className="row" style={{ gap: 8 }}>
-        <History size={14} style={{ color: "var(--cyan)" }} />
-        <span className="sub">
-          {snapshot
-            ? `A migration marker from schema v${snapshot.fromVersion} (${snapshot.savedAt.slice(0, 10)}) is retained. The matching full safety copy is held in the automatic IndexedDB backups below.`
-            : "No pre-migration marker present (none needed yet). A full IndexedDB backup is written automatically before every schema upgrade."}
-        </span>
-      </div>
-      <div className="row" style={{ gap: 8 }}>
-        <History size={14} style={{ color: "var(--cyan)" }} />
-        <span className="sub">
-          {localBackups.length
-            ? `${localBackups.length} automatic local migration backup${localBackups.length === 1 ? "" : "s"} retained. Latest: ${localBackups[0].savedAt.slice(0, 10)}.`
-            : "No automatic local migration backups retained yet."}
-        </span>
-      </div>
-      {backupReminder && (
-        <div className="row" style={{ gap: 8 }}>
-          <ShieldCheck size={14} style={{ color: "var(--gold)" }} />
-          <span className="sub">
-            You have {questionCount} questions and {backupAgeDays === null ? "no backup yet" : `no backup in ${backupAgeDays} days`}.
-            Export a JSON backup from above to keep them safe.
-          </span>
-        </div>
-      )}
+      <div className="sub">Last saved: AXOM writes changes automatically; this build does not retain a user-visible write timestamp.</div>
 
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         <Wrench size={14} style={{ color: "var(--cyan)" }} />
@@ -147,9 +112,16 @@ export function DataHealthPanel() {
         )}
       </div>
 
-      <div className="sub">{APP_BUILD_LABEL} · updates never wipe local progress; migrations are additive and snapshot first.</div>
+      <div className="sub">Storage health and record counts are device-local. Backup status is shown once in the Backup section.</div>
     </div>
   );
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function FileFingerprintIcon() {

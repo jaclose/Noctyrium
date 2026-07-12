@@ -141,7 +141,7 @@ export function Sidebar({
         aria-hidden={hiddenOffscreen || undefined}
         tabIndex={-1}
       >
-        <button type="button" className="server-header" onClick={() => onOpenSettings("general")} title="Profile & settings">
+        <button type="button" className="server-header" onClick={() => onOpenSettings("profile")} title="Profile & settings">
           <AxomBrandLockup
             className="server-brand"
             layout="horizontal"
@@ -242,7 +242,7 @@ export function Sidebar({
             <MessageCircle size={17} /><span>AXOM Discord Channel</span>
           </a>
           <div className="user-panel">
-            <button type="button" className="user-id" onClick={() => onOpenSettings("general")} title="Profile & settings">
+            <button type="button" className="user-id" onClick={() => onOpenSettings("profile")} title="Profile & settings">
               <span className="avatar sm">
                 {profile.avatarDataUrl
                   ? <img src={profile.avatarDataUrl} alt="" />
@@ -255,10 +255,10 @@ export function Sidebar({
               </span>
             </button>
             <div className="user-actions">
-              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("account")} title="Account & Sync">
+              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("data")} title="Local data and backups" data-tour="data-safety-settings">
                 <UserCircle2 size={17} />
               </button>
-              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("general")} title="Settings">
+              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("profile")} title="Settings">
                 <Settings size={17} />
               </button>
             </div>

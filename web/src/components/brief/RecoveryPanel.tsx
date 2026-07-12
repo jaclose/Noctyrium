@@ -4,7 +4,7 @@
 // 24h restart / 72h stabilization plans. Accept / edit / defer / reset.
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { Play } from "lucide-react";
+import { ChevronDown, ChevronUp, Play } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
   BUCKET_LABEL, buildRecoveryPlan,
@@ -31,12 +31,23 @@ export function RecoveryPanel({
 }) {
   const s = useStore();
   const activePlan = useMemo(
-    () => (s.recoveryPlans ?? []).find((p) => p.status === "accepted" || p.status === "edited"),
-    [s.recoveryPlans],
+    () => (s.recoveryPlans ?? []).find((p) =>
+      (p.status === "accepted" || p.status === "edited")
+      && (p.dayKey ?? p.createdAt.slice(0, 10)) === s.activeDayKey),
+    [s.recoveryPlans, s.activeDayKey],
   );
   const [plan, setPlan] = useState<RecoveryPlan>(() =>
-    activePlan ?? buildRecoveryPlan({ tasks: s.tasks, tracker: s.tracker, signals, trigger, activeDayKey: s.activeDayKey }));
+    activePlan ?? buildRecoveryPlan({
+      tasks: s.tasks,
+      tracker: s.tracker,
+      signals,
+      trigger,
+      activeDayKey: s.activeDayKey,
+      logs: s.logs,
+      dailyTargetMinutes: s.profile.dailyMinuteTarget,
+    }));
   const [edited, setEdited] = useState(false);
+  const [showCalculation, setShowCalculation] = useState(false);
 
   function setBucket(itemId: string, bucket: RecoveryBucket) {
     setPlan((p) => ({ ...p, items: p.items.map((i) => (i.id === itemId ? { ...i, bucket } : i)) }));
@@ -48,15 +59,37 @@ export function RecoveryPanel({
     if (activePlan) s.saveRecoveryPlan({ ...next, updatedAt: new Date().toISOString() });
   }
   function accept() {
+    for (const existing of s.recoveryPlans ?? []) {
+      if (existing.id !== plan.id
+        && (existing.status === "accepted" || existing.status === "edited")
+        && (existing.dayKey ?? existing.createdAt.slice(0, 10)) === s.activeDayKey) {
+        s.updateRecoveryPlan(existing.id, { status: "dismissed" });
+      }
+    }
     s.saveRecoveryPlan({ ...plan, status: edited ? "edited" : "accepted", updatedAt: new Date().toISOString() });
     onClose();
   }
-  function defer() {
+  function keepPlan() {
+    onClose();
+  }
+  function dismissToday() {
     s.saveRecoveryPlan({ ...plan, status: "deferred", updatedAt: new Date().toISOString() });
     onClose();
   }
+  function restore() {
+    if (activePlan) s.updateRecoveryPlan(activePlan.id, { status: "dismissed" });
+    onClose();
+  }
   function reset() {
-    setPlan(buildRecoveryPlan({ tasks: s.tasks, tracker: s.tracker, signals, trigger, activeDayKey: s.activeDayKey }));
+    setPlan(buildRecoveryPlan({
+      tasks: s.tasks,
+      tracker: s.tracker,
+      signals,
+      trigger,
+      activeDayKey: s.activeDayKey,
+      logs: s.logs,
+      dailyTargetMinutes: s.profile.dailyMinuteTarget,
+    }));
     setEdited(false);
   }
   function startFirstStep() {
@@ -81,17 +114,46 @@ export function RecoveryPanel({
       onClose={onClose}
       footer={
         <>
-          <GhostButton onClick={reset}>Reset plan</GhostButton>
-          <GhostButton onClick={defer}>Not today</GhostButton>
-          <GButton onClick={accept}>{edited ? "Save edited plan" : "Accept plan"}</GButton>
-          <GButton variant="primary" onClick={startFirstStep}><Play size={14} /> Start the 25-min restart</GButton>
+          <GhostButton onClick={() => setShowCalculation((shown) => !shown)} aria-expanded={showCalculation}>
+            {showCalculation ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Show calculation
+          </GhostButton>
+          {activePlan && <GhostButton onClick={restore}>Restore original plan</GhostButton>}
+          <GhostButton onClick={keepPlan}>Keep plan</GhostButton>
+          <GhostButton onClick={dismissToday}>Dismiss for today</GhostButton>
+          {edited && <GhostButton onClick={reset}>Reset preview</GhostButton>}
+          <GButton onClick={accept}>{edited ? "Use edited reduced plan" : "Reduce load"}</GButton>
+          <GButton variant="primary" onClick={startFirstStep}><Play size={14} /> Reduce load &amp; start 25 min</GButton>
         </>
       }
     >
       <div className="stack" style={{ gap: 6 }}>
+        <Tag tone="neutral">Optional preview · your tasks have not changed</Tag>
         <div>{plan.situation}</div>
         <div className="sub">{plan.gapEstimate}</div>
       </div>
+
+      {showCalculation && plan.loadAssessment && (
+        <section className="backup-actions-panel" aria-label="Recovery calculation">
+          <div className="sync-title">Why AXOM suggested this</div>
+          <div className="sub">
+            Trigger severity: <b>{trigger.severity}</b> ({trigger.score} point{trigger.score === 1 ? "" : "s"}).
+            {trigger.components.length ? ` ${trigger.components.map((component) => `${component.label} +${component.points}`).join("; ")}.` : " No trigger components."}
+          </div>
+          <div className="data-health-grid">
+            <div className="data-health-cell"><b>{plan.loadAssessment.openTaskCount}</b><span className="sub">Open tasks</span></div>
+            <div className="data-health-cell"><b>{plan.loadAssessment.belowTargetItemCount}</b><span className="sub">Below-target items</span></div>
+            <div className="data-health-cell"><b>{plan.loadAssessment.activeItemCount}</b><span className="sub">Active items</span></div>
+            <div className="data-health-cell"><b>{plan.loadAssessment.configuredDailyTargetMinutes ?? "—"}m</b><span className="sub">Configured daily target</span></div>
+          </div>
+          <div className="sub">
+            Usual completed range: {plan.loadAssessment.usualCompletedMinutes
+              ? `${plan.loadAssessment.usualCompletedMinutes.low}–${plan.loadAssessment.usualCompletedMinutes.high} minutes across ${plan.loadAssessment.historyEvidenceDays} recent active days`
+              : `not enough history (${plan.loadAssessment.historyEvidenceDays} active day${plan.loadAssessment.historyEvidenceDays === 1 ? "" : "s"}; 3 required)`}.
+            Estimate assumptions: 30 minutes per open task and 35 minutes per below-target tracker item (first 30).
+          </div>
+          <div className="sub"><b>What stays unchanged:</b> no task is deleted, archived, rescheduled, or edited. Choosing Reduce load saves this triage preview only.</div>
+        </section>
+      )}
 
       <div className="stack gap6">
         <span className="field-label">Next 24 hours — restart</span>

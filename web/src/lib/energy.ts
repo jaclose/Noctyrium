@@ -68,6 +68,19 @@ interface JournalSignalRule {
 }
 
 const BASELINE_READINESS = 62;
+export const LOW_ENERGY_THRESHOLD = 40;
+
+export interface LowEnergyExplanation {
+  hasEvidence: boolean;
+  triggered: boolean;
+  currentValue: number | null;
+  trigger: "Self-reported energy" | "Estimated readiness" | null;
+  threshold: number;
+  contributions: Array<{ label: string; value: number; explanation: string }>;
+  adjustment: string;
+  unchanged: string[];
+  recommendation: string;
+}
 
 const JOURNAL_SIGNAL_RULES: JournalSignalRule[] = [
   {
@@ -214,6 +227,39 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
         ? "Possible signal detected; confirm before applying"
         : "No readiness factors logged yet",
     recommendation: recommendation(estimatedReadiness, contributions, possibleSignals),
+  };
+}
+
+/**
+ * Translate the canonical readiness result into an inspectable, optional
+ * low-energy suggestion. This never mutates a task, deadline, or day plan.
+ */
+export function explainLowEnergy(
+  readiness: ReadinessResult,
+  threshold = LOW_ENERGY_THRESHOLD,
+): LowEnergyExplanation {
+  const validThreshold = Number.isFinite(threshold) ? Math.max(0, Math.min(100, threshold)) : LOW_ENERGY_THRESHOLD;
+  const reported = readiness.selfReportedEnergy;
+  const hasReportedValue = Boolean(reported.source) && reported.label !== "Unlogged";
+  const hasConfirmedEvidence = readiness.contributions.some((item) => item.userConfirmed);
+  const hasEvidence = hasReportedValue || hasConfirmedEvidence;
+  const reportedLow = hasReportedValue && reported.score < validThreshold;
+  const estimatedLow = hasConfirmedEvidence && readiness.estimatedReadiness < validThreshold;
+  const trigger = reportedLow ? "Self-reported energy" : estimatedLow ? "Estimated readiness" : null;
+  return {
+    hasEvidence,
+    triggered: hasEvidence && Boolean(trigger),
+    currentValue: trigger === "Self-reported energy"
+      ? reported.score
+      : trigger === "Estimated readiness" ? readiness.estimatedReadiness : null,
+    trigger,
+    threshold: validThreshold,
+    contributions: readiness.contributions
+      .filter((item) => item.appliedDelta < 0)
+      .map((item) => ({ label: item.label, value: item.appliedDelta, explanation: item.explanation })),
+    adjustment: "Preview a smaller next block and one minimum viable win.",
+    unchanged: ["Tasks and deadlines", "Today’s saved plan", "Course and review data"],
+    recommendation: readiness.recommendation,
   };
 }
 

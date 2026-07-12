@@ -1,7 +1,7 @@
 {
   "app": "AXOM",
   "version": "0.0.1-prebeta",
-  "schemaVersion": 30,
+  "schemaVersion": 32,
   "channel": "pre-beta",
   "updatedAt": "2026-07-08T00:00:00.000Z",
   "notes": [

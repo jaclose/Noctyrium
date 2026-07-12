@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRecoveryPlan, detectRecoveryTriggers, estimateGap } from "./recovery";
+import { assessRecoveryLoad, buildRecoveryPlan, detectRecoveryTriggers, estimateGap } from "./recovery";
 import type { BriefSignals } from "./commandBrief";
 import type { Task, TrackerItem } from "./types";
 
@@ -35,6 +35,8 @@ describe("recovery trigger detection", () => {
     expect(result.severity).toBe("serious");
     expect(result.signals.join(" ")).toMatch(/4 days with no study/);
     expect(result.signals.join(" ")).toMatch(/overdue/);
+    expect(result.score).toBeGreaterThanOrEqual(4);
+    expect(result.components.map((component) => component.label)).toContain("Combined backlog");
   });
 
   it("a single mild signal is not enough — no hair-trigger alarms", () => {
@@ -91,5 +93,39 @@ describe("recovery plan generation", () => {
     const text = estimateGap(inputs());
     expect(text).toMatch(/\d+–\d+ hours/);
     expect(text).toMatch(/may not be realistic/i);
+  });
+
+  it("reports no outstanding work instead of inventing a minimum gap", () => {
+    const empty = { tasks: [], tracker: [], signals: signals(), activeDayKey: "2026-07-07" };
+    expect(estimateGap(empty)).toMatch(/no outstanding/i);
+    expect(assessRecoveryLoad(empty)).toMatchObject({
+      activeItemCount: 0,
+      estimatedMinutesLow: 0,
+      estimatedMinutesHigh: 0,
+    });
+  });
+
+  it("exposes canonical item counts, configured target, and usual completion range", () => {
+    const assessment = assessRecoveryLoad({
+      ...inputs(),
+      dailyTargetMinutes: 180,
+      logs: [
+        { id: "l1", dayKey: "2026-07-04", minutes: 60, cards: 0, type: "Study", ts: "2026-07-04T12:00:00Z" },
+        { id: "l2", dayKey: "2026-07-05", minutes: 90, cards: 0, type: "Study", ts: "2026-07-05T12:00:00Z" },
+        { id: "l3", dayKey: "2026-07-06", minutes: 120, cards: 0, type: "Study", ts: "2026-07-06T12:00:00Z" },
+      ],
+    });
+    expect(assessment).toMatchObject({
+      openTaskCount: 3,
+      belowTargetItemCount: 3,
+      activeItemCount: 6,
+      configuredDailyTargetMinutes: 180,
+      historyEvidenceDays: 3,
+      usualCompletedMinutes: { low: 60, high: 120 },
+    });
+  });
+
+  it("keeps a recovery preview scoped to its local study day", () => {
+    expect(buildRecoveryPlan(inputs()).dayKey).toBe("2026-07-07");
   });
 });

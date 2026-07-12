@@ -6,7 +6,7 @@ ship, add proposed ideas here as they come up, and be honest about status.
 Statuses: **in-progress** (partially built, gaps known) · **next** (agreed, not started) ·
 **proposed** (idea, not committed) · **blocked** (needs something first).
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Question Bank
 
@@ -40,7 +40,9 @@ Last updated: 2026-07-11
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
 | Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; the main index chunk still exceeds 500 kB. Route-level splitting proposed. |
 | Remaining React hook warnings (8, page-level) | in-progress | Pre-existing in large pages (Dashboard/Journal/Productivity/CourseTracker/GuidedTour/Onboarding); fix opportunistically. |
-| Cloud sync hardening (PIN auth, sessions) | blocked | Alpha-labeled; needs real auth review before production claims. |
+| Cloud sync hardening (PIN auth, sessions) | blocked | No cloud/account claim is exposed in primary Settings. Retained experimental code needs real auth, consent, and security review before it can become a product surface. |
+| Restore-history audit trail | proposed | Settings accurately shows local snapshots and last portable export, but does not yet persist a separate restore-event history. |
+| Exact vault-write timestamp | proposed | Autosave is active, but the vault does not currently retain a user-visible timestamp for every successful write. |
 | AnkiConnect verified sync (dry-run preview, deck mapping) | next | Diagnostics exist; not machine-verified. |
 | Native/Tauri shell refresh | proposed | Metadata rebranded; end-to-end native vault behavior unverified. |
 | Calendar integration (day plans → calendar blocks) | proposed | Standard formats (ICS) first. |
@@ -55,11 +57,17 @@ Last updated: 2026-07-11
 | Application Checker maturation | proposed | Shell exists; no data gathering yet. |
 | Leaderboards | proposed | Deliberately deprioritized — conflicts with the calm tone. |
 | DAT / CASPer lanes | proposed | Light surfaces only. |
-| Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, 44px mobile nav targets, disclosure relationships for sidebar folders, Question Bank roving tabs/labelled panels, and modal/drawer/tour reduced motion are verified. A broader contrast/screen-reader audit remains. |
-| In-app privacy/data inventory page | next | Documented in ASK report; not in-app yet. |
+| Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, Settings/Question Bank roving tabs, sidebar disclosures, onboarding/tour dialogs, missing-target fallback, and reduced-motion tour behavior are covered. A broader contrast/screen-reader audit remains. |
+| AXOM-specific reduced-motion override | proposed | Current UI truthfully follows the operating-system setting; a product-level override needs shared runtime and CSS plumbing. |
+| Scheduled-hours workload model | proposed | Recovery shows configured daily target, item counts, an estimated outstanding range, and recent completion history. A true calendar-backed planned-hours value does not exist yet. |
 
 ## Recently shipped (move log)
 
+- 2026-07-12 — Wave 4 clarity and recovery: five-section Settings IA, accurate
+  local-first/backup language, persistent migration-recovery card, exact-date
+  journal reminder actions, deterministic energy/load provenance and overrides,
+  safe four-step onboarding, and a keyboard/mobile-safe seven-step guide → moved
+  to FEATURES.md.
 - 2026-07-11 — Wave 3 Question Bank entry experience: focused first use,
   prioritized returning command center, deterministic recent sets, explicit
   Current mastery vs Attempt accuracy labels, canonical mapping-review counts and

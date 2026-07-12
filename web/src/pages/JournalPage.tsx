@@ -28,11 +28,17 @@ export function JournalPage() {
   // The dashboard can route here asking to remediate a specific day's standup.
   useEffect(() => {
     if (!journalDay) return;
+    const existing = s.journal.find((entry) => {
+      const parsed = new Date(entry.date);
+      return Number.isNaN(parsed.getTime()) ? entry.date.slice(0, 10) === journalDay : isoDate(parsed) === journalDay;
+    });
     setForDay(journalDay);
     setDraft(null);
-    setEditing("new");
+    // Energy/recovery actions update an existing same-day standup rather than
+    // creating a duplicate. A genuinely missed day still opens a new entry.
+    setEditing(existing ?? "new");
     clearJournalDay();
-  }, [journalDay, clearJournalDay]);
+  }, [journalDay, clearJournalDay, s.journal]);
 
   function openForDay(key: string | null) {
     setForDay(key);

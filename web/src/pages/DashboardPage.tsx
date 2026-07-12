@@ -140,7 +140,7 @@ export function DashboardPage() {
         readinessScore={readiness.estimatedReadiness}
       />
 
-      <CommandBrief />
+      <CommandBrief readiness={readiness} />
 
       <StandupPrompt />
 
@@ -850,8 +850,8 @@ function TermMapWidget({
 
 function LocalDataWidget({ state }: { state: ReturnType<typeof useStore.getState> }) {
   return (
-    <GlassCard pad className="local-data-card">
-      <PanelHeader title="Local Data & Package" sub="Your online edits persist in this browser; exported backups move between installs"
+    <GlassCard pad className="local-data-card" data-tour="data-safety-settings">
+      <PanelHeader title="Local data & backup" sub="Your workspace stays on this device; exported backups are portable copies"
         action={<GButton size="sm" onClick={() => exportState(state)}><Download size={14} /> Export backup</GButton>} />
       <div className="alpha-notice">
         <span className="alpha-pill">ALPHA</span>
@@ -875,15 +875,15 @@ function LocalDataWidget({ state }: { state: ReturnType<typeof useStore.getState
         <div className="local-data-item">
           <PackageCheck size={17} />
           <div>
-            <b>Future login path</b>
-            <span>Settings → Account & Sync can initialize a profile, save cloud snapshots, and restore backups.</span>
+          <b>Recovery and portable copies</b>
+            <span>Settings → Backup shows automatic local recovery snapshots and exported backup controls.</span>
           </div>
         </div>
         <a className="local-data-item" href={HOSTED_ALPHA_URL} target="_blank" rel="noreferrer">
           <ExternalLink size={17} />
           <div>
             <b>Hosted Alpha</b>
-            <span>Open the Vercel instance for website embedding, API routes, and cloud-sync testing.</span>
+            <span>Open the hosted preview. It uses its own browser-local workspace unless you import a portable backup.</span>
           </div>
         </a>
       </div>

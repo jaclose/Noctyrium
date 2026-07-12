@@ -15,6 +15,7 @@ import { useStore } from "./lib/store";
 import { useUi } from "./lib/uiStore";
 import { pushToast } from "./lib/toast";
 import type { StorageMigrationResult } from "./lib/storageMigrations";
+import { readOnboardingDraftMode, type OnboardingDestination, type OnboardingMode } from "./lib/onboardingProgress";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -81,8 +82,11 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const [route, setRoute] = useState<string>(() => location.hash.replace("#", "") || "dashboard");
   const [drawer, setDrawer] = useState(false);
   const [settings, setSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("general");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [refreshing, setRefreshing] = useState(false);
+  const [setupMode, setSetupMode] = useState<OnboardingMode | null>(() =>
+    readOnboardingDraftMode() === "rerun" ? "rerun" : null,
+  );
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const onboarded = useStore((s) => s.profile.onboarded);
   const tourDone = useStore((s) => s.profile.tourDone);
@@ -146,7 +150,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     };
   }, []);
 
-  // Pages can request the Settings modal on a specific tab (e.g. "ai").
+  // Pages can request a Settings section; legacy names such as "ai" remain aliases.
   const settingsRequest = useUi((u) => u.settingsRequest);
   useEffect(() => {
     if (!settingsRequest) return;
@@ -154,6 +158,14 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     setSettings(true);
     useUi.getState().clearSettingsRequest();
   }, [settingsRequest]);
+
+  const onboardingRequested = useUi((u) => u.onboardingRequested);
+  useEffect(() => {
+    if (!onboardingRequested) return;
+    setSettings(false);
+    setSetupMode("rerun");
+    useUi.getState().clearOnboardingRequest();
+  }, [onboardingRequested]);
 
   if (route === "design-preview" && DevDesignPreview) {
     return (
@@ -172,6 +184,11 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     setRoute(id);
   }
 
+  function completeOnboarding(destination: OnboardingDestination) {
+    setSetupMode(null);
+    go(destination);
+  }
+
   // The guided tour navigates through React state directly (deterministic, same
   // render cycle) and updates the URL with replaceState so it never creates
   // Back-button history traps or depends on the async hashchange event.
@@ -188,7 +205,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const nav = NAV.find((n) => n.id === route) ?? NAV[0];
   const Page = PAGES[route] ?? DashboardPage;
 
-  if (!onboarded) {
+  if (!onboarded || setupMode) {
     return (
       <div className="app-root">
         <div className="backdrop">
@@ -198,7 +215,11 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
         </div>
         <DailyRolloverWatcher />
         <UpdateAvailableWatcher />
-        <OnboardingWizard />
+        <OnboardingWizard
+          mode={setupMode ?? "first-run"}
+          onComplete={completeOnboarding}
+          onCancel={() => setSetupMode(null)}
+        />
         <Toaster />
       </div>
     );
@@ -216,7 +237,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
         <Sidebar
           active={route}
           onSelect={go}
-          onOpenSettings={(tab) => { setSettingsTab(tab ?? "general"); setSettings(true); }}
+          onOpenSettings={(tab) => { setSettingsTab(tab ?? "profile"); setSettings(true); }}
           collapsed={drawer}
           onClose={closeDrawer}
         />

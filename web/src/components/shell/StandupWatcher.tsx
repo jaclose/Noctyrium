@@ -1,38 +1,40 @@
 // Mounted once in the app shell. On load, if there are active days with no
-// standup, it raises the "Oh no — you missed your standup" toast (once per
-// calendar day, so it nudges daily until remediated without nagging on every
-// navigation). Renders nothing.
+// standup, it offers an optional, exact-day catch-up without repeating the same
+// target during the current calendar day. Renders nothing.
 import { useEffect } from "react";
 import { useStore } from "../../lib/store";
 import { missedStandupDays } from "../../lib/journal";
 import { pushToast } from "../../lib/toast";
-import { isoDate } from "../../lib/scoring";
-
-const ALERT_KEY = "noctyrium-missed-standup-alert";
+import { isoDate, prettyDate } from "../../lib/scoring";
+import { gotoJournalDay } from "../../lib/uiStore";
+import { journalReminderLedger } from "../../lib/journalReminder";
 
 export function StandupWatcher() {
   const journal = useStore((s) => s.journal);
   const logs = useStore((s) => s.logs);
   const dayPlans = useStore((s) => s.dayPlans);
+  const activeDayKey = useStore((s) => s.activeDayKey);
 
   useEffect(() => {
-    const missed = missedStandupDays({ journal, logs, dayPlans });
-    if (!missed.length) return;
-    const today = isoDate(new Date());
-    try {
-      if (localStorage.getItem(ALERT_KEY) === today) return;
-      localStorage.setItem(ALERT_KEY, today);
-    } catch { /* storage unavailable — still show once this session via dedupe */ }
+    const today = activeDayKey || isoDate(new Date());
+    const missed = missedStandupDays({ journal, logs, dayPlans }, today);
+    const target = journalReminderLedger.nextTarget(today, missed);
+    if (!target) return;
+    journalReminderLedger.markShown(today, target);
+    const dateLabel = prettyDate(`${target}T12:00:00`);
     pushToast({
-      title: "Oh no — you missed your standup",
-      body: `${missed.length} active day${missed.length === 1 ? "" : "s"} ${missed.length === 1 ? "is" : "are"} waiting to be remediated.`,
+      title: `Journal catch-up for ${dateLabel}`,
+      body: `You logged activity on ${dateLabel}, but there is no journal entry for that date. Catch-up records what you remember there, and it is optional.`,
       tone: "warn",
-      href: "#journal",
-      actionLabel: "Remediate now",
-      duration: 11000,
-      dedupe: "missed-standup",
+      duration: 0,
+      dedupe: `missed-standup:${today}:${target}`,
+      actions: [
+        { label: "Complete catch-up", onAction: () => gotoJournalDay(target) },
+        { label: "Skip", onAction: () => journalReminderLedger.skip(today, target) },
+        { label: "Do not remind me again today", onAction: () => journalReminderLedger.muteForDay(today) },
+      ],
     });
-  }, [journal, logs, dayPlans]);
+  }, [activeDayKey, journal, logs, dayPlans]);
 
   return null;
 }

@@ -15,6 +15,11 @@ interface UiState {
   settingsRequest: string | null;
   requestSettings: (tab: string) => void;
   clearSettingsRequest: () => void;
+  // Settings can request the non-destructive onboarding rerun without changing
+  // the persisted `profile.onboarded` completion flag.
+  onboardingRequested: boolean;
+  requestOnboarding: () => void;
+  clearOnboardingRequest: () => void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -27,7 +32,15 @@ export const useUi = create<UiState>((set) => ({
   settingsRequest: null,
   requestSettings: (tab) => set({ settingsRequest: tab }),
   clearSettingsRequest: () => set({ settingsRequest: null }),
+  onboardingRequested: false,
+  requestOnboarding: () => set({ onboardingRequested: true }),
+  clearOnboardingRequest: () => set({ onboardingRequested: false }),
 }));
+
+/** Open setup in rerun mode without making App mistake it for first launch. */
+export function requestOnboardingRerun() {
+  useUi.getState().requestOnboarding();
+}
 
 /** Navigate to the Course Tracker focused on a specific item. */
 export function gotoTrackerItem(id: string) {

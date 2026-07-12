@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateReadiness, inferJournalSignals } from "./energy";
+import { calculateReadiness, explainLowEnergy, inferJournalSignals, LOW_ENERGY_THRESHOLD } from "./energy";
 import type { EnergyFactor, JournalEntry } from "./types";
 
 const baseInput = {
@@ -106,5 +106,50 @@ describe("energy readiness engine", () => {
     });
     expect(result.selfReportedEnergy.score).toBe(82);
     expect(result.estimatedReadiness).toBeGreaterThan(62);
+  });
+
+  it("explains low self-reported energy even when the blended estimate stays above the threshold", () => {
+    const readiness = calculateReadiness({
+      ...baseInput,
+      journal: [{
+        id: "low", date: "2026-06-24T20:00:00", today: "Tired day.", tomorrow: "", blockers: "", energy: "Low", rating: "",
+      }],
+    });
+    const explanation = explainLowEnergy(readiness);
+    expect(readiness.estimatedReadiness).toBeGreaterThan(LOW_ENERGY_THRESHOLD);
+    expect(explanation).toMatchObject({
+      triggered: true,
+      trigger: "Self-reported energy",
+      currentValue: 35,
+      threshold: 40,
+    });
+    expect(explanation.unchanged).toContain("Tasks and deadlines");
+  });
+
+  it("explains confirmed factors when estimated readiness is below threshold", () => {
+    const explanation = explainLowEnergy(calculateReadiness({
+      ...baseInput,
+      factors: [factor({ label: "Severe sleep debt", category: "sleep", delta: -30 })],
+    }));
+    expect(explanation.triggered).toBe(true);
+    expect(explanation.trigger).toBe("Estimated readiness");
+    expect(explanation.contributions[0]).toMatchObject({ label: "Severe sleep debt", value: -30 });
+  });
+
+  it("does not recommend from an empty baseline or an unconfirmed text signal", () => {
+    expect(explainLowEnergy(calculateReadiness(baseInput))).toMatchObject({ hasEvidence: false, triggered: false });
+    const possibleOnly = calculateReadiness({
+      ...baseInput,
+      journal: [{
+        id: "possible", date: "2026-06-24T20:00:00", today: "No sleep at all.", tomorrow: "", blockers: "", energy: "", rating: "",
+      }],
+    });
+    expect(possibleOnly.possibleSignals.length).toBeGreaterThan(0);
+    expect(explainLowEnergy(possibleOnly)).toMatchObject({ hasEvidence: false, triggered: false });
+  });
+
+  it("does not trigger above the threshold when evidence is present", () => {
+    const readiness = calculateReadiness({ ...baseInput, factors: [factor({ label: "Movement", delta: 8 })] });
+    expect(explainLowEnergy(readiness)).toMatchObject({ hasEvidence: true, triggered: false });
   });
 });

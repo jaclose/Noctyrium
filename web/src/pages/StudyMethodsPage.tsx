@@ -21,7 +21,9 @@ export function StudyMethodsPage() {
   const examId = pickFocusExam(s.boardPrep, s.activeDayKey);
   const examPrep = examId ? s.boardPrep?.[examId] : undefined;
   const examDaysAway = examPrep ? daysUntilExam(examPrep.examDate, s.activeDayKey) : null;
-  const inRecovery = (s.recoveryPlans ?? []).some((p) => p.status === "accepted" || p.status === "edited");
+  const inRecovery = (s.recoveryPlans ?? []).some((p) =>
+    (p.status === "accepted" || p.status === "edited")
+    && (p.dayKey ?? p.createdAt.slice(0, 10)) === s.activeDayKey);
 
   const recommended = useMemo(
     () => recommendMethod({ energy, minutesAvailable: minutes, examDaysAway, inRecovery }),

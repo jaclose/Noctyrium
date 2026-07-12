@@ -136,6 +136,13 @@ describe("minimum viable win", () => {
 });
 
 describe("full brief assembly", () => {
+  it("does not invent missed-study history in a fresh workspace", () => {
+    const result = deriveSignals(slice());
+    expect(result.daysSinceLastStudy).toBe(0);
+    expect(result.missedDaysLast7).toBe(0);
+    expect(detectMode(result)).not.toBe("recovery");
+  });
+
   it("honors yesterday's closeout first-task commitment", () => {
     const s = slice({
       tracker: [tracker({ label: "Renal physiology", yield: "high" })],
@@ -156,8 +163,12 @@ describe("full brief assembly", () => {
       tasks: [task({ due: "2026-07-01" }), task({ due: "2026-07-02" }), task({ due: "2026-07-03" })],
     });
     const brief = buildCommandBrief(s, new Date(`${TODAY}T08:00:00`));
-    // 3 overdue tasks + no study logged in 30 days
+    // Overdue work still produces catch-up without inventing study history.
     expect(brief.signals.overdueTasks).toBe(3);
     expect(["recovery", "catch-up"]).toContain(brief.mode);
   });
 });
+
+function detectMode(value: BriefSignals) {
+  return deriveMode(value).mode;
+}

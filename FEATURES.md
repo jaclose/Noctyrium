@@ -175,7 +175,11 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
   logs, focus mode, completion capture; stale timers capped visibly.
 - **Daily Closeout** (30–90s) feeding tomorrow's brief.
 - **Recovery Protocol**: calm trigger detection, honest gap estimate, editable 4-bucket
-  triage, 24h restart + 72h stabilization plans. No shame language.
+  triage, 24h restart + 72h stabilization plans. The optional preview now exposes
+  trigger severity, canonical task/tracker counts, configured daily target,
+  recent completion range when enough history exists, estimate assumptions,
+  Keep/Reduce/Dismiss/Restore overrides, and an explicit no-task-deletion guarantee.
+  Fresh workspaces no longer manufacture missed-study history or a minimum load.
 - Course tracker, productivity logs + Pomodoro, journal/standups, reports, habits,
   study-methods library (14 techniques with when-NOT-to-use), resources, prep lanes.
 - **Pomodoro reliability**: the clock lifecycle is owned at the app root, so a running
@@ -217,14 +221,45 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
   older imports migrate to v32, and diagnostics/source checksums survive export/import.
 - AI generation artifacts use the same IndexedDB-first adapter instead of storing large
   generated content in localStorage.
-- **Data health panel**: storage driver, record counts, schema/migration state, snapshot
-  status, source-checksum health, orphan repair, and growth-based backup reminders.
+- **Settings and local-first clarity**: five accessible sections — Profile, Data,
+  Backup, Personalization, and Advanced. Primary copy distinguishes the device-local
+  workspace, automatic local migration snapshots, and portable exported backups;
+  it does not promise an account or cloud sync. Storage usage/health and record counts
+  live under Data, while schema/build/provider diagnostics and confirmation-gated reset
+  are separated under Advanced.
+- **Persistent startup recovery**: the existing migration-failure marker drives one
+  understandable card with previous/current versions, safety-snapshot time and
+  readability, export/portable-restore/verified-local-restore/retry actions, and a
+  plain statement that the original workspace was not deleted. Unresolved state
+  cannot be dismissed and clears only after a successful retry.
 - **Persisted browser journey**: Playwright automates onboarding → exact PPD TXT import →
   linked set and saved block → incorrect answer/classification/repair card → reload, then
   verifies retained IndexedDB state and the absence of workspace payloads in localStorage.
 - **Update flow**: single version source (`web/src/lib/brand.ts`), deploy-difference
   detection (survives version-line resets), never fires during an active session,
   never destructive; service-worker cache versioned per release.
+
+## Explainable setup and recommendations
+
+- **Four-step onboarding**: Identity, Core setup, Workspace, and Data safety. Optional
+  fields stay skippable; progress resumes from a small session-only draft; theme and
+  focused/expanded widget choices reuse existing preferences; backup export is optional;
+  completion deliberately routes to Dashboard, Course Tracker, or Question Bank.
+  Reruns are App-owned, never flip the persisted onboarding flag, never reseed course
+  shells, and preserve unchanged profile preferences.
+- **Seven-step guide**: current plan, Course Tracker, Question Bank, recommendation
+  provenance, Reports, Customize, and Data safety. It retains skip/replay, session-step
+  resume, missing-target fallback, reduced-motion scrolling, keyboard containment,
+  and mobile-safe sizing without touring unfinished modules.
+- **Journal catch-up clarity**: exact missed date, factual optional copy, and Complete
+  catch-up / Skip / Do not remind today actions. Device-only date metadata deduplicates
+  reminders; catch-up opens the exact date and edits an existing same-day entry instead
+  of creating a duplicate.
+- **Energy provenance**: deterministic readiness can show a lower-energy option only
+  when confirmed evidence crosses the 40/100 threshold. The surface names the value,
+  threshold, confirmed contributions, suggested presentation change, unchanged saved
+  data, and Review / Restore / Update energy / Show calculation overrides. Unconfirmed
+  journal-language signals remain excluded until the user confirms them.
 
 ### Detector + premium page rehaul (2026-07-10b)
 
@@ -280,5 +315,12 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
   no client-side secret path and stays disabled until a secure endpoint exists.
 - The Local Vault is local to a browser origin/device. IndexedDB can fall back to
   localStorage, but neither replaces a user-held JSON backup or hardened account sync.
+- AXOM does not yet retain a restore-history audit log or an exact user-visible timestamp
+  for every vault write. Storage health, latest migration snapshot, and last portable
+  export are shown accurately instead.
+- Overload provenance can show a configured daily target and an estimated outstanding-
+  work range; the current model does not contain a true scheduled-hours field. Reduced
+  motion follows the operating-system preference and does not yet have an AXOM-specific
+  override.
 - Full browser E2E coverage and OCR remain roadmap work; parser confidence narrows
   review work but does not certify the medical correctness of source material.
