@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
@@ -10,7 +10,7 @@ import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
 import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
 import { SessionOverlay } from "./components/session/SessionOverlay";
-import { NAV } from "./components/shell/nav";
+import { isDailyGamesRoute, NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
 import { useUi } from "./lib/uiStore";
 import { pushToast } from "./lib/toast";
@@ -39,10 +39,17 @@ import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
 import { QuestionWorkspacePage } from "./pages/QuestionWorkspacePage";
 import { StudyMethodsPage } from "./pages/StudyMethodsPage";
+import { OptionalDailyGamesPage } from "./pages/OptionalDailyGamesPage";
 
 const DevDesignPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/DesignPreviewPage"))
   : null;
+
+// The optional game route stays out of the shell bundle. The word-list module
+// is dynamically imported again inside DailyWordPage, so a disabled direct
+// route cannot fetch the engine or list.
+const LazyDailyWordPage = lazy(() => import("./pages/DailyWordPage").then((module) => ({ default: module.DailyWordPage })));
+const LazyDoctordlePage = lazy(() => import("./pages/DoctordlePage").then((module) => ({ default: module.DoctordlePage })));
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -89,6 +96,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   );
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const onboarded = useStore((s) => s.profile.onboarded);
+  const dailyGamesEnabled = useStore((s) => s.profile.experimentalFlags?.dailyGames === true);
   const tourDone = useStore((s) => s.profile.tourDone);
   const updateProfile = useStore((s) => s.updateProfile);
   // Show the tour once after onboarding; "Replay tour" simply clears tourDone.
@@ -203,7 +211,12 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   }
 
   const nav = NAV.find((n) => n.id === route) ?? NAV[0];
-  const Page = PAGES[route] ?? DashboardPage;
+  let Page: ComponentType = PAGES[route] ?? DashboardPage;
+  if (isDailyGamesRoute(route)) {
+    Page = !dailyGamesEnabled
+      ? OptionalDailyGamesPage
+      : route === "daily-word" ? LazyDailyWordPage : LazyDoctordlePage;
+  }
 
   if (!onboarded || setupMode) {
     return (
@@ -254,7 +267,9 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
           />
           <div className="surface-scroll">
             <div className="page">
-              <Page />
+              <Suspense fallback={<div className="route-loading" role="status">Opening optional module…</div>}>
+                <Page />
+              </Suspense>
             </div>
           </div>
         </div>

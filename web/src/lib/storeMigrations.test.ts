@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { migratePersistedState } from "./store";
 import { STORAGE_KEYS } from "./brand";
+import { makeSeed, SCHEMA_VERSION } from "./seed";
 
 // Minimal localStorage stand-in so the pre-migration snapshot path is
 // observable regardless of the test environment.
@@ -172,5 +173,54 @@ describe("v26 → v27 migration", () => {
     expect(result.tracker[0].kind).toBe("Lecture");
     expect(result.sessions).toEqual([]);
     expect(result.ankiCards).toEqual([]);
+  });
+
+  it("adds safe Wave 5 defaults at schema v32 without enabling Daily Games and stays idempotent", () => {
+    const state = makeSeed() as unknown as Record<string, unknown>;
+    const profile = { ...(state.profile as Record<string, unknown>) };
+    delete profile.experimentalFlags;
+    delete profile.dailyGamesCollapsed;
+    delete profile.timeZonePreference;
+    delete profile.clockPreferences;
+    state.profile = profile;
+    delete state.dailyWordPuzzles;
+
+    const migrated = migratePersistedState(structuredClone(state), SCHEMA_VERSION);
+    expect(migrated.schemaVersion).toBe(32);
+    expect(migrated.profile.experimentalFlags?.dailyGames).toBe(false);
+    expect(migrated.profile.timeZonePreference).toEqual({ mode: "system" });
+    expect(migrated.profile.clockPreferences).toMatchObject({ enabled: true, showDigitalSeconds: false, hourCycle: "12" });
+    expect(migrated.dailyWordPuzzles).toEqual([]);
+
+    expect(migratePersistedState(structuredClone(migrated), SCHEMA_VERSION)).toEqual(migrated);
+  });
+
+  it("preserves and de-duplicates existing Daily Word history without altering unrelated records", () => {
+    const state = makeSeed();
+    const incomplete = {
+      puzzleId: "daily-word:general-1:2026-07-12",
+      puzzleDate: "2026-07-12",
+      timezone: "America/Grenada",
+      wordListVersion: "general-1",
+      guesses: ["APPLE"],
+      completed: false,
+      won: false,
+      startedAt: "2026-07-12T10:00:00.000Z",
+      updatedAt: "2026-07-12T10:01:00.000Z",
+    };
+    state.dailyWordPuzzles = [incomplete, {
+      ...incomplete,
+      guesses: ["APPLE", "BERRY"],
+      completed: true,
+      won: true,
+      completedAt: "2026-07-12T10:02:00.000Z",
+      updatedAt: "2026-07-12T10:02:00.000Z",
+    }];
+    const beforeTasks = structuredClone(state.tasks);
+
+    const migrated = migratePersistedState(structuredClone(state), SCHEMA_VERSION);
+    expect(migrated.dailyWordPuzzles).toHaveLength(1);
+    expect(migrated.dailyWordPuzzles[0]).toMatchObject({ completed: true, guesses: ["APPLE", "BERRY"] });
+    expect(migrated.tasks).toEqual(beforeTasks);
   });
 });

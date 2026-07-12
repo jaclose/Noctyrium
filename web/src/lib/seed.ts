@@ -3,7 +3,7 @@
 // personal workload: canonical SGU terms/courses, a few sample tracker rows,
 // official board resources, and empty logs/journal.
 // ===========================================================================
-import type { BoardPrepProfile, DashboardWidgetId, NoctyriumState, ProductivityTracker, TrackerItem, TrackerKind, Yield } from "./types";
+import type { BoardPrepProfile, ClockPreferences, DashboardWidgetId, NoctyriumState, ProductivityTracker, TimeZonePreference, TrackerItem, TrackerKind, Yield } from "./types";
 import { isoDate } from "./scoring";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, DEFAULT_FOCUS_IDS } from "./experience";
@@ -42,6 +42,19 @@ export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "boardBlueprint",
 ];
 
+export const DEFAULT_TIME_ZONE_PREFERENCE: TimeZonePreference = { mode: "system" };
+
+export const DEFAULT_CLOCK_PREFERENCES: ClockPreferences = {
+  enabled: true,
+  showDigital: true,
+  showAnalog: true,
+  showDigitalSeconds: false,
+  showAnalogSeconds: false,
+  showDate: false,
+  showTimezoneLabel: false,
+  hourCycle: "12",
+};
+
 const now = () => new Date().toISOString();
 const localDate = () => isoDate(new Date());
 
@@ -78,6 +91,7 @@ export function makeSeed(): NoctyriumState {
     quizBlocks: [],
     ankiCards: [],
     cardReviews: [],
+    dailyWordPuzzles: [],
     profile: {
       name: BRAND.productName,
       userId: userIdFromName(BRAND.productName),
@@ -93,6 +107,9 @@ export function makeSeed(): NoctyriumState {
       dashboardWidgetOrder: DEFAULT_DASHBOARD_WIDGETS,
       hiddenDashboardWidgets: DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
       journalReviewTime: "20:00",
+      experimentalFlags: { dailyGames: false },
+      timeZonePreference: { ...DEFAULT_TIME_ZONE_PREFERENCE },
+      clockPreferences: { ...DEFAULT_CLOCK_PREFERENCES },
       hiddenNav: ["courses", "prompts", "integrations", "folders", "premed"],
     },
     terms: ACADEMIC_TEMPLATE_TERMS.map((term) => ({ ...term })),

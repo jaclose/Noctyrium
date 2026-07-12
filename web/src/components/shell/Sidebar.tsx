@@ -3,7 +3,9 @@ import {
   Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
 } from "lucide-react";
 import {
+  DAILY_GAMES_FOLDER,
   getNavModuleStatus,
+  isDailyGamesEnabled,
   MODULE_STATUS_META,
   navById,
   SIDEBAR_BOTTOM,
@@ -114,6 +116,7 @@ export function Sidebar({
     return (
       <button type="button" className={`nav-item ${active === id ? "on" : ""}`}
         aria-label={accessibleLabel}
+        aria-current={active === id ? "page" : undefined}
         onClick={() => { onSelect(id); onClose(); }}>
         <I size={17} /><span className="nav-item-label">{item.label}</span>{statusBadge}
       </button>
@@ -126,6 +129,13 @@ export function Sidebar({
   const navGate = (id: string) => id !== "habits" || habitsOn;
   const toolItems = (manage ? SIDEBAR_TOOLS : SIDEBAR_TOOLS.filter((id) => !hidden.has(id))).filter(navGate);
   const prepItems = (manage ? SIDEBAR_PREP : SIDEBAR_PREP.filter((id) => !hidden.has(id)));
+  const dailyGamesOn = isDailyGamesEnabled(profile.experimentalFlags);
+  const dailyGamesOpen = !profile.dailyGamesCollapsed;
+  const dailyGameItems = (manage
+    ? DAILY_GAMES_FOLDER.routes
+    : DAILY_GAMES_FOLDER.routes.filter((id) => !hidden.has(id))
+  );
+  const DailyGamesIcon = DAILY_GAMES_FOLDER.icon;
   const help = navById("help");
   const HelpIcon = help?.icon;
   const about = navById("about");
@@ -218,6 +228,53 @@ export function Sidebar({
                 hidden={!toolsOpen}
               >
                 {toolItems.map((id) => <Item key={id} id={id} />)}
+              </div>
+            </div>
+          )}
+
+          {manage && (
+            <button
+              type="button"
+              className={`nav-item manage ${dailyGamesOn ? "" : "off"}`}
+              aria-label={`${DAILY_GAMES_FOLDER.label}, optional feature`}
+              aria-pressed={dailyGamesOn}
+              onClick={() => updateProfile({
+                experimentalFlags: {
+                  ...(profile.experimentalFlags ?? {}),
+                  [DAILY_GAMES_FOLDER.featureFlag]: !dailyGamesOn,
+                },
+              })}
+              title={dailyGamesOn ? "Disable Daily Games (history is preserved)" : "Enable Daily Games"}
+            >
+              <span className={`nav-check ${dailyGamesOn ? "on" : ""}`}>{dailyGamesOn && <Check size={11} />}</span>
+              <DailyGamesIcon size={16} />
+              <span className="nav-item-label">{DAILY_GAMES_FOLDER.label}</span>
+              <span className="nav-status nav-status--wip" aria-hidden="true">OPTIONAL</span>
+            </button>
+          )}
+
+          {dailyGamesOn && (
+            <div className="nav-folder">
+              <button
+                id={DAILY_GAMES_FOLDER.toggleId}
+                type="button"
+                className="nav-folder-head"
+                aria-controls={DAILY_GAMES_FOLDER.regionId}
+                aria-expanded={dailyGamesOpen}
+                onClick={() => updateProfile({ dailyGamesCollapsed: !profile.dailyGamesCollapsed })}
+              >
+                {dailyGamesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <DailyGamesIcon size={15} /><span>{DAILY_GAMES_FOLDER.label}</span>
+                {!dailyGamesOpen && <span className="nav-folder-count">{dailyGameItems.length}</span>}
+              </button>
+              <div
+                id={DAILY_GAMES_FOLDER.regionId}
+                className="nav-folder-items"
+                role="group"
+                aria-labelledby={DAILY_GAMES_FOLDER.toggleId}
+                hidden={!dailyGamesOpen}
+              >
+                {dailyGameItems.map((id) => <Item key={id} id={id} />)}
               </div>
             </div>
           )}

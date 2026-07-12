@@ -46,6 +46,7 @@ function state(patch: Partial<NoctyriumState> = {}): NoctyriumState {
     quizBlocks: [],
     ankiCards: [],
     cardReviews: [],
+    dailyWordPuzzles: [],
     schemaVersion: 30,
     ...patch,
   };

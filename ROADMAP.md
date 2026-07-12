@@ -38,8 +38,9 @@ Last updated: 2026-07-12
 | Item | Status | Notes |
 | --- | --- | --- |
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
-| Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; the main index chunk still exceeds 500 kB. Route-level splitting proposed. |
-| Remaining React hook warnings (8, page-level) | in-progress | Pre-existing in large pages (Dashboard/Journal/Productivity/CourseTracker/GuidedTour/Onboarding); fix opportunistically. |
+| Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; Daily Word and its versioned word lists now ship as isolated lazy assets. The App shell chunk still exceeds 500 kB, so broader route-level splitting remains proposed. |
+| First-navigation offline precache | proposed | The current worker caches hashed assets after a controlled successful fetch. Daily Word reopens offline after that boundary, but a first-ever offline bootstrap before worker control is not supported; improving that requires a build-aware precache design. |
+| Remaining React hook warnings (6, page-level) | in-progress | Pre-existing warnings remain in Dashboard, Journal, Productivity, and CourseTracker; fix opportunistically. |
 | Cloud sync hardening (PIN auth, sessions) | blocked | No cloud/account claim is exposed in primary Settings. Retained experimental code needs real auth, consent, and security review before it can become a product surface. |
 | Restore-history audit trail | proposed | Settings accurately shows local snapshots and last portable export, but does not yet persist a separate restore-event history. |
 | Exact vault-write timestamp | proposed | Autosave is active, but the vault does not currently retain a user-visible timestamp for every successful write. |
@@ -56,6 +57,7 @@ Last updated: 2026-07-12
 | Pitfall Map as a dedicated surface | in-progress | Digest pitfalls ship on set cards; a cross-set pitfall dashboard is proposed. |
 | Application Checker maturation | proposed | Shell exists; no data gathering yet. |
 | Leaderboards | proposed | Deliberately deprioritized — conflicts with the calm tone. |
+| Doctordle collaboration | blocked | The enabled Daily Games folder contains only a static WIP boundary. No external integration, iframe, launch action, network request, or copied gameplay will be added without explicit collaboration approval. |
 | DAT / CASPer lanes | proposed | Light surfaces only. |
 | Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, Settings/Question Bank roving tabs, sidebar disclosures, onboarding/tour dialogs, missing-target fallback, and reduced-motion tour behavior are covered. A broader contrast/screen-reader audit remains. |
 | AXOM-specific reduced-motion override | proposed | Current UI truthfully follows the operating-system setting; a product-level override needs shared runtime and CSS plumbing. |
@@ -63,6 +65,12 @@ Last updated: 2026-07-12
 
 ## Recently shipped (move log)
 
+- 2026-07-12 — Wave 5 optional daily utilities: disabled-by-default Daily Games
+  disclosure and direct-route gate, original deterministic AXOM Daily Word with
+  local history/stats/share, static Doctordle WIP boundary, compact digital and
+  analog clocks with shared IANA timezone preferences, scoped reset and backup
+  merge, lazy word-list isolation, and controlled offline-reopen verification →
+  moved to FEATURES.md.
 - 2026-07-12 — Wave 4 clarity and recovery: five-section Settings IA, accurate
   local-first/backup language, persistent migration-recovery card, exact-date
   journal reminder actions, deterministic energy/load provenance and overrides,

@@ -1,9 +1,10 @@
 // Navigation model — sidebar items + Alpha 2 grouping (Tools folder + order).
 import type { LucideIcon } from "lucide-react";
+import type { ExperimentalFlags } from "../../lib/types";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
   BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info, CalendarCheck,
-  HelpCircle, BookOpenCheck,
+  HelpCircle, BookOpenCheck, WholeWord, Stethoscope, Gamepad2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -38,6 +39,8 @@ export const NAV = [
   { id: "productivity", label: "Productivity", subtitle: "Study time, Anki cards, lecture blocks, day usefulness", icon: Calendar },
   { id: "journal", label: "Journal", subtitle: "Daily standups, intention follow-up, blockers, and tomorrow's plan", icon: BookText },
   { id: "reports", label: "Reports", subtitle: "Traceable statistics, energy, and performance vs. your goals", icon: LineChart },
+  { id: "daily-word", label: "Daily Word", subtitle: "A daily five-letter word puzzle.", icon: WholeWord },
+  { id: "doctordle", label: "Doctordle", subtitle: "Integration pending collaboration approval.", icon: Stethoscope },
   { id: "resources", label: "Resources", subtitle: "Saved hyperlinks for courses, boards, references, and tools", icon: Link },
   { id: "step", label: "USMLE / Shelf Prep", subtitle: "Step 1, Step 2, Step 3, shelf exams, and blueprint strategy", icon: Brain },
   { id: "step2", label: "Step 2 CK", subtitle: "Clinical reasoning blueprint and CK execution", icon: Brain },
@@ -72,6 +75,8 @@ export type NavItemId = (typeof NAV)[number]["id"];
 export const MODULE_STATUS_BY_NAV_ID = {
   questions: "new",
   methods: "new",
+  "daily-word": "new",
+  doctordle: "wip",
   anki: "wip",
   habits: "wip",
   step: "wip",
@@ -96,3 +101,35 @@ export const SIDEBAR_TOOLS = ["tasks", "habits", "methods", "resources", "prompt
 export const SIDEBAR_BOTTOM = ["folders"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);
+
+export const DAILY_GAMES_ROUTE_IDS = ["daily-word", "doctordle"] as const satisfies readonly NavItemId[];
+export type DailyGamesRouteId = (typeof DAILY_GAMES_ROUTE_IDS)[number];
+
+/** Optional-folder metadata stays beside the rest of the navigation model. */
+export const DAILY_GAMES_FOLDER = {
+  id: "daily-games",
+  label: "Daily Games",
+  description: "Optional daily puzzles stored only in your local AXOM workspace.",
+  icon: Gamepad2,
+  featureFlag: "dailyGames",
+  toggleId: "sidebar-daily-games-toggle",
+  regionId: "sidebar-daily-games-items",
+  routes: DAILY_GAMES_ROUTE_IDS,
+} as const satisfies {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  featureFlag: keyof ExperimentalFlags;
+  toggleId: string;
+  regionId: string;
+  routes: readonly NavItemId[];
+};
+
+export function isDailyGamesEnabled(flags: ExperimentalFlags | undefined): boolean {
+  return flags?.[DAILY_GAMES_FOLDER.featureFlag] === true;
+}
+
+export function isDailyGamesRoute(id: string): id is DailyGamesRouteId {
+  return (DAILY_GAMES_ROUTE_IDS as readonly string[]).includes(id);
+}

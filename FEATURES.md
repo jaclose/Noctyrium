@@ -4,7 +4,7 @@ Living record of what is **built and working**. Update this whenever a feature s
 The companion file is [ROADMAP.md](ROADMAP.md) — in-progress and proposed work lives there,
 and items move from there to here when they ship.
 
-Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
+Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 
 ## Question Bank (flagship)
 
@@ -166,6 +166,40 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
 - **AI card generation** behind a per-draft approve/reject review gate.
 - Anki-compatible TSV/CSV export; the classic prompt studio remains as a tab.
 
+## Optional daily utilities
+
+- **Daily Games opt-in** — a disabled-by-default, accessible sidebar disclosure
+  exposes only Daily Word and Doctordle when enabled. Customize and Personalization
+  share the same persisted flag; disabling hides navigation without deleting local
+  puzzle history, and a gated direct route offers one real enable action.
+- **AXOM Daily Word** — an original six-guess, five-letter daily puzzle with physical
+  and on-screen keyboards, duplicate-safe two-pass scoring, local word validation,
+  color-independent tile marks, accessible row/tile labels, win/loss locking, and
+  answer reveal only after completion. The independently curated answer and allowed-
+  guess lists are bundled locally and versioned as `general-1`.
+- **Deterministic local history** — an explicit IANA timezone determines the calendar
+  date, FNV-1a over the versioned puzzle ID selects the answer, and an active puzzle
+  retains its recorded timezone across preference changes. Submitted guesses persist
+  in IndexedDB; games, wins, streaks, and guess distribution are derived idempotently.
+  Backup restore/merge deduplicates records by puzzle ID and prefers completed, more-
+  progressed, then newer records.
+- **Private result sharing** — clipboard output is user-initiated and contains only
+  AXOM Daily Word, date, score, and a symbolic result grid. It excludes the answer,
+  guesses, profile data, and network transmission, with a focused manual-copy fallback.
+- **Clock utility** — the TopBar has a compact digital clock and an accessible analog
+  popover with 12/24-hour, seconds, date, visibility, and shared system/custom IANA
+  timezone preferences. A single aligned external subscription reconciles focus,
+  visibility, pageshow, and browser sleep without persisting current time or rerendering
+  the whole app each tick.
+- **Doctordle boundary** — the child route is an intentionally static WIP notice:
+  collaboration approval is still required, and no iframe, link, API, proxy, copied
+  gameplay, health check, or external request exists.
+- **Lazy and offline-aware delivery** — Daily Word code, styles, and word lists are
+  hashed lazy assets outside the App chunk, enforced by a production bundle check.
+  Once the service worker controls an online load and those assets have been fetched,
+  the current puzzle and submitted rows reopen offline; first-ever offline bootstrap is
+  not claimed.
+
 ## Daily academic loop
 
 - **Command Brief**: one operating mode (Maintain/Catch-Up/Recovery/Sprint/Exam Week) with
@@ -216,6 +250,9 @@ Last updated: 2026-07-11 · app v0.0.1-prebeta · data schema v32
 - Schema v32 adds import diagnostics and derived answer text without rewriting stems,
   options, explanations, attempts, set links, or source links. Legacy confidence buckets
   seed conservative numeric scores and are marked with a migration rule ID.
+- Optional Daily Games history and clock/timezone preferences hydrate additively under
+  schema v32. Missing or malformed settings remain disabled/safe, scoped game reset never
+  touches other workspace records, and portable backup round trips include puzzle history.
 - JSON **export backup**, **replace-restore** (confirmed), and **merge import**
   (union by id, newer fields win while distinct same-question attempts are combined);
   older imports migrate to v32, and diagnostics/source checksums survive export/import.

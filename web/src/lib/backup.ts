@@ -1,8 +1,11 @@
 // ===========================================================================
 // JSON export / import. The portable backup story for the browser-stored data.
 // ===========================================================================
-import type { NoctyriumState } from "./types";
-import { APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS, SCHEMA_VERSION } from "./seed";
+import type { ClockPreferences, DailyWordPuzzleState, NoctyriumState, TimeZonePreference } from "./types";
+import {
+  APP_VERSION_LABEL, DEFAULT_CLOCK_PREFERENCES, DEFAULT_DASHBOARD_WIDGETS,
+  DEFAULT_HIDDEN_DASHBOARD_WIDGETS, DEFAULT_TIME_ZONE_PREFERENCE, SCHEMA_VERSION,
+} from "./seed";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
@@ -14,6 +17,7 @@ const DATA_KEYS = [
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
   "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
+  "dailyWordPuzzles",
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,6 +77,7 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     "premedExperiences", "prompts", "folders", "logs", "boardPrep" /* handled below */, "blueprintInstalls",
     "dayPlans", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
     "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
+    "dailyWordPuzzles",
   ] as const;
 
   const merged: Record<string, unknown> = { ...toPortableState(current) };
@@ -85,7 +90,9 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     const b = Array.isArray(imp[key]) ? imp[key] as Array<Record<string, unknown>> : [];
     merged[key] = key === "questions"
       ? mergeQuestionsById(a, b)
-      : mergeById(a, b, key === "dayPlans" ? "dayKey" : key === "dailyArchives" ? "date" : "id");
+      : key === "dailyWordPuzzles"
+        ? mergeDailyWordPuzzlesById(a, b)
+        : mergeById(a, b, key === "dayPlans" ? "dayKey" : key === "dailyArchives" ? "date" : "id");
   }
   // boardPrep is a keyed map — imported lanes fill gaps, current lanes win ties by `updated`.
   const curPrep = (cur.boardPrep ?? {}) as Record<string, { updated?: string } | undefined>;
@@ -167,6 +174,37 @@ function mergeQuestionAttempts(left: unknown, right: unknown): Array<Record<stri
   return [...byFingerprint.values()].sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? "")));
 }
 
+function mergeDailyWordPuzzlesById(
+  current: Array<Record<string, unknown>>,
+  imported: Array<Record<string, unknown>>,
+): DailyWordPuzzleState[] {
+  const byId = new Map<string, DailyWordPuzzleState>();
+  for (const puzzle of normalizeDailyWordPuzzles([...imported, ...current])) {
+    const existing = byId.get(puzzle.puzzleId);
+    byId.set(puzzle.puzzleId, existing ? preferDailyWordPuzzle(existing, puzzle) : puzzle);
+  }
+  return [...byId.values()].sort((left, right) => (
+    left.puzzleDate.localeCompare(right.puzzleDate) || left.puzzleId.localeCompare(right.puzzleId)
+  ));
+}
+
+function preferDailyWordPuzzle(left: DailyWordPuzzleState, right: DailyWordPuzzleState): DailyWordPuzzleState {
+  const rank = (puzzle: DailyWordPuzzleState) => [
+    puzzle.completed ? 1 : 0,
+    puzzle.guesses.length,
+    puzzle.updatedAt,
+    puzzle.completedAt ?? "",
+    JSON.stringify(puzzle),
+  ] as const;
+  const a = rank(left);
+  const b = rank(right);
+  for (let index = 0; index < a.length; index += 1) {
+    const comparison = String(a[index]).localeCompare(String(b[index]));
+    if (comparison !== 0) return comparison > 0 ? left : right;
+  }
+  return left;
+}
+
 export function parseImport(text: string): NoctyriumState {
   const data = JSON.parse(text);
   if (!data || typeof data !== "object" || !Array.isArray(data.terms)) {
@@ -210,12 +248,14 @@ export function parseImport(text: string): NoctyriumState {
       hiddenNav: normalizeHiddenNav(profile.hiddenNav, educationTrack),
       toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
       prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
+      dailyGamesCollapsed: typeof profile.dailyGamesCollapsed === "boolean" ? profile.dailyGamesCollapsed : undefined,
       journalReviewTime: normalizeJournalReviewTime(profile.journalReviewTime),
       // Preserve newer opt-in settings across export/import.
       taskAutofillDisabled: typeof profile.taskAutofillDisabled === "boolean" ? profile.taskAutofillDisabled : undefined,
       taskTemplates: Array.isArray(profile.taskTemplates) ? profile.taskTemplates as NoctyriumState["profile"]["taskTemplates"] : undefined,
-      experimentalFlags: profile.experimentalFlags && typeof profile.experimentalFlags === "object"
-        ? profile.experimentalFlags as NoctyriumState["profile"]["experimentalFlags"] : undefined,
+      experimentalFlags: normalizeExperimentalFlags(profile.experimentalFlags),
+      timeZonePreference: normalizeTimeZonePreference(profile.timeZonePreference),
+      clockPreferences: normalizeClockPreferences(profile.clockPreferences),
       pomodoroCustom: profile.pomodoroCustom && typeof profile.pomodoroCustom === "object"
         ? profile.pomodoroCustom as NoctyriumState["profile"]["pomodoroCustom"] : undefined,
     },
@@ -262,6 +302,7 @@ export function parseImport(text: string): NoctyriumState {
     quizBlocks: Array.isArray(data.quizBlocks) ? data.quizBlocks : [],
     ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
     cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
+    dailyWordPuzzles: normalizeDailyWordPuzzles(data.dailyWordPuzzles),
   } as NoctyriumState;
 }
 
@@ -344,6 +385,100 @@ function normalizePromise(value: unknown): NoctyriumState["profile"]["promise"] 
     promiseTextVersion: typeof record.promiseTextVersion === "string" ? record.promiseTextVersion : "promise-of-use-v1",
     journalEntryId: typeof record.journalEntryId === "string" ? record.journalEntryId : undefined,
   };
+}
+
+function normalizeExperimentalFlags(value: unknown): NoctyriumState["profile"]["experimentalFlags"] {
+  const flags = isRecord(value) ? value : {};
+  return {
+    ...(flags as NoctyriumState["profile"]["experimentalFlags"]),
+    habits: typeof flags.habits === "boolean" ? flags.habits : undefined,
+    dailyGames: flags.dailyGames === true,
+  };
+}
+
+function normalizeTimeZonePreference(value: unknown): TimeZonePreference {
+  if (!isRecord(value) || value.mode !== "custom") return { ...DEFAULT_TIME_ZONE_PREFERENCE };
+  const customTimezone = typeof value.customTimezone === "string" ? value.customTimezone.trim() : "";
+  if (!isValidTimeZone(customTimezone)) return { ...DEFAULT_TIME_ZONE_PREFERENCE };
+  return { mode: "custom", customTimezone };
+}
+
+function normalizeClockPreferences(value: unknown): ClockPreferences {
+  const preferences = isRecord(value) ? value : {};
+  const readBoolean = (key: Exclude<keyof ClockPreferences, "hourCycle">): boolean => (
+    typeof preferences[key] === "boolean"
+      ? preferences[key] as boolean
+      : DEFAULT_CLOCK_PREFERENCES[key]
+  );
+  return {
+    enabled: readBoolean("enabled"),
+    showDigital: readBoolean("showDigital"),
+    showAnalog: readBoolean("showAnalog"),
+    showDigitalSeconds: readBoolean("showDigitalSeconds"),
+    showAnalogSeconds: readBoolean("showAnalogSeconds"),
+    showDate: readBoolean("showDate"),
+    showTimezoneLabel: readBoolean("showTimezoneLabel"),
+    hourCycle: preferences.hourCycle === "24" ? "24" : "12",
+  };
+}
+
+function isValidTimeZone(value: string): boolean {
+  if (!value) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDailyWordPuzzles(value: unknown): DailyWordPuzzleState[] {
+  if (!Array.isArray(value)) return [];
+  const byId = new Map<string, DailyWordPuzzleState>();
+  for (const candidate of value) {
+    if (!isRecord(candidate)) continue;
+    const puzzleId = typeof candidate.puzzleId === "string" ? candidate.puzzleId.trim() : "";
+    const puzzleDate = typeof candidate.puzzleDate === "string" ? candidate.puzzleDate.trim() : "";
+    const timezone = typeof candidate.timezone === "string" ? candidate.timezone.trim() : "";
+    const wordListVersion = typeof candidate.wordListVersion === "string" ? candidate.wordListVersion.trim() : "";
+    const startedAt = typeof candidate.startedAt === "string" ? candidate.startedAt : "";
+    const expectedId = `daily-word:${wordListVersion}:${puzzleDate}`;
+    if (
+      puzzleId !== expectedId ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(puzzleDate) ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(wordListVersion) ||
+      !isValidTimeZone(timezone) ||
+      !startedAt
+    ) continue;
+    const guesses = Array.isArray(candidate.guesses)
+      ? candidate.guesses
+        .filter((guess): guess is string => typeof guess === "string" && /^[A-Za-z]{5}$/.test(guess))
+        .slice(0, 6)
+        .map((guess) => guess.toUpperCase())
+      : [];
+    const completed = candidate.completed === true;
+    const puzzle: DailyWordPuzzleState = {
+      puzzleId,
+      puzzleDate,
+      timezone,
+      wordListVersion,
+      guesses,
+      completed,
+      won: completed && candidate.won === true,
+      startedAt,
+      completedAt: completed && typeof candidate.completedAt === "string" ? candidate.completedAt : undefined,
+      updatedAt: typeof candidate.updatedAt === "string" && candidate.updatedAt
+        ? candidate.updatedAt
+        : typeof candidate.completedAt === "string" && candidate.completedAt
+          ? candidate.completedAt
+          : startedAt,
+    };
+    const existing = byId.get(puzzleId);
+    byId.set(puzzleId, existing ? preferDailyWordPuzzle(existing, puzzle) : puzzle);
+  }
+  return [...byId.values()].sort((left, right) => (
+    left.puzzleDate.localeCompare(right.puzzleDate) || left.puzzleId.localeCompare(right.puzzleId)
+  ));
 }
 
 function defaultBoardPrep(medYear: string, contentStarted: string, weeklyHours: number, questionTarget: number) {

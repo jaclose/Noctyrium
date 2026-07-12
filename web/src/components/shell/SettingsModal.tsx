@@ -1,7 +1,7 @@
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
-  Bell, Database, Download, FileJson, ImagePlus, Palette, RotateCcw, ShieldCheck,
-  Sparkles, Upload, UserCircle2, Check, ScrollText, MessageCircle, Settings2,
+  Bell, Clock3, Database, Download, FileJson, Gamepad2, ImagePlus, Palette, RotateCcw, ShieldCheck,
+  Sparkles, Trash2, Upload, UserCircle2, Check, ScrollText, MessageCircle, Settings2,
 } from "lucide-react";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
@@ -23,6 +23,7 @@ import { listLocalBackups } from "../../lib/localBackup";
 import { restoreLocalWorkspaceBackup } from "../../lib/storageRecovery";
 import { runStorageMigrations } from "../../lib/storageMigrations";
 import { requestOnboardingRerun } from "../../lib/uiStore";
+import { canonicalTimeZone, normalizeClockPreferences, normalizeTimeZonePreference, systemTimeZone } from "../../lib/clock";
 
 type SettingsSection = "profile" | "data" | "backup" | "personalization" | "advanced";
 /** Legacy names remain accepted so existing deep links keep opening safely. */
@@ -318,6 +319,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             <div><div className="sync-title">Theme</div><div className="sub">Light, dark, or the current device setting.</div></div>
             <ThemeToggle />
           </div>
+          <DailyUtilitiesSettings />
           <DashboardVisibilitySettings />
           <DevicePreferencePanel />
           <PersonalizationPanel />
@@ -393,6 +395,126 @@ const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   resourceFocus: "Resource focus",
   boardBlueprint: "Blueprint pulse",
 };
+
+function DailyUtilitiesSettings() {
+  const profile = useStore((state) => state.profile);
+  const updateProfile = useStore((state) => state.updateProfile);
+  const resetDailyWordPuzzles = useStore((state) => state.resetDailyWordPuzzles);
+  const puzzleCount = useStore((state) => state.dailyWordPuzzles.length);
+  const clock = normalizeClockPreferences(profile.clockPreferences);
+  const timeZone = normalizeTimeZonePreference(profile.timeZonePreference);
+  const [customTimeZone, setCustomTimeZone] = useState(timeZone.customTimezone ?? systemTimeZone());
+  const [timeZoneError, setTimeZoneError] = useState("");
+  const timeZoneErrorId = useId();
+
+  useEffect(() => {
+    if (timeZone.mode === "custom" && timeZone.customTimezone) setCustomTimeZone(timeZone.customTimezone);
+  }, [timeZone.customTimezone, timeZone.mode]);
+
+  function updateClock(patch: Partial<typeof clock>) {
+    updateProfile({ clockPreferences: { ...clock, ...patch } });
+  }
+
+  function useSystemTimeZone() {
+    setTimeZoneError("");
+    updateProfile({ timeZonePreference: { mode: "system" } });
+  }
+
+  function saveCustomTimeZone() {
+    const canonical = canonicalTimeZone(customTimeZone);
+    if (!canonical) {
+      setTimeZoneError("Enter a valid IANA timezone, such as America/Grenada or America/New_York.");
+      return;
+    }
+    setTimeZoneError("");
+    setCustomTimeZone(canonical);
+    updateProfile({ timeZonePreference: { mode: "custom", customTimezone: canonical } });
+  }
+
+  return (
+    <details className="backup-actions-panel" open>
+      <summary>Daily utilities</summary>
+      <div className="stack" style={{ gap: 12, marginTop: 10 }}>
+        <div className="settings-utility-row">
+          <div>
+            <div className="sync-title"><Gamepad2 size={14} /> Daily Games</div>
+            <div className="sub">Optional Daily Word and Doctordle WIP folder. Disabling it hides navigation and preserves history.</div>
+          </div>
+          <label className="settings-inline-toggle">
+            <input
+              type="checkbox"
+              checked={profile.experimentalFlags?.dailyGames === true}
+              onChange={(event) => updateProfile({
+                experimentalFlags: { ...(profile.experimentalFlags ?? {}), dailyGames: event.target.checked },
+              })}
+            />
+            <span>Enable Daily Games</span>
+          </label>
+        </div>
+
+        <div className="settings-utility-row">
+          <div>
+            <div className="sync-title"><Clock3 size={14} /> Clock</div>
+            <div className="sub">Compact TopBar time with an optional analog popover. Only preferences persist; current time never does.</div>
+          </div>
+          <label className="settings-inline-toggle">
+            <input type="checkbox" checked={clock.enabled} onChange={(event) => updateClock({ enabled: event.target.checked })} />
+            <span>Show clock</span>
+          </label>
+        </div>
+
+        <div className="settings-compact-grid" aria-label="Clock display preferences">
+          <label><input type="checkbox" checked={clock.showDigital} onChange={(event) => updateClock({ showDigital: event.target.checked })} /> Digital time</label>
+          <label><input type="checkbox" checked={clock.showAnalog} onChange={(event) => updateClock({ showAnalog: event.target.checked })} /> Analog popover</label>
+          <label><input type="checkbox" checked={clock.showDigitalSeconds} onChange={(event) => updateClock({ showDigitalSeconds: event.target.checked })} /> Digital seconds</label>
+          <label><input type="checkbox" checked={clock.showAnalogSeconds} onChange={(event) => updateClock({ showAnalogSeconds: event.target.checked })} /> Analog second hand</label>
+          <label><input type="checkbox" checked={clock.showDate} onChange={(event) => updateClock({ showDate: event.target.checked })} /> Date</label>
+          <label><input type="checkbox" checked={clock.showTimezoneLabel} onChange={(event) => updateClock({ showTimezoneLabel: event.target.checked })} /> Timezone label</label>
+          <label className="stack gap6">
+            <span className="field-label">Hour cycle</span>
+            <select className="field" value={clock.hourCycle} onChange={(event) => updateClock({ hourCycle: event.target.value === "24" ? "24" : "12" })}>
+              <option value="12">12-hour</option>
+              <option value="24">24-hour</option>
+            </select>
+          </label>
+        </div>
+
+        <fieldset className="settings-timezone-fieldset">
+          <legend>Shared timezone</legend>
+          <div className="row wrap gap8">
+            <label><input type="radio" name="settings-timezone-mode" checked={timeZone.mode === "system"} onChange={useSystemTimeZone} /> System timezone</label>
+            <label><input type="radio" name="settings-timezone-mode" checked={timeZone.mode === "custom"} onChange={saveCustomTimeZone} /> Custom IANA timezone</label>
+          </div>
+          <div className="settings-timezone-input">
+            <label className="stack gap6 grow">
+              <span className="field-label">Custom timezone</span>
+              <input
+                className="field"
+                value={customTimeZone}
+                aria-invalid={Boolean(timeZoneError)}
+                aria-describedby={timeZoneError ? timeZoneErrorId : undefined}
+                onChange={(event) => setCustomTimeZone(event.target.value)}
+                onBlur={() => { if (timeZone.mode === "custom") saveCustomTimeZone(); }}
+              />
+            </label>
+            <GButton size="sm" onClick={saveCustomTimeZone}>Apply timezone</GButton>
+          </div>
+          {timeZoneError && <div className="field-error" id={timeZoneErrorId} role="alert">{timeZoneError}</div>}
+          <div className="sub">Daily Word locks this timezone when a puzzle starts. Changing it never replaces an active puzzle.</div>
+        </fieldset>
+
+        {puzzleCount > 0 && (
+          <div className="settings-utility-row danger-zone">
+            <div><div className="sync-title">Daily Word history</div><div className="sub">{puzzleCount} local puzzle record{puzzleCount === 1 ? "" : "s"}. This reset does not affect courses, tasks, or other AXOM data.</div></div>
+            <GButton size="sm" variant="danger" onClick={() => {
+              if (confirm("Reset Daily Word history and statistics on this device? No other AXOM data will change.")) resetDailyWordPuzzles();
+            }}><Trash2 size={14} /> Reset Daily Word</GButton>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
 
 function DashboardVisibilitySettings() {
   const profile = useStore((state) => state.profile);

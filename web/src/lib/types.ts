@@ -211,6 +211,40 @@ export interface HabitEntry {
 
 export interface ExperimentalFlags {
   habits?: boolean;
+  /** Optional Daily Games folder. Missing and false both mean disabled. */
+  dailyGames?: boolean;
+}
+
+/** One shared timezone preference for the clock and date-based utilities. */
+export interface TimeZonePreference {
+  mode: "system" | "custom";
+  customTimezone?: string;
+}
+
+export interface ClockPreferences {
+  enabled: boolean;
+  showDigital: boolean;
+  showAnalog: boolean;
+  showDigitalSeconds: boolean;
+  showAnalogSeconds: boolean;
+  showDate: boolean;
+  showTimezoneLabel: boolean;
+  hourCycle: "12" | "24";
+}
+
+/** Persisted submitted rows only; the unsubmitted row remains component-local. */
+export interface DailyWordPuzzleState {
+  puzzleId: string;
+  puzzleDate: string;
+  timezone: string;
+  wordListVersion: string;
+  guesses: string[];
+  completed: boolean;
+  won: boolean;
+  startedAt: string;
+  completedAt?: string;
+  /** Supports deterministic local upserts and backup conflict resolution. */
+  updatedAt: string;
 }
 
 export type ProductivityUnitType = "minutes" | "count" | "yesno" | "distance" | "custom";
@@ -523,6 +557,7 @@ export interface Profile {
   hiddenNav?: string[];
   toolsCollapsed?: boolean;
   prepCollapsed?: boolean;
+  dailyGamesCollapsed?: boolean;
   // First-launch onboarding
   onboarded: boolean;
   tourDone?: boolean; // guided tour + promise cutscene completed
@@ -548,6 +583,9 @@ export interface Profile {
   taskTemplates?: TaskTemplate[];
   // Early/experimental features (§6) — opt-in via Settings → Early Features.
   experimentalFlags?: ExperimentalFlags;
+  /** Shared by the clock and new date-based utilities. */
+  timeZonePreference?: TimeZonePreference;
+  clockPreferences?: ClockPreferences;
   // Custom Pomodoro durations (§3), persisted with the profile.
   pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
 }
@@ -599,5 +637,7 @@ export interface NoctyriumState {
   quizBlocks: QuizBlock[]; // schema v29
   ankiCards: AnkiCard[];
   cardReviews: CardReviewLog[];
+  // Optional Daily Games history. Enablement lives in profile preferences.
+  dailyWordPuzzles: DailyWordPuzzleState[];
   schemaVersion: number;
 }

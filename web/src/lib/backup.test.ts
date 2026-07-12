@@ -99,4 +99,91 @@ describe("portable backup safety", () => {
     expect(parsed.questions[0].correctAnswerText).toBe("Legacy answer");
     expect(parsed.questions[0].extraction?.overallImportConfidence).toBe(0.65);
   });
+
+  it("round-trips Daily Games history and shared clock preferences without enabling legacy imports", () => {
+    const state = makeSeed();
+    state.profile.experimentalFlags = { habits: true, dailyGames: true };
+    state.profile.dailyGamesCollapsed = true;
+    state.profile.timeZonePreference = { mode: "custom", customTimezone: "America/Grenada" };
+    state.profile.clockPreferences = {
+      enabled: false,
+      showDigital: true,
+      showAnalog: true,
+      showDigitalSeconds: true,
+      showAnalogSeconds: false,
+      showDate: true,
+      showTimezoneLabel: true,
+      hourCycle: "24",
+    };
+    state.dailyWordPuzzles = [{
+      puzzleId: "daily-word:general-1:2026-07-12",
+      puzzleDate: "2026-07-12",
+      timezone: "America/Grenada",
+      wordListVersion: "general-1",
+      guesses: ["apple"],
+      completed: false,
+      won: false,
+      startedAt: "2026-07-12T10:00:00.000Z",
+      updatedAt: "2026-07-12T10:01:00.000Z",
+    }];
+
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.profile.experimentalFlags).toEqual({ habits: true, dailyGames: true });
+    expect(parsed.profile.dailyGamesCollapsed).toBe(true);
+    expect(parsed.profile.timeZonePreference).toEqual({ mode: "custom", customTimezone: "America/Grenada" });
+    expect(parsed.profile.clockPreferences?.hourCycle).toBe("24");
+    expect(parsed.dailyWordPuzzles).toMatchObject([{
+      puzzleId: "daily-word:general-1:2026-07-12",
+      guesses: ["APPLE"],
+    }]);
+
+    const legacy = toPortableState(makeSeed()) as unknown as Record<string, unknown>;
+    const legacyProfile = { ...(legacy.profile as Record<string, unknown>) };
+    delete legacyProfile.experimentalFlags;
+    delete legacyProfile.timeZonePreference;
+    delete legacyProfile.clockPreferences;
+    legacy.profile = legacyProfile;
+    delete legacy.dailyWordPuzzles;
+    const normalizedLegacy = parseImport(JSON.stringify(legacy));
+    expect(normalizedLegacy.profile.experimentalFlags?.dailyGames).toBe(false);
+    expect(normalizedLegacy.dailyWordPuzzles).toEqual([]);
+  });
+
+  it("merges Daily Word puzzles once by puzzleId and deterministically prefers completed progress", () => {
+    const current = makeSeed();
+    current.profile.experimentalFlags = { dailyGames: false };
+    current.profile.timeZonePreference = { mode: "system" };
+    current.dailyWordPuzzles = [{
+      puzzleId: "daily-word:general-1:2026-07-12",
+      puzzleDate: "2026-07-12",
+      timezone: "America/Grenada",
+      wordListVersion: "general-1",
+      guesses: ["APPLE", "BERRY"],
+      completed: false,
+      won: false,
+      startedAt: "2026-07-12T10:00:00.000Z",
+      updatedAt: "2026-07-12T10:05:00.000Z",
+    }];
+    const imported = makeSeed();
+    imported.profile.experimentalFlags = { dailyGames: true };
+    imported.profile.timeZonePreference = { mode: "custom", customTimezone: "UTC" };
+    imported.dailyWordPuzzles = [{
+      ...current.dailyWordPuzzles[0],
+      guesses: ["APPLE", "BERRY", "CHIME"],
+      completed: true,
+      won: true,
+      completedAt: "2026-07-12T10:04:00.000Z",
+      updatedAt: "2026-07-12T10:04:00.000Z",
+    }];
+
+    const merged = mergeStates(current, imported);
+    expect(merged.dailyWordPuzzles).toHaveLength(1);
+    expect(merged.dailyWordPuzzles[0]).toMatchObject({ completed: true, won: true, guesses: ["APPLE", "BERRY", "CHIME"] });
+    // Merge imports intentionally keep current profile/preferences.
+    expect(merged.profile.experimentalFlags?.dailyGames).toBe(false);
+    expect(merged.profile.timeZonePreference).toEqual({ mode: "system" });
+
+    const reverse = mergeStates(imported, current);
+    expect(reverse.dailyWordPuzzles).toEqual(merged.dailyWordPuzzles);
+  });
 });

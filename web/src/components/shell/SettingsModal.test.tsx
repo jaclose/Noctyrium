@@ -96,4 +96,111 @@ describe("Settings information architecture", () => {
     expect(confirm).toHaveBeenCalledOnce();
     expect(reset).not.toHaveBeenCalled();
   });
+
+  it("keeps Daily Games disabled by default and preserves history across enable and disable", async () => {
+    const user = userEvent.setup();
+    useStore.setState({
+      dailyWordPuzzles: [{
+        puzzleId: "daily-word:general-1:2026-07-12",
+        puzzleDate: "2026-07-12",
+        timezone: "America/Grenada",
+        wordListVersion: "general-1",
+        guesses: ["APPLE"],
+        completed: false,
+        won: false,
+        startedAt: "2026-07-12T10:00:00.000Z",
+        updatedAt: "2026-07-12T10:01:00.000Z",
+      }],
+    });
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+
+    const toggle = screen.getByRole("checkbox", { name: "Enable Daily Games" });
+    expect((toggle as HTMLInputElement).checked).toBe(false);
+    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(false);
+
+    await user.click(toggle);
+    expect((toggle as HTMLInputElement).checked).toBe(true);
+    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(true);
+    expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
+
+    await user.click(toggle);
+    expect((toggle as HTMLInputElement).checked).toBe(false);
+    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(false);
+    expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
+  });
+
+  it("persists clock controls and rejects an invalid custom timezone without replacing the last valid value", async () => {
+    const user = userEvent.setup();
+    useStore.setState((state) => ({
+      profile: {
+        ...state.profile,
+        timeZonePreference: { mode: "custom", customTimezone: "America/Grenada" },
+      },
+    }));
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+
+    await user.click(screen.getByRole("checkbox", { name: "Digital seconds" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Hour cycle" }), "24");
+    await user.click(screen.getByRole("checkbox", { name: "Show clock" }));
+    expect(useStore.getState().profile.clockPreferences).toMatchObject({
+      enabled: false,
+      showDigitalSeconds: true,
+      hourCycle: "24",
+    });
+
+    const input = screen.getByRole("textbox", { name: "Custom timezone" });
+    await user.clear(input);
+    await user.type(input, "Mars/Olympus");
+    await user.click(screen.getByRole("button", { name: "Apply timezone" }));
+    expect(screen.getByRole("alert").textContent).toMatch(/valid IANA timezone/i);
+    expect(useStore.getState().profile.timeZonePreference).toEqual({
+      mode: "custom",
+      customTimezone: "America/Grenada",
+    });
+
+    await user.clear(input);
+    await user.type(input, "America/New_York");
+    await user.click(screen.getByRole("button", { name: "Apply timezone" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useStore.getState().profile.timeZonePreference).toEqual({
+      mode: "custom",
+      customTimezone: "America/New_York",
+    });
+  });
+
+  it("confirmation-gates the scoped Daily Word reset without changing enablement or unrelated data", async () => {
+    const user = userEvent.setup();
+    useStore.setState((state) => ({
+      profile: {
+        ...state.profile,
+        experimentalFlags: { ...state.profile.experimentalFlags, dailyGames: true },
+      },
+      dailyWordPuzzles: [{
+        puzzleId: "daily-word:general-1:2026-07-12",
+        puzzleDate: "2026-07-12",
+        timezone: "America/Grenada",
+        wordListVersion: "general-1",
+        guesses: ["APPLE"],
+        completed: false,
+        won: false,
+        startedAt: "2026-07-12T10:00:00.000Z",
+        updatedAt: "2026-07-12T10:01:00.000Z",
+      }],
+    }));
+    const tasks = structuredClone(useStore.getState().tasks);
+    const confirm = vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+
+    const reset = screen.getByRole("button", { name: "Reset Daily Word" });
+    await user.click(reset);
+    expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
+
+    await user.click(reset);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(useStore.getState().dailyWordPuzzles).toEqual([]);
+    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(true);
+    expect(useStore.getState().tasks).toEqual(tasks);
+  });
 });

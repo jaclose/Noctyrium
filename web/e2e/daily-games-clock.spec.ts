@@ -1,0 +1,134 @@
+import { expect, test, type Page } from "@playwright/test";
+import { STORAGE_KEYS } from "../src/lib/brand";
+
+test("Daily Games opt-in, Daily Word history, and shared clock preferences persist locally", async ({ page }) => {
+  const browserErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+
+  await page.goto("/", { waitUntil: "networkidle" });
+  await completeOnboarding(page);
+  await page.evaluate(() => { window.location.hash = "daily-word"; });
+
+  await expect(page.getByRole("heading", { level: 1, name: "Daily Games is currently disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enable Daily Games" })).toBeVisible();
+  expect(await loadedGameResources(page)).toEqual({ engine: false, words: false });
+
+  await page.getByRole("button", { name: "Enable Daily Games" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Daily Games", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Daily Word, New" })).toBeVisible();
+
+  // ABOUT is a known allowed guess but never an answer in general-1, so this
+  // always leaves a durable, unfinished puzzle without coupling to today's key.
+  await page.keyboard.type("ABOUT");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".daily-word-status")).toContainText(/correct position|positions/);
+  await expect.poll(async () => (await readPersistedWorkspace(page)).dailyWordPuzzles?.[0]?.guesses?.[0]).toBe("ABOUT");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ })).toBeVisible();
+
+  // The TopBar action opens the exact Personalization surface rather than a
+  // nested settings dialog.
+  await page.getByRole("button", { name: /Open clock/ }).click();
+  await page.getByRole("button", { name: "Clock preferences" }).click();
+  const settings = page.getByRole("dialog", { name: "Your AXOM Setup" });
+  await expect(settings.getByText("Daily utilities")).toBeVisible();
+
+  await settings.getByRole("combobox", { name: "Hour cycle" }).selectOption("24");
+  await settings.getByRole("checkbox", { name: "Digital seconds" }).check();
+  await settings.getByRole("checkbox", { name: "Timezone label" }).check();
+  await settings.getByRole("radio", { name: "Custom IANA timezone" }).check();
+  await settings.getByLabel("Custom timezone").fill("America/Grenada");
+  await settings.getByRole("button", { name: "Apply timezone" }).click();
+
+  // Disabling hides navigation and gates the active direct route, but history
+  // remains in the IndexedDB workspace.
+  await settings.getByRole("checkbox", { name: "Enable Daily Games" }).uncheck();
+  await settings.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Daily Games is currently disabled" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Daily Games", exact: true })).toHaveCount(0);
+  expect((await readPersistedWorkspace(page)).dailyWordPuzzles[0].guesses).toEqual(["ABOUT"]);
+
+  await page.getByRole("button", { name: "Enable Daily Games" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /Row 1, column 1, letter A/ })).toBeVisible();
+
+  await page.reload({ waitUntil: "networkidle" });
+  const persisted = await readPersistedWorkspace(page);
+  expect(persisted.schemaVersion).toBe(32);
+  expect(persisted.profile.experimentalFlags.dailyGames).toBe(true);
+  expect(persisted.profile.timeZonePreference).toEqual({ mode: "custom", customTimezone: "America/Grenada" });
+  expect(persisted.profile.clockPreferences).toMatchObject({
+    enabled: true,
+    hourCycle: "24",
+    showDigitalSeconds: true,
+    showTimezoneLabel: true,
+  });
+  expect(persisted.dailyWordPuzzles[0]).toMatchObject({ guesses: ["ABOUT"], timezone: expect.any(String) });
+  await expect(page.getByRole("button", { name: /Open clock, .*America\/Grenada/ })).toBeVisible();
+
+  await page.evaluate((themeKey) => localStorage.setItem(themeKey, "light"), STORAGE_KEYS.themePreference);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeVisible();
+  const mobileLayout = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    surfaceFits: (() => {
+      const surface = document.querySelector<HTMLElement>(".surface-scroll");
+      return Boolean(surface && surface.scrollWidth <= surface.clientWidth + 1);
+    })(),
+    topbarFits: (() => {
+      const topbar = document.querySelector<HTMLElement>(".topbar");
+      return Boolean(topbar && topbar.scrollWidth <= topbar.clientWidth + 1);
+    })(),
+  }));
+  expect(mobileLayout).toEqual({ viewport: 390, documentWidth: 390, surfaceFits: true, topbarFits: true });
+
+  const localStorageEvidence = await page.evaluate((stateKey) => ({
+    workspace: localStorage.getItem(stateKey),
+    scopedWorkspace: Object.keys(localStorage).some((key) => key.startsWith(`${stateKey}:user:`)),
+  }), STORAGE_KEYS.persistedState);
+  expect(localStorageEvidence).toEqual({ workspace: null, scopedWorkspace: false });
+  expect(browserErrors).toEqual([]);
+});
+
+async function completeOnboarding(page: Page): Promise<void> {
+  await page.getByLabel("Display name (optional)").fill("AXOM Daily Games E2E");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Finish", exact: true }).click();
+}
+
+async function loadedGameResources(page: Page): Promise<{ engine: boolean; words: boolean }> {
+  return page.evaluate(() => {
+    const names = performance.getEntriesByType("resource").map((entry) => entry.name);
+    return {
+      engine: names.some((name) => /DailyWordPage/i.test(name)),
+      words: names.some((name) => /dailyWordWords/i.test(name)),
+    };
+  });
+}
+
+async function readPersistedWorkspace(page: Page) {
+  return page.evaluate(async ({ dbName, stateKey }) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(dbName);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const raw = await new Promise<string>((resolve, reject) => {
+      const request = db.transaction("state", "readonly").objectStore("state").get(stateKey);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return JSON.parse(raw).state;
+  }, { dbName: STORAGE_KEYS.vaultDb, stateKey: STORAGE_KEYS.persistedState });
+}

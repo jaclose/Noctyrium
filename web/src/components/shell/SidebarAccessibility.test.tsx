@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import App from "../../App";
 import { useStore } from "../../lib/store";
-import { getNavModuleStatus, MODULE_STATUS_META } from "./nav";
+import { DAILY_GAMES_FOLDER, getNavModuleStatus, isDailyGamesEnabled, MODULE_STATUS_META } from "./nav";
 
 beforeEach(() => {
   window.location.hash = "#dashboard";
@@ -18,8 +18,10 @@ beforeEach(() => {
       hiddenNav: [],
       prepCollapsed: false,
       toolsCollapsed: false,
-      experimentalFlags: { ...state.profile.experimentalFlags, habits: true },
+      dailyGamesCollapsed: false,
+      experimentalFlags: { ...state.profile.experimentalFlags, habits: true, dailyGames: false },
     },
+    dailyWordPuzzles: [],
   }));
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -130,6 +132,8 @@ describe("sidebar module status", () => {
   it("keeps status assignments and accessible presentation metadata centralized", () => {
     expect(getNavModuleStatus("questions")).toBe("new");
     expect(getNavModuleStatus("methods")).toBe("new");
+    expect(getNavModuleStatus("daily-word")).toBe("new");
+    expect(getNavModuleStatus("doctordle")).toBe("wip");
     expect(getNavModuleStatus("anki")).toBe("wip");
     expect(getNavModuleStatus("habits")).toBe("wip");
     expect(getNavModuleStatus("step")).toBe("wip");
@@ -228,5 +232,83 @@ describe("sidebar folder disclosure accessibility", () => {
     expect(toolsToggle.getAttribute("aria-expanded")).toBe("false");
     expect(document.getElementById("sidebar-tools-items")).toBe(toolItems);
     expect(toolItems.hidden).toBe(true);
+  });
+
+  it("keeps Daily Games opt-in, exposes it in Customize, and preserves history when disabled", () => {
+    useStore.setState({
+      dailyWordPuzzles: [{
+        puzzleId: "daily-word:general-1:2026-07-12",
+        puzzleDate: "2026-07-12",
+        timezone: "America/Grenada",
+        wordListVersion: "general-1",
+        guesses: ["APPLE"],
+        completed: false,
+        won: false,
+        startedAt: "2026-07-12T10:00:00.000Z",
+        updatedAt: "2026-07-12T10:01:00.000Z",
+      }],
+    });
+    render(
+      <Sidebar
+        active="dashboard"
+        onSelect={vi.fn()}
+        onOpenSettings={vi.fn()}
+        collapsed
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(isDailyGamesEnabled(useStore.getState().profile.experimentalFlags)).toBe(false);
+    expect(screen.queryByRole("button", { name: DAILY_GAMES_FOLDER.label })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Daily Word, New" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Customize" }));
+    const optionalToggle = screen.getByRole("button", { name: "Daily Games, optional feature" });
+    expect(optionalToggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(optionalToggle);
+
+    expect(optionalToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: DAILY_GAMES_FOLDER.label })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Daily Word, New" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Doctordle, Work in progress" })).toBeTruthy();
+
+    fireEvent.click(optionalToggle);
+    expect(optionalToggle.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByRole("button", { name: DAILY_GAMES_FOLDER.label })).toBeNull();
+    expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
+  });
+
+  it("uses a stable Daily Games disclosure and removes collapsed children from keyboard navigation", () => {
+    useStore.setState((state) => ({
+      profile: {
+        ...state.profile,
+        experimentalFlags: { ...state.profile.experimentalFlags, dailyGames: true },
+      },
+    }));
+    render(
+      <Sidebar
+        active="daily-word"
+        onSelect={vi.fn()}
+        onOpenSettings={vi.fn()}
+        collapsed
+        onClose={vi.fn()}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: DAILY_GAMES_FOLDER.label });
+    const region = document.getElementById(DAILY_GAMES_FOLDER.regionId)!;
+    const activeRoute = screen.getByRole("button", { name: "Daily Word, New" });
+    expect(toggle.id).toBe(DAILY_GAMES_FOLDER.toggleId);
+    expect(toggle.getAttribute("aria-controls")).toBe(region.id);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(region.getAttribute("aria-labelledby")).toBe(toggle.id);
+    expect(activeRoute.getAttribute("aria-current")).toBe("page");
+
+    toggle.focus();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(region.hidden).toBe(true);
+    expect(document.activeElement).toBe(toggle);
+    expect(screen.queryByRole("button", { name: "Daily Word, New" })).toBeNull();
   });
 });

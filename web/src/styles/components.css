@@ -237,6 +237,92 @@ select.field, .scope-select {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.settings-utility-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.settings-utility-row .sync-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-inline-toggle {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 11px;
+  color: var(--text-80);
+  background: var(--surface-1);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.settings-inline-toggle input,
+.settings-compact-grid input,
+.settings-timezone-fieldset input { accent-color: var(--cyan); }
+.settings-compact-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.settings-compact-grid > label:not(.stack) {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  color: var(--text-60);
+  background: rgba(255,255,255,0.025);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.settings-compact-grid > .stack { min-width: 0; }
+.settings-timezone-fieldset {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 13px;
+  background: rgba(255,255,255,0.025);
+}
+.settings-timezone-fieldset legend {
+  padding: 0 5px;
+  color: var(--text-80);
+  font-size: 12px;
+  font-weight: 800;
+}
+.settings-timezone-fieldset .row > label {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+}
+.settings-timezone-input {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.settings-timezone-input .field { min-width: 0; }
+.field-error {
+  color: var(--red);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
 
 /* Device theme preference — native radios retain arrow-key and form semantics. */
 .theme-setting {
@@ -696,6 +782,17 @@ select.field, .scope-select {
     align-items: stretch;
     flex-direction: column;
   }
+  .settings-utility-row,
+  .settings-timezone-input {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .settings-inline-toggle { width: 100%; }
+  .settings-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+  .settings-compact-grid { grid-template-columns: 1fr; }
 }
 
 /* Empty state — intentional, not apologetic. */

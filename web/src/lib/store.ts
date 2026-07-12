@@ -8,12 +8,13 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BoardBlueprintLog, BoardExamId, BoardPrepProfile, Course, CourseModule, DailyRolloverEvent, DayPlan, HubFolder, JournalEntry, NoctyriumState,
   PremedExperienceEntry, ProductivityTracker, Prompt, Resource, Task, Term, TrackerItem, Profile, StudyLog, InstalledBlueprintNode, EnergyFactor,
-  Habit, HabitEntry, HabitCheckStatus,
+  Habit, HabitEntry, HabitCheckStatus, DailyWordPuzzleState,
 } from "./types";
 import { blueprintById } from "./blueprintCatalog";
 import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
 import {
-  APP_VERSION_LABEL, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+  APP_VERSION_LABEL, DEFAULT_CLOCK_PREFERENCES, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+  DEFAULT_TIME_ZONE_PREFERENCE,
   defaultProductivityTrackers,
   driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES,
 } from "./seed";
@@ -215,6 +216,10 @@ interface Actions {
   updateAnkiCard: (id: string, patch: Partial<AnkiCard>) => void;
   removeAnkiCard: (id: string) => void;
   reviewAnkiCard: (id: string, rating: ReviewRating, msToAnswer?: number) => void;
+
+  // optional Daily Games — submitted guesses live in the IndexedDB workspace
+  upsertDailyWordPuzzle: (puzzle: DailyWordPuzzleState) => void;
+  resetDailyWordPuzzles: () => void;
 
   // data management
   replaceAll: (state: NoctyriumState) => void;
@@ -1007,7 +1012,17 @@ export const useStore = create<Store>()(
           };
         }),
 
-      replaceAll: (state) => set(() => ({ ...state })),
+      upsertDailyWordPuzzle: (puzzle) =>
+        set((s) => ({
+          dailyWordPuzzles: upsertDailyWordPuzzle(s.dailyWordPuzzles, puzzle),
+        })),
+      resetDailyWordPuzzles: () => set(() => ({ dailyWordPuzzles: [] })),
+
+      replaceAll: (state) => set(() => ({
+        ...state,
+        profile: normalizeProfile(state.profile),
+        dailyWordPuzzles: normalizeDailyWordPuzzles(state.dailyWordPuzzles),
+      })),
       resetToSeed: () => set(() => ({ ...makeSeed() })),
       startFresh: () =>
         set((s) => ({
@@ -1017,7 +1032,7 @@ export const useStore = create<Store>()(
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
           habits: [], habitEntries: [],
-          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], documents: [], questionSets: [], quizBlocks: [], ankiCards: [], cardReviews: [],
+          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], documents: [], questionSets: [], quizBlocks: [], ankiCards: [], cardReviews: [], dailyWordPuzzles: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -1040,13 +1055,13 @@ export const useStore = create<Store>()(
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -1382,6 +1397,11 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
       };
     });
   }
+  // Wave 5 adds optional profile preferences and one additive workspace list.
+  // Keeping these defaults unconditional makes direct/imported v32 payloads
+  // idempotent without turning the optional module on or bumping the schema.
+  s.profile = normalizeProfile(s.profile);
+  s.dailyWordPuzzles = normalizeDailyWordPuzzles(s.dailyWordPuzzles);
   s.schemaVersion = SCHEMA_VERSION;
   return s as unknown as NoctyriumState;
 }
@@ -1671,15 +1691,149 @@ function normalizeProfile(value: unknown): Profile {
     hiddenNav,
     toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
     prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
+    dailyGamesCollapsed: typeof profile.dailyGamesCollapsed === "boolean" ? profile.dailyGamesCollapsed : undefined,
     journalReviewTime,
     // Preserve optional opt-in fields so they survive reset/migration.
     blueprintMode: profile.blueprintMode === "usmle" || profile.blueprintMode === "prehealth"
       ? profile.blueprintMode as Profile["blueprintMode"] : undefined,
     taskAutofillDisabled: typeof profile.taskAutofillDisabled === "boolean" ? profile.taskAutofillDisabled : undefined,
     taskTemplates: Array.isArray(profile.taskTemplates) ? profile.taskTemplates as Profile["taskTemplates"] : undefined,
-    experimentalFlags: isRecord(profile.experimentalFlags) ? profile.experimentalFlags as Profile["experimentalFlags"] : undefined,
+    experimentalFlags: normalizeExperimentalFlags(profile.experimentalFlags),
+    timeZonePreference: normalizeTimeZonePreference(profile.timeZonePreference),
+    clockPreferences: normalizeClockPreferences(profile.clockPreferences),
     pomodoroCustom: isRecord(profile.pomodoroCustom) ? profile.pomodoroCustom as Profile["pomodoroCustom"] : undefined,
   };
+}
+
+function normalizeExperimentalFlags(value: unknown): Profile["experimentalFlags"] {
+  const flags = isRecord(value) ? value : {};
+  return {
+    ...(flags as Profile["experimentalFlags"]),
+    habits: typeof flags.habits === "boolean" ? flags.habits : undefined,
+    // Missing, malformed, and false are all the safe disabled state.
+    dailyGames: flags.dailyGames === true,
+  };
+}
+
+function normalizeTimeZonePreference(value: unknown): NonNullable<Profile["timeZonePreference"]> {
+  if (!isRecord(value) || value.mode !== "custom") return { ...DEFAULT_TIME_ZONE_PREFERENCE };
+  const customTimezone = typeof value.customTimezone === "string" ? value.customTimezone.trim() : "";
+  if (!isValidTimeZone(customTimezone)) return { ...DEFAULT_TIME_ZONE_PREFERENCE };
+  return { mode: "custom", customTimezone };
+}
+
+function normalizeClockPreferences(value: unknown): NonNullable<Profile["clockPreferences"]> {
+  const preferences = isRecord(value) ? value : {};
+  const booleanPreference = (key: Exclude<keyof NonNullable<Profile["clockPreferences"]>, "hourCycle">): boolean => (
+    typeof preferences[key] === "boolean"
+      ? preferences[key] as boolean
+      : DEFAULT_CLOCK_PREFERENCES[key]
+  );
+  return {
+    enabled: booleanPreference("enabled"),
+    showDigital: booleanPreference("showDigital"),
+    showAnalog: booleanPreference("showAnalog"),
+    showDigitalSeconds: booleanPreference("showDigitalSeconds"),
+    showAnalogSeconds: booleanPreference("showAnalogSeconds"),
+    showDate: booleanPreference("showDate"),
+    showTimezoneLabel: booleanPreference("showTimezoneLabel"),
+    hourCycle: preferences.hourCycle === "24" ? "24" : "12",
+  };
+}
+
+function isValidTimeZone(value: string): boolean {
+  if (!value) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDailyWordPuzzles(value: unknown): DailyWordPuzzleState[] {
+  if (!Array.isArray(value)) return [];
+  const byId = new Map<string, DailyWordPuzzleState>();
+  for (const candidate of value) {
+    const puzzle = normalizeDailyWordPuzzle(candidate);
+    if (!puzzle) continue;
+    const existing = byId.get(puzzle.puzzleId);
+    byId.set(puzzle.puzzleId, existing ? preferDailyWordPuzzle(existing, puzzle) : puzzle);
+  }
+  return [...byId.values()].sort((left, right) => (
+    left.puzzleDate.localeCompare(right.puzzleDate) || left.puzzleId.localeCompare(right.puzzleId)
+  ));
+}
+
+function normalizeDailyWordPuzzle(value: unknown): DailyWordPuzzleState | null {
+  if (!isRecord(value)) return null;
+  const puzzleId = typeof value.puzzleId === "string" ? value.puzzleId.trim() : "";
+  const puzzleDate = typeof value.puzzleDate === "string" ? value.puzzleDate.trim() : "";
+  const timezone = typeof value.timezone === "string" ? value.timezone.trim() : "";
+  const wordListVersion = typeof value.wordListVersion === "string" ? value.wordListVersion.trim() : "";
+  const startedAt = typeof value.startedAt === "string" ? value.startedAt : "";
+  const expectedId = `daily-word:${wordListVersion}:${puzzleDate}`;
+  if (
+    puzzleId !== expectedId ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(puzzleDate) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(wordListVersion) ||
+    !isValidTimeZone(timezone) ||
+    !startedAt
+  ) return null;
+  const guesses = Array.isArray(value.guesses)
+    ? value.guesses
+      .filter((guess): guess is string => typeof guess === "string" && /^[A-Za-z]{5}$/.test(guess))
+      .slice(0, 6)
+      .map((guess) => guess.toUpperCase())
+    : [];
+  const completed = value.completed === true;
+  return {
+    puzzleId,
+    puzzleDate,
+    timezone,
+    wordListVersion,
+    guesses,
+    completed,
+    won: completed && value.won === true,
+    startedAt,
+    completedAt: completed && typeof value.completedAt === "string" ? value.completedAt : undefined,
+    updatedAt: typeof value.updatedAt === "string" && value.updatedAt
+      ? value.updatedAt
+      : typeof value.completedAt === "string" && value.completedAt
+        ? value.completedAt
+        : startedAt,
+  };
+}
+
+function preferDailyWordPuzzle(left: DailyWordPuzzleState, right: DailyWordPuzzleState): DailyWordPuzzleState {
+  const rank = (puzzle: DailyWordPuzzleState) => [
+    puzzle.completed ? 1 : 0,
+    puzzle.guesses.length,
+    puzzle.updatedAt,
+    puzzle.completedAt ?? "",
+    JSON.stringify(puzzle),
+  ] as const;
+  const a = rank(left);
+  const b = rank(right);
+  for (let index = 0; index < a.length; index += 1) {
+    const comparison = String(a[index]).localeCompare(String(b[index]));
+    if (comparison !== 0) return comparison > 0 ? left : right;
+  }
+  return left;
+}
+
+function upsertDailyWordPuzzle(
+  puzzles: DailyWordPuzzleState[] | undefined,
+  candidate: DailyWordPuzzleState,
+): DailyWordPuzzleState[] {
+  const next = normalizeDailyWordPuzzle(candidate);
+  const current = normalizeDailyWordPuzzles(puzzles);
+  if (!next) return current;
+  const index = current.findIndex((puzzle) => puzzle.puzzleId === next.puzzleId);
+  if (index < 0) return [...current, next];
+  const merged = [...current];
+  merged[index] = preferDailyWordPuzzle(merged[index], next);
+  return merged;
 }
 
 function normalizeDashboardWidgetOrder(value: unknown): Profile["dashboardWidgetOrder"] {
