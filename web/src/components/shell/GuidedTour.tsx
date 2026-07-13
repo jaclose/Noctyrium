@@ -14,6 +14,8 @@ export interface TourStep {
   body: string;
 }
 
+export type TourExitReason = "complete" | "skip" | "escape";
+
 export const GUIDED_TOUR_STEPS: readonly TourStep[] = [
   {
     route: "dashboard",
@@ -62,12 +64,22 @@ const PAD = 8;
 
 export function GuidedTour({
   onExit, onNavigate, currentRoute,
+  steps = GUIDED_TOUR_STEPS,
+  persistProgress = true,
+  targetAttribute = "data-tour",
+  skipLabel = "Skip guided tour",
+  progressLabel = "Guided tour progress",
 }: {
-  onExit: () => void;
+  onExit: (reason: TourExitReason) => void;
   onNavigate: (route: string) => void;
   currentRoute: string;
+  steps?: readonly TourStep[];
+  persistProgress?: boolean;
+  targetAttribute?: "data-tour" | "data-module-tour";
+  skipLabel?: string;
+  progressLabel?: string;
 }) {
-  const [index, setIndex] = useState(() => readTourStep(GUIDED_TOUR_STEPS.length));
+  const [index, setIndex] = useState(() => persistProgress ? readTourStep(steps.length) : 0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [ready, setReady] = useState(false);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -75,16 +87,18 @@ export function GuidedTour({
   const navigateRef = useRef(onNavigate);
   const titleId = useId();
   const bodyId = useId();
-  const step = GUIDED_TOUR_STEPS[index];
+  const step = steps[index] ?? steps[0];
 
   useEffect(() => { exitRef.current = onExit; }, [onExit]);
   useEffect(() => { navigateRef.current = onNavigate; }, [onNavigate]);
-  useEffect(() => writeTourStep(index), [index]);
+  useEffect(() => {
+    if (persistProgress) writeTourStep(index);
+  }, [index, persistProgress]);
 
-  const exitTour = useCallback(() => {
-    clearTourProgress();
-    exitRef.current();
-  }, []);
+  const exitTour = useCallback((reason: TourExitReason) => {
+    if (persistProgress) clearTourProgress();
+    exitRef.current(reason);
+  }, [persistProgress]);
 
   useEffect(() => {
     if (currentRoute !== step.route) {
@@ -103,7 +117,7 @@ export function GuidedTour({
     let scrolled = false;
     const tick = () => {
       if (cancelled) return;
-      const element = document.querySelector(`[data-tour="${step.target}"]`) as HTMLElement | null;
+      const element = document.querySelector(`[${targetAttribute}="${step.target}"]`) as HTMLElement | null;
       if (!element) return;
       if (!scrolled) {
         element.scrollIntoView?.({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
@@ -135,7 +149,7 @@ export function GuidedTour({
       window.removeEventListener("resize", onMove, true);
       window.removeEventListener("scroll", onMove, true);
     };
-  }, [currentRoute, index, step.route, step.target]);
+  }, [currentRoute, index, step.route, step.target, targetAttribute]);
 
   useEffect(() => {
     tipRef.current?.focus();
@@ -148,7 +162,7 @@ export function GuidedTour({
       if (!tip) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        exitTour();
+        exitTour("escape");
         return;
       }
       if (event.key !== "Tab") return;
@@ -176,8 +190,8 @@ export function GuidedTour({
   }, [exitTour]);
 
   function next() {
-    if (index < GUIDED_TOUR_STEPS.length - 1) setIndex(index + 1);
-    else exitTour();
+    if (index < steps.length - 1) setIndex(index + 1);
+    else exitTour("complete");
   }
 
   function back() {
@@ -204,8 +218,8 @@ export function GuidedTour({
         tabIndex={-1}
       >
         <div className="tour-tip-head">
-          <span className="tour-step-badge"><Sparkles size={12} aria-hidden="true" /> {index + 1} / {GUIDED_TOUR_STEPS.length}</span>
-          <button type="button" className="tour-skip" onClick={exitTour} aria-label="Skip guided tour">
+          <span className="tour-step-badge"><Sparkles size={12} aria-hidden="true" /> {index + 1} / {steps.length}</span>
+          <button type="button" className="tour-skip" onClick={() => exitTour("skip")} aria-label={skipLabel}>
             Skip <X size={13} aria-hidden="true" />
           </button>
         </div>
@@ -216,18 +230,18 @@ export function GuidedTour({
             ? <button type="button" className="gbtn sm" onClick={back}><ArrowLeft size={14} /> Back</button>
             : <span aria-hidden="true" />}
           <button type="button" className="gbtn sm primary" onClick={next}>
-            {index === GUIDED_TOUR_STEPS.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} />
+            {index === steps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} />
           </button>
         </div>
         <div
           className="tour-progress"
           role="progressbar"
-          aria-label="Guided tour progress"
+          aria-label={progressLabel}
           aria-valuemin={1}
-          aria-valuemax={GUIDED_TOUR_STEPS.length}
+          aria-valuemax={steps.length}
           aria-valuenow={index + 1}
         >
-          <span style={{ width: `${((index + 1) / GUIDED_TOUR_STEPS.length) * 100}%` }} />
+          <span style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
         </div>
       </div>
     </div>

@@ -91,6 +91,7 @@
 .gbtn.icon.sm { width: 30px; }
 .gbtn.icon.tiny { width: 26px; }
 .gbtn:disabled { opacity: 0.38; pointer-events: none; }
+.gbtn[aria-disabled="true"] { opacity: 0.38; pointer-events: none; }
 
 /* Tag / capsule — small mineral status chips. */
 .tag {
@@ -879,6 +880,17 @@ select.field, .scope-select {
   gap: 14px;
 }
 .onboarding-progress-row .onboarding-steps { flex: 1; }
+.onboarding-dialog-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .settings-widget-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -914,6 +926,39 @@ select.field, .scope-select {
   font-weight: 850;
   letter-spacing: .04em;
   text-transform: uppercase;
+}
+.onboarding-identity-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+.onboarding-identity-header .onboarding-mark { margin: 0; }
+.onboarding-identity-header .onboarding-lede { margin-top: 5px; }
+.onboarding-starter-targets {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 13px;
+  background: var(--surface-1);
+}
+.onboarding-section-title { font-size: 13px; font-weight: 850; }
+.onboarding-starter-targets > .sub { margin: -4px 0 0; }
+.onboarding-custom-later {
+  color: var(--text-45);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.onboarding-technical-details {
+  margin-top: 8px;
+  color: var(--text-60);
+}
+.onboarding-technical-details > summary {
+  min-height: 32px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 750;
 }
 .onboarding-disclosure {
   border: 1px solid var(--hairline);
@@ -1282,6 +1327,8 @@ select.field, .scope-select {
 }
 .onboarding-track-note svg { color: var(--cyan); flex-shrink: 0; margin-top: 1px; }
 .onboarding-track-note b { color: var(--text); font-weight: 800; }
+.onboarding-preview-card { background: rgba(95,190,210,0.07); border-color: rgba(95,190,210,0.2); }
+.onboarding-preview-card svg { color: var(--cyan); }
 
 .onboarding-toggle-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -1341,6 +1388,8 @@ select.field, .scope-select {
   .onboarding-body h2 { font-size: 22px; }
   .onboarding-lede { font-size: 13px; line-height: 1.48; }
   .onboarding-mark { animation: none; }
+  .onboarding-identity-header { align-items: flex-start; gap: 11px; }
+  .onboarding-identity-header .onboarding-mark { width: 40px; height: 40px; }
   .focus-group { padding: 10px; border-radius: 14px; }
   .focus-card {
     min-height: 78px;
@@ -1362,6 +1411,10 @@ select.field, .scope-select {
     border-top: 1px solid rgba(230,226,214,0.08);
   }
   .onboarding-actions .gbtn {
+    width: 100%;
+    min-height: 44px;
+  }
+  .onboarding-actions .ghost-btn {
     width: 100%;
     min-height: 44px;
   }

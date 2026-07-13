@@ -169,4 +169,23 @@ describe("ExamRunner saved blocks and selection semantics", () => {
 
     expect(screen.getByText(edited).textContent).toBe(edited);
   });
+
+  it("does not retake a missed question after its answer mapping is marked wrong", async () => {
+    const transitioning = { ...question, id: "mapping-transition" };
+    setStore();
+    mocked.store = { ...mocked.store, questions: [transitioning] };
+    mocked.updateQuestion.mockImplementationOnce((_id, patch) => Object.assign(transitioning, patch));
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[transitioning.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "A. Alpha" }));
+    await user.click(screen.getByRole("button", { name: "Check answer" }));
+    await user.click(screen.getByRole("button", { name: /Answer wrong/ }));
+    await user.click(screen.getByRole("button", { name: "Finish block" }));
+
+    expect(transitioning.needsReview).toBe(true);
+    expect(screen.getByRole("heading", { name: "Block results" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Retake .* missed/ })).toBeNull();
+    expect(screen.getByText(/correct unresolved/)).toBeTruthy();
+  });
 });

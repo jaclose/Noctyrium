@@ -389,7 +389,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
 const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   winDay: "Win the day",
-  todayScore: "Today’s requirements",
+  todayScore: "Today’s targets",
   examCountdown: "Exam countdown",
   pomodoro: "Pomodoro timer",
   weekly: "Weekly overview",

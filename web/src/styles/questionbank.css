@@ -324,6 +324,16 @@
 .source-line b { color: var(--text-80); }
 .source-evidence pre { max-height: 180px; overflow: auto; margin: 0; padding: 10px; border-radius: 9px; color: var(--text-60); background: rgba(0,0,0,.24); white-space: pre-wrap; font: 10.5px/1.5 var(--font-mono); }
 .source-rules { color: var(--text-30); font: 9.5px/1.4 var(--font-mono); }
+.question-provenance { display: grid; gap: 10px; padding: 13px; border: 1px solid rgba(230,226,214,.08); border-radius: 13px; background: rgba(230,226,214,.025); }
+.question-provenance [id^="question-provenance-"] { display: inline-flex; align-items: center; gap: 6px; }
+.question-provenance-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.question-provenance-item { min-width: 0; padding: 10px; border: 1px solid rgba(230,226,214,.07); border-radius: 10px; background: rgba(0,0,0,.12); }
+.question-provenance-item p { margin: 7px 0 0; color: var(--text-60); font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.question-provenance-item details { margin-top: 7px; }
+.question-provenance-item summary { color: var(--text-45); cursor: pointer; font-size: 10.5px; }
+.question-provenance-item pre { max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 10.5px/1.5 var(--font-mono); }
+.source-candidate { display: grid; gap: 6px; width: 100%; padding: 10px 11px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface-1); color: var(--text-60); text-align: left; font-size: 11px; line-height: 1.45; }
+.source-candidate:hover, .source-candidate:focus-visible { border-color: color-mix(in srgb, var(--gold) 45%, var(--hairline)); color: var(--text-80); }
 .feedback-repair { display: grid; gap: 7px; }
 .import-dropzone {
   min-height: 132px;
@@ -377,6 +387,7 @@
   .qset-accuracy { min-width: 0; text-align: left; }
   .qset-progress-copy { flex-wrap: wrap; }
   .answer-compare { grid-template-columns: 1fr; }
+  .question-provenance-grid { grid-template-columns: 1fr; }
   .qset-actions > * { min-height: 44px; }
   .quiz-player-modal { max-height: 100dvh; height: 100dvh; border-radius: 0; padding: 16px; }
   .quiz-player-modal .modal-actions { bottom: -16px; margin: 18px -16px -16px; padding-inline: 16px; flex-wrap: wrap; }
@@ -419,7 +430,7 @@
 :root[data-theme="light"] .qb-tabpanel .filter-pill.on {
   color: #f8f4ec;
 }
-:root[data-theme="light"] :is(.qb-loop-card, .qb-library-link, .answer-row, .feedback-explanation, .learning-objective) {
+:root[data-theme="light"] :is(.qb-loop-card, .qb-library-link, .answer-row, .feedback-explanation, .learning-objective, .question-provenance) {
   background-color: rgba(255,255,255,.56);
   border-color: rgba(67,51,31,.12);
 }
@@ -429,6 +440,7 @@
 :root[data-theme="light"] .import-confidence-grid span { background: rgba(255,253,248,.9); }
 :root[data-theme="light"] .source-evidence { background: rgba(255,255,255,.48); border-color: rgba(67,51,31,.12); }
 :root[data-theme="light"] .source-evidence pre { color: var(--text-60); background: rgba(67,51,31,.07); }
+:root[data-theme="light"] .question-provenance-item { background: rgba(255,255,255,.5); border-color: rgba(67,51,31,.1); }
 :root[data-theme="light"] .import-dropzone { background-color: rgba(255,255,255,.48); }
 :root[data-theme="light"] .quiz-player-modal .modal-actions {
   background: rgba(247,242,234,.95);

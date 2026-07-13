@@ -8,6 +8,19 @@ import { QuestionDetailModal } from "./QuestionDetailModal";
 const mocked = vi.hoisted(() => ({
   addAnkiCards: vi.fn(() => ({ saved: 1, errors: [] })),
   updateQuestion: vi.fn(),
+  documents: [{
+    id: "source-doc",
+    title: "Verified source",
+    fileName: "source.pdf",
+    fileType: "pdf",
+    uploadedAt: "2026-07-10T00:00:00.000Z",
+    rawText: "Which option is correct?\nA. Alpha\nB. Beta\n\nAnswer evidence section\nCorrect answer: B. Beta",
+    pageTexts: ["Which option is correct?\nA. Alpha\nB. Beta\n\nAnswer evidence section\nCorrect answer: B. Beta"],
+    sizeBytes: 100,
+    tags: [],
+    linkedQuestionSetIds: [],
+    libraryOnly: false,
+  }],
 }));
 
 vi.mock("../../lib/store", () => ({
@@ -17,6 +30,7 @@ vi.mock("../../lib/store", () => ({
     removeQuestion: vi.fn(),
     toggleQuestionMarked: vi.fn(),
     updateQuestion: mocked.updateQuestion,
+    documents: mocked.documents,
   }),
 }));
 vi.mock("../../lib/toast", () => ({ pushToast: vi.fn() }));
@@ -94,6 +108,77 @@ describe("QuestionDetailModal repair cards", () => {
     const patch = mocked.updateQuestion.mock.calls[0][1];
     expect(patch).not.toHaveProperty("attempts");
     expect(patch).not.toHaveProperty("status");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("updates only a user-selected grounded source excerpt", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<QuestionDetailModal question={{
+      ...question,
+      source: "pdf",
+      sourceDocumentId: "source-doc",
+      citation: "source.pdf",
+      extraction: {
+        confidence: "high",
+        reviewed: true,
+        questionSourceSnippet: "Wrong excerpt",
+      },
+    }} onClose={onClose} />);
+
+    await user.click(screen.getByRole("button", { name: "This source looks wrong" }));
+    expect(screen.getByRole("region", { name: "Source review" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Use this excerpt/i }));
+
+    expect(mocked.updateQuestion).toHaveBeenCalledWith("manual-edit", {
+      extraction: expect.objectContaining({
+        confidence: "high",
+        reviewed: true,
+        questionSourceSnippet: expect.stringContaining("Which option is correct?"),
+        questionSourcePage: 1,
+      }),
+      sourcePage: 1,
+    });
+    const patch = mocked.updateQuestion.mock.calls[0][1];
+    expect(patch).not.toHaveProperty("attempts");
+    expect(patch).not.toHaveProperty("status");
+    expect(patch).not.toHaveProperty("stem");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("offers and saves a different nearby grounded span for bad answer evidence", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<QuestionDetailModal question={{
+      ...question,
+      source: "pdf",
+      sourceDocumentId: "source-doc",
+      sourcePage: 1,
+      attempts: [{ at: "2026-07-10T00:00:00.000Z", answerKey: "A", status: "incorrect" }],
+      status: "incorrect",
+      extraction: {
+        confidence: "low",
+        reviewed: true,
+        answerEvidenceSnippet: "Wrong answer excerpt",
+        questionSourcePage: 1,
+      },
+    }} onClose={onClose} />);
+
+    await user.click(screen.getByRole("button", { name: "This source looks wrong" }));
+    await user.click(screen.getByRole("button", { name: "Answer evidence" }));
+    await user.click(screen.getByRole("button", { name: /Use nearby excerpt.*Answer evidence section/i }));
+
+    expect(mocked.updateQuestion).toHaveBeenCalledWith("manual-edit", {
+      extraction: expect.objectContaining({
+        reviewed: true,
+        answerEvidenceSnippet: expect.stringContaining("Answer evidence section"),
+        answerEvidencePage: 1,
+      }),
+    });
+    const patch = mocked.updateQuestion.mock.calls[0][1];
+    expect(patch).not.toHaveProperty("attempts");
+    expect(patch).not.toHaveProperty("status");
+    expect(patch).not.toHaveProperty("stem");
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

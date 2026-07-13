@@ -43,9 +43,9 @@ const WORKFLOWS: Array<{
   detail: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { id: "dashboard", title: "Current plan", detail: "Start with today's plan and next move.", icon: LayoutDashboard },
-  { id: "tracker", title: "Course Tracker", detail: "Map courses, modules, and study passes first.", icon: ListTree },
-  { id: "questions", title: "Question Bank import", detail: "Open the trusted import flow after setup.", icon: BookOpen },
+  { id: "dashboard", title: "Today’s plan", detail: "See what matters now and choose a clear next action.", icon: LayoutDashboard },
+  { id: "tracker", title: "Build my courses", detail: "Add courses and organize the material you need to cover.", icon: ListTree },
+  { id: "questions", title: "Import practice questions", detail: "Optional: bring in a document or pasted questions, then review them.", icon: BookOpen },
 ];
 
 export function OnboardingWizard({
@@ -65,7 +65,7 @@ export function OnboardingWizard({
   });
   const [notificationStatus, setNotificationStatus] = useState(() => notificationPermission());
   const dialogRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const stepRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
 
@@ -77,7 +77,10 @@ export function OnboardingWizard({
   useEffect(() => writeOnboardingDraft(draft), [draft]);
 
   useEffect(() => {
-    headingRef.current?.focus();
+    const firstControl = stepRef.current?.querySelector<HTMLElement>(
+      "input:not([disabled]), select:not([disabled]), button:not([disabled]), summary",
+    );
+    firstControl?.focus();
   }, [draft.step]);
 
   useEffect(() => {
@@ -154,7 +157,9 @@ export function OnboardingWizard({
       : "focused";
     const shouldApplyWidgets = effectiveMode === "first-run" || draft.widgetPreset !== initialWidgetPreset;
     const profilePatch = {
-      ...(name ? { name } : {}),
+      // An empty optional name is meaningful. It clears legacy seed copy rather
+      // than allowing a synthetic identity to leak onto the Dashboard.
+      name,
       onboarded: true,
       academicStageId: draft.stageId,
       customAcademicStage: draft.stageId === "other" ? draft.customStage.trim() || undefined : undefined,
@@ -206,7 +211,16 @@ export function OnboardingWizard({
           unit: "minutes",
           trackingStartsAt: today,
         }, today)
-      : makeDailyRequirement({
+      : id === "practice-questions"
+        ? makeDailyRequirement({
+            id: "onboarding-practice-questions-v1",
+            label: "Practice questions",
+            source: { kind: "practice-questions" },
+            target: 20,
+            unit: "questions",
+            trackingStartsAt: today,
+          }, today)
+        : makeDailyRequirement({
           id: "onboarding-closeout-v1",
           label: "Daily closeout",
           source: { kind: "journal-closeout" },
@@ -285,14 +299,17 @@ export function OnboardingWizard({
             {effectiveMode === "rerun" ? "Cancel" : "Skip setup"}
           </button>
         </div>
+        <span id={titleId} className="onboarding-dialog-title">{stepTitle}</span>
 
         {draft.step === 0 && (
-          <div className="onboarding-body">
-            <div className="onboarding-mark axom" aria-hidden="true"><AxomMark size={30} /></div>
-            <h2 id={titleId} ref={headingRef} tabIndex={-1}>{stepTitle}</h2>
-            <p className="onboarding-lede" id={descriptionId}>
-              Tell <AxomWordmark /> what you are studying. Your path supplies sensible focus defaults, and every field can be changed later.
-            </p>
+          <div className="onboarding-body" ref={stepRef}>
+            <div className="onboarding-identity-header">
+              <div className="onboarding-mark axom" aria-hidden="true"><AxomMark size={30} /></div>
+              <div>
+                <h2>Build your study workspace</h2>
+                <p className="onboarding-lede" id={descriptionId}>Choose a few starting details. Everything can be changed later.</p>
+              </div>
+            </div>
             <Field
               label="Display name (optional)"
               placeholder="Your name (optional)"
@@ -325,28 +342,24 @@ export function OnboardingWizard({
                 {focusChoices.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </SelectField>
             </details>
-            <div className="onboarding-track-note">
+            <div className="onboarding-track-note onboarding-preview-card">
               <ShieldCheck size={15} aria-hidden="true" />
-              <span>{track.progress.summary} No course or imported work is removed when you change this later.</span>
+              <span>
+                <b><AxomWordmark /> will prepare:</b> {track.short} course structure, {stagePreviewLabel(draft.stageId, draft.customStage, stageChoices)} defaults, and {WORKFLOWS.find((workflow) => workflow.id === draft.destination)?.title.toLocaleLowerCase()} as your starting destination.
+              </span>
             </div>
             <StepActions onNext={() => move(1)} />
           </div>
         )}
 
         {draft.step === 1 && (
-          <div className="onboarding-body">
-            <h2 id={titleId} ref={headingRef} tabIndex={-1}>{stepTitle}</h2>
+          <div className="onboarding-body" ref={stepRef}>
+            <h2>Choose where to begin</h2>
             <p className="onboarding-lede" id={descriptionId}>
-              Add one useful starting point, or leave it blank and begin with the structure for {track.short}.
+              Pick the first place you want AXOM to open. You can use every area later.
             </p>
-            <Field
-              label="First course (optional)"
-              placeholder="e.g. Cardiology"
-              value={draft.firstCourse}
-              onChange={(event) => updateDraft({ firstCourse: event.target.value })}
-            />
             <fieldset className="onboarding-choice-group">
-              <legend>Primary workflow</legend>
+              <legend>Your starting place</legend>
               <div className="onboarding-choice-grid">
                 {WORKFLOWS.map((workflow) => {
                   const Icon = workflow.icon;
@@ -362,16 +375,21 @@ export function OnboardingWizard({
                 })}
               </div>
             </fieldset>
-            <div className="onboarding-track-note">
-              <BookOpen size={15} aria-hidden="true" />
-              <span>Question import is optional and uses the same review-first workflow as the main Question Bank.</span>
-            </div>
-            <details className="onboarding-disclosure">
-              <summary>Optional daily requirements</summary>
-              <p className="sub">Choose up to two calm starting signals. Cards/Anki stays off unless you add it later.</p>
+            {draft.destination === "tracker" && (
+              <Field
+                label="First course (optional)"
+                placeholder="e.g. Cardiology"
+                value={draft.firstCourse}
+                onChange={(event) => updateDraft({ firstCourse: event.target.value })}
+              />
+            )}
+            <section className="onboarding-starter-targets" aria-labelledby="starter-targets-title">
+              <div id="starter-targets-title" className="onboarding-section-title">What should make today count?</div>
+              <p className="sub">Optional. Choose up to two starters, or choose none and decide later.</p>
               <div className="onboarding-quick-requirements">
                 {([
                   ["study-minutes", "Focused study", "60 minutes a day"],
+                  ["practice-questions", "Practice questions", "20 questions a day"],
                   ["journal-closeout", "Daily closeout", "One short reflection"],
                 ] as Array<[OnboardingQuickRequirement, string, string]>).map(([id, title, detail]) => (
                   <label key={id}>
@@ -388,14 +406,15 @@ export function OnboardingWizard({
                   </label>
                 ))}
               </div>
-            </details>
+              <div className="onboarding-custom-later">Custom later — add schedules and targets when you know what fits.</div>
+            </section>
             <StepActions onBack={() => move(0)} onNext={() => move(2)} />
           </div>
         )}
 
         {draft.step === 2 && (
-          <div className="onboarding-body">
-            <h2 id={titleId} ref={headingRef} tabIndex={-1}>{stepTitle}</h2>
+          <div className="onboarding-body" ref={stepRef}>
+            <h2>{stepTitle}</h2>
             <p className="onboarding-lede" id={descriptionId}>
               Choose a calm starting layout. Theme and widget choices remain available in Settings and Customize.
             </p>
@@ -432,16 +451,24 @@ export function OnboardingWizard({
         )}
 
         {draft.step === 3 && (
-          <div className="onboarding-body">
-            <h2 id={titleId} ref={headingRef} tabIndex={-1}>{stepTitle}</h2>
+          <div className="onboarding-body" ref={stepRef}>
+            <h2>{stepTitle}</h2>
             <p className="onboarding-lede" id={descriptionId}>
-              Your AXOM workspace is stored on this device. Automatic local recovery snapshots help protect updates and migrations. Export a backup to keep a portable copy.
+              Think of saving AXOM like keeping a game save: your current work stays here, and a portable save file gives you a copy to keep.
             </p>
             <div className="onboarding-safety-grid">
-              <div><Database size={18} aria-hidden="true" /><span><b>Local workspace</b><small>Work saves on this device. Nothing is automatically uploaded to a cloud account.</small></span></div>
-              <div><HardDrive size={18} aria-hidden="true" /><span><b>Recovery snapshots</b><small>AXOM makes local safety copies before storage migrations when needed.</small></span></div>
-              <div><Download size={18} aria-hidden="true" /><span><b>Portable backup</b><small>An exported JSON file is the copy you can keep or move to another device.</small></span></div>
+              <div><Database size={18} aria-hidden="true" /><span><b>Current workspace</b><small>AXOM saves your work on this device.</small></span></div>
+              <div><HardDrive size={18} aria-hidden="true" /><span><b>Recovery saves</b><small>AXOM creates local safety saves before important updates.</small></span></div>
+              <div><Download size={18} aria-hidden="true" /><span><b>Portable save file</b><small>Export a file you can keep and import later.</small></span></div>
             </div>
+            <details className="onboarding-disclosure">
+              <summary>How saving works</summary>
+              <p className="sub">Your workspace and recovery saves stay on this device. They do not automatically sync across devices. Exporting creates a separate file only when you ask.</p>
+              <details className="onboarding-technical-details">
+                <summary>Technical details</summary>
+                <p className="sub">The portable save is a JSON backup containing your AXOM workspace data. Keep it somewhere you trust.</p>
+              </details>
+            </details>
             <label className="onboarding-tour-choice">
               <input type="checkbox" checked={draft.launchTour}
                 onChange={(event) => updateDraft({ launchTour: event.target.checked })} />
@@ -452,14 +479,14 @@ export function OnboardingWizard({
               <div><span>Current stage</span><b>{draft.stageId === "other" ? draft.customStage.trim() || "Custom" : stageChoices.find((stage) => stage.id === draft.stageId)?.label}</b></div>
               <div><span>Current focus</span><b>{activeFocus.label}</b></div>
               <div><span>Start in</span><b>{WORKFLOWS.find((workflow) => workflow.id === draft.destination)?.title}</b></div>
-              <div><span>Backup</span><b>Optional</b></div>
+              <div><span>Portable save</span><b>Optional</b></div>
             </div>
             <div className="onboarding-actions">
               <GhostButton onClick={() => move(2)}><ArrowLeft size={15} /> Back</GhostButton>
               <div className="row wrap gap8 onboarding-finish-actions">
-                <GButton onClick={() => finish(true)}><Download size={15} /> Finish and export backup</GButton>
+                <GButton onClick={() => finish(true)}><Download size={15} /> Finish and create save file</GButton>
                 <GButton variant="primary" onClick={() => finish(false)}>
-                  Finish <ArrowRight size={15} />
+                  Finish setup <ArrowRight size={15} />
                 </GButton>
               </div>
             </div>
@@ -475,6 +502,15 @@ function focusedHiddenWidgets(medical: boolean) {
     ...DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
     ...(medical ? [] : ["examCountdown", "weekly"] as const),
   ])];
+}
+
+function stagePreviewLabel(
+  stageId: AcademicStageId,
+  customStage: string,
+  stages: ReturnType<typeof academicStagesForTrack>["options"],
+) {
+  if (stageId === "other") return customStage.trim() || "custom stage";
+  return stages.find((stage) => stage.id === stageId)?.label.toLocaleLowerCase() ?? "current-stage";
 }
 
 function StepActions({ onBack, onNext }: { onBack?: () => void; onNext: () => void }) {
@@ -500,6 +536,9 @@ function defaultDraft(store: ReturnType<typeof useStore.getState>, mode: Onboard
   if (store.profile.dailySuccess?.requirements.some((requirement) => requirement.id === "onboarding-study-minutes-v1" && requirement.enabled)) {
     quickRequirements.push("study-minutes");
   }
+  if (store.profile.dailySuccess?.requirements.some((requirement) => requirement.id === "onboarding-practice-questions-v1" && requirement.enabled)) {
+    quickRequirements.push("practice-questions");
+  }
   if (store.profile.dailySuccess?.requirements.some((requirement) => requirement.id === "onboarding-closeout-v1" && requirement.enabled)) {
     quickRequirements.push("journal-closeout");
   }
@@ -507,7 +546,7 @@ function defaultDraft(store: ReturnType<typeof useStore.getState>, mode: Onboard
     version: 1,
     mode,
     step: 0,
-    name: /^(axom|noctyrium)$/i.test(store.profile.name) ? "" : store.profile.name,
+    name: /^(axom|noctyrium)$/i.test(store.profile.name.trim()) ? "" : store.profile.name,
     trackId: track.id,
     stageId,
     customStage: store.profile.customAcademicStage ?? "",

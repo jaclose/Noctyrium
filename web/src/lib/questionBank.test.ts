@@ -2,13 +2,13 @@
 // session scoring/pools — the flagship loop's domain logic.
 import { describe, expect, it } from "vitest";
 import {
-  expandInlineOptions, normalizeSourceText, parseQuestionBlocks, parseQuestionText,
+  createImportMappingLedger, expandInlineOptions, normalizeSourceText, parseQuestionBlocks, parseQuestionText,
   splitAnswerKeySection, splitOptionFeedback,
 } from "./questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, parseCsv } from "./questionImport";
 import { buildQuizPool, missedQuestionIds, scoreSession, scoresByCategory, type QuizSession } from "./quiz";
 import { setAccuracy, type QuestionSet } from "./library";
-import type { QuestionRecord } from "./questions";
+import { validateQuestionRecord, type QuestionRecord } from "./questions";
 
 function makeQuestion(patch: Partial<QuestionRecord> = {}): QuestionRecord {
   return {
@@ -462,6 +462,191 @@ describe("structured answer parsing and import diagnostics", () => {
   });
 });
 
+describe("answer-mapping regression safety", () => {
+  function fiveQuestionFixture(keySection: string): string {
+    return [
+      "1. One?", "A. a1", "B. b1", "C. c1", "D. d1", "E. e1", "",
+      "2. Two?", "A. a2", "B. b2", "C. c2", "D. d2", "E. e2", "",
+      "3. Three?", "A. a3", "B. b3", "C. c3", "D. d3", "E. e3", "",
+      "4. Four?", "A. a4", "B. b4", "C. c4", "D. d4", "E. e4", "",
+      "5. Five?", "A. a5", "B. b5", "C. c5", "D. d5", "E. e5", "",
+      keySection,
+    ].join("\n");
+  }
+
+  it("preserves B, D, A, C, E through parsing and record validation", () => {
+    const drafts = parseQuestionBlocks(fiveQuestionFixture([
+      "Answer key:", "1. B", "2. D", "3. A", "4. C", "5. E",
+    ].join("\n")));
+    const records = drafts.map((draft) => validateQuestionRecord({
+      ...draft,
+      source: "imported",
+      extraction: { confidence: draft.confidence, reviewed: true },
+    }).value!);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "D", "A", "C", "E"]);
+    expect(records.map((record) => record.correctKey)).toEqual(["B", "D", "A", "C", "E"]);
+    expect(records.map((record) => record.options.find((option) => option.key === record.correctKey)?.key))
+      .toEqual(["B", "D", "A", "C", "E"]);
+  });
+
+  it("maps every compressed key pair instead of attaching the tail as explanation", () => {
+    const drafts = parseQuestionBlocks(fiveQuestionFixture("Answer key:\n1.B 2.D 3.A 4.C 5.E"));
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "D", "A", "C", "E"]);
+    expect(drafts.every((draft) => !draft.explanation)).toBe(true);
+    expect(drafts.map((draft) => draft.answerEvidence)).toEqual(["1.B", "2.D", "3.A", "4.C", "5.E"]);
+
+    const lowercase = parseQuestionBlocks(fiveQuestionFixture("answers: 1.(b) 2-d 3:a 4.c 5)e"));
+    expect(lowercase.map((draft) => draft.correctKey)).toEqual(["B", "D", "A", "C", "E"]);
+  });
+
+  it("normalizes ordinary Markdown headings and option bullets", () => {
+    const drafts = parseQuestionBlocks([
+      "## 1. First Markdown question?", "- A. Alpha", "- B. Beta", "- C. Gamma", "Answer: B", "",
+      "### Question 2", "Second Markdown question?", "+ A. One", "+ B. Two", "+ C. Three", "Answer: c",
+    ].join("\n"));
+    expect(drafts).toHaveLength(2);
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.map((draft) => draft.options.map((option) => option.key))).toEqual([["A", "B", "C"], ["A", "B", "C"]]);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "C"]);
+  });
+
+  it("treats spaced leading-letter answer phrases as text, never an implicit key", () => {
+    const unsupported = parseQuestionText([
+      "Which response?", "A. Alpha distractor", "B. Beta", "C. Gamma",
+      "Answer: A rapid response mediated by T cells",
+    ].join("\n"));
+    expect(unsupported.correctKey).toBeUndefined();
+    expect(unsupported.needsReview).toBe(true);
+    expect(unsupported.answerDetectionConfidence).toBe(0);
+
+    const exactText = parseQuestionBlocks([
+      "1. Which response?", "A. Alpha", "B. Beta", "C. Gamma", "D. A rapid response", "",
+      "Answers:", "1. A rapid response",
+    ].join("\n"))[0];
+    expect(exactText.correctKey).toBe("D");
+    expect(exactText.correctAnswerText).toBe("A rapid response");
+  });
+
+  it("round-trips every valid A-E key and never converts absence or conflict to A", () => {
+    for (const key of ["A", "B", "C", "D", "E"]) {
+      const draft = parseQuestionText(`Stem?\nA. one\nB. two\nC. three\nD. four\nE. five\nAnswer: ${key}`);
+      expect(draft.correctKey).toBe(key);
+      const record = validateQuestionRecord({ ...draft, source: "imported" }).value!;
+      expect(record.correctKey).toBe(key);
+    }
+    expect(parseQuestionText("Stem?\nA. one\nB. two\nC. three").correctKey).toBeUndefined();
+    expect(parseQuestionText("Stem?\nA. one\nB. two\nC. three\nAnswer: A rapid unsupported phrase").correctKey).toBeUndefined();
+    expect(parseQuestionBlocks("1. Stem?\nA. one\nB. two\nAnswer: A\nAnswer key:\n1. B")[0].correctKey)
+      .toBeUndefined();
+  });
+
+  it("honors an inline answer that appears after explanation prose", () => {
+    const draft = parseQuestionText([
+      "Which?", "A. Alpha", "B. Beta", "C. Gamma",
+      "Explanation: Beta follows from the stated mechanism.",
+      "Answer: B",
+    ].join("\n"));
+    expect(draft.correctKey).toBe("B");
+    expect(draft.answerEvidence).toBe("Answer: B");
+    expect(draft.explanation).toContain("Beta follows");
+  });
+
+  it("keeps a later A-leading question after a standalone inline Explanation header", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Which option is first?", "A. Alpha", "B. Beta", "C. Gamma", "Answer: B",
+      "Explanation:", "Because beta follows from the finding.", "",
+      "2. A patient has a new finding?", "A. First", "B. Second", "C. Third", "D. Fourth", "Answer: D",
+    ].join("\n"));
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "D"]);
+    expect(drafts[0].explanation).toContain("Because beta");
+  });
+
+  it("skips an inline Explanation header and still finds a later trailing answer key", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Which option is first?", "A. Alpha", "B. Beta", "C. Gamma",
+      "Explanation:", "Because beta follows from the finding.", "",
+      "2. A patient has a new finding?", "A. First", "B. Second", "C. Third", "D. Fourth", "",
+      "Answer key:", "1. B", "2. D",
+    ].join("\n"));
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "D"]);
+  });
+
+  it("keeps a trailing answer key separate from the numbered explanation section that follows it", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Which option is first?", "A. Alpha", "B. Beta", "C. Gamma", "",
+      "2. Which option is second?", "A. Alpha", "B. Beta", "C. Gamma", "",
+      "Answer Key:", "1. B", "2. C", "",
+      "Explanations:", "1. Beta follows from the first finding.", "2. Gamma follows from the second finding.",
+    ].join("\n"));
+    expect(drafts.map((draft) => draft.correctKey)).toEqual(["B", "C"]);
+    expect(drafts.map((draft) => draft.explanation)).toEqual([
+      "Beta follows from the first finding.",
+      "Gamma follows from the second finding.",
+    ]);
+    expect(drafts.map((draft) => draft.explanationSource)).toEqual(["answer-section", "answer-section"]);
+  });
+
+  it("does not turn a malformed answer-key section into fake questions", () => {
+    const drafts = parseQuestionBlocks([
+      "1. One?", "A. a", "B. b", "C. c", "",
+      "2. Two?", "A. a", "B. b", "C. c", "",
+      "Answer key:", "1. Z", "2. banana", "3. ?",
+    ].join("\n"));
+    expect(drafts).toHaveLength(2);
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.every((draft) => draft.correctKey === undefined && draft.needsReview)).toBe(true);
+  });
+
+  it("handles PDF-style Question #: boundaries and refuses an unsupported all-A mapping", () => {
+    // Spacing mirrors text reconstructed from positioned PDF glyphs.
+    const extractedPdfText = [
+      "Question  #:  1", "PDF  ambiguous  answer?", "A.  Alpha  distractor", "B.  Beta  choice", "C.  Gamma  choice",
+      "Answer:  A  rapid  response  mediated  by  T  cells", "",
+      "Question #: 2", "PDF  explicit  answer?", "A.  Alpha", "B.  Beta", "C.  Gamma", "Answer: B",
+    ].join("\n");
+    const drafts = parseQuestionBlocks(extractedPdfText);
+    expect(drafts.map((draft) => draft.questionNumber)).toEqual([1, 2]);
+    expect(drafts.map((draft) => draft.correctKey)).toEqual([undefined, "B"]);
+    expect(drafts[0].needsReview).toBe(true);
+  });
+
+  it("does not read Roman-numeral statements as options and rejects repeated answer text", () => {
+    const roman = parseQuestionText([
+      "Which statements are true?", "I. First statement", "II. Second statement",
+      "A. I only", "B. II only", "C. I and II", "Answer: C",
+    ].join("\n"));
+    expect(roman.options.map((option) => option.key)).toEqual(["A", "B", "C"]);
+    expect(roman.stem).toContain("I. First statement");
+
+    const repeated = parseQuestionText([
+      "Which?", "A. Same text", "B. Same text", "C. Other", "Answer: Same text",
+    ].join("\n"));
+    expect(repeated.correctKey).toBeUndefined();
+    expect(repeated.needsReview).toBe(true);
+  });
+
+  it("projects a pure diagnostic ledger with mapping evidence and conflict reason", () => {
+    const drafts = parseQuestionBlocks([
+      "1. One?", "A. alpha", "B. beta", "C. gamma", "",
+      "2. Two?", "A. alpha", "B. beta", "C. gamma", "Answer: A rapid unsupported phrase", "",
+      "Answer key:", "1. B",
+    ].join("\n"));
+    const ledger = createImportMappingLedger(drafts);
+    expect(ledger[0]).toMatchObject({
+      questionNumber: 1,
+      selectedMapping: "B",
+      answerEvidence: "1. B",
+      confidence: 0.99,
+    });
+    expect(ledger[0].extractedOptions.map((option) => option.key)).toEqual(["A", "B", "C"]);
+    expect(ledger[0].sourceSpans.map((span) => span.kind)).toEqual(expect.arrayContaining(["question", "answer"]));
+    expect(ledger[1].selectedMapping).toBeUndefined();
+    expect(ledger[1].conflictReason).toMatch(/did not exactly match/i);
+  });
+});
+
 describe("library links", () => {
   it("pools by setId and documentId, and honors ordered mode", () => {
     const qs = [
@@ -558,6 +743,23 @@ describe("file import", () => {
 });
 
 describe("quiz pools and scoring", () => {
+  it("excludes unresolved and review-suggested mappings from runnable pools", () => {
+    const ready = makeQuestion({ id: "ready", correctKey: "B" });
+    const unresolved = makeQuestion({ id: "unresolved", correctKey: "A", needsReview: true });
+    const suggested = makeQuestion({
+      id: "suggested",
+      correctKey: "C",
+      extraction: { confidence: "medium", reviewed: false },
+    });
+    const confirmed = makeQuestion({
+      id: "confirmed",
+      correctKey: "C",
+      extraction: { confidence: "high", reviewed: true },
+    });
+    expect(buildQuizPool([unresolved, suggested, confirmed, ready], { count: 10, status: "all", ordered: true })
+      .map((question) => question.id)).toEqual(["confirmed", "ready"]);
+  });
+
   it("filters pools by status, category, and exam type", () => {
     const qs = [
       makeQuestion({ id: "unused", category: "Immunology", examType: "imcq" }),

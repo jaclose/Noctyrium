@@ -6,6 +6,63 @@ and items move from there to here when they ship.
 
 Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 
+## Wave 5.5C — Core Comprehension and Import Reliability (review checkpoint)
+
+- **Answer-mapping trust boundary** — PDF, pasted-text, TXT, and Markdown imports
+  preserve mixed A–E keys through preview and persistence. Exact answer text is
+  mapped only when it uniquely matches an option; malformed, absent, or conflicting
+  evidence remains unresolved and review-gated instead of falling back to option A.
+  A pure development/test ledger records question number, options, evidence,
+  selected mapping, confidence, conflict reason, and source spans.
+- **Separated source provenance** — questions can retain distinct question, answer,
+  and explanation snippets/pages plus the source-document ID. Detail and feedback
+  surfaces label those sources separately, keep surrounding context behind disclosure,
+  and offer a non-destructive source-review action that never rewrites attempts.
+- **Source-document-first import** — a supported file can be saved to the Source
+  Library without producing questions, then parsed locally later. Reference-only
+  sources preserve extracted text and file/page metadata; empty or invalid parsing
+  never creates a fake runnable set.
+- **Progressive Reports** — Today, Trend, and Study system sections keep metric,
+  status, interpretation, and denominator visible. Focus, hover, or touch reveals
+  grounded change/source/action detail; Enter pins and Escape closes. Weekly eligible-
+  day and monthly calendar trends support minutes, questions, cards, and target
+  completion without scoring pre-tracking or off-schedule dates as failures.
+- **Comprehensible setup and daily surfaces** — the four-step setup now frames
+  identity, starting destination, optional success signals, and device-local saving
+  in user language. Blank names remain blank (while a genuine user named JD is
+  preserved), Dashboard supports an accessible inline Add your name flow, and the
+  Productivity logger uses task-first labels with contextual quantity units.
+- **Welcome and quote banner** — the supplied 100-quote library is normalized into
+  typed local data with stable IDs, categories, intensity, guilt flag, and honest
+  attribution status/notes. The quote is stable per day, never auto-rotates, excludes
+  guilt/shame by default, and offers bounded device-only Next, Favorite, Hide, and
+  preference controls without adding workspace data to localStorage.
+- **Actionable daily guidance** — Command Brief ranks one deterministic next action
+  from inspectable real evidence, then shows reason, effort, success condition,
+  alternate small win, and catch-up only when justified. The separate suggested-moves
+  widgets are hidden by focused defaults but remain compatible with explicit legacy
+  preferences. Course Tracker uses a wider work area, immediate local import/add
+  actions, compact suggestions beneath the utility stack, and provider-free formatting
+  guidance. Journal explains deterministic energy signals once per announcement
+  version without transmitting journal text.
+- **Daily Word and help completion** — Daily Word now distinguishes invalid length,
+  repeats, completed puzzles, and words outside the pinned local dictionary; TRAPE
+  remains intentionally unsupported under the documented SCOWL policy and can be
+  suggested through a local email draft. The board is more compact, first-view help
+  collapses on later visits, and completion shows answer, countdown, streaks,
+  distribution, and private sharing. Help exposes the dictionary version and a safe
+  Suggestion/Bug/Urgent mail draft containing only coarse diagnostics.
+- **Short tours and optional promise** — Question Bank, Productivity, and Course
+  Tracker have explicit 3–5-step same-route Help tours built on the accepted keyboard,
+  focus, reduced-motion, and missing-target tour shell. Module tours never force
+  startup or open the Promise. After the global guide is finished or skipped, unsigned
+  users may sign, defer for fourteen days, or skip the current prompt version; the
+  optional suppression data round-trips additively under schema v32.
+- **Widget architecture only** — a concrete design note defines small, medium/full,
+  and extra-large content contracts, responsive ordering, settings accessibility,
+  soft-limit override, persistence/backup, and reduced motion. No resizing engine,
+  layout migration, or route-level performance work is included.
+
 ## Daily loop (Wave 5.5A/B — Daily Loop Stabilization)
 
 - **Inclusive academic stages** — setup asks for a training stage per track
@@ -194,7 +251,8 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
     optional **AI enhancement** checkbox (digest, pitfalls, review targets — labeled).
 - **Source Library** — uploaded documents with extracted text, page counts, linked sets,
   reference-only storage, text preview, delete-with-unlink (questions never silently lost),
-  and "generate questions from this document" (AI, review-gated).
+  deterministic local parse-later, and optional AI generation only when a provider is
+  explicitly available and review-gated.
 - **Question Sets** — first-class sets with completion, threshold-colored current mastery,
   separately labeled historical accuracy, remaining/review/import-confidence/last-studied
   metrics, tags, source links, AI digest
@@ -258,9 +316,10 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 
 ## Daily academic loop
 
-- **Command Brief**: one operating mode (Maintain/Catch-Up/Recovery/Sprint/Exam Week) with
-  plain-language rationale, one Next Best Move with Begin Session, Minimum Viable Win,
-  and a factual since-yesterday delta. Transparent rules; honors last night's closeout.
+- **Command Brief**: one operating mode (Maintain/Catch-Up/Recovery/Sprint/Exam Week)
+  followed by one evidence-ranked next action, its reason, estimated effort, success
+  condition, an alternate small win, and catch-up only when supported. Weighted local
+  evidence is inspectable; templates and seed data never unlock a fabricated brief.
 - **Study sessions**: timestamp-segment timing (survives sleep/refresh/updates), quick
   logs, focus mode, completion capture; stale timers capped visibly.
 - **Daily Closeout** (30–90s) feeding tomorrow's brief.
@@ -343,7 +402,8 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
 - **Seven-step guide**: current plan, Course Tracker, Question Bank, recommendation
   provenance, Reports, Customize, and Data safety. It retains skip/replay, session-step
   resume, missing-target fallback, reduced-motion scrolling, keyboard containment,
-  and mobile-safe sizing without touring unfinished modules.
+  and mobile-safe sizing without touring unfinished modules. Optional same-route
+  module tours reuse those primitives and never affect the global guide's progress.
 - **Journal catch-up clarity**: exact missed date, factual optional copy, and Complete
   catch-up / Skip / Do not remind today actions. Device-only date metadata deduplicates
   reminders; catch-up opens the exact date and edits an existing same-day entry instead
@@ -417,3 +477,6 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
   override.
 - Full browser E2E coverage and OCR remain roadmap work; parser confidence narrows
   review work but does not certify the medical correctness of source material.
+- The Dashboard widget architecture is documented, but small/medium/extra-large sizing,
+  visual flips, responsive span persistence, and extra-large override behavior are not
+  implemented in Wave 5.5C. Broader route-level splitting is also deliberately deferred.

@@ -23,6 +23,7 @@ describe("rebrand readiness", () => {
     expect(STORAGE_KEYS.persistedState).toBe("noctyrium-state");
     expect(STORAGE_KEYS.vaultDb).toBe("noctyrium-local-vault");
     expect(STORAGE_KEYS.dismissedAnnouncements).toBe("axom.announcements.dismissed.v1");
+    expect(STORAGE_KEYS.quotePreferences).toBe("axom.quotes.preferences.v1");
     expect(BRAND.productName.length).toBeGreaterThan(0);
   });
 });

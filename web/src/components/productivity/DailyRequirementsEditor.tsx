@@ -102,14 +102,14 @@ export function DailyRequirementsEditor() {
 
   return (
     <details className="daily-requirements-editor" data-tour="requirements">
-      <summary><SlidersHorizontal size={14} aria-hidden="true" /> Daily requirements <span>{shown.length}</span></summary>
+      <summary><SlidersHorizontal size={14} aria-hidden="true" /> Choose targets <span>{shown.length}</span></summary>
       <div className="daily-requirements-body">
         <p>
-          Only enabled, scheduled requirements count. New requirements start today—AXOM never creates past misses.
+          Only enabled, scheduled targets count. New targets start today—AXOM never creates past misses.
           {config ? "" : " Your current minute/card rules remain active until you change this list."}
         </p>
         <div className="daily-requirement-list">
-          {shown.length === 0 && <div className="daily-requirement-empty">No requirement is enabled. Today stays neutral until you choose one.</div>}
+          {shown.length === 0 && <div className="daily-requirement-empty">No target is enabled. Today stays neutral until you choose one.</div>}
           {shown.map((requirement) => (
             <div className="daily-requirement-row" key={requirement.id}>
               <label className="daily-requirement-toggle">
@@ -128,7 +128,7 @@ export function DailyRequirementsEditor() {
               {requirement.schedule.kind === "times-per-week" && (
                 <label><span>Times</span><input className="field" type="number" min="1" max="7" value={requirement.schedule.times} onChange={(event) => update(requirement.id, { schedule: { kind: "times-per-week", times: Math.max(1, Math.min(7, Number(event.target.value) || 1)), weekStartsOn: 1 } })} /></label>
               )}
-              <button type="button" className="daily-requirement-remove" aria-label={`Remove ${requirement.label} requirement`} onClick={() => remove(requirement.id)}><Trash2 size={14} /></button>
+              <button type="button" className="daily-requirement-remove" aria-label={`Remove ${requirement.label} target`} onClick={() => remove(requirement.id)}><Trash2 size={14} /></button>
             </div>
           ))}
         </div>
@@ -154,7 +154,7 @@ export function DailyRequirementsEditor() {
               <option value="times-per-week">Times per week</option>
             </select></label>
             {customSchedule.kind === "times-per-week" && <label><span>Times</span><input className="field" type="number" min="1" max="7" value={customSchedule.times} onChange={(event) => setCustomSchedule({ ...customSchedule, times: Math.max(1, Math.min(7, Number(event.target.value) || 1)) })} /></label>}
-            <GButton variant="primary" onClick={addCustom}><Plus size={14} /> Add requirement</GButton>
+            <GButton variant="primary" onClick={addCustom}><Plus size={14} /> Add target</GButton>
           </div>
         </details>
       </div>

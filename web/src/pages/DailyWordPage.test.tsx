@@ -8,6 +8,15 @@ import { DailyWordPage } from "./DailyWordPage";
 
 const FIXED_NOW = new Date("2026-07-12T14:00:00.000Z");
 const clipboardWrite = vi.fn<(value: string) => Promise<void>>();
+const localValues = new Map<string, string>();
+const memoryLocalStorage = {
+  get length() { return localValues.size; },
+  clear: () => localValues.clear(),
+  getItem: (key: string) => localValues.get(key) ?? null,
+  key: (index: number) => [...localValues.keys()][index] ?? null,
+  removeItem: (key: string) => { localValues.delete(key); },
+  setItem: (key: string, value: string) => { localValues.set(key, String(value)); },
+};
 
 vi.mock("../lib/clock", () => ({
   useClockNow: () => FIXED_NOW,
@@ -22,6 +31,8 @@ vi.mock("../data/dailyWordWords", () => ({
 }));
 
 beforeEach(() => {
+  localValues.clear();
+  vi.stubGlobal("localStorage", memoryLocalStorage);
   clipboardWrite.mockReset();
   clipboardWrite.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
@@ -45,6 +56,7 @@ afterEach(() => {
   cleanup();
   act(() => { useStore.setState({ dailyWordPuzzles: [] }); });
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("DailyWordPage input and scoring integration", () => {
@@ -77,13 +89,51 @@ describe("DailyWordPage input and scoring integration", () => {
 
     await user.click(screen.getByRole("button", { name: "Letter A" }));
     await user.click(screen.getByRole("button", { name: "Enter" }));
-    expect(screen.getByRole("status").textContent).toContain("Enter exactly five letters before submitting.");
+    expect(screen.getByRole("status").textContent).toContain("Enter five letters.");
 
     await user.click(screen.getByRole("button", { name: "Backspace" }));
     for (let index = 0; index < 5; index += 1) await user.click(screen.getByRole("button", { name: "Letter Z" }));
     await user.click(screen.getByRole("button", { name: "Enter" }));
-    expect(screen.getByRole("status").textContent).toContain("ZZZZZ is not in the local allowed-word list.");
+    expect(screen.getByRole("status").textContent).toContain("Not recognized in AXOM’s current dictionary.");
     expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual([]);
+  });
+
+  it("rejects duplicate guesses without persisting a second copy", async () => {
+    render(<DailyWordPage />);
+    await openPuzzle();
+
+    enterPhysicalWord("HELLO");
+    fireEvent.keyDown(window, { key: "Enter" });
+    await waitFor(() => expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual(["HELLO"]));
+    enterPhysicalWord("HELLO");
+    fireEvent.keyDown(window, { key: "Enter" });
+
+    expect(screen.getByRole("status").textContent).toBe("That word was already used.");
+    expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual(["HELLO"]);
+  });
+
+  it("keeps TRAPE unresolved and offers a safe local mail draft without gameplay network calls", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    render(<DailyWordPage />);
+    await openPuzzle();
+
+    enterPhysicalWord("TRAPE");
+    fireEvent.keyDown(window, { key: "Enter" });
+
+    expect(screen.getByRole("status").textContent).toBe("Not recognized in AXOM’s current dictionary.");
+    const suggestion = screen.getByRole("link", { name: "Suggest this word" }) as HTMLAnchorElement;
+    const decoded = decodeURIComponent(suggestion.getAttribute("href") ?? "");
+    expect(decoded).toContain("mailto:jafardabbagh@gmail.com");
+    expect(decoded).toContain("[AXOM Suggestion] Daily Word: TRAPE");
+    expect(decoded).toContain("Suggested word: TRAPE");
+    expect(decoded).toContain("Dictionary version: general-2");
+    expect(decoded).toContain("Route: #daily-word");
+    expect(decoded).not.toContain(useStore.getState().profile.name);
+    expect(decoded).not.toContain("APPLE");
+    expect(decoded).not.toContain("2026-07-12");
+    expect(useStore.getState().dailyWordPuzzles[0].guesses).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("accepts HELLO and ENVOY through the expanded local dictionary", async () => {
@@ -206,7 +256,8 @@ describe("DailyWordPage persistence, sharing, and accessibility", () => {
     expect(screen.getByRole("heading", { level: 1, name: "AXOM Daily Word" })).toBeTruthy();
     expect(screen.getByText("A daily five-letter word puzzle.")).toBeTruthy();
     expect(screen.getByText(/Submit a valid five-letter word in six guesses/)).toBeTruthy();
-    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(false);
+    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(true);
+    expect(screen.getByText(/Dictionary general-2/)).toBeTruthy();
     const grid = screen.getByRole("grid", { name: "Six-row Daily Word puzzle for 2026-07-12" });
     expect(within(grid).getAllByRole("row")).toHaveLength(6);
     expect(within(grid).getAllByRole("gridcell")).toHaveLength(30);
@@ -223,6 +274,37 @@ describe("DailyWordPage persistence, sharing, and accessibility", () => {
 
     expect(screen.getByText(/Next puzzle in/).textContent).toMatch(/Next puzzle in \d+h \d+m/);
     expect(screen.getByLabelText(/Time until the next Daily Word puzzle:/)).toBeTruthy();
+  });
+
+  it("opens instructions once per announcement version and collapses them on a later visit", async () => {
+    const first = render(<DailyWordPage />);
+    await openPuzzle();
+    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(true);
+    await waitFor(() => expect(localStorage.getItem("axom.announcements.dismissed.v1")).toContain("daily-word-how-to-v1"));
+    first.unmount();
+
+    render(<DailyWordPage />);
+    await screen.findByRole("heading", { level: 1, name: "AXOM Daily Word" });
+    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it("keeps first-view help safe when device metadata storage is blocked", async () => {
+    vi.stubGlobal("localStorage", {
+      ...memoryLocalStorage,
+      getItem: vi.fn((key: string) => {
+        if (key === "axom.announcements.dismissed.v1") throw new Error("blocked");
+        return memoryLocalStorage.getItem(key);
+      }),
+      setItem: vi.fn((key: string, value: string) => {
+        if (key === "axom.announcements.dismissed.v1") throw new Error("blocked");
+        memoryLocalStorage.setItem(key, value);
+      }),
+    });
+    render(<DailyWordPage />);
+    await openPuzzle();
+
+    expect((screen.getByText("How to play").closest("details") as HTMLDetailsElement).open).toBe(true);
+    expect(screen.getByRole("grid")).toBeTruthy();
   });
 });
 

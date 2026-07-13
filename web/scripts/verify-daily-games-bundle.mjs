@@ -24,7 +24,8 @@ const appChunk = findSingleChunk("App shell", ["Local data needs attention", "Yo
 if (contents.get(appChunk)?.includes(sentinel)) {
   throw new Error("Daily Games bundle check: word-list sentinel leaked into the App chunk.");
 }
-if (contents.get(appChunk)?.includes("Enter exactly five letters before submitting.")) {
+const dailyWordEngineMarker = "Six-row Daily Word puzzle for";
+if (contents.get(appChunk)?.includes(dailyWordEngineMarker)) {
   throw new Error("Daily Games bundle check: Daily Word engine leaked into the App chunk.");
 }
 
@@ -32,7 +33,7 @@ const wordChunks = scripts.filter((name) => contents.get(name)?.includes(sentine
 if (wordChunks.length !== 1) {
   throw new Error(`Daily Games bundle check: expected one isolated word-list chunk, found ${wordChunks.length}.`);
 }
-const gameChunk = findSingleChunk("lazy Daily Word engine", ["AXOM Daily Word", "Enter exactly five letters before submitting."]);
+const gameChunk = findSingleChunk("lazy Daily Word engine", ["AXOM Daily Word", dailyWordEngineMarker]);
 const doctordleChunk = findSingleChunk("lazy Doctordle WIP", ["Integration pending collaboration approval.", "No integration is active"]);
 if (gameChunk === appChunk || wordChunks.includes(appChunk) || wordChunks.includes(gameChunk)) {
   throw new Error("Daily Games bundle check: optional game code is not isolated from the shell.");

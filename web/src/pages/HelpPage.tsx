@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  PlayCircle, Sparkles, FileText, ExternalLink, Check, Copy,
+  PlayCircle, Sparkles, FileText, ExternalLink, Mail,
   Timer, LineChart, BadgeCheck, Brain, Database, Layers,
   Eye, AlertTriangle, ArrowRight, MessageCircle, type LucideIcon,
 } from "lucide-react";
@@ -8,8 +8,11 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, PanelHeader } from "../components/ui/primitives";
 import { Modal } from "../components/ui/Modal";
 import { clearTourProgress } from "../lib/onboardingProgress";
+import { DAILY_WORD_PUBLIC_METADATA } from "../data/dailyWordMetadata";
+import { buildFeedbackMailto, type FeedbackKind } from "../lib/feedback";
+import { SCHEMA_VERSION } from "../lib/seed";
 
-const BUG_EMAIL = "jdabbagh@sgu.edu";
+const FEEDBACK_EMAIL = "jafardabbagh@gmail.com";
 
 const ANKI_STEPS = [
   { img: "open-anki.png", title: "Open Anki", body: "Start from your main Anki deck screen." },
@@ -53,6 +56,16 @@ interface GuideEntry {
 }
 
 const FEATURE_GUIDES: GuideEntry[] = [
+  {
+    icon: Sparkles,
+    name: "AXOM Daily Word",
+    status: "Ready to test",
+    lives: "Daily Games → Daily Word",
+    start: "Enable Daily Games, then submit a five-letter word. Unrecognized words can be suggested for a later dictionary review.",
+    prerequisite: "Daily Games is optional and disabled by default.",
+    route: "daily-word",
+    preview: `Dictionary ${DAILY_WORD_PUBLIC_METADATA.version}: ${DAILY_WORD_PUBLIC_METADATA.allowedGuessCount.toLocaleString()} local allowed words from ${DAILY_WORD_PUBLIC_METADATA.sourceName} ${DAILY_WORD_PUBLIC_METADATA.sourceRelease}. Play uses no network dictionary call; offline reopening works after one successful online load.`,
+  },
   {
     icon: AlertTriangle,
     name: "AnkiConnect sync",
@@ -140,6 +153,9 @@ export function HelpPage() {
 
       <GlassCard pad>
         <PanelHeader title="Feature guide" sub="Truthful status, where each tool lives, and how to start without hunting" />
+        <div className="sub" style={{ marginBottom: 10 }}>
+          Daily Word dictionary: <b>{DAILY_WORD_PUBLIC_METADATA.version}</b> · {DAILY_WORD_PUBLIC_METADATA.sourceName} {DAILY_WORD_PUBLIC_METADATA.sourceRelease} · {DAILY_WORD_PUBLIC_METADATA.allowedGuessCount.toLocaleString()} local allowed words. Uncommon legitimate words may fall outside the current policy; suggestions are reviewed rather than accepted automatically.
+        </div>
         <div className="feature-guide-grid">
           {FEATURE_GUIDES.map((guide) => {
             const I = guide.icon;
@@ -238,88 +254,60 @@ function statusClass(status: GuideStatus): string {
   return "progress";
 }
 
-function FeedbackForm() {
+export function FeedbackForm() {
   const s = useStore();
-  const [type, setType] = useState("Bug");
+  const [type, setType] = useState<FeedbackKind>("Bug");
   const [area, setArea] = useState("Dashboard");
   const [message, setMessage] = useState("");
-  const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "sending" | "sent" | "fallback" | "copied">("idle");
-
-  function reportText() {
-    return [
-      `Type: ${type}`, `Area: ${area}`, "", message, "",
-      `— App: ${s.profile.versionLabel}`, `Time: ${new Date().toISOString()}`,
-      `Browser: ${typeof navigator !== "undefined" ? navigator.userAgent : "n/a"}`,
-      email ? `Contact: ${email}` : "",
-    ].filter(Boolean).join("\n");
-  }
-
-  async function submit() {
-    if (!message.trim()) return;
-    setState("sending");
-    try {
-      const res = await fetch("/api/feedback", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, area, message, email, version: s.profile.versionLabel, ua: navigator.userAgent }),
-      });
-      if (res.ok) { setState("sent"); setMessage(""); return; }
-      setState("fallback"); // route exists but not configured (e.g. 501)
-    } catch {
-      setState("fallback"); // no backend / offline
-    }
-  }
-
-  function copyReport() {
-    navigator.clipboard?.writeText(reportText());
-    setState("copied");
-  }
+  const [contact, setContact] = useState("");
+  const canDraft = Boolean(message.trim());
+  const draftHref = buildFeedbackMailto({
+    kind: type,
+    message,
+    area,
+    contact,
+    appVersion: s.profile.versionLabel,
+    schemaVersion: SCHEMA_VERSION,
+    route: typeof location === "undefined" ? "help" : location.hash,
+    userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+  });
 
   return (
     <GlassCard pad className="feedback-card">
-      <PanelHeader title="Suggest a feature · report a bug"
-        sub="Alpha 1 grows from your feedback. Send bugs, confusing moments, or feature ideas so AXOM gets sharper with every release." />
-      {state === "sent" ? (
-        <div className="feedback-done"><Check size={18} /> Sent. Thank you for helping improve AXOM.</div>
-      ) : (
-        <>
-          <div className="row gap12 wrap">
-            <label className="stack gap6">
-              <span className="field-label">Type</span>
-              <select className="field" aria-label="Feedback type" value={type} onChange={(e) => setType(e.target.value)}>
-                {["Bug", "Feature", "Confusion", "Praise"].map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </label>
-            <label className="stack gap6">
-              <span className="field-label">Page or feature</span>
-              <select className="field" aria-label="Area" value={area} onChange={(e) => setArea(e.target.value)}>
-                {["Dashboard", "Standup", "Productivity", "Reports", "Course Tracker", "Anki Lab", "Resources", "Boards", "Tasks", "Journal", "Onboarding / Tour", "Other"].map((a) => <option key={a}>{a}</option>)}
-              </select>
-            </label>
-            <label className="stack gap6 grow">
-              <span className="field-label">Your email (optional)</span>
-              <input className="field" type="email" placeholder="so we can follow up" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-          </div>
-          <label className="stack gap6" style={{ marginTop: 12 }}>
-            <span className="field-label">Message</span>
-            <textarea className="field" rows={4} placeholder="What happened, what confused you, or what you'd love to see…" value={message} onChange={(e) => setMessage(e.target.value)} />
-          </label>
-          <div className="row gap8" style={{ marginTop: 12 }}>
-            <GButton variant="primary" disabled={!message.trim() || state === "sending"} onClick={submit}>
-              {state === "sending" ? "Sending…" : "Send feedback"}
-            </GButton>
-            {(state === "fallback" || state === "copied") && (
-              <GButton onClick={copyReport}>{state === "copied" ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy report</>}</GButton>
-            )}
-          </div>
-          {(state === "fallback" || state === "copied") && (
-            <div className="feedback-fallback">
-              <Sparkles size={14} /> Feedback sending isn't configured on this build yet. Copy your report and send it to <b>{BUG_EMAIL}</b>.
-            </div>
-          )}
-        </>
-      )}
+      <PanelHeader title="Feedback"
+        sub={`Open a local email draft to ${FEEDBACK_EMAIL}. AXOM adds coarse app and device labels, never workspace content.`} />
+      <div className="row gap12 wrap">
+        <label className="stack gap6">
+          <span className="field-label">Type</span>
+          <select className="field" aria-label="Feedback type" value={type} onChange={(event) => setType(event.target.value as FeedbackKind)}>
+            {(["Suggestion", "Bug", "Urgent"] as const).map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label className="stack gap6">
+          <span className="field-label">Page or feature</span>
+          <select className="field" aria-label="Area" value={area} onChange={(event) => setArea(event.target.value)}>
+            {["Dashboard", "Question Bank", "Productivity", "Reports", "Course Tracker", "Daily Word", "Tasks", "Journal", "Onboarding / Tour", "Other"].map((item) => <option key={item}>{item}</option>)}
+          </select>
+        </label>
+        <label className="stack gap6 grow">
+          <span className="field-label">Contact (optional)</span>
+          <input className="field" placeholder="Only included if you type it" value={contact} onChange={(event) => setContact(event.target.value)} />
+        </label>
+      </div>
+      <label className="stack gap6" style={{ marginTop: 12 }}>
+        <span className="field-label">Message</span>
+        <textarea className="field" rows={4} placeholder="What happened, what would help, or what should change?" value={message} onChange={(event) => setMessage(event.target.value)} />
+      </label>
+      <div className="row gap8 wrap" style={{ marginTop: 12 }}>
+        <a
+          className={`gbtn primary ${canDraft ? "" : "disabled"}`}
+          href={canDraft ? draftHref : undefined}
+          aria-disabled={!canDraft}
+          onClick={(event) => { if (!canDraft) event.preventDefault(); }}
+        ><Mail size={14} /> Open email draft</a>
+        <span className="sub">No journal, questions, answers, activity history, goals, workspace ID, or backup data is attached.</span>
+      </div>
+      <div className="feedback-fallback"><Sparkles size={14} /> AXOM support is not an emergency service.</div>
     </GlassCard>
   );
 }

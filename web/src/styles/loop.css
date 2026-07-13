@@ -46,6 +46,28 @@
 .brief-meta { font-size: 12.5px; color: var(--text-60); }
 .brief-why { font-size: 13px; line-height: 1.5; margin-top: 4px; }
 .brief-why b { color: var(--text-80); font-weight: 700; }
+.brief-provenance {
+  margin-top: 4px;
+  padding-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-60);
+}
+.brief-provenance summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--text-80);
+  font-weight: 700;
+}
+.brief-provenance summary:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.brief-provenance p { margin: 8px 0 6px; line-height: 1.45; }
+.brief-evidence-score { margin-bottom: 5px; color: var(--text-80); font-weight: 700; }
+.brief-provenance ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.brief-provenance li { display: flex; justify-content: space-between; gap: 12px; }
+.brief-provenance small { color: var(--text-45); text-align: right; }
 .brief-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .brief-mvw {
   border: 1px dashed rgba(255, 255, 255, 0.12);

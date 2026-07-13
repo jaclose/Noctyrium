@@ -35,7 +35,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const s = useStore();
   const [showCloseout, setShowCloseout] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
-  const [showChanges, setShowChanges] = useState(true);
+  const [showChanges, setShowChanges] = useState(false);
   const [showEnergyCalculation, setShowEnergyCalculation] = useState(false);
   const [energyPreviewDismissed, setEnergyPreviewDismissed] = useState(false);
 
@@ -99,6 +99,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
     <GlassCard className="brief" data-tour="command-brief">
       <div className="spread" style={{ alignItems: "flex-start" }}>
         <div className="stack" style={{ gap: 4 }}>
+          <div className="brief-kicker">Current state</div>
           <div className="row" style={{ gap: 10 }}>
             <span className="h-section">Command Brief</span>
             <Tag tone={MODE_TONE[brief.mode]}>{MODE_LABEL[brief.mode]}</Tag>
@@ -161,12 +162,26 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
             {brief.move.link.context ? ` · ${brief.move.link.context}` : ""}
             {brief.move.resources.length > 0 ? ` · ${brief.move.resources.join(", ")}` : ""}
           </div>
-          <div className="brief-why" data-tour="recommendation-provenance">
-            <b>Why this now:</b> {brief.move.reason}
-          </div>
           <div className="brief-why dim">
-            <b>Expected outcome:</b> {brief.move.expectedOutcome}
+            <b>What success looks like:</b> {brief.move.expectedOutcome}
           </div>
+          <details className="brief-provenance" data-tour="recommendation-provenance">
+            <summary>Why this suggestion?</summary>
+            <p>{brief.move.reason}</p>
+            {(brief.move.contributions?.length ?? 0) > 0 && (
+              <>
+                <div className="brief-evidence-score">Evidence score: {brief.move.score}</div>
+                <ul aria-label="Suggestion evidence">
+                  {brief.move.contributions?.map((contribution) => (
+                    <li key={contribution.id}>
+                      <span>{contribution.label}</span>
+                      <small>{contribution.sourceLabel} · +{contribution.weight}</small>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </details>
           <div className="row" style={{ marginTop: 12 }}>
             {liveSession ? (
               <span className="sub">A session is already running below — finish or park it first.</span>
@@ -180,7 +195,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
 
         <div className="brief-side">
           <div className="brief-mvw">
-            <div className="brief-kicker"><Zap size={12} style={{ marginRight: 4 }} />Minimum viable win</div>
+            <div className="brief-kicker"><Zap size={12} style={{ marginRight: 4 }} />Alternate small win</div>
             <div className="brief-mvw-title">{brief.minimumViableWin.title}</div>
             <div className="sub">{brief.minimumViableWin.reason}</div>
             {!liveSession && (

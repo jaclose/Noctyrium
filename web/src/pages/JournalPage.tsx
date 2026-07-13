@@ -9,6 +9,7 @@ import { Modal, Field, TextAreaField, SelectField } from "../components/ui/Modal
 import { dayKey, isoDate, prettyDate } from "../lib/scoring";
 import { missedStandupDays, planForDay, reflectionPrompts, standupStatusToday } from "../lib/journal";
 import type { DayPlan, JournalEntry } from "../lib/types";
+import { announceJournalEnergyOnce } from "../lib/journalAnnouncement";
 
 const energyTone = { Low: "red", Medium: "orange", High: "green", "": "neutral" } as const;
 const outcomeTone = { won: "green", partial: "orange", missed: "red" } as const;
@@ -24,6 +25,8 @@ export function JournalPage() {
   const reviewTime = s.profile.journalReviewTime ?? "20:00";
   const missed = useMemo(() => missedStandupDays(s), [s.journal, s.logs, s.dayPlans]);
   const status = standupStatusToday(s);
+
+  useEffect(() => { announceJournalEnergyOnce(); }, []);
 
   // The dashboard can route here asking to remediate a specific day's standup.
   useEffect(() => {

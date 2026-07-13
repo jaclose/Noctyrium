@@ -7,6 +7,7 @@ import {
   DAILY_WORD_GENERAL_1_ANSWERS,
   DAILY_WORD_LIST_METADATA,
   DAILY_WORD_LIST_SENTINEL,
+  DAILY_WORD_PUBLIC_METADATA,
   WORD_LIST_VERSION,
   dailyWordAnswersForVersion,
 } from "./dailyWordWords";
@@ -19,6 +20,14 @@ describe("AXOM Daily Word general-2 dictionary", () => {
     expect(DAILY_WORD_LIST_METADATA.license).toMatch(/SCOWL permissive notice/);
     expect(DAILY_WORD_LIST_METADATA.affiliation).toMatch(/No affiliation/);
     expect(DAILY_WORD_LIST_SENTINEL).toBe("AXOM_WORD_LIST_SENTINEL_GENERAL_2_SCOWL_2026_02_25");
+    expect(DAILY_WORD_PUBLIC_METADATA).toMatchObject({
+      version: "general-2",
+      sourceName: "SCOWLv2",
+      sourceRelease: "2026.02.25",
+      answerCount: 1_981,
+      allowedGuessCount: 8_659,
+    });
+    expect(JSON.stringify(DAILY_WORD_PUBLIC_METADATA)).not.toContain("AXOM_WORD_LIST_SENTINEL");
     expect(sha256(DAILY_WORD_ANSWERS)).toBe(DAILY_WORD_LIST_METADATA.answersSha256);
     expect(sha256(DAILY_WORD_ALLOWED_GUESSES)).toBe(DAILY_WORD_LIST_METADATA.allowedGuessesSha256);
   });
@@ -34,6 +43,12 @@ describe("AXOM Daily Word general-2 dictionary", () => {
     expect(DAILY_WORD_ANSWERS.every((answer) => allowed.has(answer))).toBe(true);
     expect(allowed.has("HELLO")).toBe(true);
     expect(allowed.has("ENVOY")).toBe(true);
+    for (const common of ["CRANE", "STARE", "HOUSE", "TRAIN", "PLANT", "ARISE", "AUDIO", "ADIEU"]) {
+      expect(allowed.has(common), `${common} should be accepted`).toBe(true);
+    }
+    // TRAPE exists upstream only at rare/obsolete size 85 [ukacd]. AXOM's
+    // current American general-2 policy stops at size 80.
+    expect(allowed.has("TRAPE")).toBe(false);
     expect(DAILY_WORD_ANSWERS).toContain("HELLO");
     expect(DAILY_WORD_ANSWERS).toContain("ENVOY");
   });

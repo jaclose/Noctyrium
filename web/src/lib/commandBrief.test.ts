@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assessCommandBriefEvidence, buildCommandBrief, deriveMinimumViableWin, deriveMode, deriveNextBestMove, deriveSignals,
+  rankCommandBriefCandidates,
   type BriefStateSlice, type BriefSignals,
 } from "./commandBrief";
 import type { NoctyriumState, Task, TrackerItem } from "./types";
@@ -102,13 +103,63 @@ describe("next best move priority", () => {
 
   it("exam week with a due question backlog points at question rework", () => {
     const dueQuestion = (id: string) => ({
-      id, source: "manual" as const, stem: "q", options: [], status: "incorrect" as const,
+      id, source: "manual" as const, stem: "q", options: [{ key: "A", text: "x" }, { key: "B", text: "y" }], correctKey: "B", status: "incorrect" as const,
       tags: [], attempts: [], reviewDueAt: "2026-07-01T00:00:00.000Z",
       createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
     });
     const s = slice({ questions: Array.from({ length: 6 }, (_, i) => dueQuestion(String(i))) });
     const move = deriveNextBestMove(s, "exam-week", deriveSignals(s));
     expect(move.link.kind).toBe("question-set");
+  });
+
+  it("never ranks starter or template rows", () => {
+    const seed = makeSeed();
+    const ranked = rankCommandBriefCandidates(slice({
+      tasks: seed.tasks,
+      tracker: seed.tracker,
+    }), "maintain", new Date(`${TODAY}T08:00:00Z`));
+
+    expect(ranked).toEqual([]);
+  });
+
+  it("uses a stable tie-break and exposes weights that sum to the score", () => {
+    const s = slice({
+      tasks: [
+        task({ id: "task-z", title: "Z task", created: `${TODAY}T08:00:00Z` }),
+        task({ id: "task-a", title: "A task", created: `${TODAY}T08:00:00Z` }),
+      ],
+    });
+    const first = rankCommandBriefCandidates(s, "maintain", new Date(`${TODAY}T08:00:00Z`));
+    const second = rankCommandBriefCandidates(s, "maintain", new Date(`${TODAY}T08:00:00Z`));
+
+    expect(first.map((candidate) => candidate.candidateId)).toEqual(["task:task-a", "task:task-z"]);
+    expect(second).toEqual(first);
+    for (const candidate of first) {
+      expect(candidate.contributions.reduce((sum, item) => sum + item.weight, 0)).toBe(candidate.score);
+    }
+  });
+
+  it("prioritizes a one-day overdue task over an untouched high-yield item", () => {
+    const ranked = rankCommandBriefCandidates(slice({
+      tasks: [task({ id: "due", title: "Submit renal worksheet", due: "2026-07-06" })],
+      tracker: [tracker({ id: "high", label: "High-yield lecture", yield: "high", passes: 0 })],
+    }), "maintain", new Date(`${TODAY}T08:00:00Z`));
+
+    expect(ranked[0].candidateId).toBe("task:due");
+  });
+
+  it("does not turn an unsupported closeout phrase into a recommendation", () => {
+    const s = slice({
+      tasks: [task({ id: "real", title: "Review renal notes" })],
+      closeouts: [{
+        id: "co", dayKey: "2026-07-06", completedSummary: "x", tomorrowFirstTask: "Imaginary task",
+        tomorrowMode: "auto", createdAt: "2026-07-06T21:00:00.000Z", updatedAt: "2026-07-06T21:00:00.000Z",
+      }],
+    });
+
+    const brief = buildCommandBrief(s, new Date(`${TODAY}T08:00:00Z`));
+    expect(brief.move.title).toBe("Review renal notes");
+    expect(brief.move.contributions?.some((item) => item.id === "commitment")).toBe(false);
   });
 
   it("falls back to the oldest task, then to setup, when the tracker is empty", () => {
@@ -144,6 +195,15 @@ describe("full brief assembly", () => {
     expect(detectMode(result)).not.toBe("recovery");
   });
 
+  it("does not call earlier blank dates missed when the first activity is today", () => {
+    const result = deriveSignals(slice({
+      logs: [{ id: "first", dayKey: TODAY, ts: `${TODAY}T09:00:00Z`, type: "Study", minutes: 30, cards: 0, academic: true, productive: true }],
+    }));
+    expect(result.daysSinceLastStudy).toBe(0);
+    expect(result.missedDaysLast7).toBe(0);
+    expect(deriveMode(result).mode).toBe("maintain");
+  });
+
   it("honors yesterday's closeout first-task commitment", () => {
     const s = slice({
       tracker: [tracker({ label: "Renal physiology", yield: "high" })],
@@ -153,7 +213,7 @@ describe("full brief assembly", () => {
       }],
     });
     const brief = buildCommandBrief(s, new Date(`${TODAY}T08:00:00`));
-    expect(brief.move.reason).toMatch(/closeout/i);
+    expect(brief.move.contributions).toContainEqual(expect.objectContaining({ id: "commitment", sourceLabel: "Yesterday’s closeout" }));
     expect(brief.move.link.kind).toBe("tracker");
     expect(brief.generatedFor).toBe(TODAY);
     expect(brief.source).toBe("rules");
@@ -167,6 +227,15 @@ describe("full brief assembly", () => {
     // Overdue work still produces catch-up without inventing study history.
     expect(brief.signals.overdueTasks).toBe(3);
     expect(["recovery", "catch-up"]).toContain(brief.mode);
+  });
+
+  it("does not create catch-up or recovery pressure from seed records", () => {
+    const seed = makeSeed();
+    const result = deriveSignals(slice({ tasks: seed.tasks, tracker: seed.tracker }));
+    expect(result.overdueTasks).toBe(0);
+    expect(result.reviewFlagged).toBe(0);
+    expect(result.backlogScore).toBe(0);
+    expect(deriveMode(result).mode).toBe("maintain");
   });
 });
 

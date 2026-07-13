@@ -21,32 +21,33 @@ afterEach(cleanup);
 describe("ReportsPage", () => {
   it("uses honest low-data states and removes future/developer placeholders", () => {
     render(<ReportsPage />);
-    expect(screen.getByText("Not configured")).toBeTruthy();
+    expect(screen.getByText("No targets")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Trend" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Study system" })).toBeTruthy();
     expect(screen.getAllByText("No readiness input yet").length).toBeGreaterThan(0);
     expect(screen.queryByText(/31 failed days/i)).toBeNull();
     expect(screen.queryByText("Hourly week map")).toBeNull();
     expect(screen.queryByText("Traceability")).toBeNull();
   });
 
-  it("exposes calculation, denominator, source, interpretation, and action through a focusable disclosure", () => {
+  it("reveals insight on focus and keeps technical detail secondary", () => {
     render(<ReportsPage />);
-    const label = screen.getByText("Consistency");
-    const summary = label.closest("summary");
-    const details = label.closest("details");
-    expect(summary).toBeTruthy();
-    expect(details?.open).toBe(false);
-    fireEvent.click(summary!);
-    expect(details?.open).toBe(true);
-    expect(details?.textContent).toContain("Denominator");
-    expect(details?.textContent).toContain("Source");
-    expect(details?.textContent).toContain("Calculation");
-    expect(details?.textContent).toContain("Next action");
-    expect(details?.textContent).toContain("No source record contributed yet");
+    const trigger = screen.getByRole("button", { name: /Consistency/ });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.focus(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const detail = document.getElementById(trigger.getAttribute("aria-controls")!);
+    expect(detail?.textContent).toContain("What changed");
+    expect(detail?.textContent).toContain("Source");
+    expect(detail?.textContent).toContain("Technical details");
+    fireEvent.blur(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("gives trend columns keyboard-focusable accessible names", () => {
     render(<ReportsPage />);
-    const trend = screen.getByRole("button", { name: /0 minutes, 0 cards/ });
+    const trend = screen.getAllByRole("button", { name: /0 minutes; not scheduled/ })[0];
     expect(trend.tagName).toBe("BUTTON");
   });
 
@@ -101,7 +102,8 @@ describe("ReportsPage", () => {
       })),
     });
     render(<ReportsPage />);
-    expect(screen.getByText("Building baseline")).toBeTruthy();
-    expect(screen.getByText("0/5 active days with signal")).toBeTruthy();
+    fireEvent.click(screen.getByText("More reports and technical detail"));
+    expect(screen.getByText(/Building baseline/)).toBeTruthy();
+    expect(screen.getByText(/0\/5 active days with signal/)).toBeTruthy();
   });
 });

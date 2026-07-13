@@ -12,12 +12,13 @@ type FeatureStatus = "ready" | "progress" | "planned";
 interface Feature { name: string; detail: string }
 
 const READY: Feature[] = [
-  { name: "Dashboard", detail: "Command center: stat cards with hover overviews, win-the-day intention, standup prompt, and a streak. Works as intended — minor polish ongoing." },
-  { name: "Productivity", detail: "Study-day logging, weekly + monthly calendars, the activity log, and a working Pomodoro that auto-logs minutes." },
-  { name: "Course Tracker", detail: "Mastery tree with pass / Anki / yield tracking, bulk import, and adaptive next-move suggestions." },
+  { name: "AXOM Daily Word", detail: "Optional local-first five-letter puzzle with a versioned SCOWL-derived dictionary, persisted history, private result sharing, and offline reopening after one successful online load." },
+  { name: "Question Bank", detail: "Review-first PDF, text, Markdown, CSV, and JSON import with unresolved-answer safety, source provenance, practice blocks, and results." },
+  { name: "Dashboard", detail: "A focused daily surface with an evidence-gated Command Brief, optional widgets, theme controls, and explicit recommendation provenance." },
+  { name: "Productivity & Reports", detail: "Fast activity logging, optional scheduled targets, focus timer, and schedule-aware weekly/monthly interpretation." },
+  { name: "Course Tracker", detail: "Course/module structure, local PDF or structured-text import, pass and yield tracking, and non-destructive next-move suggestions." },
   { name: "Journal", detail: "Daily standups, missed-standup detection + remediation, and locked previous-intention reflection." },
-  { name: "Tasks & Resources", detail: "Open/done execution list and a saved-link library with curated drives and favorites." },
-  { name: "Local data & backup", detail: "Private by default — everything stays on-device, with export/import to stay portable." },
+  { name: "Themes, clock & local data", detail: "Light/dark/system presentation, an isolated optional clock, device-local workspace storage, recovery saves, and portable backup files." },
 ];
 
 const IN_PROGRESS: Feature[] = [
@@ -25,14 +26,14 @@ const IN_PROGRESS: Feature[] = [
   { name: "Anki integration", detail: "AnkiConnect bridge with card-count sync. Works on the local build; a hosted HTTPS page can't reach local Anki — that's a browser limit, not a bug." },
   { name: "Anki Lab", detail: "Turning lectures, DLAs, and slides into Anki cards. Functional; output quality is being improved." },
   { name: "Pre-Med experience log", detail: "Clinical / service / research hours with verification. Competitive tick marks and exportable, themed logs are landing next." },
-  { name: "Pomodoro", detail: "Functional and auto-logs into productivity; the dial and container are getting a visual upgrade." },
+  { name: "Cross-module guidance", detail: "Short page-level tours and comprehension polish are being expanded without forcing walkthroughs." },
 ];
 
 const PLANNED: Feature[] = [
   { name: "Application Checker", detail: "Between planned and in-progress — the shell exists, but it isn't gathering or validating data yet." },
   { name: "Casper & DAT lanes", detail: "Separate pre-health lanes alongside MCAT and Pre-Med, each with their own outline." },
   { name: "Exports", detail: "Themed Excel / spreadsheet exports for the activity log and experience hours." },
-  { name: "Leaderboards", detail: "Opt-in streak and weekly-effort accountability — motivation without noise." },
+  { name: "Device or cloud sync", detail: "Not implemented. Any future sync must preserve AXOM's explicit local-first and backup boundaries." },
   { name: "Performance intelligence", detail: "Sharper, day-aware recommendations as enough real days accumulate." },
   { name: "More integrations", detail: "Calendar study blocks, drives, and (where possible) screen-time signals." },
 ];
@@ -52,14 +53,14 @@ export function AboutPage() {
             <Tag tone="cyan"><Sparkles size={12} /> Pre-Beta</Tag>
             <h2 className="row" style={{ gap: 12 }}><AxomMark size={26} /> <AxomWordmark /></h2>
             <p>
-              A private academic operating system: question practice and review, Anki repair cards, weakness
-              tracking, course tracking, board/MCAT/pre-health prep, productivity logs, and daily planning —
-              stored locally on your device with JSON backup/export and optional local AI support.
+              A local-first academic workspace for question practice, course tracking, study logs, planning,
+              reflection, and review. Your workspace stays on this device, with recovery saves and a portable
+              backup file you can export when you choose.
             </p>
             <p className="sub">
-              Pre-beta honesty: cloud sync and PIN login are alpha conveniences, not production-secure auth.
-              PDF/image question imports store provenance only — there is no in-app OCR yet. Direct AnkiConnect
-              sync requires local verification on your machine.
+              Pre-beta honesty: AXOM has no cloud account or cross-device sync. Supported PDFs use local text
+              extraction; image-only OCR is not promised. Optional provider tools require explicit setup, and
+              local AnkiConnect access still depends on your browser and desktop Anki configuration.
             </p>
           </div>
           <div className="about-principles">
@@ -80,7 +81,7 @@ export function AboutPage() {
         </div>
       </GlassCard>
 
-      <WebsitePreview />
+      <LiveSiteDisclosure />
     </>
   );
 }
@@ -110,6 +111,16 @@ function StatusColumn({ status, features }: { status: FeatureStatus; features: F
         ))}
       </div>
     </section>
+  );
+}
+
+function LiveSiteDisclosure() {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="website-preview-disclosure" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary>Developer website</summary>
+      {open && <WebsitePreview />}
+    </details>
   );
 }
 

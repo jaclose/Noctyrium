@@ -40,7 +40,7 @@ Last updated: 2026-07-12
 | Dedicated IndexedDB records / attachments | proposed | The current vault persists one local-first state graph with a localStorage fallback. Large binary attachments and per-record stores need migration and quota design. |
 | Code-splitting the main bundle | in-progress | xlsx + pdf.js + mammoth are lazy chunks; Daily Word and its versioned word lists now ship as isolated lazy assets. The App shell chunk still exceeds 500 kB, so broader route-level splitting remains proposed. |
 | First-navigation offline precache | proposed | The current worker caches hashed assets after a controlled successful fetch. Daily Word reopens offline after that boundary, but a first-ever offline bootstrap before worker control is not supported; improving that requires a build-aware precache design. |
-| Remaining React hook warnings (5, page-level) | in-progress | Pre-existing warnings remain in Dashboard, Journal, and CourseTracker; fix opportunistically. |
+| Remaining React hook warnings (4, page-level) | in-progress | Pre-existing warnings remain in Dashboard and Journal; fix opportunistically. |
 | Cloud sync hardening (PIN auth, sessions) | blocked | No cloud/account claim is exposed in primary Settings. Retained experimental code needs real auth, consent, and security review before it can become a product surface. |
 | Restore-history audit trail | proposed | Settings accurately shows local snapshots and last portable export, but does not yet persist a separate restore-event history. |
 | Exact vault-write timestamp | proposed | Autosave is active, but the vault does not currently retain a user-visible timestamp for every successful write. |
@@ -58,10 +58,23 @@ Last updated: 2026-07-12
 | Application Checker maturation | proposed | Shell exists; no data gathering yet. |
 | Leaderboards | proposed | Deliberately deprioritized — conflicts with the calm tone. |
 | Doctordle collaboration | blocked | The enabled Daily Games folder contains only a static WIP boundary. No external integration, iframe, launch action, network request, or copied gameplay will be added without explicit collaboration approval. |
+| Full Dashboard widget sizing system | proposed | The content, accessibility, responsive-grid, soft-limit, persistence, backup, and reduced-motion contract is documented in `docs/DASHBOARD-WIDGET-ARCHITECTURE.md`. Wave 5.5C deliberately adds no resizing engine or layout migration. |
 | DAT / CASPer lanes | proposed | Light surfaces only. |
 | Accessibility pass (focus traps, contrast, reduced motion) | in-progress | Modal focus containment/restoration, quiz selected-state semantics, mobile-drawer inert/focus behavior, Settings/Question Bank roving tabs, sidebar disclosures, onboarding/tour dialogs, missing-target fallback, and reduced-motion tour behavior are covered. A broader contrast/screen-reader audit remains. |
 | AXOM-specific reduced-motion override | proposed | Current UI truthfully follows the operating-system setting; a product-level override needs shared runtime and CSS plumbing. |
 | Scheduled-hours workload model | proposed | Recovery shows configured daily target, item counts, an estimated outstanding range, and recent completion history. A true calendar-backed planned-hours value does not exist yet. |
+
+## Current review checkpoint
+
+- Wave 5.5C Core Comprehension and Import Reliability (independent review pending): unresolved-
+  by-default answer mapping with mixed-key persistence invariants, separated question/
+  answer/explanation provenance, source-document-first local parsing, progressive
+  Reports cards plus eligible weekly/monthly trends, clearer four-step setup and
+  Productivity language, explicit-name Dashboard welcome, a typed local quote banner,
+  evidence-ranked Command Brief, wider Course Tracker with provider-free import help,
+  Daily Word dictionary/compact-result clarity, deterministic Journal energy notice,
+  same-route module tours, optional post-guide Promise flow, and privacy-bounded email
+  feedback. Schema remains v32; the widget-sizing architecture remains design-only.
 
 ## Recently shipped (move log)
 

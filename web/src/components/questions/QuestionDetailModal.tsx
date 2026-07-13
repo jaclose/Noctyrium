@@ -16,7 +16,8 @@ import { newSchedule } from "../../lib/ankiCards";
 import { Modal, TextAreaField, SelectField } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
-import { QuizFeedback } from "./QuizFeedback";
+import { QuestionProvenance, QuizFeedback } from "./QuizFeedback";
+import { sourceCandidates, type QuestionEvidenceKind, type SourceCandidate } from "../../lib/questionProvenance";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 
@@ -31,6 +32,8 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   const [note, setNote] = useState("");
   const [editingMapping, setEditingMapping] = useState(false);
   const [mappingKey, setMappingKey] = useState(question.correctKey ?? "");
+  const [sourceReviewOpen, setSourceReviewOpen] = useState(false);
+  const [sourceKind, setSourceKind] = useState<QuestionEvidenceKind>("question");
   const [startedAt] = useState(() => Date.now());
 
   // Track answer changes so "Changed Answer" mode has real data.
@@ -38,10 +41,25 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     if (picked && !firstPick) setFirstPick(picked);
   }, [picked, firstPick]);
 
-  const hasKey = Boolean(question.correctKey);
   const mappingStatus = questionMappingStatus(question);
-  const isCorrect = hasKey && picked === question.correctKey;
+  const hasTrustedKey = mappingStatus === "ready";
+  const isCorrect = hasTrustedKey && picked === question.correctKey;
   const changed = Boolean(firstPick && picked && firstPick !== picked);
+  const sourceDocument = (s.documents ?? []).find((document) => document.id === question.sourceDocumentId);
+  const sourceNeedle = sourceKind === "question"
+    ? question.stem
+    : sourceKind === "answer"
+      ? question.extraction?.answerEvidenceSnippet ?? question.extraction?.answerEvidence
+      : question.extraction?.explanationSourceSnippet ?? question.explanation;
+  const sourceAnchorPage = sourceKind === "question"
+    ? question.extraction?.questionSourcePage ?? question.sourcePage
+    : sourceKind === "answer"
+      ? question.extraction?.answerEvidencePage ?? question.extraction?.questionSourcePage ?? question.sourcePage
+      : question.extraction?.explanationSourcePage ?? question.extraction?.questionSourcePage ?? question.sourcePage;
+  const candidates = sourceDocument ? sourceCandidates(sourceDocument, sourceKind, sourceNeedle, {
+    anchorPage: sourceAnchorPage,
+    anchorNeedle: question.stem,
+  }) : [];
 
   function submit() {
     if (!picked && question.options.length > 0) return;
@@ -50,7 +68,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
 
   function saveAttempt() {
     let status: QuestionStatus;
-    if (!hasKey) status = "needs-review";
+    if (!hasTrustedKey) status = "needs-review";
     else if (isCorrect) status = guessed ? "guessed" : "correct";
     else status = "incorrect";
     s.recordQuestionAttempt(question.id, {
@@ -66,7 +84,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   }
 
   function makeRepairCard() {
-    const correct = question.options.find((o) => o.key === question.correctKey);
+    const correct = hasTrustedKey ? question.options.find((o) => o.key === question.correctKey) : undefined;
     const result = s.addAnkiCards([{
       type: "error-repair",
       front: `You missed this: ${question.stem.slice(0, 300)}${question.stem.length > 300 ? "…" : ""}`,
@@ -111,6 +129,33 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     onClose();
   }
 
+  function openSourceReview() {
+    setSourceReviewOpen(true);
+    setEditingMapping(true);
+  }
+
+  function selectSourceCandidate(candidate: SourceCandidate) {
+    const extraction = {
+      ...(question.extraction ?? { confidence: "medium" as const, reviewed: true }),
+    };
+    if (candidate.kind === "question") {
+      extraction.questionSourceSnippet = candidate.snippet;
+      extraction.questionSourcePage = candidate.page;
+    } else if (candidate.kind === "answer") {
+      extraction.answerEvidenceSnippet = candidate.snippet;
+      extraction.answerEvidencePage = candidate.page;
+    } else {
+      extraction.explanationSourceSnippet = candidate.snippet;
+      extraction.explanationSourcePage = candidate.page;
+    }
+    s.updateQuestion(question.id, {
+      extraction,
+      ...(candidate.kind === "question" ? { sourcePage: candidate.page } : {}),
+    });
+    pushToast({ title: "Source updated", body: "Only the selected provenance excerpt changed. Attempts and practice status were preserved.", tone: "success" });
+    onClose();
+  }
+
   return (
     <Modal
       title={question.topic ? `Question · ${question.topic}` : "Question"}
@@ -141,11 +186,52 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
 
       <div className="question-stem">{question.stem}</div>
 
-      {mappingStatus !== "ready" && (
+      <QuestionProvenance
+        question={question}
+        sourceTitle={sourceDocument?.title}
+        onSourceLooksWrong={openSourceReview}
+      />
+
+      {sourceReviewOpen && (
+        <section className="mapping-repair" aria-label="Source review">
+          <div className="row spread wrap gap6">
+            <div className="stack" style={{ gap: 2 }}>
+              <b>Review source evidence</b>
+              <span className="sub">Choose only an excerpt you can verify. Changing it will not alter the question or its attempts.</span>
+            </div>
+            <GhostButton onClick={() => setSourceReviewOpen(false)}>Close source review</GhostButton>
+          </div>
+          <div className="row wrap gap6">
+            {(["question", "answer", "explanation"] as QuestionEvidenceKind[]).map((kind) => (
+              <button key={kind} className={`filter-pill ${sourceKind === kind ? "on" : ""}`} onClick={() => setSourceKind(kind)}>
+                {kind === "question" ? "Question source" : kind === "answer" ? "Answer evidence" : "Explanation source"}
+              </button>
+            ))}
+          </div>
+          {candidates.length > 0 ? (
+            <div className="stack gap6">
+              {candidates.map((candidate, index) => (
+                <button
+                  key={`${candidate.page ?? 0}-${index}`}
+                  className="source-candidate"
+                  onClick={() => selectSourceCandidate(candidate)}
+                >
+                  <span className="source-line"><b>{candidate.basis === "nearby" ? "Use nearby excerpt" : "Use this excerpt"}</b>{candidate.page && <span>page {candidate.page}</span>}</span>
+                  <span>{candidate.snippet.slice(0, 320)}{candidate.snippet.length > 320 ? "…" : ""}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="sub">No exact nearby excerpt was found in the linked source. AXOM will not substitute unrelated text.</p>
+          )}
+        </section>
+      )}
+
+      {(mappingStatus !== "ready" || sourceReviewOpen) && (
         <section className="mapping-repair" aria-label="Answer mapping review">
           <div className="row spread wrap">
             <div className="stack" style={{ gap: 2 }}>
-              <b>Confirm the correct answer before practice</b>
+              <b>{mappingStatus === "ready" ? "Review the answer mapping" : "Confirm the correct answer before practice"}</b>
               <span className="sub">This updates mapping metadata only. Existing attempts and practice status stay unchanged.</span>
             </div>
             <GhostButton onClick={() => setEditingMapping((value) => !value)}>
@@ -174,8 +260,8 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
         <div className="stack gap6">
           {question.options.map((opt) => {
             const isPicked = picked === opt.key;
-            const showCorrect = revealed && hasKey && opt.key === question.correctKey;
-            const showWrong = revealed && isPicked && hasKey && opt.key !== question.correctKey;
+            const showCorrect = revealed && hasTrustedKey && opt.key === question.correctKey;
+            const showWrong = revealed && isPicked && hasTrustedKey && opt.key !== question.correctKey;
             return (
               <button
                 key={opt.key}
@@ -196,10 +282,11 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
           <QuizFeedback
             question={question}
             pickedKey={picked}
-            onRepairCard={hasKey && !isCorrect ? makeRepairCard : undefined}
+            onRepairCard={hasTrustedKey && !isCorrect ? makeRepairCard : undefined}
             onAddReview={() => s.updateQuestion(question.id, { marked: true })}
             onMarkExplanationWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
             onMarkAnswerWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
+            showProvenance={false}
           />
           <div className="stack gap6">
             <span className="field-label">Confidence</span>
@@ -214,7 +301,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
               )}
             </div>
           </div>
-          {hasKey && (!isCorrect || guessed) && (
+          {hasTrustedKey && (!isCorrect || guessed) && (
             <>
               <SelectField label="Why did this go wrong?" value={errorType}
                 onChange={(e) => setErrorType(e.target.value as QuestionErrorType | "")}>

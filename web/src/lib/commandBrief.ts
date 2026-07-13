@@ -16,7 +16,7 @@ import { dayTotals, isoDate } from "./scoring";
 import { pickFocusExam, daysUntilExam, EXAM_META } from "./examPlan";
 import { previousCloseout } from "./closeout";
 import type { QuestionRecord } from "./questions";
-import { dueQuestions, weakTopics } from "./questions";
+import { dueQuestions, questionMappingStatus, weakTopics } from "./questions";
 import type { AnkiCard } from "./ankiCards";
 import { dueCards } from "./ankiCards";
 import type { QuestionSet, SourceDocument } from "./library";
@@ -40,7 +40,23 @@ export interface NextBestMove {
   resources: string[];
   reason: string;
   expectedOutcome: string;
+  /** Inspectable, deterministic evidence. The weights sum to score. */
+  score?: number;
+  contributions?: BriefRecommendationContribution[];
   source: "command-brief";
+}
+
+export interface BriefRecommendationContribution {
+  id: string;
+  label: string;
+  weight: number;
+  sourceLabel: string;
+}
+
+export interface RankedBriefCandidate extends NextBestMove {
+  candidateId: string;
+  score: number;
+  contributions: BriefRecommendationContribution[];
 }
 
 export interface MinimumViableWin {
@@ -255,6 +271,17 @@ function isMeaningfulActiveTrackerItem(item: TrackerItem): boolean {
   return true;
 }
 
+function isActionableTask(task: Task): boolean {
+  if (task.done || task.archived || !task.title.trim()) return false;
+  const origin = recordOrigin(task);
+  if (origin === "seed" || origin === "template") return false;
+  return !STARTER_TASK_TITLES.has(normalizeEvidenceText(task.title));
+}
+
+function trustedDueQuestions(questions: QuestionRecord[], now: Date): QuestionRecord[] {
+  return dueQuestions(questions, now).filter((question) => questionMappingStatus(question) === "ready");
+}
+
 function courseFingerprint(course: Pick<Course, "code" | "name" | "modules"> | { code: string; name: string; modules: string[] }): string {
   const modules = course.modules.map((module) => (
     typeof module === "string" ? module : module.name
@@ -289,22 +316,28 @@ export function deriveSignals(s: BriefStateSlice, now: Date = new Date()): Brief
   // A workspace with no study history has no evidence of missed study days.
   // Treating absence of history as 30 inactive days made first-use workspaces
   // enter Recovery before the user had logged anything.
-  if (activeDays.size > 0) {
+  const priorActiveDays = [...activeDays].filter((key) => key < today).sort();
+  if (!activeDays.has(today) && priorActiveDays.length > 0) {
     for (let back = 1; back <= 30; back++) {
       if (activeDays.has(previousDayKey(today, back))) break;
       daysSinceLastStudy = back;
     }
+  }
+  if (priorActiveDays.length > 0) {
+    const trackingFloor = priorActiveDays[0];
     for (let back = 1; back <= 7; back++) {
-      if (!activeDays.has(previousDayKey(today, back))) missedDaysLast7++;
+      const key = previousDayKey(today, back);
+      if (key >= trackingFloor && !activeDays.has(key)) missedDaysLast7++;
     }
   }
 
-  const open = s.tasks.filter((t) => !t.done && !t.archived);
+  const open = s.tasks.filter(isActionableTask);
   const overdueTasks = open.filter((t) => t.due && t.due < today).length;
   const carriedTasks = open.filter((t) => (t.carryoverFrom?.length ?? 0) > 0).length;
 
-  const reviewFlagged = s.tracker.filter((t) => t.yield === "review" && t.passes < targetPassesForItem(t)).length;
-  const behindTracker = s.tracker.filter((t) => t.passes < targetPassesForItem(t)).length;
+  const activeTracker = s.tracker.filter(isMeaningfulActiveTrackerItem);
+  const reviewFlagged = activeTracker.filter((t) => t.yield === "review").length;
+  const behindTracker = activeTracker.length;
 
   const examId = pickFocusExam(s.boardPrep, today);
   const examPrep = examId ? s.boardPrep?.[examId] : undefined;
@@ -324,7 +357,7 @@ export function deriveSignals(s: BriefStateSlice, now: Date = new Date()): Brief
     examDaysAway,
     examLabel: examId ? EXAM_META[examId].label : undefined,
     reviewFlagged,
-    dueQuestionCount: dueQuestions(s.questions, now).length,
+    dueQuestionCount: trustedDueQuestions(s.questions, now).length,
     dueCardCount: dueCards(s.ankiCards, now).length,
     yesterdayMinutes: dayTotals(s.logs, yesterday).minutes,
     todayMinutes: dayTotals(s.logs, today).minutes,
@@ -354,7 +387,7 @@ export function deriveMode(
   if (examDaysAway !== null && examDaysAway > 3 && examDaysAway <= 7 && backlogScore >= 30) {
     return {
       mode: "sprint",
-      reason: `${exam} is ${examDaysAway} days away and there is unfinished work behind you (backlog ${backlogScore}/100). Short, prioritized pushes beat completeness now.`,
+      reason: `${exam} is ${examDaysAway} days away and unfinished work needs a narrower plan. Short, prioritized pushes beat completeness now.`,
     };
   }
   if (daysSinceLastStudy >= 3 || (missedDaysLast7 >= 3 && backlogScore >= 40)) {
@@ -368,7 +401,9 @@ export function deriveMode(
   if (backlogScore >= 30 || overdueTasks >= 2) {
     return {
       mode: "catch-up",
-      reason: `You're behind (${overdueTasks} overdue task${overdueTasks === 1 ? "" : "s"}, backlog ${backlogScore}/100) but there is adequate time. Today prioritizes clearing the oldest high-value work.`,
+      reason: overdueTasks > 0
+        ? `${overdueTasks} overdue task${overdueTasks === 1 ? " needs" : "s need"} attention. Today prioritizes the oldest high-value work without trying to clear everything at once.`
+        : "Several active review items need attention. Today prioritizes the strongest supported repair without trying to clear everything at once.",
     };
   }
   return {
@@ -387,59 +422,9 @@ const MODE_MINUTES: Record<BriefMode, number> = {
   "exam-week": 45,
 };
 
-export function deriveNextBestMove(s: BriefStateSlice, mode: BriefMode, signals: BriefSignals): NextBestMove {
-  const minutes = MODE_MINUTES[mode];
-
-  // Exam week / sprint with due questions: question work outranks new content.
-  if ((mode === "exam-week" || mode === "sprint") && signals.dueQuestionCount >= 5) {
-    return {
-      title: `Rework ${Math.min(signals.dueQuestionCount, 20)} due practice questions`,
-      link: { kind: "question-set", label: "Question Workspace", context: "Due review queue" },
-      estimatedMinutes: minutes,
-      resources: ["Question Workspace → Review mode"],
-      reason: `${signals.dueQuestionCount} questions are due for review and ${signals.examLabel ?? "your exam"} is close. Reworking misses is the highest-yield hour available.`,
-      expectedOutcome: "Repeat-error topics get one more repetition before test day.",
-      source: "command-brief",
-    };
-  }
-
-  // Recovery: restart with the single most fragile flagged item, kept short.
-  // Otherwise: the tracker suggestion engine already ranks review > high-yield
-  // untouched > fragile items; reuse it rather than inventing a second ranking.
-  const [top] = suggestMoves(s.tracker, 1);
-  if (top?.itemId) {
-    const item = s.tracker.find((t) => t.id === top.itemId);
-    const context = item ? item.path.split("/").slice(0, 3).join(" · ") : undefined;
-    return {
-      title: top.title,
-      link: { kind: "tracker", id: top.itemId, label: item?.label ?? top.title, context },
-      estimatedMinutes: mode === "recovery" ? 25 : minutes,
-      resources: item && isQuestionKind(item.kind) ? ["Linked question set", "Error log"] : ["Lecture notes / slides", "Anki Lab for anchoring"],
-      reason: top.reason,
-      expectedOutcome: item && item.passes === 0
-        ? "First pass done — this item stops being an unknown."
-        : "One pass closer to mature; tomorrow's brief re-ranks around it.",
-      source: "command-brief",
-    };
-  }
-
-  // No tracker content at all: point at the oldest actionable task, or setup.
-  const oldestOpen = s.tasks
-    .filter((t) => !t.done && !t.archived)
-    .sort((a, b) => (a.due ?? a.created).localeCompare(b.due ?? b.created))[0];
-  if (oldestOpen) {
-    return {
-      title: oldestOpen.title,
-      link: { kind: "task", id: oldestOpen.id, label: oldestOpen.title, context: oldestOpen.scope },
-      estimatedMinutes: minutes,
-      resources: [],
-      reason: oldestOpen.due && oldestOpen.due < s.activeDayKey
-        ? "This is your oldest overdue task — clearing it unblocks the rest of the list."
-        : "This is your oldest open task; nothing in the tracker outranks it right now.",
-      expectedOutcome: "One committed block of real work, logged.",
-      source: "command-brief",
-    };
-  }
+export function deriveNextBestMove(s: BriefStateSlice, mode: BriefMode, _signals: BriefSignals, now: Date = new Date()): NextBestMove {
+  const [top] = rankCommandBriefCandidates(s, mode, now);
+  if (top) return top;
 
   return {
     title: "Set up your course tracker",
@@ -450,6 +435,111 @@ export function deriveNextBestMove(s: BriefStateSlice, mode: BriefMode, signals:
     expectedOutcome: "Tomorrow's brief names a real lecture, not a setup step.",
     source: "command-brief",
   };
+}
+
+function evidence(id: string, label: string, weight: number, sourceLabel: string): BriefRecommendationContribution {
+  return { id, label, weight, sourceLabel };
+}
+
+function candidateScore(contributions: BriefRecommendationContribution[]): number {
+  return contributions.reduce((total, item) => total + item.weight, 0);
+}
+
+/** Rank only actionable, user-backed work. Seed/template rows never enter this list. */
+export function rankCommandBriefCandidates(
+  s: BriefStateSlice,
+  mode: BriefMode,
+  now: Date = new Date(),
+): RankedBriefCandidate[] {
+  const minutes = MODE_MINUTES[mode];
+  const closeout = previousCloseout(s.closeouts, s.activeDayKey);
+  const commitment = normalizeEvidenceText(closeout?.tomorrowFirstTask ?? "");
+  const examId = pickFocusExam(s.boardPrep, s.activeDayKey);
+  const examPrep = examId ? s.boardPrep?.[examId] : undefined;
+  const examDays = examPrep ? daysUntilExam(examPrep.examDate, s.activeDayKey) : null;
+  const examNear = examDays !== null && examDays >= 0 && examDays <= 7;
+  const latestLinked = [...s.sessions]
+    .filter((session) => session.link?.id || session.link?.kind === "question-set")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.link;
+  const candidates: RankedBriefCandidate[] = [];
+
+  for (const task of s.tasks.filter(isActionableTask)) {
+    const contributions = [evidence("open-task", "Open task", 20, "Tasks")];
+    if (task.due && task.due < s.activeDayKey) {
+      const daysLate = Math.max(1, Math.round((Date.parse(`${s.activeDayKey}T12:00:00`) - Date.parse(`${task.due}T12:00:00`)) / 86_400_000));
+      contributions.push(evidence("overdue", `${daysLate} day${daysLate === 1 ? "" : "s"} overdue`, 80 + Math.min(daysLate, 14), "Task due date"));
+    } else if (task.due === s.activeDayKey) {
+      contributions.push(evidence("due-today", "Due today", 50, "Task due date"));
+    } else if (task.due && task.due <= previousDayKey(s.activeDayKey, -2)) {
+      contributions.push(evidence("due-soon", "Due within two days", 30, "Task due date"));
+    }
+    if ((task.carryoverFrom?.length ?? 0) > 0) contributions.push(evidence("carried", "Carried forward", 15, "Task history"));
+    if (commitment && normalizeEvidenceText(task.title) === commitment) contributions.push(evidence("commitment", "Chosen as the first task", 100, "Yesterday’s closeout"));
+    if (latestLinked?.kind === "task" && latestLinked.id === task.id) contributions.push(evidence("continuity", "Recently in progress", 18, "Recent session"));
+    const score = candidateScore(contributions);
+    candidates.push({
+      candidateId: `task:${task.id}`,
+      title: task.title,
+      link: { kind: "task", id: task.id, label: task.title, context: task.scope },
+      estimatedMinutes: mode === "recovery" ? 25 : minutes,
+      resources: [],
+      reason: contributions.slice().sort((a, b) => b.weight - a.weight)[0].label,
+      expectedOutcome: "Complete one committed block and leave a clear task status.",
+      score,
+      contributions,
+      source: "command-brief",
+    });
+  }
+
+  for (const item of s.tracker.filter(isMeaningfulActiveTrackerItem)) {
+    const [suggestion] = suggestMoves([item], 1);
+    const contributions = [evidence("active-item", "Active study item", 15, "Course Tracker")];
+    if (item.yield === "review") contributions.push(evidence("review-flag", "Marked for review", 70, "Course Tracker"));
+    if (item.yield === "high") contributions.push(evidence("high-yield", "Marked high yield", item.passes === 0 ? 55 : 35, "Course Tracker"));
+    if (item.passes === 0) contributions.push(evidence("untouched", "Not started", 25, "Course Tracker"));
+    else if (item.passes === 1) contributions.push(evidence("fragile", "One pass so far", 22, "Course Tracker"));
+    if (isQuestionKind(item.kind)) contributions.push(evidence("question-practice", "Practice work", 12, "Course Tracker"));
+    if (examNear && (item.yield === "review" || item.yield === "high" || isQuestionKind(item.kind))) {
+      contributions.push(evidence("exam-proximity", `${EXAM_META[examId!].label} is within seven days`, 18, "Exam plan"));
+    }
+    if (commitment && normalizeEvidenceText(item.label) === commitment) contributions.push(evidence("commitment", "Chosen as the first task", 100, "Yesterday’s closeout"));
+    if (latestLinked?.kind === "tracker" && latestLinked.id === item.id) contributions.push(evidence("continuity", "Recently in progress", 18, "Recent session"));
+    const score = candidateScore(contributions);
+    candidates.push({
+      candidateId: `tracker:${item.id}`,
+      title: suggestion?.title ?? item.label,
+      link: { kind: "tracker", id: item.id, label: item.label, context: item.path.split("/").slice(0, 3).join(" · ") },
+      estimatedMinutes: mode === "recovery" ? 25 : minutes,
+      resources: isQuestionKind(item.kind) ? ["Linked question set", "Error log"] : ["Lecture notes / slides", "Anki Lab for anchoring"],
+      reason: suggestion?.reason ?? "This active item has the strongest current evidence.",
+      expectedOutcome: item.passes === 0 ? "Complete a first pass so this is no longer unknown." : "Move one pass closer to stable recall.",
+      score,
+      contributions,
+      source: "command-brief",
+    });
+  }
+
+  const due = trustedDueQuestions(s.questions, now);
+  if (due.length) {
+    const contributions = [evidence("due-review", `${due.length} trusted review${due.length === 1 ? "" : "s"} due`, 65 + Math.min(due.length, 20), "Question Bank")];
+    if (examNear) contributions.push(evidence("exam-proximity", `${EXAM_META[examId!].label} is within seven days`, 20, "Exam plan"));
+    if (latestLinked?.kind === "question-set") contributions.push(evidence("continuity", "Recently practised", 12, "Recent session"));
+    const score = candidateScore(contributions);
+    candidates.push({
+      candidateId: "questions:due-review",
+      title: `Rework ${Math.min(due.length, 20)} due practice question${due.length === 1 ? "" : "s"}`,
+      link: { kind: "question-set", label: "Question Workspace", context: "Due review queue" },
+      estimatedMinutes: mode === "recovery" ? 20 : minutes,
+      resources: ["Question Workspace → Review mode"],
+      reason: `${due.length} trusted question${due.length === 1 ? " is" : "s are"} due for review.`,
+      expectedOutcome: "Revisit supported answer mappings and repair repeat errors.",
+      score,
+      contributions,
+      source: "command-brief",
+    });
+  }
+
+  return candidates.sort((a, b) => b.score - a.score || a.candidateId.localeCompare(b.candidateId));
 }
 
 // --- minimum viable win -----------------------------------------------------
@@ -473,7 +563,7 @@ export function deriveMinimumViableWin(s: BriefStateSlice, signals: BriefSignals
       link: { kind: "question-set", label: "Question Workspace", context: "Review mode" },
     };
   }
-  const fragile = s.tracker.find((t) => t.passes === 1 && t.yield !== "low");
+  const fragile = s.tracker.find((t) => isMeaningfulActiveTrackerItem(t) && t.passes === 1 && t.yield !== "low");
   if (fragile) {
     return {
       title: `15-minute skim: ${fragile.label}`,
@@ -555,27 +645,7 @@ export function buildCommandBrief(s: BriefStateSlice, now: Date = new Date()): C
   const signals = deriveSignals(s, now);
   const closeout = previousCloseout(s.closeouts, s.activeDayKey);
   const { mode, reason } = deriveMode(signals, closeout?.tomorrowMode);
-  // The closeout's named first task, if actionable, wins the top slot: the user
-  // committed to it last night, and honoring that beats re-deciding.
-  let move = deriveNextBestMove(s, mode, signals);
-  if (closeout?.tomorrowFirstTask?.trim()) {
-    const planned = closeout.tomorrowFirstTask.trim();
-    const matchedTask = s.tasks.find((t) => !t.done && !t.archived && t.title.toLowerCase() === planned.toLowerCase());
-    const matchedTracker = s.tracker.find((t) => t.label.toLowerCase() === planned.toLowerCase());
-    move = {
-      title: matchedTracker ? move.title.includes(matchedTracker.label) ? move.title : planned : planned,
-      link: matchedTask
-        ? { kind: "task", id: matchedTask.id, label: matchedTask.title, context: matchedTask.scope }
-        : matchedTracker
-          ? { kind: "tracker", id: matchedTracker.id, label: matchedTracker.label }
-          : { kind: "free", label: planned },
-      estimatedMinutes: move.estimatedMinutes,
-      resources: move.resources,
-      reason: "You named this as tomorrow's first task in yesterday's closeout.",
-      expectedOutcome: "The day starts on the thing you committed to — no re-deciding.",
-      source: "command-brief",
-    };
-  }
+  const move = deriveNextBestMove(s, mode, signals, now);
 
   return {
     mode,

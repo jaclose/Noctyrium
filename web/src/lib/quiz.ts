@@ -5,7 +5,10 @@
 // queues. Pure + testable; persistence in store.ts (schema v29).
 // ===========================================================================
 import type { ID } from "./types";
-import type { QuestionDifficulty, QuestionExamType, QuestionRecord } from "./questions";
+import {
+  questionMappingStatus,
+  type QuestionDifficulty, type QuestionExamType, type QuestionRecord,
+} from "./questions";
 
 export type QuizMode = "tutor" | "exam";
 
@@ -62,7 +65,10 @@ export interface QuizSession {
 // --- pool building -----------------------------------------------------------
 
 export function buildQuizPool(questions: QuestionRecord[], filters: QuizFilters): QuestionRecord[] {
-  let pool = questions.filter((q) => q.options.length >= 2);
+  // Imported mappings are runnable only after the canonical review gate says
+  // they are trustworthy. This prevents a provisional/unresolved key from
+  // being scored or revealed as fact.
+  let pool = questions.filter((q) => q.options.length >= 2 && questionMappingStatus(q) === "ready");
   if (filters.status === "unused") pool = pool.filter((q) => q.attempts.length === 0);
   else if (filters.status === "incorrect") pool = pool.filter((q) => q.status === "incorrect" || q.status === "guessed");
   else if (filters.status === "marked") pool = pool.filter((q) => q.marked || q.status === "flagged");

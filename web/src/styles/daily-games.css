@@ -2,8 +2,8 @@
    using AXOM's mineral surfaces and semantic, color-independent game states. */
 .daily-word-page {
   display: grid;
-  gap: 12px;
-  width: min(100%, 680px);
+  gap: 10px;
+  width: min(100%, 600px);
   margin: 0 auto;
 }
 
@@ -47,8 +47,8 @@
 .daily-word-board-card {
   display: grid;
   justify-items: center;
-  gap: 10px;
-  padding-block: 16px !important;
+  gap: 8px;
+  padding-block: 14px !important;
 }
 
 .daily-word-instructions {
@@ -68,10 +68,11 @@
 }
 
 .daily-word-instructions p {
-  max-width: 650px;
+  max-width: 560px;
   margin: 5px 0 0;
   line-height: 1.55;
 }
+.daily-word-dictionary-note { color: var(--text-45); font-size: 10.5px; }
 
 .daily-word-grid {
   display: grid;
@@ -82,7 +83,7 @@
 
 .daily-word-row {
   display: grid;
-  grid-template-columns: repeat(5, clamp(42px, 7vw, 50px));
+  grid-template-columns: repeat(5, clamp(42px, 7vw, 48px));
   gap: 4px;
 }
 
@@ -143,8 +144,9 @@
 .daily-word-keyboard {
   display: grid;
   gap: 4px;
-  width: min(100%, 500px);
+  width: min(100%, 460px);
 }
+.daily-word-suggest { min-height: 36px; }
 
 .daily-word-keyboard-row {
   display: flex;

@@ -14,6 +14,7 @@ import {
 } from "../lib/dailyWord";
 import { useClockNow } from "../lib/clock";
 import { useStore } from "../lib/store";
+import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../lib/announcements";
 import "../styles/daily-games.css";
 
 interface WordData {
@@ -30,6 +31,20 @@ const EVALUATION_LABEL: Record<LetterEvaluation, string> = {
   absent: "not in word",
 };
 const EVALUATION_RANK: Record<LetterEvaluation, number> = { absent: 1, present: 2, correct: 3 };
+const DAILY_WORD_HOW_TO_ANNOUNCEMENT_ID = "daily-word-how-to-v1";
+const DAILY_WORD_SUGGESTION_EMAIL = "jafardabbagh@gmail.com";
+
+export function buildDailyWordSuggestionMailto(word: string, dictionaryVersion: string): string {
+  const normalized = word.trim().toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5);
+  const version = dictionaryVersion.trim().slice(0, 40);
+  const subject = `[AXOM Suggestion] Daily Word: ${normalized || "word"}`;
+  const body = [
+    `Suggested word: ${normalized || "(not provided)"}`,
+    `Dictionary version: ${version || "unknown"}`,
+    "Route: #daily-word",
+  ].join("\n");
+  return `mailto:${DAILY_WORD_SUGGESTION_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 export function DailyWordPage() {
   const profile = useStore((state) => state.profile);
@@ -39,7 +54,12 @@ export function DailyWordPage() {
   const [loadError, setLoadError] = useState("");
   const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("Enter a five-letter word.");
+  const [unrecognizedWord, setUnrecognizedWord] = useState("");
   const [manualShare, setManualShare] = useState("");
+  const [howToOpen, setHowToOpen] = useState(() => !isAnnouncementDismissed(
+    DAILY_WORD_HOW_TO_ANNOUNCEMENT_ID,
+    readDismissedAnnouncements(),
+  ));
   const submitting = useRef(false);
   const manualShareRef = useRef<HTMLTextAreaElement>(null);
   const initializedPuzzleId = useRef<string>();
@@ -90,9 +110,14 @@ export function DailyWordPage() {
   }, [selection?.created, selection?.puzzle, upsertPuzzle]);
 
   useEffect(() => {
+    if (words && puzzle) dismissAnnouncement(DAILY_WORD_HOW_TO_ANNOUNCEMENT_ID);
+  }, [puzzle, words]);
+
+  useEffect(() => {
     if (!puzzle || initializedPuzzleId.current === puzzle.puzzleId) return;
     initializedPuzzleId.current = puzzle.puzzleId;
     setDraft("");
+    setUnrecognizedWord("");
     setManualShare("");
     setStatus(puzzle.completed
       ? puzzle.won ? `Solved in ${puzzle.guesses.length} guess${puzzle.guesses.length === 1 ? "" : "es"}.` : "Puzzle complete."
@@ -113,15 +138,28 @@ export function DailyWordPage() {
   }, [manualShare]);
 
   const submit = useCallback(() => {
-    if (!puzzle || !words || !answer || puzzle.completed || submitting.current) return;
+    if (!puzzle || !words || !answer || submitting.current) return;
+    if (puzzle.completed) {
+      setStatus("Puzzle complete.");
+      setUnrecognizedWord("");
+      return;
+    }
     if (draft.length !== 5) {
-      setStatus("Enter exactly five letters before submitting.");
+      setStatus("Enter five letters.");
+      setUnrecognizedWord("");
+      return;
+    }
+    if (puzzle.guesses.includes(draft)) {
+      setStatus("That word was already used.");
+      setUnrecognizedWord("");
       return;
     }
     if (!words.allowed.has(draft)) {
-      setStatus(`${draft} is not in the local allowed-word list.`);
+      setStatus("Not recognized in AXOM’s current dictionary.");
+      setUnrecognizedWord(draft);
       return;
     }
+    setUnrecognizedWord("");
     submitting.current = true;
     const guesses = [...puzzle.guesses, draft];
     const won = draft === answer;
@@ -147,11 +185,13 @@ export function DailyWordPage() {
 
   const enterLetter = useCallback((letter: string) => {
     if (!puzzle || puzzle.completed || !/^[A-Z]$/.test(letter)) return;
+    setUnrecognizedWord("");
     setDraft((current) => current.length < 5 ? `${current}${letter}` : current);
   }, [puzzle]);
 
   const backspace = useCallback(() => {
     if (!puzzle || puzzle.completed) return;
+    setUnrecognizedWord("");
     setDraft((current) => current.slice(0, -1));
   }, [puzzle]);
 
@@ -216,9 +256,10 @@ export function DailyWordPage() {
       </header>
 
       <GlassCard pad className="daily-word-board-card">
-        <details className="daily-word-instructions">
+        <details className="daily-word-instructions" open={howToOpen} onToggle={(event) => setHowToOpen(event.currentTarget.open)}>
           <summary>How to play</summary>
           <p>Submit a valid five-letter word in six guesses. A solid check means correct position, a ring means present elsewhere, and a dash means absent.</p>
+          <p className="daily-word-dictionary-note">Dictionary {words.version} · {words.allowed.size.toLocaleString()} local allowed words · no network lookup during play.</p>
         </details>
 
         <div className="daily-word-grid" role="grid" aria-label={`Six-row Daily Word puzzle for ${puzzle.puzzleDate}`}>
@@ -248,6 +289,11 @@ export function DailyWordPage() {
         </div>
 
         <div className="daily-word-status" role="status" aria-live="polite" aria-atomic="true">{status}</div>
+        {unrecognizedWord && (
+          <a className="gbtn sm daily-word-suggest" href={buildDailyWordSuggestionMailto(unrecognizedWord, words.version)}>
+            Suggest this word
+          </a>
+        )}
 
         <div className="daily-word-keyboard" role="group" aria-label="On-screen keyboard">
           {KEYBOARD_ROWS.map((row) => (

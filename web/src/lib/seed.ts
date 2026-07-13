@@ -31,6 +31,7 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "boardBlueprint",
 ];
 export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
+  "suggested",
   "aiActions",
   "schedule",
   "termMap",

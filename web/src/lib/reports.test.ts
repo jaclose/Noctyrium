@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeDailyRequirement } from "./dailySuccess";
-import { buildCanonicalReportSummary, reportDateKeys } from "./reports";
+import { buildCanonicalReportSummary, buildCanonicalReportTrends, compareReportPeriods, reportDateKeys } from "./reports";
 import { makeSeed } from "./seed";
 import type { StudyLog } from "./types";
 
@@ -130,5 +130,97 @@ describe("canonical reports", () => {
     expect(summary.metrics["tracker-mastery"].calculation).toContain("2 reviewed; 1 Anki-linked");
     expect(summary.metrics.tasks).toMatchObject({ value: "1/2", note: "1 completed · 1 due · 1 overdue" });
     expect(summary.metrics.tasks.sourceRecordIds).toEqual(["complete", "due"]);
+  });
+});
+
+describe("canonical report trends", () => {
+  it("builds current and prior seven-eligible-day periods with grounded comparison", () => {
+    const state = makeSeed();
+    state.activeDayKey = TODAY;
+    const dates = reportDateKeys(TODAY, 14);
+    state.profile.dailySuccess = {
+      version: 1,
+      configuredAt: dates[0],
+      requirements: [makeDailyRequirement({
+        id: "minutes", label: "Study", source: { kind: "study-minutes" }, target: 1,
+        unit: "minutes", trackingStartsAt: dates[0],
+      }, dates[0])],
+    };
+    state.logs = dates.flatMap((dayKey, index) => [
+      log(`minutes-${index}`, dayKey, index < 7 ? 10 : 20),
+      {
+        ...log(`questions-${index}`, dayKey, 0),
+        quantity: index < 7 ? 1 : 5,
+        quantityKind: "questions" as const,
+      },
+    ]);
+    const trends = buildCanonicalReportTrends(state);
+    expect(trends.currentWeek).toHaveLength(7);
+    expect(trends.previousWeek).toHaveLength(7);
+    const comparison = compareReportPeriods(trends.currentWeek, trends.previousWeek, "minutes");
+    expect(comparison).toMatchObject({
+      sufficient: true,
+      currentValue: 140,
+      previousValue: 70,
+      percentChange: 100,
+      strongestContributor: "Practice questions",
+      quietEligibleDays: 0,
+    });
+  });
+
+  it("keeps off-schedule month dates neutral and a pending current day unscored", () => {
+    const state = makeSeed();
+    state.activeDayKey = TODAY; // Sunday
+    state.profile.dailySuccess = {
+      version: 1,
+      configuredAt: "2026-07-01",
+      requirements: [makeDailyRequirement({
+        id: "weekdays", label: "Weekday study", source: { kind: "study-minutes" }, target: 30,
+        unit: "minutes", schedule: { kind: "weekdays", weekdays: [1, 2, 3, 4, 5] }, trackingStartsAt: "2026-07-01",
+      }, "2026-07-01")],
+    };
+    state.logs = [];
+    const trends = buildCanonicalReportTrends(state);
+    const sunday = trends.month.find((day) => day.dayKey === TODAY)!;
+    expect(sunday).toMatchObject({ eligible: false, scored: false, status: "neutral" });
+    expect(trends.currentWeek.every((day) => day.eligible)).toBe(true);
+    expect(trends.currentWeek.at(-1)).toMatchObject({ scored: true, status: "missed" });
+  });
+
+  it("stays neutral when a prior eligible comparison is incomplete", () => {
+    const state = makeSeed();
+    state.activeDayKey = TODAY;
+    state.profile.dailySuccess = {
+      version: 1,
+      configuredAt: "2026-07-10",
+      requirements: [makeDailyRequirement({
+        id: "minutes", label: "Study", source: { kind: "study-minutes" }, target: 30,
+        unit: "minutes", trackingStartsAt: "2026-07-10",
+      }, "2026-07-10")],
+    };
+    state.logs = [log("today", TODAY, 40)];
+    const trends = buildCanonicalReportTrends(state);
+    expect(compareReportPeriods(trends.currentWeek, trends.previousWeek, "minutes")).toMatchObject({
+      sufficient: false,
+      interpretation: "Not enough data yet for a reliable prior-week comparison.",
+    });
+  });
+
+  it("does not let an eligible but pending current day unlock a weekly claim", () => {
+    const state = makeSeed();
+    state.activeDayKey = TODAY;
+    const dates = reportDateKeys(TODAY, 14);
+    state.profile.dailySuccess = {
+      version: 1,
+      configuredAt: dates[0],
+      requirements: [makeDailyRequirement({
+        id: "minutes", label: "Study", source: { kind: "study-minutes" }, target: 30,
+        unit: "minutes", trackingStartsAt: dates[0],
+      }, dates[0])],
+    };
+    state.logs = dates.slice(0, -1).map((dayKey, index) => log(`log-${index}`, dayKey, 30));
+    const trends = buildCanonicalReportTrends(state);
+    expect(trends.currentWeek.at(-1)).toMatchObject({ dayKey: TODAY, eligible: true, scored: false, status: "pending" });
+    expect(compareReportPeriods(trends.currentWeek, trends.previousWeek, "minutes").sufficient).toBe(false);
   });
 });

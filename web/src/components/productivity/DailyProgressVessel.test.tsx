@@ -20,7 +20,7 @@ describe("DailyProgressVessel", () => {
     const { rerender, container } = render(<DailyProgressVessel result={neutral} />);
     const progress = screen.getByRole("progressbar", { name: "Daily success progress" });
     expect(progress.getAttribute("aria-valuenow")).toBe("0");
-    expect(progress.getAttribute("aria-valuetext")).toContain("No requirements selected");
+    expect(progress.getAttribute("aria-valuetext")).toContain("No targets selected");
 
     rerender(<DailyProgressVessel result={{ ...neutral, eligibleCount: 2, metCount: 1, progress: 50, status: "in-progress", statusLabel: "In progress" }} />);
     expect(progress.getAttribute("aria-valuenow")).toBe("50");

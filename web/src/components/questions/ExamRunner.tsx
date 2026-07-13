@@ -13,6 +13,7 @@ import {
 } from "../../lib/quiz";
 import {
   ERROR_TYPE_LABEL, EXAM_TYPE_LABEL, QUESTION_CATEGORIES,
+  questionMappingStatus,
   type QuestionErrorType, type QuestionExamType, type QuestionRecord,
 } from "../../lib/questions";
 import { newSchedule } from "../../lib/ankiCards";
@@ -27,6 +28,10 @@ const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
 
 type Stage = "setup" | "running" | "results";
+
+function trustedCorrectKey(question: QuestionRecord): string | undefined {
+  return questionMappingStatus(question) === "ready" ? question.correctKey : undefined;
+}
 
 export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, presetTimed = false, blockId, onClose }: {
   mode: QuizMode;
@@ -59,7 +64,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
 
   // --- run state
   const [pool, setPool] = useState<QuestionRecord[]>(() =>
-    retakeIds?.length ? questions.filter((q) => retakeIds.includes(q.id)) : []);
+    retakeIds?.length
+      ? buildQuizPool(
+          questions.filter((question) => retakeIds.includes(question.id)),
+          { count: Math.max(1, retakeIds.length), status: "all", ordered: true },
+        )
+      : []);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Map<string, QuizAnswer>>(new Map());
   const [picked, setPicked] = useState<string | undefined>();
@@ -175,7 +185,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
 
   function recordCurrent(answerKey: string | undefined, flagged: boolean) {
     if (!question) return;
-    const correct = question.correctKey ? (answerKey ? answerKey === question.correctKey : false) : undefined;
+    const correctKey = trustedCorrectKey(question);
+    const correct = correctKey ? (answerKey ? answerKey === correctKey : false) : undefined;
     const seconds = Math.round((Date.now() - shownAt) / 1000);
     setAnswers((prev) => new Map(prev).set(question.id, { questionId: question.id, answerKey, correct, flagged, seconds }));
   }
@@ -236,7 +247,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     const all = new Map(answers);
     if (question && !all.has(question.id) && (lastPick ?? picked)) {
       const key = lastPick ?? picked;
-      const correct = question.correctKey ? key === question.correctKey : undefined;
+      const correctKey = trustedCorrectKey(question);
+      const correct = correctKey ? key === correctKey : undefined;
       all.set(question.id, { questionId: question.id, answerKey: key, correct, flagged: false, seconds: Math.round((Date.now() - shownAt) / 1000) });
     }
     const answerList = pool.map((q) => all.get(q.id) ?? ({ questionId: q.id, flagged: false } as QuizAnswer));
@@ -282,7 +294,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   }
 
   function makeRepairCard(q: QuestionRecord) {
-    const correct = q.options.find((o) => o.key === q.correctKey);
+    const correctKey = trustedCorrectKey(q);
+    const correct = q.options.find((o) => o.key === correctKey);
     const result = s.addAnkiCards([{
       type: "error-repair",
       front: `You missed this: ${q.stem.slice(0, 300)}${q.stem.length > 300 ? "…" : ""}`,
@@ -306,7 +319,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     setAiBusy(true);
     setAiText(null);
     try {
-      const correct = question.options.find((o) => o.key === question.correctKey)?.text;
+      const correctKey = trustedCorrectKey(question);
+      const correct = question.options.find((o) => o.key === correctKey)?.text;
       const text = kind === "simple"
         ? await explainSimply(provider, { stem: question.stem, correct, explanation: question.explanation })
         : kind === "why-wrong"
@@ -420,13 +434,17 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   if (stage === "results" && session) {
     const missed = missedQuestionIds(session);
     const byId = new Map(questions.map((q) => [q.id, q]));
+    const retakePool = buildQuizPool(
+      questions.filter((question) => missed.includes(question.id)),
+      { count: Math.max(1, missed.length), status: "all", ordered: true },
+    );
     return (
       <Modal title="Block results" onClose={onClose}
         footer={
           <>
-            {missed.length > 0 && (
+            {retakePool.length > 0 && (
               <GhostButton onClick={() => {
-                setPool(questions.filter((q) => missed.includes(q.id)));
+                setPool(retakePool);
                 setAnswers(new Map());
                 setIndex(0);
                 setSession(null);
@@ -434,7 +452,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                 setStartedAt(new Date().toISOString());
                 setShownAt(Date.now());
                 setStage("running");
-              }}>Retake {missed.length} missed</GhostButton>
+              }}>Retake {retakePool.length} missed</GhostButton>
             )}
             <GButton variant="primary" onClick={onClose}>Done</GButton>
           </>
@@ -460,7 +478,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                 <div key={id} className="import-draft">
                   <div className="stack" style={{ gap: 4 }}>
                     <span style={{ fontWeight: 600 }}>{q.stem}</span>
-                    <span className="sub">You picked {a?.answerKey ?? "nothing"} · correct {q.correctKey}</span>
+                    <span className="sub">You picked {a?.answerKey ?? "nothing"} · correct {trustedCorrectKey(q) ?? "unresolved"}</span>
                     {/* Import owns cleanup; display must preserve legitimate user edits. */}
                     {q.explanation && <span className="sub">{q.explanation.trim()}</span>}
                     <div className="row">
@@ -479,7 +497,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
 
   if (!question) return null;
   const answer = answers.get(question.id);
-  const isCorrect = revealed && question.correctKey && picked === question.correctKey;
+  const correctKey = trustedCorrectKey(question);
+  const isCorrect = revealed && correctKey && picked === correctKey;
 
   return (
     <Modal
@@ -532,8 +551,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       <div className="stack gap6">
         {question.options.map((opt) => {
           const isPicked = picked === opt.key;
-          const showCorrect = revealed && question.correctKey === opt.key;
-          const showWrong = revealed && isPicked && question.correctKey !== opt.key;
+          const showCorrect = revealed && correctKey === opt.key;
+          const showWrong = revealed && isPicked && Boolean(correctKey) && correctKey !== opt.key;
           return (
             <button type="button" key={opt.key}
               className={`option-row ${isPicked ? "picked" : ""} ${showCorrect ? "correct" : ""} ${showWrong ? "wrong" : ""}`}
@@ -583,13 +602,13 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
             <div className="stack gap6">
               <span className="field-label">Why each choice</span>
               {Object.entries(question.choiceRationales).map(([key, why]) => (
-                <div key={key} className={`sub ${key === question.correctKey ? "grade-green" : ""}`}>
+                <div key={key} className={`sub ${key === correctKey ? "grade-green" : ""}`}>
                   <b>{key}:</b> {why}
                 </div>
               ))}
             </div>
           )}
-          {!isCorrect && question.correctKey && (
+          {!isCorrect && correctKey && (
             <>
               <SelectField label="Why did this go wrong?" value={errorType}
                 onChange={(e) => setErrorType(e.target.value as QuestionErrorType | "")}>

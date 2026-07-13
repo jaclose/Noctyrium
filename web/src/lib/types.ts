@@ -634,7 +634,7 @@ export interface Profile {
   dailyGamesCollapsed?: boolean;
   // First-launch onboarding
   onboarded: boolean;
-  tourDone?: boolean; // guided tour + promise cutscene completed
+  tourDone?: boolean; // global guided tour completed or skipped
   promise?: {
     signedName: string;
     signedAt: string;
@@ -642,7 +642,7 @@ export interface Profile {
     journalEntryId?: string;
   }; // the signed "promise to yourself"
   /** Automatic post-guide prompt suppression; signing remains available in Settings. */
-  promisePromptStatus?: { state: "deferred" | "skipped"; updatedAt: string };
+  promisePromptStatus?: { state: "deferred" | "skipped"; updatedAt: string; promptVersion?: string };
   phase?: AcademicPhase;
   // The program chosen during onboarding (drives structure, resources, lanes).
   educationTrack?: EducationTrackId;

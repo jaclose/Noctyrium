@@ -91,6 +91,19 @@ describe("QuestionWorkspacePage first use", () => {
     expect((screen.getByRole("button", { name: "Extract & review" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("opens a same-route, missing-target-safe Question Bank tour", async () => {
+    const user = userEvent.setup();
+    const startHash = window.location.hash;
+    render(<QuestionWorkspacePage />);
+    await user.click(screen.getByRole("button", { name: "Open Question Bank help tour" }));
+    expect(screen.getByRole("dialog", { name: "Import" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("dialog", { name: "Review mappings" })).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Review mappings" })).toBeNull();
+    expect(window.location.hash).toBe(startHash);
+  });
+
   it("uses a labelled roving tab pattern with arrow-key navigation", async () => {
     const user = userEvent.setup();
     render(<QuestionWorkspacePage />);
@@ -238,5 +251,30 @@ describe("QuestionWorkspacePage returning state", () => {
     });
 
     expect(screen.queryByRole("region", { name: /questions need review/ })).toBeNull();
+  });
+
+  it("does not advertise or launch unresolved questions as runnable practice", async () => {
+    const user = userEvent.setup();
+    useStore.setState({
+      questions: [question({
+        id: "unresolved-due-miss",
+        correctKey: undefined,
+        needsReview: true,
+        status: "incorrect",
+        reviewDueAt: "2026-01-01T00:00:00.000Z",
+      })],
+    });
+    render(<QuestionWorkspacePage />);
+
+    expect(screen.getByRole("heading", { name: "Import another clean set" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Review .* due questions/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Retry .* misses/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Review due/ })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: /Retry incorrects/ })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Import questions" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Begin/ }));
+    expect(screen.getByRole("heading", { name: "Import Center" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: /Tutor/ })).toBeNull();
   });
 });

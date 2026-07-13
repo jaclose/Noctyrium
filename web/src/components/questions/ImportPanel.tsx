@@ -25,6 +25,7 @@ import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from ".
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
+import { assignDraftProvenancePages } from "../../lib/questionProvenance";
 
 export type ImportTab = "paste" | "file" | "ai";
 type SaveMode = "set" | "doc" | "both";
@@ -37,6 +38,7 @@ interface ReviewDraft extends ParsedQuestionDraft {
 }
 
 interface PendingDocument {
+  existingDocumentId?: string;
   title: string;
   fileName: string;
   fileType: string;
@@ -57,21 +59,50 @@ export interface ImportSeed {
   rawText?: string;
   fileName?: string;
   title?: string;
+  sourceDocumentId?: string;
+  fileType?: string;
+  sizeBytes?: number;
+  pageTexts?: string[];
+  checksum?: string;
+  warnings?: string[];
+  source?: QuestionSource;
+}
+
+/** Re-open a saved source with the deterministic local parser; no provider is required. */
+export function parseStoredDocument(document: SourceDocument): { drafts: ParsedQuestionDraft[]; warnings: string[] } {
+  const kind = document.fileType.toLowerCase();
+  const result = kind === "csv"
+    ? importFromCsv(document.rawText)
+    : kind === "json"
+      ? importFromJson(document.rawText)
+      : importFromText(document.rawText);
+  if (document.pageTexts?.length) assignDraftProvenancePages(result.drafts, document.pageTexts);
+  return result;
 }
 
 export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed | null; initialTab?: ImportTab }) {
   const s = useStore();
   const [tab, setTab] = useState<ImportTab>(seed?.reference ? "ai" : initialTab);
   const [drafts, setDrafts] = useState<ReviewDraft[]>(() =>
-    seed?.drafts ? seed.drafts.map((d) => ({ ...d, include: true, source: "imported" as QuestionSource })) : []);
-  const [batchWarnings, setBatchWarnings] = useState<string[]>([]);
+    seed?.drafts ? seed.drafts.map((d) => ({ ...d, include: true, source: seed.source ?? "imported" })) : []);
+  const [batchWarnings, setBatchWarnings] = useState<string[]>(() => seed?.warnings ?? []);
   const [pendingDoc, setPendingDoc] = useState<PendingDocument | null>(() =>
     seed?.drafts && seed.rawText != null
-      ? { title: seed.title ?? "Imported", fileName: seed.fileName ?? "import", fileType: "imported", sizeBytes: seed.rawText.length, rawText: seed.rawText }
+      ? {
+          existingDocumentId: seed.sourceDocumentId,
+          title: seed.title ?? "Imported",
+          fileName: seed.fileName ?? "import",
+          fileType: seed.fileType ?? "imported",
+          sizeBytes: seed.sizeBytes ?? seed.rawText.length,
+          rawText: seed.rawText,
+          pageTexts: seed.pageTexts,
+          checksum: seed.checksum,
+        }
       : null);
   const [busyFile, setBusyFile] = useState<string | null>(null);
   // Save options (§save modes): radio for destination, checkbox for AI.
-  const [saveMode, setSaveMode] = useState<SaveMode>("both");
+  const [saveMode, setSaveMode] = useState<SaveMode>(() =>
+    seed?.drafts ? (seed.drafts.length > 0 ? "both" : "doc") : "both");
   const [aiEnhance, setAiEnhance] = useState(false);
   const [setTitle, setSetTitle] = useState(seed?.title ?? "");
   const [category, setCategory] = useState("");
@@ -109,20 +140,23 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
     setBatchWarnings(warnings);
     setPendingDoc(doc);
     setSetTitle(doc?.title ?? (ai ? "AI-generated set" : `Pasted set ${new Date().toISOString().slice(0, 10)}`));
-    setSaveMode(doc ? "both" : "set");
+    setSaveMode(doc ? (parsed.length > 0 ? "both" : "doc") : "set");
   }
 
-  async function saveApproved() {
+  async function saveApproved(modeOverride: SaveMode = saveMode) {
     const approved = drafts.filter((d) => d.include);
-    const wantsSet = saveMode !== "doc" && approved.length > 0;
-    const wantsDoc = saveMode !== "set" && pendingDoc !== null;
+    const wantsSet = modeOverride !== "doc" && approved.length > 0;
+    const wantsDoc = modeOverride !== "set" && pendingDoc !== null;
     if (!wantsSet && !wantsDoc) {
       pushToast({ title: "Nothing to save", body: "Include at least one question, or choose 'library document only'.", tone: "warn" });
       return;
     }
 
-    const duplicateDoc = wantsDoc && pendingDoc?.checksum
-      ? (s.documents ?? []).find((document) => document.checksum === pendingDoc.checksum)
+    const duplicateDoc = wantsDoc
+      ? (s.documents ?? []).find((document) => document.id === pendingDoc?.existingDocumentId)
+        ?? (pendingDoc?.checksum
+          ? (s.documents ?? []).find((document) => document.checksum === pendingDoc.checksum)
+          : undefined)
       : undefined;
     const docId = wantsDoc ? (duplicateDoc?.id ?? uid()) : undefined;
     const setId = wantsSet ? uid() : undefined;
@@ -132,6 +166,10 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
     const errors: string[] = [];
     if (wantsSet) {
       for (const d of approved) {
+        const manuallyReviewedAnswer = Boolean(
+          d.correctKey && d.parserRuleIds?.includes("answer.user-reviewed-mapping"),
+        );
+        const extractionReviewed = manuallyReviewedAnswer || (!d.needsReview && d.confidence === "high");
         const result = s.addQuestion({
           source: d.source,
           stem: d.stem,
@@ -158,8 +196,8 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
           ai: d.aiGenerated ? { generated: true, provider: provider?.info.label } : undefined,
           extraction: {
             confidence: d.confidence,
-            reviewed: !d.needsReview && d.confidence === "high",
-            reviewedAt: !d.needsReview && d.confidence === "high" ? new Date().toISOString() : undefined,
+            reviewed: extractionReviewed,
+            reviewedAt: extractionReviewed ? new Date().toISOString() : undefined,
             questionDetectionConfidence: d.questionDetectionConfidence,
             answerDetectionConfidence: d.answerDetectionConfidence,
             explanationDetectionConfidence: d.explanationDetectionConfidence,
@@ -167,32 +205,42 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             warnings: d.warnings,
             parserRuleIds: d.parserRuleIds,
             sourceSnippet: d.sourceSnippet,
+            questionSourceSnippet: d.questionSourceSnippet,
+            questionSourcePage: d.questionSourcePage,
             answerEvidence: d.answerEvidence,
+            answerEvidenceSnippet: d.answerEvidenceSnippet,
+            answerEvidencePage: d.answerEvidencePage,
+            explanationSourceSnippet: d.explanationSourceSnippet,
+            explanationSourcePage: d.explanationSourcePage,
             explanationSource: d.explanationSource,
           },
         });
         if (result.ok && result.id) questionIds.push(result.id);
         else errors.push(...result.errors);
       }
-      const qset: QuestionSet = {
-        id: setId!,
-        title: setTitle || "Untitled set",
-        sourceDocumentIds: docId ? [docId] : [],
-        createdAt: new Date().toISOString(),
-        questionIds,
-        tags: category ? [category] : [],
-        aiEnhanced: false,
-        parserWarnings: batchWarnings,
-      };
-      s.addQuestionSet(qset);
+      if (questionIds.length > 0) {
+        const qset: QuestionSet = {
+          id: setId!,
+          title: setTitle || "Untitled set",
+          sourceDocumentIds: docId ? [docId] : [],
+          createdAt: new Date().toISOString(),
+          questionIds,
+          tags: category ? [category] : [],
+          aiEnhanced: false,
+          parserWarnings: batchWarnings,
+        };
+        s.addQuestionSet(qset);
+      }
     }
+
+    const savedSetId = questionIds.length > 0 ? setId : undefined;
 
     if (wantsDoc && pendingDoc && duplicateDoc) {
       s.updateDocument(duplicateDoc.id, {
-        linkedQuestionSetIds: setId
-          ? [...new Set([...duplicateDoc.linkedQuestionSetIds, setId])]
+        linkedQuestionSetIds: savedSetId
+          ? [...new Set([...duplicateDoc.linkedQuestionSetIds, savedSetId])]
           : duplicateDoc.linkedQuestionSetIds,
-        libraryOnly: duplicateDoc.libraryOnly && !setId,
+        libraryOnly: duplicateDoc.libraryOnly && !savedSetId,
       });
     } else if (wantsDoc && pendingDoc) {
       const doc: SourceDocument = {
@@ -206,14 +254,14 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
         sizeBytes: pendingDoc.sizeBytes,
         checksum: pendingDoc.checksum,
         tags: category ? [category] : [],
-        linkedQuestionSetIds: setId ? [setId] : [],
-        libraryOnly: saveMode === "doc",
+        linkedQuestionSetIds: savedSetId ? [savedSetId] : [],
+        libraryOnly: !savedSetId,
       };
       s.addDocument(doc);
     }
 
     pushToast({
-      title: wantsSet
+      title: savedSetId
         ? `${questionIds.length} question${questionIds.length === 1 ? "" : "s"} saved${wantsDoc ? " + source document" : ""}`
         : "Source document saved to the library",
       body: errors.length
@@ -223,7 +271,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
     });
 
     // Optional AI enhancement — after save, clearly labeled, never blocking.
-    if (aiEnhance && wantsSet && provider) {
+    if (aiEnhance && savedSetId && provider) {
       const forDigest = approved.map((d) => ({
         stem: d.stem,
         correct: d.options.find((o) => o.key === d.correctKey)?.text,
@@ -231,15 +279,15 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
       }));
       enhanceQuestionSet(provider, { title: setTitle || "Question set", questions: forDigest })
         .then((digest) => {
-          s.updateQuestionSet(setId!, {
+          s.updateQuestionSet(savedSetId, {
             aiEnhanced: true,
             digest: { ...digest, generatedBy: provider.info.label, generatedAt: new Date().toISOString() },
           });
           void saveAiGeneration({
             kind: "summary",
             title: `${setTitle || "Question set"} digest`,
-            inputHash: hashGenerationInput({ kind: "question-set-digest", setId, questionIds }),
-            sourceIds: [setId!, ...(docId ? [docId] : [])],
+            inputHash: hashGenerationInput({ kind: "question-set-digest", setId: savedSetId, questionIds }),
+            sourceIds: [savedSetId, ...(docId ? [docId] : [])],
             model: provider.info.label,
             promptVersion: "question-set-digest-v1",
             content: digest,
@@ -363,7 +411,14 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             </div>
             <div className="row">
               <GhostButton onClick={reset}>Cancel import</GhostButton>
-              <GButton variant="primary" disabled={saveMode !== "doc" && !includedCount && !pendingDoc} onClick={() => void saveApproved()}>
+              {pendingDoc && drafts.length > 0 && (
+                <GhostButton onClick={() => void saveApproved("doc")}>Save and review later</GhostButton>
+              )}
+              <GButton
+                variant="primary"
+                disabled={saveMode === "doc" ? !pendingDoc : saveMode === "set" ? !includedCount : !pendingDoc || !includedCount}
+                onClick={() => void saveApproved()}
+              >
                 <Save size={14} /> Save
               </GButton>
             </div>
@@ -391,9 +446,9 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             <span className="field-label">Save as</span>
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
               {([
-                ["set", "Question set only"],
-                ["doc", "Library document only"],
-                ["both", "Both (linked)"],
+                ["set", "Save questions"],
+                ["doc", "Save document"],
+                ["both", "Save document + questions"],
               ] as Array<[SaveMode, string]>).map(([mode, label]) => {
                 const disabled = (mode !== "set" && !pendingDoc) || (mode !== "doc" && drafts.length === 0);
                 return (
@@ -412,7 +467,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             </div>
           </div>
 
-          <div className="grid grid-2">
+          {saveMode !== "doc" && <div className="grid grid-2">
             <Field label="Set title" value={setTitle} onChange={(e) => setSetTitle(e.target.value)} />
             <SelectField label="Category (applies to all)" value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="">None</option>
@@ -428,7 +483,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
               <option value="medium">Medium</option>
               <option value="hard">Hard</option>
             </SelectField>
-          </div>
+          </div>}
 
           <div className="stack gap6">
             {drafts.map((d, i) => (
@@ -559,13 +614,13 @@ function SourcePeek({ rawText, stem }: { rawText: string; stem: string }) {
   return (
     <div className="stack gap6">
       <GhostButton onClick={() => setOpen((v) => !v)}>
-        {open ? "Hide source text" : excerpt ? "Show nearby source text" : "Show source text"}
+        {open ? "Hide source text" : "Show nearby source text"}
       </GhostButton>
       {open && (
         <div className="question-explanation" style={{ maxHeight: 220, overflowY: "auto", whiteSpace: "pre-wrap" }}>
           {excerpt
             ? <>…{excerpt}…</>
-            : rawText.slice(0, 800)}
+            : "No matching nearby excerpt was found. AXOM left the source unset instead of showing unrelated text."}
         </div>
       )}
     </div>
@@ -722,16 +777,7 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
 
 /** Best-effort page attribution: find each stem's first line inside page texts. */
 function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
-  for (const draft of drafts) {
-    const needle = draft.stem.slice(0, 60).trim();
-    if (needle.length < 12) continue;
-    const page = pages.findIndex((p) => p.includes(needle));
-    if (page >= 0) {
-      draft.sourcePage = page + 1;
-      const start = Math.max(0, pages[page].indexOf(needle) - 120);
-      draft.sourceSnippet = pages[page].slice(start, start + 800).trim();
-    }
-  }
+  assignDraftProvenancePages(drafts, pages);
 }
 
 // --- AI generate tab -----------------------------------------------------------

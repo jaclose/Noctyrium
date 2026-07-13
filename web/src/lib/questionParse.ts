@@ -43,6 +43,15 @@ export interface ParsedQuestionDraft {
   sourcePage?: number;
   /** Bounded evidence excerpt from the exact source block used by the parser. */
   sourceSnippet?: string;
+  /** Question-only provenance. Kept separate from answer/explanation evidence. */
+  questionSourceSnippet?: string;
+  questionSourcePage?: number;
+  /** Exact source evidence used to select (or reject) an answer mapping. */
+  answerEvidenceSnippet?: string;
+  answerEvidencePage?: number;
+  /** Source-authored explanation excerpt, separate from the question block. */
+  explanationSourceSnippet?: string;
+  explanationSourcePage?: number;
   /** Stable, inspectable rules that contributed to this mapping. */
   parserRuleIds?: string[];
   /** Numeric 0..1 confidence for each parser stage. */
@@ -60,7 +69,26 @@ export interface ParsedQuestionDraft {
 export interface AnswerSectionEntry {
   /** "?" = conflicting entries for this number. */
   letter?: string;
+  /** Answer text that must be matched against this question's options. */
+  answerText?: string;
   explanation?: string;
+  /** Exact numbered entry from the source answer section. */
+  evidence?: string;
+}
+
+/** Development/test ledger for inspecting each mapping without UI coupling. */
+export interface ImportMappingDiagnostic {
+  questionNumber?: number;
+  extractedOptions: QuestionOption[];
+  answerEvidence?: string;
+  selectedMapping?: string;
+  confidence: number;
+  conflictReason?: string;
+  sourceSpans: Array<{
+    kind: "question" | "answer" | "explanation";
+    snippet: string;
+    page?: number;
+  }>;
 }
 
 /** Lines like "A. text", "B) text", "(C) text", "d - text". */
@@ -104,7 +132,24 @@ export function parseAnswerSignal(line: string): AnswerSignal | undefined {
   const punctuated = payload.match(/^\(?([A-Ha-h])\)?\s*[.):\-–]\s*(.*)$/);
   const bare = payload.match(/^\(?([A-Ha-h])\)?\s*$/);
   const spaced = payload.match(/^([A-Ha-h])\s+(.+)$/);
-  const letter = punctuated ?? bare ?? spaced;
+  const letter = punctuated ?? bare;
+  if (!letter && spaced) {
+    const key = spaced[1].toUpperCase();
+    const tail = spaced[2].trim();
+    // "Answer: B because ..." is an unambiguous letter plus rationale.
+    if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) {
+      return { key, rationale: tail, ruleId: "answer.explicit-letter-rationale", evidence: line.trim(), payload };
+    }
+    // Otherwise the leading letter belongs to answer text until an exact,
+    // unique option-text match proves otherwise. Never retain it as a key.
+    return {
+      answerText: payload,
+      ruleId: "answer.explicit-text",
+      evidence: line.trim(),
+      payload,
+      ambiguousLeadingLetter: true,
+    };
+  }
   if (!letter) return { answerText: payload, ruleId: "answer.explicit-text", evidence: line.trim(), payload };
 
   const key = letter[1].toUpperCase();
@@ -119,7 +164,7 @@ export function parseAnswerSignal(line: string): AnswerSignal | undefined {
     ruleId: "answer.explicit-letter-text",
     evidence: line.trim(),
     payload,
-    ambiguousLeadingLetter: Boolean(spaced && !punctuated),
+    ambiguousLeadingLetter: false,
   };
 }
 
@@ -191,6 +236,8 @@ export function normalizeSourceText(raw: string): string {
     .replace(/[“”]/g, '"')
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")            // **bold** → bold
     .replace(/__([^_\n]+)__/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")              // Markdown headings
+    .replace(/^\s*[-+]\s+(?=\(?[A-Ha-h][).:\-–]\s+)/gm, "") // Markdown option bullets
     .replace(/^[\s]*[•●▪‣◦·]\s*/gm, "")            // list bullets at line start
     .replace(/[\t\f\v]+/g, " ");
 }
@@ -585,6 +632,10 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const answerEvidence = answerSignals.map((signal) => signal.evidence).filter(Boolean).join("\n")
     || (feedbackCorrectLetter ? `Correct Feedback attached to option ${feedbackCorrectLetter}` : undefined)
     || (markerCorrectLetter ? `Correct marker attached to option ${markerCorrectLetter}` : undefined);
+  const questionEvidence = sourceSnippet([
+    stem,
+    ...options.map((option) => `${option.key}. ${option.text}`),
+  ].filter(Boolean).join("\n"));
 
   return {
     stem,
@@ -611,6 +662,9 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     explanationDetectionConfidence,
     overallImportConfidence,
     sourceSnippet: sourceSnippet(raw),
+    questionSourceSnippet: questionEvidence,
+    answerEvidenceSnippet: answerEvidence,
+    explanationSourceSnippet: sourceSnippet(rawExplanation ?? ""),
   };
 }
 
@@ -696,7 +750,7 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
 function matchQuestionStart(line: string): { number: number; rest: string } | undefined {
   // Strong labels allow no punctuation and may occupy their own line: "Q1",
   // "Question 2", "Q3 What is...".
-  const labeled = line.match(/^\s*q(?:uestion)?\s*(\d{1,4})\s*(?:[).:\-–]\s*)?(.*?)\s*$/i);
+  const labeled = line.match(/^\s*q(?:uestion)?\s*(?:#\s*:?\s*)?(\d{1,4})\s*(?:[).:\-–]\s*)?(.*?)\s*$/i);
   if (labeled) return { number: Number(labeled[1]), rest: labeled[2].trim() };
   // Bare numbers remain punctuation-gated to avoid splitting doses/lab values.
   const numbered = line.match(/^\s*(\d{1,4})\s*[).:\-–]\s*(.*?)\s*$/);
@@ -719,6 +773,10 @@ function markNumberedDraft(draft: ParsedQuestionDraft, originalBlock: string) {
   const priorQuestionConfidence = draft.questionDetectionConfidence ?? 0;
   draft.questionDetectionConfidence = Math.max(priorQuestionConfidence, draft.stem && draft.options.length >= 3 ? 0.99 : priorQuestionConfidence);
   draft.sourceSnippet = sourceSnippet(originalBlock);
+  draft.questionSourceSnippet = sourceSnippet([
+    draft.questionNumber !== undefined ? `${draft.questionNumber}. ${draft.stem}` : draft.stem,
+    ...draft.options.map((option) => `${option.key}. ${option.text}`),
+  ].join("\n"));
   draft.overallImportConfidence = boundedConfidence(
     draft.questionDetectionConfidence * 0.4
       + (draft.answerDetectionConfidence ?? 0) * 0.4
@@ -736,8 +794,32 @@ const KEY_HEADER_RE = /^\s*(answer\s*key|answers?(?:\s*(?:and|&)\s*(?:explanatio
 const KEY_PAIR_RE = /(?:q(?:uestion)?\s*)?(\d{1,4})\s*[).:\-–]?\s*\(?([A-Ha-h])\)?(?![a-z0-9])/gi;
 /** A numbered entry start inside an answer section: "1. …", "Question 3: …". */
 const ENTRY_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,4})\s*(?:[).:\-–]\s*|\s+)(?=\S)/i;
-/** Letter at the head of a section entry: "C", "(C)", "C.", "Correct answer: C". */
-const ENTRY_LETTER_RE = /^(?:(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s*)?\(?([A-Ha-h])\)?(?:[.,:;]|\s+[—–-]\s*|\s|$)/i;
+function parseAnswerSectionContent(content: string, evidence: string): AnswerSectionEntry {
+  const explicit = parseAnswerSignal(content);
+  if (explicit) {
+    return {
+      letter: explicit.key,
+      answerText: explicit.answerText,
+      explanation: explicit.rationale,
+      evidence,
+    };
+  }
+
+  // A bare or punctuated letter is a key. A spaced phrase such as
+  // "A rapid response" is answer text and is resolved only after the
+  // corresponding question's options are available.
+  const punctuated = content.match(/^\(?([A-Ha-h])\)?\s*(?:[.,:;]|[—–-])\s*(.*)$/);
+  const bare = content.match(/^\(?([A-Ha-h])\)?\s*$/);
+  const match = punctuated ?? bare;
+  if (match) {
+    return {
+      letter: match[1].toUpperCase(),
+      explanation: (match[2] ?? "").trim() || undefined,
+      evidence,
+    };
+  }
+  return { answerText: content.trim() || undefined, evidence };
+}
 
 /**
  * Detect a trailing answer/explanation section and parse per-number entries
@@ -745,25 +827,55 @@ const ENTRY_LETTER_RE = /^(?:(?:the\s+)?correct\s+answer\s*(?:is)?\s*[:\-–]?\s
  */
 export function parseAnswerSections(text: string): { body: string; entries: Map<number, AnswerSectionEntry> } {
   const entries = new Map<number, AnswerSectionEntry>();
-  const headerMatch = text.match(KEY_HEADER_RE);
+  const headerMatches = [...text.matchAll(new RegExp(KEY_HEADER_RE.source, "gim"))];
   let body = text;
   let sectionText = "";
+  let supplementalExplanationText = "";
 
-  if (headerMatch && headerMatch.index !== undefined) {
+  for (const headerMatch of headerMatches) {
+    if (headerMatch.index === undefined) continue;
+    const headerLabel = headerMatch[1].toLowerCase().replace(/\s+/g, " ");
+    // Singular markers belong to the current question. Treating them as a
+    // document section can discard every later question or key.
+    if (/^(?:answer|explanation|solution)$/.test(headerLabel)) continue;
     const candidate = text.slice(headerMatch.index + headerMatch[0].length);
-    // A single-question "Explanation:\n..." is content, not a trailing
-    // numbered answer section. Only cut when the tail has number→answer shape.
-    const hasNumberedAnswer = candidate.split("\n").some((line) => {
+    const candidateLines = candidate.split("\n");
+    // A per-question "Explanation:\n..." remains question content even when
+    // a later numbered stem starts with A-H. Only a strict answer token counts
+    // here; "2. A patient presents..." is a question boundary, not answer A.
+    const hasNumberedAnswer = candidateLines.some((line, index) => {
       const start = line.match(ENTRY_START_RE);
-      if (!start) return false;
-      return Boolean(line.slice(start[0].length).match(ENTRY_LETTER_RE));
+      if (!start || looksLikeNumberedQuestion(candidateLines, index)) return false;
+      const content = line.slice(start[0].length).trim();
+      return Boolean(
+        parseAnswerSignal(content)?.key
+        || content.match(/^\(?[A-Ha-h]\)?(?:\s*$|\s*[.,:;—–-]\s*)/),
+      );
     });
-    const hasCompressedKey = /(?:q(?:uestion)?\s*)?\d{1,4}\s*[).:\-–]?\s*\(?[A-Ha-h]\)?(?![a-z0-9])/i.test(candidate);
-    if (hasNumberedAnswer || hasCompressedKey) {
-      sectionText = candidate;
+    const hasCompressedKey = candidateLines.some((line) => [...line.matchAll(KEY_PAIR_RE)].length > 1);
+    // Plural/explicit answer headers may legitimately contain answer text
+    // rather than a letter. Singular Answer/Explanation markers inside a
+    // question are deliberately excluded from this broad rule.
+    const explicitAnswerSection = /answer\s*key|^answers\b|^solutions\b/.test(headerLabel)
+      && candidateLines.some((line) => ENTRY_START_RE.test(line));
+    if (hasNumberedAnswer || hasCompressedKey || explicitAnswerSection) {
+      const laterExplanation = headerMatches.find((match) => (
+        match.index !== undefined
+        && match.index > headerMatch.index!
+        && /^explanations$/.test(match[1].toLowerCase().replace(/\s+/g, " "))
+      ));
+      sectionText = laterExplanation?.index !== undefined
+        ? text.slice(headerMatch.index + headerMatch[0].length, laterExplanation.index)
+        : candidate;
+      if (laterExplanation?.index !== undefined) {
+        supplementalExplanationText = text.slice(laterExplanation.index + laterExplanation[0].length);
+      }
       body = text.slice(0, headerMatch.index);
+      break;
     }
-  } else {
+  }
+
+  if (!sectionText) {
     // Inline form: "Answers: 1C, 2B, 3D" on a single line. Must contain real
     // number→letter pairs — a per-question "Answer: B" line is NOT a key
     // section and stays in the body for the single-question parser.
@@ -774,6 +886,29 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
     }
   }
   if (!sectionText) return { body: text, entries };
+
+  const finish = () => {
+    attachNumberedExplanations(entries, supplementalExplanationText);
+    return { body, entries };
+  };
+
+  // A compressed key on one physical line must be parsed pair-by-pair before
+  // the numbered-entry parser can mistake it for one entry plus explanation.
+  const compressedPairs = [...sectionText.matchAll(KEY_PAIR_RE)];
+  const pairsByLine = sectionText.split("\n").some((line) => [...line.matchAll(KEY_PAIR_RE)].length > 1);
+  if (pairsByLine) {
+    for (const match of compressedPairs) {
+      const num = Number(match[1]);
+      const letter = match[2].toUpperCase();
+      const existing = entries.get(num);
+      if (existing?.letter && existing.letter !== letter) {
+        entries.set(num, { letter: "?", evidence: `${existing.evidence ?? ""}\n${match[0]}`.trim() });
+      } else if (!existing) {
+        entries.set(num, { letter, evidence: match[0].trim() });
+      }
+    }
+    return finish();
+  }
 
   // Split the section into numbered entries so explanations attach to numbers.
   const sectionLines = sectionText.split("\n");
@@ -791,28 +926,30 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
       const num = Number(numMatch[1]);
       const content = [entryLines[0].slice(numMatch[0].length), ...entryLines.slice(1)].join("\n").trim();
 
-      const letterMatch = content.match(ENTRY_LETTER_RE);
+      const parsed = parseAnswerSectionContent(content, entryLines.join("\n").trim());
       const proseMatch = content.match(PROSE_ANSWER_RE);
-      const letter = (letterMatch?.[1] ?? proseMatch?.[1])?.toUpperCase();
-      // Explanation = whatever follows the letter marker (dash/period separated).
-      let explanation = content;
-      if (letterMatch) {
-        explanation = content.slice(letterMatch[0].length).replace(/^\s*[—–-]\s*/, "").trim();
-      }
-      // Cross-check: head letter vs prose letter inside the same entry (L5).
-      const claims = [...new Set([letterMatch?.[1], proseMatch?.[1]].filter((l): l is string => !!l).map((l) => l.toUpperCase()))];
-      const finalLetter = claims.length > 1 ? "?" : letter;
+      // Cross-check: an explicit head letter vs prose letter in the same entry.
+      const claims = [...new Set([parsed.letter, proseMatch?.[1]]
+        .filter((letter): letter is string => Boolean(letter))
+        .map((letter) => letter.toUpperCase()))];
+      const finalEntry: AnswerSectionEntry = claims.length > 1
+        ? { letter: "?", evidence: parsed.evidence }
+        : { ...parsed, letter: parsed.letter?.toUpperCase() };
 
       const existing = entries.get(num);
-      if (existing && existing.letter && finalLetter && existing.letter !== finalLetter) {
-        entries.set(num, { letter: "?", explanation: existing.explanation ?? (explanation || undefined) });
+      if (existing && existing.letter && finalEntry.letter && existing.letter !== finalEntry.letter) {
+        entries.set(num, {
+          letter: "?",
+          explanation: existing.explanation ?? finalEntry.explanation,
+          evidence: `${existing.evidence ?? ""}\n${finalEntry.evidence ?? ""}`.trim(),
+        });
       } else if (!existing) {
-        entries.set(num, { letter: finalLetter, explanation: explanation || undefined });
+        entries.set(num, finalEntry);
       }
     }
     // A section that split into entries but yielded no letters at all is more
     // likely a compressed key ("1C 2B…") — fall through to pair parsing.
-    if ([...entries.values()].some((e) => e.letter)) return { body, entries };
+    if ([...entries.values()].some((entry) => entry.letter || entry.answerText)) return finish();
     entries.clear();
   }
 
@@ -821,10 +958,46 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
     const num = Number(match[1]);
     const letter = match[2].toUpperCase();
     const existing = entries.get(num);
-    if (existing?.letter && existing.letter !== letter) entries.set(num, { letter: "?" });
-    else if (!existing) entries.set(num, { letter });
+    if (existing?.letter && existing.letter !== letter) {
+      entries.set(num, { letter: "?", evidence: `${existing.evidence ?? ""}\n${match[0]}`.trim() });
+    } else if (!existing) entries.set(num, { letter, evidence: match[0].trim() });
   }
-  return { body, entries };
+  return finish();
+}
+
+function looksLikeNumberedQuestion(lines: string[], index: number): boolean {
+  const start = matchQuestionStart(lines[index] ?? "");
+  if (!start) return false;
+  let optionCount = 0;
+  for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+    if (matchQuestionStart(lines[cursor])) break;
+    if (OPTION_RE.test(lines[cursor])) optionCount += 1;
+    if (optionCount >= 2) return true;
+  }
+  return false;
+}
+
+function attachNumberedExplanations(entries: Map<number, AnswerSectionEntry>, sectionText: string): void {
+  if (!sectionText.trim()) return;
+  const lines = sectionText.split("\n");
+  const starts: number[] = [];
+  lines.forEach((line, index) => { if (ENTRY_START_RE.test(line)) starts.push(index); });
+  for (let entryIndex = 0; entryIndex < starts.length; entryIndex += 1) {
+    const from = starts[entryIndex];
+    const to = entryIndex + 1 < starts.length ? starts[entryIndex + 1] : lines.length;
+    const entryLines = lines.slice(from, to);
+    const numberMatch = entryLines[0].match(ENTRY_START_RE);
+    if (!numberMatch) continue;
+    const number = Number(numberMatch[1]);
+    const explanation = [entryLines[0].slice(numberMatch[0].length), ...entryLines.slice(1)].join("\n").trim();
+    if (!explanation) continue;
+    const existing = entries.get(number);
+    entries.set(number, {
+      ...(existing ?? {}),
+      explanation: existing?.explanation ?? explanation,
+      evidence: existing?.evidence ?? entryLines.join("\n").trim(),
+    });
+  }
 }
 
 /** Back-compat wrapper: number → letter map only. */
@@ -843,11 +1016,38 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
     const entry = entries.get(draft.questionNumber);
     if (!entry) return draft;
     let next = { ...draft };
+    let entryLetter = entry.letter;
+
+    if (entry.answerText) {
+      const textMatch = matchAnswerText(entry.answerText, next.options);
+      if (textMatch.ambiguous || !textMatch.key) {
+        const warning = textMatch.ambiguous
+          ? `Answer text "${entry.answerText}" matches more than one option — left unset, needs review.`
+          : `Answer text "${entry.answerText}" did not exactly match an option — left unset, needs review.`;
+        return {
+          ...next,
+          correctKey: undefined,
+          correctAnswerText: undefined,
+          answerEvidence: entry.evidence,
+          answerEvidenceSnippet: entry.evidence,
+          needsReview: true,
+          answerDetectionConfidence: textMatch.ambiguous ? 0.05 : 0.1,
+          overallImportConfidence: Math.min(next.overallImportConfidence ?? 1, 0.49),
+          confidence: "low",
+          parserRuleIds: [...new Set([...(next.parserRuleIds ?? []), textMatch.ambiguous
+            ? "conflict.answer-section-text"
+            : "answer.section-text-unmatched"])],
+          warnings: [...next.warnings.filter((item) => !/no correct answer/i.test(item)), warning],
+        };
+      }
+      entryLetter = textMatch.key;
+      next.parserRuleIds = [...new Set([...(next.parserRuleIds ?? []), "answer.trailing-text-match"])];
+    }
 
     // L3: attach the section explanation when the question has none.
     if (entry.explanation && !next.explanation) {
-      const optionText = entry.letter && entry.letter !== "?"
-        ? next.options.find((option) => option.key === entry.letter)?.text
+      const optionText = entryLetter && entryLetter !== "?"
+        ? next.options.find((option) => option.key === entryLetter)?.text
         : undefined;
       // "1. B. CD4+ T lymphocytes" is an answer-text key, not an
       // explanation. Only attach the tail when it is teaching prose.
@@ -857,25 +1057,28 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
       if (!tailIsAnswerText) {
         next.explanation = cleanExplanationText(entry.explanation, next) || undefined;
         next.explanationSource = next.explanation ? "answer-section" : undefined;
+        next.explanationSourceSnippet = next.explanation ? sourceSnippet(entry.explanation) : undefined;
         if (next.explanation) next.explanationDetectionConfidence = 0.96;
       }
     }
 
-    if (entry.letter === "?") {
+    if (entryLetter === "?") {
       next.warnings = [...next.warnings, "The answer section lists conflicting answers for this number — left unset, needs review."];
       next.needsReview = true;
       next.correctKey = undefined;
       next.correctAnswerText = undefined;
+      next.answerEvidence = entry.evidence;
+      next.answerEvidenceSnippet = entry.evidence;
       next.answerDetectionConfidence = 0.05;
       next.overallImportConfidence = Math.min(next.overallImportConfidence ?? 1, 0.49);
       next.confidence = "low";
       next.parserRuleIds = [...new Set([...(next.parserRuleIds ?? []), "conflict.answer-section"] )];
       return next;
     }
-    if (!entry.letter) return next;
+    if (!entryLetter) return next;
 
     // L5: the key vs an answer already found inside the question block.
-    if (next.correctKey && next.correctKey !== entry.letter) {
+    if (next.correctKey && next.correctKey !== entryLetter) {
       const blockKey = next.correctKey;
       next = {
         ...next,
@@ -886,15 +1089,23 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
         overallImportConfidence: Math.min(next.overallImportConfidence ?? 1, 0.49),
         confidence: "low",
         parserRuleIds: [...new Set([...(next.parserRuleIds ?? []), "conflict.block-vs-answer-section"])],
-        warnings: [...next.warnings, `Conflict: the question block says "${blockKey}" but the answer section says "${entry.letter}" — left unset, needs review.`],
+        answerEvidence: entry.evidence,
+        answerEvidenceSnippet: entry.evidence,
+        warnings: [...next.warnings, `Conflict: the question block says "${blockKey}" but the answer section says "${entryLetter}" — left unset, needs review.`],
       };
       return next;
     }
-    if (next.correctKey) return refreshAnswerEntryDiagnostics(next); // already agrees
+    if (next.correctKey) return refreshAnswerEntryDiagnostics({
+      ...next,
+      answerEvidence: entry.evidence ?? next.answerEvidence,
+      answerEvidenceSnippet: entry.evidence ?? next.answerEvidenceSnippet,
+    }); // already agrees
 
-    if (!next.options.some((o) => o.key === entry.letter)) {
-      next.warnings = [...next.warnings, `Answer key says "${entry.letter}" but no such option exists — left unset.`];
+    if (!next.options.some((o) => o.key === entryLetter)) {
+      next.warnings = [...next.warnings, `Answer key says "${entryLetter}" but no such option exists — left unset.`];
       next.needsReview = true;
+      next.answerEvidence = entry.evidence;
+      next.answerEvidenceSnippet = entry.evidence;
       next.answerDetectionConfidence = 0.1;
       next.overallImportConfidence = Math.min(next.overallImportConfidence ?? 1, 0.49);
       next.confidence = "low";
@@ -903,8 +1114,10 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
     }
     return refreshAnswerEntryDiagnostics({
       ...next,
-      correctKey: entry.letter,
-      correctAnswerText: next.options.find((option) => option.key === entry.letter)?.text,
+      correctKey: entryLetter,
+      correctAnswerText: next.options.find((option) => option.key === entryLetter)?.text,
+      answerEvidence: entry.evidence,
+      answerEvidenceSnippet: entry.evidence,
     });
   });
 }
@@ -930,4 +1143,36 @@ function refreshAnswerEntryDiagnostics(draft: ParsedQuestionDraft): ParsedQuesti
     parserRuleIds,
     warnings,
   };
+}
+
+/**
+ * Pure diagnostic projection for development tools and regression tests.
+ * It deliberately contains no UI state and never changes parser output.
+ */
+export function createImportMappingLedger(
+  drafts: readonly ParsedQuestionDraft[],
+): ImportMappingDiagnostic[] {
+  return drafts.map((draft) => {
+    const sourceSpans: ImportMappingDiagnostic["sourceSpans"] = [];
+    const questionSnippet = draft.questionSourceSnippet ?? draft.sourceSnippet;
+    const answerSnippet = draft.answerEvidenceSnippet ?? draft.answerEvidence;
+    if (questionSnippet) {
+      sourceSpans.push({ kind: "question", snippet: questionSnippet, page: draft.questionSourcePage ?? draft.sourcePage });
+    }
+    if (answerSnippet) {
+      sourceSpans.push({ kind: "answer", snippet: answerSnippet, page: draft.answerEvidencePage });
+    }
+    if (draft.explanationSourceSnippet) {
+      sourceSpans.push({ kind: "explanation", snippet: draft.explanationSourceSnippet, page: draft.explanationSourcePage });
+    }
+    return {
+      questionNumber: draft.questionNumber,
+      extractedOptions: draft.options.map((option) => ({ ...option })),
+      answerEvidence: answerSnippet,
+      selectedMapping: draft.correctKey,
+      confidence: draft.answerDetectionConfidence ?? 0,
+      conflictReason: draft.warnings.find((warning) => /conflict|ambiguous|did not exactly match|no such option/i.test(warning)),
+      sourceSpans,
+    };
+  });
 }

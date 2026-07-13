@@ -5,7 +5,7 @@
 // generate more questions from its source document (review-gated).
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { FileText, Sparkles, Trash2, BookOpen, Search } from "lucide-react";
+import { FileText, ListPlus, Sparkles, Trash2, BookOpen, Search } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { questionSetMetrics, sortQuestionSetsByRecency, type QuestionSet, type SourceDocument } from "../../lib/library";
 import { enhanceQuestionSet, resolveActiveProvider } from "../../lib/ai";
@@ -19,7 +19,13 @@ const NO_QUESTIONS: QuestionRecord[] = [];
 const NO_DOCUMENTS: SourceDocument[] = [];
 const NO_SETS: QuestionSet[] = [];
 
-export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: SourceDocument) => void }) {
+export function SourceLibrary({
+  onParseFrom,
+  onGenerateFrom,
+}: {
+  onParseFrom: (doc: SourceDocument) => void;
+  onGenerateFrom: (doc: SourceDocument) => void;
+}) {
   const s = useStore();
   const documents = s.documents ?? NO_DOCUMENTS;
   const [preview, setPreview] = useState<SourceDocument | null>(null);
@@ -68,6 +74,11 @@ export function SourceLibrary({ onGenerateFrom }: { onGenerateFrom: (doc: Source
                   </span>
                 </button>
                 {!doc.rawText && <Tag tone="orange">no text</Tag>}
+                {doc.rawText && (
+                  <GhostButton title="Parse this saved document into reviewable question drafts" onClick={() => onParseFrom(doc)}>
+                    <ListPlus size={13} /> Parse into questions
+                  </GhostButton>
+                )}
                 {doc.rawText && provider && (
                   <GhostButton title="Generate questions grounded in this document" onClick={() => onGenerateFrom(doc)}>
                     <Sparkles size={13} /> Generate

@@ -3,7 +3,9 @@ import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
 import { OnboardingWizard } from "./components/shell/OnboardingWizard";
-import { GuidedTour } from "./components/shell/GuidedTour";
+import { GuidedTour, type TourExitReason } from "./components/shell/GuidedTour";
+import { PromisePrompt } from "./components/shell/PromisePrompt";
+import { PromiseCutscene } from "./components/shell/PromiseCutscene";
 import { Toaster } from "./components/shell/Toaster";
 import { StandupWatcher } from "./components/shell/StandupWatcher";
 import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
@@ -16,6 +18,7 @@ import { useUi } from "./lib/uiStore";
 import { pushToast } from "./lib/toast";
 import type { StorageMigrationResult } from "./lib/storageMigrations";
 import { readOnboardingDraftMode, type OnboardingDestination, type OnboardingMode } from "./lib/onboardingProgress";
+import { promisePromptStatus, shouldOfferPromiseAfterGlobalTour } from "./lib/promisePrompt";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -91,6 +94,8 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const [settings, setSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [refreshing, setRefreshing] = useState(false);
+  const [promisePromptOpen, setPromisePromptOpen] = useState(false);
+  const [promiseCutsceneOpen, setPromiseCutsceneOpen] = useState(false);
   const [setupMode, setSetupMode] = useState<OnboardingMode | null>(() =>
     readOnboardingDraftMode() === "rerun" ? "rerun" : null,
   );
@@ -143,9 +148,30 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     }
   }, [startupStatus]);
 
-  function endTour() {
+  function endTour(reason: TourExitReason) {
+    const profile = useStore.getState().profile;
     updateProfile({ tourDone: true });
+    if (shouldOfferPromiseAfterGlobalTour(reason, profile)) {
+      setPromisePromptOpen(true);
+    }
     location.hash = "dashboard";
+  }
+
+  function deferPromisePrompt() {
+    updateProfile({ promisePromptStatus: promisePromptStatus("deferred") });
+    setPromisePromptOpen(false);
+  }
+
+  function skipPromisePrompt() {
+    updateProfile({ promisePromptStatus: promisePromptStatus("skipped") });
+    setPromisePromptOpen(false);
+  }
+
+  function finishPromiseCutscene() {
+    if (!useStore.getState().profile.promise?.signedName) {
+      updateProfile({ promisePromptStatus: promisePromptStatus("deferred") });
+    }
+    setPromiseCutsceneOpen(false);
   }
 
   useEffect(() => {
@@ -266,7 +292,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
             refreshing={refreshing}
           />
           <div className="surface-scroll">
-            <div className="page">
+            <div className={route === "tracker" ? "page page-tracker" : "page"}>
               <Suspense fallback={<div className="route-loading" role="status">Opening optional module…</div>}>
                 <Page />
               </Suspense>
@@ -277,6 +303,14 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
 
       {settings && <SettingsModal onClose={() => setSettings(false)} initialTab={settingsTab} />}
       {showTour && <GuidedTour onExit={endTour} onNavigate={navigateTour} currentRoute={route} />}
+      {promisePromptOpen && !showTour && (
+        <PromisePrompt
+          onSign={() => { setPromisePromptOpen(false); setPromiseCutsceneOpen(true); }}
+          onReviewLater={deferPromisePrompt}
+          onSkip={skipPromisePrompt}
+        />
+      )}
+      {promiseCutsceneOpen && !showTour && <PromiseCutscene onDone={finishPromiseCutscene} />}
       <DailyRolloverWatcher />
       <UpdateAvailableWatcher />
       <PomodoroFx />

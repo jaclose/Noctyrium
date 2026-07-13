@@ -117,8 +117,18 @@ export interface QuestionImportDiagnostics {
   overallImportConfidence?: number;
   warnings?: string[];
   parserRuleIds?: string[];
+  /** Legacy combined excerpt retained for backwards-compatible imports. */
   sourceSnippet?: string;
+  /** Exact question/options excerpt, separate from answer and explanation evidence. */
+  questionSourceSnippet?: string;
+  questionSourcePage?: number;
+  /** Exact source text that supported the selected answer mapping. */
   answerEvidence?: string;
+  answerEvidenceSnippet?: string;
+  answerEvidencePage?: number;
+  /** Exact explanation excerpt when the source exposed one. */
+  explanationSourceSnippet?: string;
+  explanationSourcePage?: number;
   explanationSource?: "inline" | "answer-section" | "feedback" | "manual";
 }
 
@@ -475,7 +485,13 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
             warnings: stringArray(input.extraction.warnings),
             parserRuleIds: stringArray(input.extraction.parserRuleIds),
             sourceSnippet: cleanString(input.extraction.sourceSnippet),
+            questionSourceSnippet: cleanString(input.extraction.questionSourceSnippet),
+            questionSourcePage: positiveInteger(input.extraction.questionSourcePage),
             answerEvidence: cleanString(input.extraction.answerEvidence),
+            answerEvidenceSnippet: cleanString(input.extraction.answerEvidenceSnippet),
+            answerEvidencePage: positiveInteger(input.extraction.answerEvidencePage),
+            explanationSourceSnippet: cleanString(input.extraction.explanationSourceSnippet),
+            explanationSourcePage: positiveInteger(input.extraction.explanationSourcePage),
             explanationSource: (["inline", "answer-section", "feedback", "manual"] as const)
               .includes(input.extraction.explanationSource as "inline")
               ? input.extraction.explanationSource as QuestionImportDiagnostics["explanationSource"]
@@ -496,6 +512,12 @@ function cleanString(v: unknown): string | undefined {
 function confidenceScore(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.max(0, Math.min(1, value))
+    : undefined;
+}
+
+function positiveInteger(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
     : undefined;
 }
 

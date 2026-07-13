@@ -22,6 +22,8 @@ import type { QuestionSource } from "../../lib/questions";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
+import { assignDraftProvenancePages } from "../../lib/questionProvenance";
+import type { ImportSeed } from "./ImportPanel";
 
 type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "no-text" | "error" | "saved";
 
@@ -44,7 +46,7 @@ interface QueuedFile {
 const uid = () => crypto.randomUUID();
 const CONCURRENCY = 3;
 
-export function MassImport({ onInspect }: { onInspect: (payload: { title: string; drafts: ParsedQuestionDraft[]; rawText: string; fileName: string }) => void }) {
+export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { title: string; drafts: ParsedQuestionDraft[]; rawText: string; fileName: string }) => void }) {
   const s = useStore();
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [processing, setProcessing] = useState(false);
@@ -179,7 +181,8 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
           status: "unseen",
           extraction: {
             confidence: d.confidence,
-            reviewed: false,
+            reviewed: true,
+            reviewedAt: new Date().toISOString(),
             questionDetectionConfidence: d.questionDetectionConfidence,
             answerDetectionConfidence: d.answerDetectionConfidence,
             explanationDetectionConfidence: d.explanationDetectionConfidence,
@@ -187,7 +190,13 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
             warnings: d.warnings,
             parserRuleIds: d.parserRuleIds,
             sourceSnippet: d.sourceSnippet,
+            questionSourceSnippet: d.questionSourceSnippet,
+            questionSourcePage: d.questionSourcePage,
             answerEvidence: d.answerEvidence,
+            answerEvidenceSnippet: d.answerEvidenceSnippet,
+            answerEvidencePage: d.answerEvidencePage,
+            explanationSourceSnippet: d.explanationSourceSnippet,
+            explanationSourcePage: d.explanationSourcePage,
             explanationSource: d.explanationSource,
           },
         });
@@ -316,7 +325,18 @@ export function MassImport({ onInspect }: { onInspect: (payload: { title: string
                   <StatusTag status={file.status} />
                   {(file.status === "needs-review" || file.status === "ready") && file.drafts.length > 0 && (
                     <GhostButton title="Open in Import Center for full review"
-                      onClick={() => onInspect({ title: documentTitleFromFile(file.fileName), drafts: file.drafts, rawText: file.rawText, fileName: file.fileName })}>
+                      onClick={() => onInspect({
+                        title: documentTitleFromFile(file.fileName),
+                        drafts: file.drafts,
+                        rawText: file.rawText,
+                        fileName: file.fileName,
+                        fileType: file.fileType,
+                        sizeBytes: file.sizeBytes,
+                        pageTexts: file.pageTexts,
+                        checksum: file.checksum,
+                        warnings: file.warnings,
+                        source: file.source,
+                      })}>
                       <Eye size={13} /> Inspect
                     </GhostButton>
                   )}
@@ -354,15 +374,7 @@ function sourceKind(file: File): QuestionSource {
 }
 
 function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
-  for (const draft of drafts) {
-    const needle = draft.stem.slice(0, 60).trim();
-    if (needle.length < 12) continue;
-    const page = pages.findIndex((text) => text.includes(needle));
-    if (page < 0) continue;
-    draft.sourcePage = page + 1;
-    const start = Math.max(0, pages[page].indexOf(needle) - 120);
-    draft.sourceSnippet = pages[page].slice(start, start + 800).trim();
-  }
+  assignDraftProvenancePages(drafts, pages);
 }
 
 function StatusIcon({ status }: { status: FileStatus }) {

@@ -13,17 +13,18 @@ export function DailyProgressVessel({ result, compact = false }: { result: Daily
     return () => window.clearTimeout(timeout);
   }, [result.progress]);
 
+  const displayStatus = result.statusLabel === "No requirements selected" ? "No targets selected" : result.statusLabel;
   const ariaText = result.status === "neutral"
-    ? `${result.statusLabel}. ${result.eligibleCount} eligible requirement${result.eligibleCount === 1 ? "" : "s"}.`
-    : `${result.progress}% complete. ${result.metCount} of ${result.eligibleCount} requirements met.`;
+    ? `${displayStatus}. ${result.eligibleCount} eligible target${result.eligibleCount === 1 ? "" : "s"}.`
+    : `${result.progress}% complete. ${result.metCount} of ${result.eligibleCount} targets met.`;
 
   return (
     <div className={`daily-progress-vessel ${compact ? "compact" : ""}`} data-state={result.status}>
       <div className="daily-progress-copy">
         <span>Today</span>
-        <strong>{result.statusLabel}</strong>
+        <strong>{displayStatus}</strong>
         <small>{result.eligibleCount
-          ? `${result.metCount} of ${result.eligibleCount} selected requirement${result.eligibleCount === 1 ? "" : "s"} met`
+              ? `${result.metCount} of ${result.eligibleCount} selected target${result.eligibleCount === 1 ? "" : "s"} met`
           : "Choose only the signals that matter to you"}</small>
       </div>
       <div

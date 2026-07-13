@@ -1971,7 +1971,13 @@ function normalizePromisePromptStatus(value: unknown): Profile["promisePromptSta
   const updatedAt = typeof value.updatedAt === "string" && !Number.isNaN(new Date(value.updatedAt).getTime())
     ? new Date(value.updatedAt).toISOString()
     : new Date().toISOString();
-  return { state: value.state, updatedAt };
+  return {
+    state: value.state,
+    updatedAt,
+    promptVersion: typeof value.promptVersion === "string" && value.promptVersion.trim()
+      ? value.promptVersion.trim().slice(0, 80)
+      : undefined,
+  };
 }
 
 function addResourceToState(resources: Resource[], payload: Omit<Resource, "id" | "created">) {

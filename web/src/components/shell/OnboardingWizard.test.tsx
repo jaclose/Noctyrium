@@ -48,15 +48,26 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("dialog", { name: "Identity" })).toBeTruthy();
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
     expect(screen.getByRole("list", { name: "Setup progress" }).querySelector('[aria-current="step"]')?.textContent).toContain("Identity");
+    expect(screen.getByRole("heading", { name: "Build your study workspace" })).toBeTruthy();
     expect(screen.getByLabelText("Display name (optional)")).toBeTruthy();
     expect(screen.getByLabelText("Study path")).toBeTruthy();
     expect(screen.getByLabelText("Current stage")).toBeTruthy();
     expect(screen.getByLabelText("Current focus")).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText("Display name (optional)"));
+    expect(screen.getByText(/will prepare:/i)).toBeTruthy();
+    expect(document.querySelector(".onboarding-body [tabindex='-1']")).toBeNull();
 
     continueSetup();
     expect(screen.getByRole("dialog", { name: "Core setup" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Choose where to begin" })).toBeTruthy();
+    expect(screen.queryByLabelText("First course (optional)")).toBeNull();
+    fireEvent.click(screen.getByLabelText(/Build my courses/));
     expect(screen.getByLabelText("First course (optional)")).toBeTruthy();
-    expect(screen.getByLabelText(/Question Bank import/)).toBeTruthy();
+    expect(screen.getByLabelText(/Import practice questions/)).toBeTruthy();
+    expect(screen.getByText("What should make today count?")).toBeTruthy();
+    expect(screen.getByLabelText(/Focused study/)).toBeTruthy();
+    expect(screen.getByLabelText(/Practice questions/)).toBeTruthy();
+    expect(screen.getByLabelText(/Daily closeout/)).toBeTruthy();
 
     continueSetup();
     expect(screen.getByRole("dialog", { name: "Workspace" })).toBeTruthy();
@@ -66,10 +77,14 @@ describe("OnboardingWizard", () => {
 
     continueSetup();
     expect(screen.getByRole("dialog", { name: "Data safety" })).toBeTruthy();
-    expect(screen.getByText(/workspace is stored on this device/)).toBeTruthy();
-    expect(screen.getByText(/Nothing is automatically uploaded to a cloud account/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finish and export backup/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Finish" })).toBeTruthy();
+    expect(screen.getByText("Current workspace")).toBeTruthy();
+    expect(screen.getByText("Recovery saves")).toBeTruthy();
+    expect(screen.getByText("Portable save file")).toBeTruthy();
+    expect(screen.getByText("How saving works")).toBeTruthy();
+    expect(screen.getByText("Technical details")).toBeTruthy();
+    expect(screen.queryByText(/cloud account/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /Finish and create save file/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Finish setup/ })).toBeTruthy();
   });
 
   it("offers inclusive medical stages and optional non-Anki requirements without duplication", () => {
@@ -94,7 +109,7 @@ describe("OnboardingWizard", () => {
     fireEvent.click(screen.getByLabelText(/Focused study/));
     fireEvent.click(screen.getByLabelText(/Daily closeout/));
     continueSetup(2);
-    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
 
     const profile = useStore.getState().profile;
     expect(profile).toMatchObject({
@@ -110,30 +125,49 @@ describe("OnboardingWizard", () => {
     cleanup();
     render(<OnboardingWizard mode="rerun" />);
     continueSetup(3);
-    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
     expect(useStore.getState().profile.dailySuccess?.requirements).toHaveLength(2);
   });
 
   it("records an explicit empty configuration when a first run selects no requirements", () => {
     render(<OnboardingWizard mode="first-run" />);
     continueSetup(3);
-    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
 
     const profile = useStore.getState().profile;
     // A new profile is explicitly configured as "nothing selected" — it must not
     // fall back to the legacy minutes+cards defaults (no Anki by default).
     expect(profile.dailySuccess).toBeDefined();
     expect(profile.dailySuccess?.requirements).toEqual([]);
+    expect(profile.name).toBe("");
     const evaluated = evaluateDailySuccess({ ...useStore.getState(), activeDayKey: localDateKey() });
     expect(evaluated.status).toBe("neutral");
     expect(evaluated.statusLabel).toBe("No requirements selected");
     expect(evaluated.requirements.some((item) => item.requirement.source.kind === "cards-reviewed")).toBe(false);
   });
 
+  it("can start with practice questions without forcing any other target", () => {
+    render(<OnboardingWizard mode="first-run" />);
+    continueSetup();
+    fireEvent.click(screen.getByLabelText(/Practice questions/));
+    continueSetup(2);
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+
+    expect(useStore.getState().profile.dailySuccess?.requirements).toEqual([
+      expect.objectContaining({
+        id: "onboarding-practice-questions-v1",
+        label: "Practice questions",
+        source: { kind: "practice-questions" },
+        target: 20,
+      }),
+    ]);
+  });
+
   it("sanely resumes the current step and draft after reload", async () => {
     const first = render(<OnboardingWizard mode="first-run" />);
     fireEvent.change(screen.getByLabelText("Display name (optional)"), { target: { value: "Ada" } });
     continueSetup();
+    fireEvent.click(screen.getByLabelText(/Build my courses/));
     fireEvent.change(screen.getByLabelText("First course (optional)"), { target: { value: "Cardiology" } });
 
     await waitFor(() => expect(sessionStorage.getItem(ONBOARDING_DRAFT_KEY)).toContain("Cardiology"));
@@ -149,12 +183,13 @@ describe("OnboardingWizard", () => {
     render(<OnboardingWizard mode="first-run" onComplete={onComplete} />);
     fireEvent.change(screen.getByLabelText("Display name (optional)"), { target: { value: "Ada" } });
     continueSetup();
+    fireEvent.click(screen.getByLabelText(/Build my courses/));
     fireEvent.change(screen.getByLabelText("First course (optional)"), { target: { value: "Cardiology" } });
-    fireEvent.click(screen.getByLabelText(/Question Bank import/));
+    fireEvent.click(screen.getByLabelText(/Import practice questions/));
     continueSetup();
     fireEvent.click(screen.getByLabelText(/Expanded/));
     continueSetup();
-    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
 
     const state = useStore.getState();
     expect(state.profile).toMatchObject({
@@ -188,7 +223,7 @@ describe("OnboardingWizard", () => {
     const onComplete = vi.fn();
     render(<OnboardingWizard mode="rerun" onComplete={onComplete} />);
     continueSetup(3);
-    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
 
     expect(useStore.getState().courses).toEqual([
       expect.objectContaining({ id: "custom-course", code: "KEEP 101", name: "Keep me" }),
@@ -222,7 +257,7 @@ describe("OnboardingWizard", () => {
   it("exports a real post-setup snapshot only when explicitly requested", () => {
     render(<OnboardingWizard mode="first-run" />);
     continueSetup(3);
-    fireEvent.click(screen.getByRole("button", { name: /Finish and export backup/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Finish and create save file/ }));
 
     expect(exportState).toHaveBeenCalledOnce();
     expect(vi.mocked(exportState).mock.calls[0][0].profile.onboarded).toBe(true);

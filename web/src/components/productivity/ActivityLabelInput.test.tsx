@@ -13,7 +13,7 @@ describe("ActivityLabelInput", () => {
   it("cycles examples only while empty and unfocused", () => {
     vi.useFakeTimers();
     const { rerender } = render(<ActivityLabelInput value="" onChange={() => undefined} />);
-    const input = screen.getByLabelText("Activity") as HTMLInputElement;
+    const input = screen.getByLabelText("What did you do?") as HTMLInputElement;
     expect(input.placeholder).toBe(ACTIVITY_PLACEHOLDERS[0]);
     act(() => vi.advanceTimersByTime(3200));
     expect(input.placeholder).toBe(ACTIVITY_PLACEHOLDERS[1]);
@@ -30,7 +30,7 @@ describe("ActivityLabelInput", () => {
     vi.useFakeTimers();
     vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(<ActivityLabelInput value="" onChange={() => undefined} />);
-    const input = screen.getByLabelText("Activity") as HTMLInputElement;
+    const input = screen.getByLabelText("What did you do?") as HTMLInputElement;
     act(() => vi.advanceTimersByTime(9600));
     expect(input.placeholder).toBe(ACTIVITY_PLACEHOLDERS[0]);
   });

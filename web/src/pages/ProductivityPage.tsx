@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, BookOpen, CalendarDays, Clock, History, Layers, Minus, Plus, Target, Timer, TrendingUp, X, Zap } from "lucide-react";
+import { Activity, BookOpen, CalendarDays, Clock, HelpCircle, History, Layers, Minus, Plus, Target, Timer, TrendingUp, X, Zap } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayTotals, gradeColor, Grade, isoDate, prettyDate, productiveTotals, todayGrade } from "../lib/scoring";
 import { previousLocalDateKey } from "../lib/dailyRollover";
@@ -15,6 +15,24 @@ import { missedStandupDays } from "../lib/journal";
 import { gotoJournalDay } from "../lib/uiStore";
 import { evaluateDailySuccess } from "../lib/dailySuccess";
 import { frequentActivityShortcuts, recentActivityShortcuts, type ActivityShortcut } from "../lib/activityShortcuts";
+import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
+
+export const PRODUCTIVITY_TOUR_STEPS: readonly ModuleTourStep[] = [
+  { target: "productivity-log", title: "Log activity", body: "Name what mattered, then add time, quantity, or a note only when it helps. One Log button records the activity." },
+  { target: "productivity-targets", title: "Choose targets", body: "Targets are optional signals you chose. AXOM scores only the targets scheduled for the day." },
+  { target: "productivity-focus", title: "Use the focus timer", body: "Choose a preset or run a custom session. Completed and meaningful partial sessions can feed the same activity history." },
+  { target: "productivity-trends", title: "Read trends", body: "Weekly and monthly views appear after enough real activity. Before then, AXOM keeps the interpretation neutral." },
+] as const;
+
+type ManualQuantityType = "cards" | "questions" | "pages" | "repetitions" | "count";
+
+const QUANTITY_META: Record<ManualQuantityType, { label: string; placeholder: string }> = {
+  questions: { label: "Questions", placeholder: "20 questions" },
+  cards: { label: "Cards", placeholder: "40 cards" },
+  pages: { label: "Pages", placeholder: "12 pages" },
+  repetitions: { label: "Repetitions", placeholder: "10 repetitions" },
+  count: { label: "Count", placeholder: "1" },
+};
 
 export function ProductivityPage() {
   const s = useStore();
@@ -22,9 +40,10 @@ export function ProductivityPage() {
   const [manualType, setManualType] = useState("");
   const [manualMinutes, setManualMinutes] = useState("");
   const [manualQuantity, setManualQuantity] = useState("");
-  const [manualQuantityKind, setManualQuantityKind] = useState<"cards" | "questions" | "count">("count");
+  const [manualQuantityKind, setManualQuantityKind] = useState<ManualQuantityType>("count");
   const [manualNote, setManualNote] = useState("");
   const [manualTrackerId, setManualTrackerId] = useState("");
+  const [moduleTourOpen, setModuleTourOpen] = useState(false);
   const strip = useInView<HTMLDivElement>();
 
   const viewKey = pickedDay ?? s.activeDayKey;
@@ -57,7 +76,7 @@ export function ProductivityPage() {
       trackerId: manualTrackerId || undefined,
       minutes,
       quantity,
-      quantityKind: quantity ? manualQuantityKind : undefined,
+      quantityKind: quantity ? (manualQuantityKind === "pages" || manualQuantityKind === "repetitions" ? "count" : manualQuantityKind) : undefined,
       quantityLabel: quantity ? manualQuantityKind : undefined,
       note: manualNote || undefined,
     });
@@ -69,7 +88,12 @@ export function ProductivityPage() {
     setManualTrackerId(shortcut.trackerId ?? "");
     setManualMinutes(shortcut.minutes ? String(shortcut.minutes) : "");
     setManualQuantity(shortcut.quantity ? String(shortcut.quantity) : "");
-    setManualQuantityKind(shortcut.quantityKind ?? "count");
+    const semantic = shortcut.quantityLabel?.toLowerCase();
+    setManualQuantityKind(
+      shortcut.quantityKind === "count" && (semantic === "pages" || semantic === "repetitions")
+        ? semantic
+        : shortcut.quantityKind ?? "count",
+    );
   }
 
   function hideShortcut(signature: string) {
@@ -80,32 +104,38 @@ export function ProductivityPage() {
 
   return (
     <>
-      <GlassCard pad data-tour="log">
+      <GlassCard pad data-tour="log" data-module-tour="productivity-log">
         <PanelHeader
-          title="Productivity Console"
-          sub={isActive ? "One useful record in a few seconds" : `Viewing ${prettyDate(`${viewKey}T12:00:00`)}`}
+          title="Log an activity"
+          headingLevel={2}
+          sub={isActive ? "Record study, questions, exercise, reading, or anything else that mattered." : `Viewing ${prettyDate(`${viewKey}T12:00:00`)}`}
           action={isActive ? (
             <div className="row wrap gap6">
               <GButton size="sm" onClick={() => setPickedDay(yesterdayKey)}><History size={14} /> Yesterday</GButton>
               <GButton size="sm" onClick={() => gotoJournalDay(yesterdayKey)}><BookOpen size={14} /> Catch-up</GButton>
+              <GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={14} /> Help</GButton>
             </div>
-          ) : <GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton>} />
+          ) : <div className="row wrap gap6"><GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton><GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={14} /> Help</GButton></div>} />
         <DailyProgressVessel result={dailyProgress} />
 
         {isActive ? (
           <>
             <div className="fast-activity-logger">
               <ActivityLabelInput value={manualType} onChange={setManualType} />
-              <label className="fast-field"><span>Duration</span><div><input className="field" aria-label="Duration in minutes" type="number" min="0" placeholder="Optional" value={manualMinutes} onChange={(event) => setManualMinutes(event.target.value)} /><small>min</small></div></label>
-              <div className="fast-field quantity"><span>Quantity</span><div>
-                <select className="field" aria-label="Quantity type" value={manualQuantityKind} onChange={(event) => setManualQuantityKind(event.target.value as typeof manualQuantityKind)}>
-                  <option value="count">Count</option>
-                  <option value="questions">Questions</option>
-                  <option value="cards">Cards</option>
-                </select>
-                <input className="field" aria-label="Quantity" type="number" min="0" placeholder="Optional" value={manualQuantity} onChange={(event) => setManualQuantity(event.target.value)} />
-              </div></div>
-              <input className="field fast-activity-note" aria-label="Activity note" placeholder="Note (optional)" value={manualNote} onChange={(event) => setManualNote(event.target.value)} />
+              <div className="fast-activity-measures" aria-label="Optional activity measurements">
+                <label className="fast-field"><span>How long? (optional)</span><div><input className="field" aria-label="How long in minutes?" type="number" min="0" placeholder="30" value={manualMinutes} onChange={(event) => setManualMinutes(event.target.value)} /><small>min</small></div></label>
+                <div className="fast-field quantity"><span>Quantity (optional)</span><div>
+                  <input className="field" aria-label={QUANTITY_META[manualQuantityKind].label} type="number" min="0" placeholder={QUANTITY_META[manualQuantityKind].placeholder} value={manualQuantity} onChange={(event) => setManualQuantity(event.target.value)} />
+                  <select className="field" aria-label="Quantity type" value={manualQuantityKind} onChange={(event) => setManualQuantityKind(event.target.value as ManualQuantityType)}>
+                    <option value="count">Count</option>
+                    <option value="questions">Questions</option>
+                    <option value="cards">Cards</option>
+                    <option value="pages">Pages</option>
+                    <option value="repetitions">Repetitions</option>
+                  </select>
+                </div></div>
+              </div>
+              <label className="fast-field fast-activity-note"><span>Note (optional)</span><input className="field" aria-label="Note (optional)" placeholder="Add context if it will help later" value={manualNote} onChange={(event) => setManualNote(event.target.value)} /></label>
               <GButton variant="primary" onClick={logManual} disabled={!manualType.trim()}><Plus size={14} /> Log</GButton>
             </div>
             <details className="activity-category-disclosure">
@@ -122,7 +152,13 @@ export function ProductivityPage() {
                 {frequent.length > 0 && <ShortcutGroup title="Frequent" items={frequent} onFill={fillShortcut} onHide={hideShortcut} />}
               </div>
             )}
-            <DailyRequirementsEditor />
+            <section className="today-targets" aria-labelledby="today-targets-title" data-module-tour="productivity-targets">
+              <div>
+                <h3 id="today-targets-title">What makes today successful</h3>
+                <p>These are optional signals you chose. AXOM only scores the ones scheduled for today.</p>
+              </div>
+              <DailyRequirementsEditor />
+            </section>
           </>
         ) : (
           <div className="historical-log-lock">
@@ -137,15 +173,15 @@ export function ProductivityPage() {
         </div>
       </GlassCard>
 
-      {patternDays >= 3 && <div className="productivity-analytics">
+      {patternDays >= 3 && <div className="productivity-analytics" data-module-tour="productivity-trends">
         <GlassCard pad className="productivity-intel" data-tour="insights">
-          <PanelHeader title="Weekly Productivity Intelligence" sub="Calendar-aligned 7-day signal from minutes and cards"
-            action={<Tag tone={weekly.activeDays ? scoreTone(weekly.grade) : "neutral"}>{weekly.activeDays}/{weekly.days.length} eligible</Tag>} />
+          <PanelHeader title="Weekly activity" sub="Calendar-aligned 7-day view of minutes and optional quantities"
+            action={<Tag tone={weekly.activeDays ? scoreTone(weekly.grade) : "neutral"}>{weekly.activeDays}/{weekly.days.length} active</Tag>} />
           <div className="period-metrics">
             <Metric icon={<Clock size={15} />} label="Study time" value={`${Math.round(weekly.minutes / 60)}h ${weekly.minutes % 60}m`} note={`${weekly.avgMinutes}m / active day`} />
             <Metric icon={<Layers size={15} />} label="Cards" value={`${weekly.cards}`} note={`${weekly.avgCards} / active day`} />
             <Metric icon={<TrendingUp size={15} />} label="Consistency" value={`${weekly.consistency}%`} note={`${weekly.strongDays.length} strong day${weekly.strongDays.length === 1 ? "" : "s"}`} />
-            <Metric icon={<Target size={15} />} label="Needs work" value={`${weekly.needsWorkDays.length}`} note="quiet or fragile days" />
+            <Metric icon={<Target size={15} />} label="Activity review" value={`${weekly.needsWorkDays.length}`} note="quiet or low-volume calendar days" />
           </div>
           <div className={`productivity-strip reveal-bars ${strip.inView ? "in-view" : ""}`} ref={strip.ref}>
             {weekly.days.map((d) => <DayPillar key={d.key} day={d} onPick={() => setPickedDay(d.key)} />)}
@@ -154,8 +190,8 @@ export function ProductivityPage() {
         </GlassCard>
 
         <GlassCard pad className="month-intel">
-          <PanelHeader title="Monthly Productivity Calendar" sub={`${monthly.label} · each cell follows the real calendar day`}
-            action={<Tag tone={monthly.activeDays ? scoreTone(monthly.grade) : "neutral"}>{monthly.activeDays}/{monthly.days.length} eligible</Tag>} />
+          <PanelHeader title="Monthly activity calendar" sub={`${monthly.label} · each cell follows the real calendar day`}
+            action={<Tag tone={monthly.activeDays ? scoreTone(monthly.grade) : "neutral"}>{monthly.activeDays}/${monthly.days.length} active</Tag>} />
           <div className="month-summary">
             <Metric icon={<Activity size={15} />} label="Month result" value={`${Math.round(monthly.minutes / 60)}h`} note={`${monthly.cards} cards`} />
             <Metric icon={<CalendarDays size={15} />} label="Best day" value={monthly.bestDay ? shortDate(monthly.bestDay.key) : "None"} note={monthly.bestDay ? `${monthly.bestDay.minutes}m · ${monthly.bestDay.cards} cards` : "log a session"} />
@@ -184,7 +220,10 @@ export function ProductivityPage() {
 
       <ActivityLog logs={s.logs} activeDayKey={s.activeDayKey} />
 
-      <Pomodoro />
+      <div data-module-tour="productivity-focus"><Pomodoro /></div>
+      {moduleTourOpen && (
+        <ModuleTour name="Productivity" route="productivity" steps={PRODUCTIVITY_TOUR_STEPS} onExit={() => setModuleTourOpen(false)} />
+      )}
     </>
   );
 }
@@ -247,7 +286,7 @@ function ShortcutGroup({
 function shortcutDetail(item: ActivityShortcut): string {
   const parts = [];
   if (item.minutes) parts.push(`${item.minutes} min`);
-  if (item.quantity) parts.push(`${item.quantity} ${item.quantityKind ?? "count"}`);
+  if (item.quantity) parts.push(`${item.quantity} ${item.quantityLabel ?? item.quantityKind ?? "count"}`);
   return parts.join(" · ") || "One completion";
 }
 
@@ -383,8 +422,8 @@ function buildInsights({
   if (quietDays.length > Math.ceil(days.length * 0.35)) {
     insights.push({
       tone: "orange",
-      title: "Pick up the pace gently",
-      body: `${quietDays.length} eligible quiet day${quietDays.length === 1 ? "" : "s"} in this ${span}. Restart with one selected requirement; cards are optional.`,
+      title: "Some calendar days are quiet",
+      body: `${quietDays.length} past calendar day${quietDays.length === 1 ? " has" : "s have"} no logged activity in this ${span}. Scheduled target scoring lives in Reports, so off-days are not treated as misses here.`,
     });
   } else if (redActiveDays.length) {
     insights.push({

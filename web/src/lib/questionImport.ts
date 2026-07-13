@@ -120,6 +120,8 @@ export function importFromCsv(text: string): ImportResult {
       stem,
       options,
       correctKey,
+      answerEvidence: answerValue,
+      answerEvidenceSnippet: answerValue,
       explanation: explanationCol >= 0 ? (cells[explanationCol] ?? "").trim() || undefined : undefined,
       topic: topicCol >= 0 ? (cells[topicCol] ?? "").trim() || undefined : undefined,
       system: systemCol >= 0 ? (cells[systemCol] ?? "").trim() || undefined : undefined,
@@ -176,6 +178,8 @@ export function importFromJson(text: string): ImportResult {
       stem,
       options,
       correctKey,
+      answerEvidence: answerValue,
+      answerEvidenceSnippet: answerValue,
       explanation: str(item.explanation),
       topic: str(item.topic),
       system: str(item.system),
@@ -241,5 +245,10 @@ function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDr
       ...(explanation ? ["explanation.structured-field"] : []),
     ],
     sourceSnippet: [draft.stem, ...draft.options.map((option) => `${option.key}. ${option.text}`)].join("\n").slice(0, 800),
+    questionSourceSnippet: draft.questionSourceSnippet
+      ?? [draft.stem, ...draft.options.map((option) => `${option.key}. ${option.text}`)].join("\n").slice(0, 800),
+    answerEvidenceSnippet: draft.answerEvidenceSnippet ?? draft.answerEvidence,
+    explanationSourceSnippet: draft.explanationSourceSnippet ?? explanation,
+    explanationSource: explanation ? (draft.explanationSource ?? "inline") : undefined,
   };
 }

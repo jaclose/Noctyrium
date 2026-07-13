@@ -71,6 +71,34 @@ describe("energy readiness engine", () => {
     expect(result.possibleSignals.map((signal) => signal.label)).toContain("All-nighter possible");
   });
 
+  it("recognizes positive and behind/late wording as uncertain, user-reviewable signals", () => {
+    const result = calculateReadiness({
+      ...baseInput,
+      journal: [{
+        id: "language", date: "2026-06-24T20:00:00", today: "I felt calm and made steady progress, but I am late on one deadline.", tomorrow: "", blockers: "", energy: "", rating: "",
+      }],
+    });
+    expect(result.possibleSignals.map((signal) => signal.label)).toEqual(expect.arrayContaining([
+      "Positive momentum possible",
+      "Overload possible",
+    ]));
+    expect(result.contributions).toHaveLength(0);
+    expect(result.estimatedReadiness).toBe(62);
+  });
+
+  it("lets explicit self-reported energy remain authoritative while text inference stays unapplied", () => {
+    const result = calculateReadiness({
+      ...baseInput,
+      journal: [{
+        id: "corrected", date: "2026-06-24T20:00:00", today: "I am falling behind.", tomorrow: "", blockers: "", energy: "High", rating: "",
+      }],
+    });
+    expect(result.selfReportedEnergy).toMatchObject({ label: "High", score: 82, source: "corrected" });
+    expect(result.possibleSignals.map((signal) => signal.label)).toContain("Overload possible");
+    expect(result.contributions.some((item) => item.label === "Overload possible")).toBe(false);
+    expect(result.estimatedReadiness).toBeGreaterThan(62);
+  });
+
   it("applies a journal signal after the user confirms it", () => {
     const journal: JournalEntry[] = [{
       id: "j2",

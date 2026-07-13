@@ -34,6 +34,93 @@ export interface CanonicalReportSummary {
   metrics: Record<CoreReportMetricId, ReportMetric>;
 }
 
+export type ReportTrendMetric = "minutes" | "questions" | "cards" | "requirements";
+
+export interface ReportDayDatum {
+  dayKey: string;
+  tracked: boolean;
+  eligible: boolean;
+  scored: boolean;
+  status: "neutral" | "pending" | "met" | "missed";
+  minutes: number;
+  questions: number;
+  cards: number;
+  requirementProgress: number;
+  sourceRecordIds: string[];
+}
+
+export interface CanonicalReportTrends {
+  currentWeek: ReportDayDatum[];
+  previousWeek: ReportDayDatum[];
+  month: ReportDayDatum[];
+}
+
+export interface ReportPeriodComparison {
+  sufficient: boolean;
+  currentValue: number;
+  previousValue: number;
+  percentChange?: number;
+  interpretation: string;
+  strongestContributor?: string;
+  quietEligibleDays: number;
+}
+
+/** Canonical schedule-aware day series shared by weekly and monthly Reports UI. */
+export function buildCanonicalReportTrends(state: NoctyriumState): CanonicalReportTrends {
+  const floor = reportTrackingFloor(state);
+  const history = reportDateKeys(state.activeDayKey, 366)
+    .filter((dayKey) => dayKey >= floor)
+    .map((dayKey) => reportDayDatum(state, dayKey, floor));
+  const eligible = history.filter((day) => day.eligible);
+  const currentWeek = eligible.slice(-7);
+  const previousWeek = eligible.slice(-14, -7);
+  const monthStart = `${state.activeDayKey.slice(0, 8)}01`;
+  const month = reportDateKeys(state.activeDayKey, 31)
+    .filter((dayKey) => dayKey >= monthStart)
+    .map((dayKey) => reportDayDatum(state, dayKey, floor));
+  return { currentWeek, previousWeek, month };
+}
+
+export function compareReportPeriods(
+  current: readonly ReportDayDatum[],
+  previous: readonly ReportDayDatum[],
+  metric: ReportTrendMetric,
+): ReportPeriodComparison {
+  const currentScored = current.filter((day) => day.scored);
+  const previousScored = previous.filter((day) => day.scored);
+  const currentValue = periodMetric(currentScored, metric);
+  const previousValue = periodMetric(previousScored, metric);
+  const quietEligibleDays = currentScored.filter((day) => day.minutes === 0 && day.questions === 0 && day.cards === 0).length;
+  if (currentScored.length < 7 || previousScored.length < 7 || previousValue <= 0) {
+    return {
+      sufficient: false,
+      currentValue,
+      previousValue,
+      interpretation: "Not enough data yet for a reliable prior-week comparison.",
+      quietEligibleDays,
+    };
+  }
+  const percentChange = Math.round(((currentValue - previousValue) / previousValue) * 100);
+  const metricLabel = metric === "minutes" ? "Study time" : metric === "questions" ? "Practice questions" : metric === "cards" ? "Cards" : "Requirement completion";
+  const strongestContributor = strongestPositiveContributor(currentScored, previousScored);
+  return {
+    sufficient: true,
+    currentValue,
+    previousValue,
+    percentChange,
+    interpretation: `${metricLabel} ${percentChange >= 0 ? "increased" : "decreased"} ${Math.abs(percentChange)}% from the prior eligible week.`,
+    strongestContributor,
+    quietEligibleDays,
+  };
+}
+
+export function reportTrendMetricValue(day: ReportDayDatum, metric: ReportTrendMetric): number {
+  if (metric === "minutes") return day.minutes;
+  if (metric === "questions") return day.questions;
+  if (metric === "cards") return day.cards;
+  return day.requirementProgress;
+}
+
 /** One canonical denominator/provenance source for the primary report cards. */
 export function buildCanonicalReportSummary(state: NoctyriumState, range: number): CanonicalReportSummary {
   const endKey = state.activeDayKey;
@@ -200,7 +287,7 @@ export function reportDateKeys(endKey: string, range: number): string[] {
   return Array.from({ length: count }, (_, index) => addLocalDays(endKey, index - count + 1));
 }
 
-function reportTrackingFloor(state: NoctyriumState): string {
+export function reportTrackingFloor(state: NoctyriumState): string {
   const configuredStarts = state.profile.dailySuccess?.requirements
     .filter((requirement) => requirement.enabled)
     .map((requirement) => requirement.trackingStartsAt)
@@ -208,6 +295,69 @@ function reportTrackingFloor(state: NoctyriumState): string {
   if (configuredStarts.length) return [...configuredStarts].sort()[0];
   const firstActivity = [...state.logs].filter(isActivity).sort((a, b) => a.dayKey.localeCompare(b.dayKey))[0]?.dayKey;
   return firstActivity ?? state.activeDayKey;
+}
+
+function reportDayDatum(state: NoctyriumState, dayKey: string, floor: string): ReportDayDatum {
+  const tracked = dayKey >= floor;
+  const result = evaluateDailySuccess(state, dayKey, state.activeDayKey);
+  const logs = state.logs.filter((log) => log.dayKey === dayKey);
+  const minutes = net(logs, (log) => finite(log.minutes));
+  const questions = net(logs.filter((log) => log.quantityKind === "questions"), (log) => finite(log.quantity));
+  const cards = net(logs.filter((log) => finite(log.cards) !== 0 || log.quantityKind === "cards"), (log) =>
+    finite(log.quantity) !== 0 ? finite(log.quantity) : finite(log.cards));
+  const eligible = tracked && result.eligibleCount > 0;
+  const scored = eligible && (dayKey < state.activeDayKey || result.status === "met");
+  const status: ReportDayDatum["status"] = !eligible
+    ? "neutral"
+    : result.status === "met"
+      ? "met"
+      : dayKey >= state.activeDayKey
+        ? "pending"
+        : "missed";
+  return {
+    dayKey,
+    tracked,
+    eligible,
+    scored,
+    status,
+    minutes,
+    questions,
+    cards,
+    requirementProgress: eligible ? result.progress : 0,
+    sourceRecordIds: unique([
+      ...logs.map((log) => log.id),
+      ...result.requirements.flatMap((requirement) => requirement.sourceRecordIds),
+    ]),
+  };
+}
+
+function periodMetric(days: readonly ReportDayDatum[], metric: ReportTrendMetric): number {
+  if (metric === "requirements") {
+    const scored = days.filter((day) => day.scored);
+    return scored.length ? Math.round(scored.reduce((sum, day) => sum + day.requirementProgress, 0) / scored.length) : 0;
+  }
+  return days.reduce((sum, day) => sum + reportTrendMetricValue(day, metric), 0);
+}
+
+function strongestPositiveContributor(current: readonly ReportDayDatum[], previous: readonly ReportDayDatum[]): string | undefined {
+  const candidates: Array<{ label: string; metric: ReportTrendMetric }> = [
+    { label: "Practice questions", metric: "questions" },
+    { label: "Study time", metric: "minutes" },
+    { label: "Cards", metric: "cards" },
+  ];
+  return candidates
+    .map((candidate, index) => {
+      const before = periodMetric(previous, candidate.metric);
+      const after = periodMetric(current, candidate.metric);
+      const growth = before > 0 ? (after - before) / before : after > 0 ? 1 : 0;
+      return { ...candidate, growth, index };
+    })
+    .filter((candidate) => candidate.growth > 0)
+    .sort((a, b) => b.growth - a.growth || a.index - b.index)[0]?.label;
+}
+
+function net(logs: readonly StudyLog[], value: (log: StudyLog) => number): number {
+  return Math.max(0, logs.reduce((sum, log) => sum + finite(value(log)), 0));
 }
 
 function successStreak(state: NoctyriumState, floor: string): number {

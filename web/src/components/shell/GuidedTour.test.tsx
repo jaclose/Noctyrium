@@ -118,7 +118,7 @@ describe("GuidedTour", () => {
     expect(document.activeElement).toBe(dialog);
 
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(onExit).toHaveBeenCalledOnce();
+    expect(onExit).toHaveBeenCalledWith("escape");
     expect(sessionStorage.getItem(TOUR_PROGRESS_KEY)).toBeNull();
   });
 
@@ -126,7 +126,7 @@ describe("GuidedTour", () => {
     const onExit = vi.fn();
     const first = render(<TourHarness onExit={onExit} />);
     fireEvent.click(screen.getByRole("button", { name: "Skip guided tour" }));
-    expect(onExit).toHaveBeenCalledOnce();
+    expect(onExit).toHaveBeenCalledWith("skip");
     first.unmount();
 
     onExit.mockClear();
@@ -136,6 +136,6 @@ describe("GuidedTour", () => {
     expect(dialog.classList.contains("centered")).toBe(true);
     expect(screen.getByText(/Settings → Data and Backup/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Finish" }));
-    expect(onExit).toHaveBeenCalledOnce();
+    expect(onExit).toHaveBeenCalledWith("complete");
   });
 });

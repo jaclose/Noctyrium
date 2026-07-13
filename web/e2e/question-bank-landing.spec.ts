@@ -77,5 +77,5 @@ async function completeOnboarding(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Finish", exact: true }).click();
+  await page.getByRole("button", { name: "Finish setup", exact: true }).click();
 }

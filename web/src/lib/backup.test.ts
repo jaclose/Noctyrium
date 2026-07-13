@@ -3,6 +3,18 @@ import { mergeStates, parseImport, toPortableState } from "./backup";
 import { makeSeed } from "./seed";
 
 describe("portable backup safety", () => {
+  it("round-trips versioned promise prompt suppression without a schema change", () => {
+    const state = makeSeed();
+    state.profile.promisePromptStatus = {
+      state: "skipped",
+      updatedAt: "2026-07-12T12:00:00.000Z",
+      promptVersion: "promise-prompt-v1",
+    };
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.profile.promisePromptStatus).toEqual(state.profile.promisePromptStatus);
+  });
+
   it("keeps question-bank records and import diagnostics in the portable state", () => {
     const state = makeSeed();
     state.questions = [{
@@ -22,13 +34,33 @@ describe("portable backup safety", () => {
         overallImportConfidence: 0.96,
         parserRuleIds: ["ANSWER.INLINE_LETTER_TEXT"],
         sourceSnippet: "Answer: B. Beta",
+        questionSourceSnippet: "Stem\nA. Alpha\nB. Beta",
+        questionSourcePage: 2,
+        answerEvidenceSnippet: "Answer: B. Beta",
+        answerEvidencePage: 7,
+        explanationSourceSnippet: "Because beta.",
+        explanationSourcePage: 8,
       },
       createdAt: "2026-07-10T00:00:00.000Z",
       updatedAt: "2026-07-10T00:00:00.000Z",
     }];
     const portable = toPortableState(state);
     expect(portable.questions[0].extraction?.sourceSnippet).toContain("Answer: B");
+    expect(portable.questions[0].extraction).toMatchObject({
+      questionSourcePage: 2,
+      answerEvidencePage: 7,
+      explanationSourcePage: 8,
+    });
     expect(portable.questions[0].correctAnswerText).toBe("Beta");
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...portable }));
+    expect(restored.questions[0].extraction).toMatchObject({
+      questionSourceSnippet: "Stem\nA. Alpha\nB. Beta",
+      answerEvidenceSnippet: "Answer: B. Beta",
+      explanationSourceSnippet: "Because beta.",
+      questionSourcePage: 2,
+      answerEvidencePage: 7,
+      explanationSourcePage: 8,
+    });
   });
 
   it("parses an exported payload without dropping question-bank collections", () => {

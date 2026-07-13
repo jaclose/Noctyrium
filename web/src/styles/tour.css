@@ -50,6 +50,8 @@
 @media (prefers-reduced-motion: reduce) {
   .tour-haze, .tour-ring, .tour-tip { animation: none; }
   .tour-panel, .tour-ring, .tour-progress span { transition: none; }
+  .promise-scrim, .promise-paper, .promise-sign, .promise-sealed, .promise-sealed-ring, .promise-orbs i { animation: none; }
+  .promise-line, .promise-btn { transition: none; }
 }
 
 /* ============================ Promise cutscene ============================ */

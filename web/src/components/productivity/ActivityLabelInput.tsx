@@ -29,16 +29,20 @@ export function ActivityLabelInput({
   }, [focused, value]);
 
   return (
-    <input
-      className="field fast-activity-label"
-      aria-label="Activity"
-      placeholder={ACTIVITY_PLACEHOLDERS[index]}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      autoComplete="off"
-    />
+    <label className="fast-field fast-activity-field">
+      <span>What did you do?</span>
+      <input
+        className="field fast-activity-label"
+        aria-label="What did you do?"
+        placeholder={ACTIVITY_PLACEHOLDERS[index]}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoComplete="off"
+      />
+      <small>For example: study, questions, exercise, reading, or research.</small>
+    </label>
   );
 }
 

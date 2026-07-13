@@ -103,8 +103,19 @@ describe("CommandBrief recommendation provenance", () => {
 
     render(<CommandBrief />);
     expect(screen.queryByText("AXOM is learning your current workload.")).toBeNull();
+    expect(screen.getByText("Current state")).toBeTruthy();
     expect(screen.getByText("Next best move")).toBeTruthy();
-    expect(screen.getByText(/Minimum viable win/i)).toBeTruthy();
+    expect(screen.getByText(/Alternate small win/i)).toBeTruthy();
     expect(screen.getByText(/Since yesterday/i)).toBeTruthy();
+
+    const disclosure = screen.getByText("Why this suggestion?");
+    const details = disclosure.closest("details");
+    expect(details?.hasAttribute("open")).toBe(false);
+    fireEvent.click(disclosure);
+    expect(details?.hasAttribute("open")).toBe(true);
+    expect(screen.getByText(/Evidence score: \d+/)).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Suggestion evidence" })).toBeTruthy();
+    expect(screen.getAllByText("Course Tracker", { exact: false }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Recovery plan" })).toBeNull();
   });
 });

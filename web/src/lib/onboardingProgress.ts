@@ -5,7 +5,7 @@ import type { AcademicStageId, EducationTrackId, ExperienceFocusId } from "./typ
 export type OnboardingMode = "first-run" | "rerun";
 export type OnboardingDestination = "dashboard" | "tracker" | "questions";
 export type OnboardingWidgetPreset = "focused" | "expanded";
-export type OnboardingQuickRequirement = "study-minutes" | "journal-closeout";
+export type OnboardingQuickRequirement = "study-minutes" | "practice-questions" | "journal-closeout";
 
 export interface OnboardingDraft {
   version: 1;
@@ -169,5 +169,5 @@ function isDestination(value: unknown): value is OnboardingDestination {
 }
 
 function isQuickRequirement(value: unknown): value is OnboardingQuickRequirement {
-  return value === "study-minutes" || value === "journal-closeout";
+  return value === "study-minutes" || value === "practice-questions" || value === "journal-closeout";
 }

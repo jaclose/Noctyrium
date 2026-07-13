@@ -1,5 +1,5 @@
 import { AlertTriangle, BookMarked, FileSearch, PencilLine, WandSparkles } from "lucide-react";
-import type { QuestionRecord } from "../../lib/questions";
+import { questionMappingStatus, type QuestionRecord } from "../../lib/questions";
 import { GhostButton } from "../ui/primitives";
 
 export function QuizFeedback({
@@ -10,6 +10,9 @@ export function QuizFeedback({
   onMarkExplanationWrong,
   onMarkAnswerWrong,
   onEditMapping,
+  onSourceLooksWrong,
+  sourceTitle,
+  showProvenance = true,
 }: {
   question: QuestionRecord;
   pickedKey?: string;
@@ -18,16 +21,19 @@ export function QuizFeedback({
   onMarkExplanationWrong?: () => void;
   onMarkAnswerWrong?: () => void;
   onEditMapping?: () => void;
+  onSourceLooksWrong?: () => void;
+  sourceTitle?: string;
+  showProvenance?: boolean;
 }) {
-  const correct = question.options.find((option) => option.key === question.correctKey);
+  const trusted = questionMappingStatus(question) === "ready";
+  const correct = trusted ? question.options.find((option) => option.key === question.correctKey) : undefined;
   const picked = question.options.find((option) => option.key === pickedKey);
-  const result = !question.correctKey ? "review" : pickedKey === question.correctKey ? "correct" : "incorrect";
+  const result = !trusted ? "review" : pickedKey === question.correctKey ? "correct" : "incorrect";
   // Import owns cleanup; display must preserve legitimate user edits.
   const explanation = (question.explanation ?? "").trim();
-  const extraction = question.extraction;
 
   return (
-    <section className="quiz-feedback" aria-live="polite">
+    <section className="quiz-feedback" aria-live="polite" data-module-tour="qb-feedback">
       <div className={`result-banner ${result}`} role="status">
         <span className="result-dot" aria-hidden="true" />
         <strong>
@@ -66,23 +72,12 @@ export function QuizFeedback({
         </div>
       )}
 
-      {(question.sourcePage || question.citation || extraction?.sourceSnippet) && (
-        <details className="source-evidence">
-          <summary><FileSearch size={14} /> Source &amp; evidence</summary>
-          <div className="source-evidence-body">
-            <div className="source-line">
-              <b>{question.citation ?? question.bank ?? "Imported source"}</b>
-              {question.sourcePage && <span>page {question.sourcePage}</span>}
-              {typeof extraction?.overallImportConfidence === "number" && (
-                <span>{Math.round(extraction.overallImportConfidence * 100)}% parser confidence</span>
-              )}
-            </div>
-            {extraction?.sourceSnippet && <pre>{extraction.sourceSnippet}</pre>}
-            {extraction?.parserRuleIds?.length ? (
-              <div className="source-rules">Rules: {extraction.parserRuleIds.join(" · ")}</div>
-            ) : null}
-          </div>
-        </details>
+      {showProvenance && (
+        <QuestionProvenance
+          question={question}
+          sourceTitle={sourceTitle}
+          onSourceLooksWrong={onSourceLooksWrong}
+        />
       )}
 
       <div className="feedback-repair" aria-label="Repair this question">
@@ -96,5 +91,114 @@ export function QuizFeedback({
         </div>
       </div>
     </section>
+  );
+}
+
+export function QuestionProvenance({
+  question,
+  sourceTitle,
+  onSourceLooksWrong,
+}: {
+  question: QuestionRecord;
+  sourceTitle?: string;
+  onSourceLooksWrong?: () => void;
+}) {
+  const extraction = question.extraction;
+  const hasSource = Boolean(
+    sourceTitle
+    || question.citation
+    || question.sourceDocumentId
+    || question.sourcePage
+    || extraction?.sourceSnippet
+    || extraction?.answerEvidence
+    || extraction?.explanationSource,
+  );
+  if (!hasSource) return null;
+
+  const questionSnippet = extraction?.questionSourceSnippet;
+  const legacySnippet = extraction?.sourceSnippet;
+  const answerSnippet = extraction?.answerEvidenceSnippet ?? extraction?.answerEvidence;
+  const explanationSnippet = extraction?.explanationSourceSnippet;
+  const explanationFallback = extraction?.explanationSource === "answer-section"
+    ? "Recorded from a separate answer section; no separate excerpt was stored."
+    : extraction?.explanationSource
+      ? "Recorded alongside the question; no separate excerpt was stored."
+      : "No explanation source was recorded.";
+
+  return (
+    <section className="question-provenance" aria-labelledby={`question-provenance-${question.id}`}>
+      <div className="row spread wrap gap6">
+        <div className="stack" style={{ gap: 2 }}>
+          <b id={`question-provenance-${question.id}`}><FileSearch size={14} /> Source</b>
+          <span className="sub">{sourceTitle ?? question.citation ?? question.bank ?? "Imported source"}</span>
+        </div>
+        {onSourceLooksWrong && <GhostButton onClick={onSourceLooksWrong}>This source looks wrong</GhostButton>}
+      </div>
+      <div className="question-provenance-grid">
+        <EvidenceExcerpt
+          label="Question source"
+          page={extraction?.questionSourcePage ?? question.sourcePage}
+          snippet={questionSnippet}
+          empty="No separate question excerpt was stored."
+        />
+        <EvidenceExcerpt
+          label="Answer evidence"
+          page={extraction?.answerEvidencePage}
+          snippet={answerSnippet}
+          empty="No answer evidence was recorded."
+        />
+        <EvidenceExcerpt
+          label="Explanation source"
+          page={extraction?.explanationSourcePage}
+          snippet={explanationSnippet}
+          empty={explanationFallback}
+        />
+        {legacySnippet && !questionSnippet && (
+          <EvidenceExcerpt
+            label="Legacy source excerpt"
+            page={question.sourcePage}
+            snippet={legacySnippet}
+            empty=""
+          />
+        )}
+      </div>
+      {(typeof extraction?.overallImportConfidence === "number" || extraction?.parserRuleIds?.length) ? (
+        <details className="source-evidence">
+          <summary>Technical extraction details</summary>
+          <div className="source-evidence-body">
+            {typeof extraction?.overallImportConfidence === "number" && (
+              <span className="sub">Parser confidence {Math.round(extraction.overallImportConfidence * 100)}%</span>
+            )}
+            {extraction?.parserRuleIds?.length ? (
+              <div className="source-rules">Rules: {extraction.parserRuleIds.join(" · ")}</div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function EvidenceExcerpt({
+  label,
+  page,
+  snippet,
+  empty,
+}: {
+  label: string;
+  page?: number;
+  snippet?: string;
+  empty: string;
+}) {
+  const clean = snippet?.trim();
+  const compact = clean && clean.length > 280 ? `${clean.slice(0, 280).trimEnd()}…` : clean;
+  return (
+    <div className="question-provenance-item">
+      <div className="source-line"><b>{label}</b>{page && <span>page {page}</span>}</div>
+      <p className={clean ? "" : "sub"}>{compact ?? empty}</p>
+      {clean && clean.length > 280 && (
+        <details><summary>Surrounding context</summary><pre>{clean}</pre></details>
+      )}
+    </div>
   );
 }

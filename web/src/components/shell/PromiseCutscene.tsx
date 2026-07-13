@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useStore } from "../../lib/store";
+import { prefersReducedMotion } from "../../lib/motion";
 
 const PROMISE_TEXT_VERSION = "promise-of-use-v1";
 
@@ -21,20 +22,66 @@ const LINE_MS = 760;
 
 export function PromiseCutscene({ onDone }: { onDone: () => void }) {
   const store = useStore();
-  const [stage, setStage] = useState<"reveal" | "sign" | "sealed">("reveal");
-  const [shown, setShown] = useState(0);
+  const reduceMotion = useRef(prefersReducedMotion()).current;
+  const [stage, setStage] = useState<"reveal" | "sign" | "sealed">(reduceMotion ? "sign" : "reveal");
+  const [shown, setShown] = useState(reduceMotion ? LINES.length : 0);
   const [name, setName] = useState(store.profile.name && !/^(axom|noctyrium)$/i.test(store.profile.name) ? store.profile.name : "");
   const [agreed, setAgreed] = useState(false);
   const scrimRef = useRef<HTMLDivElement>(null);
+  const doneTimerRef = useRef<number | null>(null);
+  const onDoneRef = useRef(onDone);
+  const titleId = useId();
+
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const scrim = scrimRef.current;
+    scrim?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!scrim || stage === "sealed") return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onDoneRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = [...scrim.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+      if (!controls.length) {
+        event.preventDefault();
+        scrim.focus();
+        return;
+      }
+      const first = controls[0];
+      const last = controls.at(-1)!;
+      if (event.shiftKey && (document.activeElement === first || !scrim.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [stage]);
+
+  useEffect(() => () => {
+    if (doneTimerRef.current !== null) window.clearTimeout(doneTimerRef.current);
+  }, []);
 
   // After signing, the signing panel leaves the user scrolled to the bottom of
   // the contract. Pull the view back to the top so the sealed confirmation is
   // actually visible instead of off-screen below the fold.
   useEffect(() => {
     if (stage !== "sealed") return;
-    scrimRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [stage]);
+    const behavior = reduceMotion ? "auto" : "smooth";
+    scrimRef.current?.scrollTo({ top: 0, behavior });
+    window.scrollTo({ top: 0, behavior });
+  }, [reduceMotion, stage]);
 
   // reveal lines, then show the signing panel
   useEffect(() => {
@@ -66,17 +113,24 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
       rating: "Promise",
     });
     setStage("sealed");
-    setTimeout(onDone, 2800);
+    doneTimerRef.current = window.setTimeout(() => onDoneRef.current(), reduceMotion ? 0 : 2800);
   }
 
   return (
-    <div className={`promise-scrim ${stage === "sealed" ? "sealed" : ""}`} ref={scrimRef}>
+    <div
+      className={`promise-scrim ${stage === "sealed" ? "sealed" : ""}`}
+      ref={scrimRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+    >
       <div className="promise-orbs"><i /><i /><i /></div>
 
       {stage !== "sealed" ? (
         <div className={`promise-paper ${stage === "sign" ? "open" : ""}`}>
           <div className="promise-seal-mark">A</div>
-          <div className="promise-heading">Promise of Use</div>
+          <div className="promise-heading" id={titleId}>Promise of Use</div>
           <div className="promise-lines">
             {LINES.map((line, idx) => (
               <p key={line} className={`promise-line ${idx < shown ? "in" : ""} ${idx === LINES.length - 1 ? "accent" : ""}`}>{line}</p>
@@ -102,14 +156,14 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
               <button type="button" className="promise-btn" disabled={!name.trim() || !agreed} onClick={sign}>
                 Sign the promise
               </button>
-              <button type="button" className="promise-defer" onClick={onDone}>Maybe later</button>
+              <button type="button" className="promise-defer" onClick={() => onDoneRef.current()}>Maybe later</button>
             </div>
           )}
         </div>
       ) : (
         <div className="promise-sealed">
           <div className="promise-sealed-ring"><img src="./icon-192.png" alt="AXOM" /></div>
-          <div className="promise-sealed-title">Promise made.</div>
+          <div className="promise-sealed-title" id={titleId}>Promise made.</div>
           <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
           <div className="promise-sealed-sub">Begin.</div>
         </div>

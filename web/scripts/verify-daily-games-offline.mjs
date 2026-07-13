@@ -138,7 +138,7 @@ async function completeOnboarding(page) {
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Finish", exact: true }).click();
+  await page.getByRole("button", { name: "Finish setup", exact: true }).click();
 }
 
 async function loadedDailyWordAssets(page) {

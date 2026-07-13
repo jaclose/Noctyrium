@@ -18,7 +18,13 @@ const question: QuestionRecord = {
   bank: "Week 4 set", sourcePage: 1, citation: "Week 4 source",
   extraction: {
     confidence: "high", reviewed: true, overallImportConfidence: 0.96,
-    sourceSnippet: "Answer: B. CD4+ T lymphocytes", parserRuleIds: ["answer.explicit-letter-text"],
+    questionSourceSnippet: `${stem}\nA. B lymphocytes\nB. CD4+ T lymphocytes`,
+    questionSourcePage: 1,
+    answerEvidenceSnippet: "Answer: B. CD4+ T lymphocytes",
+    answerEvidencePage: 2,
+    explanationSourceSnippet: "The PPD test is a type IV hypersensitivity reaction.",
+    explanationSourcePage: 3,
+    parserRuleIds: ["answer.explicit-letter-text"],
   },
   status: "unseen", tags: [], attempts: [],
   createdAt: "2026-07-10T00:00:00.000Z", updatedAt: "2026-07-10T00:00:00.000Z",
@@ -32,7 +38,8 @@ describe("QuizFeedback", () => {
     expect(screen.getByRole("status").textContent).toContain("Incorrect — you picked A, answer is B");
     expect(screen.getByText("B. CD4+ T lymphocytes")).toBeTruthy();
     expect(screen.getByText("A. B lymphocytes")).toBeTruthy();
-    const explanation = screen.getByText(/The PPD test is a type IV hypersensitivity/);
+    const explanation = document.querySelector(".feedback-explanation p") as HTMLElement;
+    expect(explanation).toBeTruthy();
     expect(explanation.textContent).not.toContain(stem);
     expect(explanation.textContent).not.toContain("Answer: B");
     expect(explanation.textContent).not.toContain("Objective:");
@@ -41,7 +48,12 @@ describe("QuizFeedback", () => {
   it("shows the correct state and source metadata without mixing it into prose", () => {
     render(<QuizFeedback question={question} pickedKey="B" />);
     expect(screen.getByRole("status").textContent).toContain("Correct — you picked B");
-    expect(screen.getByText("Source & evidence")).toBeTruthy();
+    expect(screen.getByText("Question source")).toBeTruthy();
+    expect(screen.getByText("Answer evidence")).toBeTruthy();
+    expect(screen.getByText("Explanation source")).toBeTruthy();
+    expect(screen.getByText("page 1")).toBeTruthy();
+    expect(screen.getByText("page 2")).toBeTruthy();
+    expect(screen.getByText("page 3")).toBeTruthy();
     expect(screen.getByText("Recognize delayed-type hypersensitivity.")).toBeTruthy();
   });
 
@@ -64,5 +76,24 @@ describe("QuizFeedback", () => {
   it("uses a needs-review banner when no reliable answer exists", () => {
     render(<QuizFeedback question={{ ...question, correctKey: undefined, correctAnswerText: undefined }} pickedKey="A" />);
     expect(screen.getByRole("status").textContent).toContain("Needs review — no reliable answer was mapped");
+  });
+
+  it("does not reveal an unreviewed truthy key as trusted", () => {
+    render(<QuizFeedback question={{ ...question, needsReview: true }} pickedKey="B" />);
+    expect(screen.getByRole("status").textContent).toContain("Needs review — no reliable answer was mapped");
+    expect(screen.queryByText("Correct answer")).toBeNull();
+  });
+
+  it("does not mislabel a legacy combined excerpt as the question source", () => {
+    render(<QuizFeedback question={{
+      ...question,
+      extraction: {
+        confidence: "medium",
+        reviewed: false,
+        sourceSnippet: "Answer: B. CD4+ T lymphocytes",
+      },
+    }} pickedKey="A" />);
+    expect(screen.getByText("Legacy source excerpt")).toBeTruthy();
+    expect(screen.getByText("No separate question excerpt was stored.")).toBeTruthy();
   });
 });

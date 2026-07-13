@@ -7,19 +7,19 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   AlertTriangle, BarChart3, BookOpen, FileInput, Files, ListFilter,
-  Microscope, Play, RotateCcw, Sparkles,
+  Microscope, Play, RotateCcw, Sparkles, HelpCircle,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import {
   analyzeQuestionStyle, dueQuestions, errorPatterns, questionCollectionMetrics,
-  summarizeQuestionMappings, weakTopics,
+  questionMappingStatus, summarizeQuestionMappings, weakTopics,
   ERROR_TYPE_LABEL,
   type QuestionRecord,
 } from "../lib/questions";
 import type { QuizBlock, QuizFilters, QuizMode } from "../lib/quiz";
 import type { QuestionSet, SourceDocument } from "../lib/library";
 import { GlassCard, PanelHeader, EmptyState } from "../components/ui/primitives";
-import { ImportPanel, type ImportSeed } from "../components/questions/ImportPanel";
+import { ImportPanel, parseStoredDocument, type ImportSeed } from "../components/questions/ImportPanel";
 import { MassImport } from "../components/questions/MassImport";
 import { ExamRunner } from "../components/questions/ExamRunner";
 import { PerformancePanel } from "../components/questions/PerformancePanel";
@@ -30,10 +30,18 @@ import { BankBrowser } from "../components/questions/BankBrowser";
 import { AxomBrandLockup } from "../components/ui/BrandMark";
 import { coachWeakness, resolveActiveProvider } from "../lib/ai";
 import { pushToast } from "../lib/toast";
+import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 const NO_SETS: QuestionSet[] = [];
 const NO_DOCUMENTS: SourceDocument[] = [];
+
+export const QUESTION_BANK_TOUR_STEPS: readonly ModuleTourStep[] = [
+  { target: "qb-import", title: "Import", body: "Bring in a supported file or paste question text. Saving a source first is always available when you want to review it later." },
+  { target: "qb-mappings", title: "Review mappings", body: "AXOM separates supported answers from uncertain ones. Review only the mappings that need a decision before trusting them in practice." },
+  { target: "qb-practice", title: "Build or start a block", body: "Start the recommended block or open saved sets and Block Builder when you want tighter filters." },
+  { target: "qb-feedback", title: "Understand feedback", body: "After an answer, feedback separates the result, explanation, and source evidence so you can repair the question without rewriting attempts." },
+] as const;
 
 type BankTab = "overview" | "import" | "mass" | "sets" | "library" | "blocks" | "bank" | "insights";
 
@@ -76,19 +84,22 @@ export function QuestionWorkspacePage() {
   const [bankReview, setBankReview] = useState<{ ids?: string[]; key: number }>({ key: 0 });
   const [coach, setCoach] = useState<{ diagnosis: string; suggestedBlock: string } | null>(null);
   const [coachBusy, setCoachBusy] = useState(false);
+  const [moduleTourOpen, setModuleTourOpen] = useState(false);
   const entryRef = useRef<HTMLDivElement>(null);
   const provider = useMemo(() => resolveActiveProvider(), []);
 
   const isFirstUse = questionSets.length === 0 && questions.length === 0;
-  const due = useMemo(() => dueQuestions(questions), [questions]);
-  const incorrect = questions.filter((q) => q.status === "incorrect");
+  const runnableQuestions = useMemo(() => questions.filter((question) =>
+    question.options.length >= 2 && questionMappingStatus(question) === "ready"), [questions]);
+  const due = useMemo(() => dueQuestions(runnableQuestions), [runnableQuestions]);
+  const incorrect = runnableQuestions.filter((question) => question.status === "incorrect");
   const weak = useMemo(() => weakTopics(questions, 5), [questions]);
   const patterns = useMemo(() => errorPatterns(questions).slice(0, 5), [questions]);
   const style = useMemo(() => (showStyle ? analyzeQuestionStyle(questions) : null), [showStyle, questions]);
   const collectionMetrics = useMemo(() => questionCollectionMetrics(questions), [questions]);
   const mapping = useMemo(() => summarizeQuestionMappings(questions), [questions]);
-  const runnable = questions.filter((q) => q.options.length >= 2).length;
-  const unseen = questions.filter((q) => q.attempts.length === 0).length;
+  const runnable = runnableQuestions.length;
+  const unseen = runnableQuestions.filter((question) => question.attempts.length === 0).length;
   const lastSession = useMemo(() => (s.quizSessions ?? [])
     .map((session, index) => ({ session, index, time: timestamp(session.startedAt) }))
     .sort((a, b) => {
@@ -156,6 +167,24 @@ export function QuestionWorkspacePage() {
   }
   function generateFrom(doc: SourceDocument) {
     setImportSeed({ reference: { title: doc.title, text: doc.rawText } });
+    setImportEntry("file");
+    setTab("import");
+  }
+
+  function parseFrom(doc: SourceDocument) {
+    const result = parseStoredDocument(doc);
+    setImportSeed({
+      drafts: result.drafts,
+      warnings: result.warnings,
+      rawText: doc.rawText,
+      fileName: doc.fileName,
+      fileType: doc.fileType,
+      title: doc.title,
+      sourceDocumentId: doc.id,
+      sizeBytes: doc.sizeBytes,
+      pageTexts: doc.pageTexts,
+      checksum: doc.checksum,
+    });
     setImportEntry("file");
     setTab("import");
   }
@@ -266,7 +295,7 @@ export function QuestionWorkspacePage() {
                   : "Continue the right set, resolve uncertain mappings, and understand what your attempts are showing."}
               </p>
             </div>
-            <div className="qb-hero-actions">
+            <div className="qb-hero-actions" data-module-tour="qb-import">
               {isFirstUse ? (
                 <>
                   <button className="qb-cta primary" onClick={() => openImport("file")}>
@@ -286,6 +315,9 @@ export function QuestionWorkspacePage() {
                   </button>
                 </>
               )}
+              <button className="qb-cta ghost" onClick={() => setModuleTourOpen(true)} aria-label="Open Question Bank help tour">
+                <HelpCircle size={15} /> Help
+              </button>
             </div>
           </div>
           {isFirstUse ? (
@@ -336,8 +368,8 @@ export function QuestionWorkspacePage() {
             </div>
             <ol>
               <li><b>Import a source</b><span>Use a file or paste existing question text.</span></li>
-              <li><b>Review uncertain mappings</b><span>Confirm only the answers the importer flags.</span></li>
-              <li><b>Practice the finalized set</b><span>Build mastery from scored attempts and explanations.</span></li>
+              <li data-module-tour="qb-mappings"><b>Review uncertain mappings</b><span>Confirm only the answers the importer flags.</span></li>
+              <li data-module-tour="qb-practice"><b>Practice the finalized set</b><span>Build mastery from scored attempts and explanations.</span></li>
             </ol>
           </section>
         ) : (
@@ -353,7 +385,7 @@ export function QuestionWorkspacePage() {
           )}
 
           {mapping.issueCount > 0 && (
-            <section className="qb-mapping-alert" aria-labelledby="mapping-review-title" aria-live="polite">
+            <section className="qb-mapping-alert" aria-labelledby="mapping-review-title" aria-live="polite" data-module-tour="qb-mappings">
               <div className="qb-mapping-icon" aria-hidden="true"><AlertTriangle size={18} /></div>
               <div className="grow">
                 <h2 id="mapping-review-title">{mapping.issueCount} question{mapping.issueCount === 1 ? "" : "s"} need review</h2>
@@ -365,7 +397,7 @@ export function QuestionWorkspacePage() {
             </section>
           )}
 
-          <section className="qb-next-card glass-liquid" aria-labelledby="recommended-next-title">
+          <section className="qb-next-card glass-liquid" aria-labelledby="recommended-next-title" data-module-tour="qb-practice">
             <div className="qb-next-copy">
               <span className="qb-eyebrow">Recommended next</span>
               <h2 id="recommended-next-title">{due.length ? `Review ${Math.min(due.length, 20)} due questions` : incorrect.length ? `Retry ${Math.min(incorrect.length, 20)} misses` : unseen ? "Start an unseen tutor block" : runnable ? "Start a focused practice block" : "Import another clean set"}</h2>
@@ -445,14 +477,14 @@ export function QuestionWorkspacePage() {
 
       {tab === "import" && (
         <ImportPanel
-          key={`${importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"}-${importEntry}`}
+          key={`${importSeed?.sourceDocumentId ?? importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"}-${importEntry}`}
           seed={importSeed}
           initialTab={importEntry}
         />
       )}
       {tab === "mass" && (
         <MassImport onInspect={(payload) => {
-          setImportSeed({ drafts: payload.drafts, rawText: payload.rawText, fileName: payload.fileName, title: payload.title });
+          setImportSeed(payload);
           setImportEntry("file");
           setTab("import");
         }} />
@@ -465,7 +497,7 @@ export function QuestionWorkspacePage() {
           onOpenInsights={() => setTab("insights")}
         />
       )}
-      {tab === "library" && <SourceLibrary onGenerateFrom={generateFrom} />}
+      {tab === "library" && <SourceLibrary onParseFrom={parseFrom} onGenerateFrom={generateFrom} />}
       {tab === "blocks" && <BlockBuilder onRunBlock={runBlock} onNewBlock={() => setRunner({ mode: "tutor" })} />}
 
       {tab === "bank" && (
@@ -536,6 +568,9 @@ export function QuestionWorkspacePage() {
           blockId={runner.blockId}
           onClose={() => setRunner(null)}
         />
+      )}
+      {moduleTourOpen && (
+        <ModuleTour name="Question Bank" route="questions" steps={QUESTION_BANK_TOUR_STEPS} onExit={() => setModuleTourOpen(false)} />
       )}
     </>
   );

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useUi } from "../lib/uiStore";
 import {
-  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil, Brain, ExternalLink,
+  Plus, Trash2, ChevronRight, ChevronDown, ListPlus, RefreshCw, BookOpen, HelpCircle, Eye, Upload, Pencil, Brain, ExternalLink, Copy, X,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
@@ -24,6 +24,10 @@ import {
   trackerPathKey,
 } from "../lib/pathUtils";
 import type { BlueprintNodeStatus, Course, InstalledBlueprint, InstalledBlueprintNode, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
+import { extractPdfText, extractPlainText, type ExtractedText } from "../lib/extractText";
+import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../lib/announcements";
+import { pushToast } from "../lib/toast";
+import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
@@ -37,6 +41,61 @@ const BLUEPRINT_STATUS_LABEL: Record<BlueprintNodeStatus, string> = {
   done: "Done",
 };
 const BLUEPRINT_STATUS_ORDER: BlueprintNodeStatus[] = ["not-started", "in-progress", "blocked", "mastered", "done"];
+const TRACKER_INTRO_ANNOUNCEMENT_ID = "course-tracker-intro-v1";
+export const COURSE_TRACKER_TOUR_STEPS: readonly ModuleTourStep[] = [
+  { target: "tracker-import-add", title: "Import or add", body: "Import a course list or add a course and module manually. A provider is not required." },
+  { target: "tracker-structure", title: "Organize the structure", body: "Use the mastery tree to choose a course or module and keep related work together." },
+  { target: "tracker-passes", title: "Log passes", body: "Passes record meaningful revisits. Question rows and completion items use their own honest completion rules." },
+  { target: "tracker-weak-items", title: "Find weak or untouched work", body: "Yield labels and pass state keep review items, high-value work, and untouched items visible." },
+  { target: "tracker-suggestions", title: "Use suggestions", body: "Suggestions explain why an item is useful now. Opening one focuses the existing record; it does not change progress." },
+] as const;
+export const TRACKER_IMPORT_EXAMPLE = `Week 1:
+Cell injury [Lecture] [high]
+Inflammation questions [PQ] [review]
+Daily learning activity [DLA]`;
+const trackerIntroSession = new Set<string>();
+
+type AnnouncementStorage = Pick<Storage, "getItem" | "setItem">;
+
+export function announceCourseTrackerIntroOnce({
+  storage = browserLocalStorage(),
+  session = trackerIntroSession,
+  notify = pushToast,
+}: {
+  storage?: AnnouncementStorage;
+  session?: Set<string>;
+  notify?: typeof pushToast;
+} = {}): boolean {
+  if (session.has(TRACKER_INTRO_ANNOUNCEMENT_ID)
+    || isAnnouncementDismissed(TRACKER_INTRO_ANNOUNCEMENT_ID, readDismissedAnnouncements(storage))) return false;
+  session.add(TRACKER_INTRO_ANNOUNCEMENT_ID);
+  notify({
+    title: "Course Tracker",
+    body: "Course Tracker keeps lectures, DLAs, practice questions, and passes in one place. Start by importing or adding a module.",
+    tone: "info",
+    dedupe: TRACKER_INTRO_ANNOUNCEMENT_ID,
+  });
+  dismissAnnouncement(TRACKER_INTRO_ANNOUNCEMENT_ID, storage);
+  return true;
+}
+
+function browserLocalStorage(): AnnouncementStorage | undefined {
+  try { return typeof window === "undefined" ? undefined : window.localStorage; } catch { return undefined; }
+}
+
+export async function extractTrackerImportFile(
+  file: File,
+  pdfExtractor: (buffer: ArrayBuffer) => Promise<ExtractedText> = extractPdfText,
+): Promise<{ fileName: string; extraction: ExtractedText }> {
+  const lower = file.name.toLocaleLowerCase();
+  if (file.type === "application/pdf" || lower.endsWith(".pdf")) {
+    return { fileName: file.name, extraction: await pdfExtractor(await file.arrayBuffer()) };
+  }
+  if (/\.(?:txt|csv|md|markdown)$/.test(lower) || /^(?:text\/plain|text\/csv|text\/markdown)$/.test(file.type)) {
+    return { fileName: file.name, extraction: extractPlainText(await file.text()) };
+  }
+  throw new Error("Choose a PDF, Markdown, TXT, or CSV file.");
+}
 
 const kindTone: Record<TrackerKind, "cyan" | "purple" | "orange" | "green" | "neutral"> = {
   Lecture: "cyan",
@@ -63,13 +122,16 @@ export function CourseTrackerPage() {
   const [adding, setAdding] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
+  const [moduleHelpOpen, setModuleHelpOpen] = useState(false);
+  const [moduleTourOpen, setModuleTourOpen] = useState(false);
   const [deleteScope, setDeleteScope] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("All");
   const [salt, setSalt] = useState(0);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const focusItemId = useUi((u) => u.focusItemId);
   const clearFocus = useUi((u) => u.clearFocus);
+
+  useEffect(() => { announceCourseTrackerIntroOnce(); }, []);
 
   // Bring a specific item into view: select its scope, expand the tree, scroll
   // to it, and pulse a highlight briefly. Used by clickable suggested moves.
@@ -113,7 +175,10 @@ export function CourseTrackerPage() {
     ? Math.round(activeBlueprintNodes.reduce((sum, node) => sum + node.mastery, 0) / activeBlueprintNodes.length)
     : 0;
 
-  const inScope = inBlueprintScope ? [] : scope ? s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")) : s.tracker;
+  const inScope = useMemo(
+    () => inBlueprintScope ? [] : scope ? s.tracker.filter((t) => t.path === scope || t.path.startsWith(scope + "/")) : s.tracker,
+    [inBlueprintScope, scope, s.tracker],
+  );
   const items = inScope.filter((t) => tabMatch(tab, t.kind));
   const mastery = inBlueprintScope ? blueprintMastery : scopeMastery(inScope);
   const suggestions = useMemo(() => inBlueprintScope ? [] : suggestMoves(inScope, 3, salt), [inBlueprintScope, inScope, salt]);
@@ -142,82 +207,69 @@ export function CourseTrackerPage() {
   }
 
   return (
-    <div className="tracker-grid">
-      <GlassCard pad data-tour="import">
-        <PanelHeader title="Mastery tree" sub="Click any group to expand or collapse it"
-          action={
-            <div className="row gap6">
-              <GhostButton title="Add a course module" onClick={() => setModuleOpen(true)}><BookOpen size={16} /></GhostButton>
-              <GhostButton title="Bulk import lectures" onClick={() => setBulkOpen(true)}><ListPlus size={16} /></GhostButton>
-              <GhostButton title="Add one item" onClick={() => setAdding(true)}><Plus size={16} /></GhostButton>
-            </div>} />
-        <div className="tree">
-          <div className={`tree-node ${scope === "" ? "on" : ""}`} onClick={() => setScope("")}>
-            <span style={{ width: 14 }} /><span>Everything</span><span className="tree-count">{s.tracker.length}</span>
-          </div>
-          {tree.map((node) => (
-            <TreeNode key={node.path} node={node} depth={0}
-              openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
-          ))}
-          {tree.length === 0 && <EmptyState title="Empty tree" hint="Bulk-import your lectures to begin." />}
-          <BlueprintTree installs={s.blueprintInstalls} openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
-        </div>
-        <GButton size="sm" className="primary" style={{ marginTop: 12, width: "100%" }} onClick={() => setBulkOpen(true)}>
-          <ListPlus size={15} /> Import lectures by name
+    <div className="tracker-page-shell">
+      <div className="tracker-page-toolbar">
+        <div><b>Course Tracker</b><span>Import structure, log passes, and keep the next useful move visible.</span></div>
+        <GButton size="sm" onClick={() => setModuleHelpOpen((open) => !open)} aria-expanded={moduleHelpOpen} aria-controls={moduleHelpOpen ? "course-tracker-help" : undefined}>
+          <HelpCircle size={14} /> Help
         </GButton>
-        <GButton size="sm" style={{ marginTop: 8, width: "100%" }} onClick={() => setModuleOpen(true)}>
-          <BookOpen size={15} /> Add course module
-        </GButton>
-      </GlassCard>
-
-      <div className="stack gap16">
-        {/* Adaptive suggested next move with scope dropdown + refresh */}
-        <GlassCard pad>
-          <PanelHeader title="Suggested next move" sub="Adaptive — by passes, yield, and how much is left"
-            action={
-              <div className="row gap6">
-                <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}>
-                  <HelpCircle size={14} /> {guideOpen ? "Hide guide" : "How passes work"}
-                </GButton>
-                {inBlueprintScope && activeBlueprintInstall ? (
-                  <a className="gbtn sm" href={`#${routeForBlueprintLane(activeBlueprintInstall.laneId)}`}><Brain size={14} /> Workbench</a>
-                ) : (
-                  <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Scope">
-                    <option value="">Everything</option>
-                    {scopeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                )}
-                <GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={15} /></GhostButton>
-              </div>} />
-          {guideOpen && <TrackerGuide />}
-          <div className="stack gap8">
-            {inBlueprintScope && activeBlueprintInstall
-              ? <BlueprintSuggestions install={activeBlueprintInstall} nodes={activeBlueprintNodes} />
-              : suggestions.map((sg, i) => (
-                <div className={`sugg ${sg.itemId ? "clickable" : ""}`} key={i}
-                  onClick={() => sg.itemId && focusItem(sg.itemId)}>
-                  <span className="sugg-dot" style={{ background: sg.color }} />
-                  <div className="grow">
-                    <div className="sugg-title">{sg.title}</div>
-                    <div className="sugg-reason">{sg.reason}</div>
-                  </div>
-                  {sg.itemId && <PassPlus id={sg.itemId} />}
-                </div>
+      </div>
+      {moduleHelpOpen && <CourseTrackerHelpEntry onClose={() => setModuleHelpOpen(false)} onStartTour={() => { setModuleHelpOpen(false); setModuleTourOpen(true); }} />}
+      <div className="tracker-grid">
+        <aside className="tracker-utility-column" aria-label="Course Tracker utilities">
+          <GlassCard pad data-tour="import" data-module-tour="tracker-structure">
+            <PanelHeader title="Mastery tree" sub="Choose a course or module"
+              action={<GhostButton title="Add one item" onClick={() => setAdding(true)}><Plus size={16} /></GhostButton>} />
+            <div className="tree">
+              <div className={`tree-node ${scope === "" ? "on" : ""}`} onClick={() => setScope("")}>
+                <span style={{ width: 14 }} /><span>Everything</span><span className="tree-count">{s.tracker.length}</span>
+              </div>
+              {tree.map((node) => (
+                <TreeNode key={node.path} node={node} depth={0}
+                  openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
               ))}
-          </div>
-          <div className="pass-legend">
-            <span><i style={{ background: PASS_COLOR.untouched }} />0 pass: blue</span>
-            <span><i style={{ background: PASS_COLOR.red }} />1 pass: red</span>
-            <span><i style={{ background: PASS_COLOR.young }} />2 passes: young</span>
-            <span><i style={{ background: PASS_COLOR.mature }} />3 passes: mature</span>
-            <span><i style={{ background: PASS_COLOR.mastered }} />4+: mastered</span>
-            <span><i style={{ background: ankiColor(1) }} />Anki 1</span>
-            <span><i style={{ background: ankiColor(2) }} />Anki 2</span>
-            <span><i style={{ background: ankiColor(3) }} />Anki 3</span>
-          </div>
-        </GlassCard>
+              {tree.length === 0 && <EmptyState title="Empty tree" hint="Import or add a module to begin." />}
+              <BlueprintTree installs={s.blueprintInstalls} openNodes={openNodes} onToggle={toggle} active={scope} onSelect={setScope} />
+            </div>
+            <div className="tracker-immediate-actions" data-module-tour="tracker-import-add">
+              <GButton size="sm" className="primary" onClick={() => setBulkOpen(true)}>
+                <ListPlus size={15} /> Import lectures or items
+              </GButton>
+              <GButton size="sm" onClick={() => setModuleOpen(true)}>
+                <BookOpen size={15} /> Add course or module
+              </GButton>
+            </div>
+          </GlassCard>
 
-        <GlassCard pad>
+          <GlassCard pad className="tracker-suggestions-card" data-module-tour="tracker-suggestions">
+            <PanelHeader title="Suggested next moves" sub="Based on passes, yield, and unfinished work"
+              action={<GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={15} /></GhostButton>} />
+            {!inBlueprintScope && (
+              <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Suggestion scope">
+                <option value="">Everything</option>
+                {scopeOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            )}
+            <div className="tracker-compact-suggestions">
+              {inBlueprintScope && activeBlueprintInstall
+                ? <BlueprintSuggestions install={activeBlueprintInstall} nodes={activeBlueprintNodes} />
+                : suggestions.map((sg, i) => {
+                  const item = sg.itemId ? s.tracker.find((candidate) => candidate.id === sg.itemId) : undefined;
+                  return (
+                    <div className="tracker-compact-suggestion" key={`${sg.title}-${i}`}>
+                      <span className="sugg-dot" style={{ background: sg.color }} />
+                      <div className="grow"><b>{sg.title}</b><span>{sg.reason}</span></div>
+                      <small>~{suggestionEffortMinutes(item)} min</small>
+                      <GButton size="tiny" onClick={() => sg.itemId ? focusItem(sg.itemId) : setBulkOpen(true)}>Open</GButton>
+                    </div>
+                  );
+                })}
+            </div>
+          </GlassCard>
+        </aside>
+
+        <section className="tracker-work-area" aria-label="Selected Course Tracker scope">
+          <GlassCard pad data-module-tour="tracker-summary">
           <div className="tk-hero">
             <div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>
@@ -245,18 +297,17 @@ export function CourseTrackerPage() {
               <div className="ring-label" style={{ fontSize: 15 }}>{mastery}%</div>
             </div>
           </div>
-        </GlassCard>
+          </GlassCard>
 
-        <GlassCard pad data-tour="tracker-help">
+          <GlassCard pad data-tour="tracker-help" data-module-tour="tracker-passes">
           <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
             action={
               <div className="row gap6">
                 {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={14} /></GhostButton>}
                 {scope && <GhostButton className="danger" title="Delete selected tracker group" onClick={deleteCurrentScope}><Trash2 size={14} /></GhostButton>}
-                <GButton size="sm" onClick={() => setGuideOpen((open) => !open)}><HelpCircle size={14} /> {guideOpen ? "Hide" : "Help"}</GButton>
               </div>
             } />
-          {guideOpen && <TrackerGuide />}
+          <details className="tracker-pass-help" data-module-tour="tracker-weak-items"><summary>How passes work</summary><TrackerGuide /></details>
           {inBlueprintScope && activeBlueprintInstall ? (
             <BlueprintTrackerItems install={activeBlueprintInstall} nodes={activeBlueprintNodes} category={blueprintScope?.category} />
           ) : (
@@ -270,15 +321,45 @@ export function CourseTrackerPage() {
               {items.map((it) => <ItemRow key={it.id} item={it} highlight={it.id === highlightId} />)}
             </>
           )}
-        </GlassCard>
+          </GlassCard>
+        </section>
       </div>
 
       {adding && <TrackerEditor defaultPath={scope} onClose={() => setAdding(false)} />}
       {moduleOpen && <ModuleEditor onDone={(nextScope) => { setModuleOpen(false); if (nextScope) setScope(nextScope); }} />}
       {bulkOpen && <BulkImportModal defaultPath={scope} onClose={() => setBulkOpen(false)} />}
       {deleteScope && <DeleteScopeModal scope={deleteScope} onSelect={setScope} onClose={() => setDeleteScope(null)} />}
+      {moduleTourOpen && <ModuleTour name="Course Tracker" route="tracker" steps={COURSE_TRACKER_TOUR_STEPS} onExit={() => setModuleTourOpen(false)} />}
     </div>
   );
+}
+
+function CourseTrackerHelpEntry({ onClose, onStartTour }: { onClose: () => void; onStartTour: () => void }) {
+  return (
+    <GlassCard pad className="tracker-help-entry" id="course-tracker-help">
+      <div className="spread gap8">
+        <div><b>Course Tracker help</b><span>A short guide to importing, organizing, passes, weak items, and suggestions.</span></div>
+        <GhostButton aria-label="Close Course Tracker help" onClick={onClose}><X size={15} /></GhostButton>
+      </div>
+      <ol>
+        <li>Import a list or add a course/module.</li>
+        <li>Organize work in the mastery tree.</li>
+        <li>Log passes as you revisit an item.</li>
+        <li>Use yield labels to mark weak or high-value work.</li>
+        <li>Open a suggested move when you want a concrete next step.</li>
+      </ol>
+      <GButton size="sm" variant="primary" onClick={onStartTour}><HelpCircle size={14} /> Start short tour</GButton>
+    </GlassCard>
+  );
+}
+
+function suggestionEffortMinutes(item?: TrackerItem) {
+  if (!item) return 10;
+  if (isCompletionKind(item.kind)) return 15;
+  if (isQuestionKind(item.kind)) return item.yield === "review" ? 25 : 30;
+  if (item.yield === "review") return 25;
+  if (item.passes === 0) return 35;
+  return item.passes === 1 ? 30 : 20;
 }
 
 function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }) {
@@ -414,57 +495,9 @@ function AnkiBlocks({ item }: { item: TrackerItem }) {
 function TrackerGuide() {
   return (
     <div className="tracker-guide">
-      <div className="guide-title">How the Course Tracker works</div>
-
-      <div className="guide-section">
-        <div className="guide-h"><span className="guide-num">1</span> Log a pass</div>
-        <p>Every time you study an item, click its <b>pass boxes</b> (1 → 2 → 3 → 4+). Click a box again to clear back a level. The left edge changes colour as mastery grows:</p>
-        <div className="guide-scale">
-          <GuideStep color={PASS_COLOR.untouched} n="0" label="Untouched" note="exists, no pass yet" />
-          <GuideStep color={PASS_COLOR.red} n="1" label="Red" note="first exposure — fragile" />
-          <GuideStep color={PASS_COLOR.young} n="2" label="Young" note="recall forming" />
-          <GuideStep color={PASS_COLOR.mature} n="3" label="Mature" note="solid for questions" />
-          <GuideStep color={PASS_COLOR.mastered} n="4+" label="Mastered" note="keep alive w/ spaced review" />
-        </div>
-      </div>
-
-      <div className="guide-section">
-        <div className="guide-h"><span className="guide-num">2</span> Track Anki rounds</div>
-        <p>The right-hand <b>Anki</b> blocks are a separate recall layer — click to cycle rounds:</p>
-        <div className="guide-scale">
-          <GuideStep color={ankiColor(1)} n="1" label="Orange" note="first card pass" />
-          <GuideStep color={ankiColor(2)} n="2" label="Yellow" note="stabilizing" />
-          <GuideStep color={ankiColor(3)} n="3" label="Purple" note="Anki mastery" />
-        </div>
-      </div>
-
-      <div className="guide-section">
-        <div className="guide-h"><span className="guide-num">3</span> Set yield &amp; rename</div>
-        <p>
-          Click the <b>yield badge</b> to cycle <i>Set yield → High → Needs review → Low</i> — this feeds “Suggested next move”.
-          New items start at <b>Set yield</b>. <b>Rename</b> any item with the <Pencil size={11} /> pencil, or rename a whole
-          group from the Items header. <b>PQ rows</b> use a simpler <b>Completed 1·2·3</b> (no Anki side).
-        </p>
-      </div>
+      <p>Each focused review is one pass: 1 is fragile, 2 is forming, 3 is mature, and 4+ is mastered. Click the same level again to step back.</p>
+      <p>Anki rounds are tracked separately. Practice-question rows use three completed levels, and yield labels help AXOM prioritize high-value or weak work.</p>
     </div>
-  );
-}
-
-function GuideStep({ color, n, label, note }: { color: string; n: string; label: string; note: string }) {
-  return (
-    <div className="guide-step">
-      <span className="guide-step-dot" style={{ background: color }}>{n}</span>
-      <div><b>{label}</b><small>{note}</small></div>
-    </div>
-  );
-}
-
-function PassPlus({ id }: { id: string }) {
-  const bump = useStore((st) => st.bumpPasses);
-  return (
-    <button className="gbtn tiny" onClick={(e) => { e.stopPropagation(); bump(id, +1); }} title="Log a pass">
-      <Plus size={12} /> Pass
-    </button>
   );
 }
 
@@ -684,13 +717,14 @@ function BlueprintSuggestions({ install, nodes }: { install: InstalledBlueprint;
   return (
     <>
       {next.map((node) => (
-        <div className="sugg" key={node.id}>
+        <div className="tracker-compact-suggestion" key={node.id}>
           <span className="sugg-dot" style={{ background: node.priority === "high" ? "var(--orange)" : "var(--cyan)" }} />
           <div className="grow">
-            <div className="sugg-title">{node.objective}</div>
-            <div className="sugg-reason">{install.title} · {node.category} · {node.mastery}% mastery</div>
+            <b>{node.objective}</b>
+            <span>{install.title} · {node.category} · {node.mastery}% mastery</span>
           </div>
-          <Tag tone={node.priority === "high" ? "orange" : "cyan"}>{node.priority}</Tag>
+          <small>~{node.priority === "high" ? 30 : node.priority === "medium" ? 20 : 15} min</small>
+          <a className="gbtn tiny" href={`#${routeForBlueprintLane(install.laneId)}`}>Open</a>
         </div>
       ))}
     </>
@@ -978,7 +1012,12 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
   const [text, setText] = useState("");
   const [stripNums, setStripNums] = useState(true);
   const [skipDupes, setSkipDupes] = useState(true);
+  const [loadedFileName, setLoadedFileName] = useState("");
+  const [fileWarnings, setFileWarnings] = useState<string[]>([]);
+  const [fileError, setFileError] = useState("");
+  const [exampleStatus, setExampleStatus] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const exampleRef = useRef<HTMLTextAreaElement>(null);
 
   // Existing destinations so the field autocompletes instead of spawning duplicate folders.
   const scopeSuggestions = useMemo(
@@ -1024,10 +1063,30 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
     onClose();
   }
 
-  function loadFile(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => setText(String(reader.result ?? ""));
-    reader.readAsText(file);
+  async function loadFile(file: File) {
+    setFileError("");
+    setFileWarnings([]);
+    try {
+      const result = await extractTrackerImportFile(file);
+      setLoadedFileName(result.fileName);
+      setFileWarnings(result.extraction.warnings);
+      setText(result.extraction.text);
+    } catch (error) {
+      setLoadedFileName(file.name);
+      setFileError(error instanceof Error ? error.message : "This file could not be read.");
+    }
+  }
+
+  async function copyExample() {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(TRACKER_IMPORT_EXAMPLE);
+      setExampleStatus("Example copied.");
+    } catch {
+      exampleRef.current?.focus();
+      exampleRef.current?.select();
+      setExampleStatus("Clipboard unavailable. The example is selected for manual copy.");
+    }
   }
 
   return (
@@ -1038,11 +1097,20 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
           Import {toImport.length || ""} item{toImport.length === 1 ? "" : "s"}
         </GButton>
       </>}>
-      <ol className="import-steps">
-        <li>Pick the <b>destination</b>, default <b>kind</b>, and default <b>yield</b>. Inline tags like <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[Requirement]</span>, <span className="mono">[high]</span>, <span className="mono">[review]</span>, <span className="mono">[passes=2]</span>, or <span className="mono">[anki=1]</span> override a single line.</li>
-        <li>Paste one item per line, or upload CSV with headers: <span className="mono">label, kind, path, week, yield, passes, anki, note</span>. A plain line ending in “:” becomes a sub-folder for the lines beneath it; week labels like <span className="mono">Week 1</span>, <span className="mono">W4</span>, and <span className="mono">Block 2 Week 3</span> become Week folders.</li>
-        <li>Preview duplicates, yield flags, and starting mastery before importing. Duplicate rows are skipped by default.</li>
-      </ol>
+      <p className="sub">Paste one item per line, or open a PDF, Markdown, TXT, or CSV file. AXOM extracts supported text locally and shows a preview before anything is added.</p>
+      <div className="tracker-import-example">
+        <div className="spread gap8"><b>Copyable format</b><GButton size="tiny" onClick={copyExample}><Copy size={12} /> Copy example</GButton></div>
+        <textarea ref={exampleRef} className="field" aria-label="Structured tracker import example" readOnly value={TRACKER_IMPORT_EXAMPLE} rows={4} />
+        {exampleStatus && <span role="status">{exampleStatus}</span>}
+      </div>
+      <details className="tracker-import-details">
+        <summary>Formatting details</summary>
+        <ol className="import-steps">
+          <li>Pick a destination, kind, and yield. Tags such as <span className="mono">[DLA]</span>, <span className="mono">[PQ]</span>, <span className="mono">[high]</span>, or <span className="mono">[review]</span> can override one line.</li>
+          <li>CSV headers may include <span className="mono">label, kind, path, week, yield, passes, anki, note</span>. A line ending in “:” becomes a folder for the rows beneath it.</li>
+          <li>Duplicate rows are skipped by default. You can review every parsed row before importing.</li>
+        </ol>
+      </details>
       <div className="row gap12">
         <div className="grow">
           <Field label="Destination path" value={path} list="tracker-scope-options"
@@ -1077,11 +1145,15 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
           Skip duplicates already in tracker
         </label>
         <GButton size="sm" onClick={() => fileRef.current?.click()}>
-          <Upload size={14} /> Upload .txt / .csv
+          <Upload size={14} /> Open PDF, Markdown, TXT, or CSV
         </GButton>
-        <input ref={fileRef} type="file" accept=".txt,.csv,text/plain,text/csv" hidden
-          onChange={(e) => e.target.files?.[0] && loadFile(e.target.files[0])} />
+        <input ref={fileRef} type="file" accept=".pdf,.md,.markdown,.txt,.csv,application/pdf,text/markdown,text/plain,text/csv" hidden
+          onChange={(e) => e.target.files?.[0] && void loadFile(e.target.files[0])} />
       </div>
+      {loadedFileName && <div className="sub">Opened: <b>{loadedFileName}</b></div>}
+      {fileWarnings.map((warning) => <div className="form-warning" key={warning}>{warning}</div>)}
+      {fileError && <div className="form-warning danger" role="alert">{fileError}</div>}
+      <div className="sub">No GPT or provider is required. If you choose an external formatting aid, review whether the file contains sensitive or private information before sharing it.</div>
       {rows.length > 0 && (
         <div className="import-preview">
           <div className="sub">

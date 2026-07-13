@@ -2,14 +2,14 @@ import {
   SCOWL_GENERAL_2_ALLOWED_GUESSES,
   SCOWL_GENERAL_2_ANSWERS,
 } from "./dailyWordScowlGeneral2";
+import { DAILY_WORD_PUBLIC_METADATA } from "./dailyWordMetadata";
+
+export { DAILY_WORD_PUBLIC_METADATA } from "./dailyWordMetadata";
 
 /** AXOM's current versioned Daily Word dictionary contract. */
 export const DAILY_WORD_LIST_METADATA = Object.freeze({
-  version: "general-2",
-  language: "en-US",
+  ...DAILY_WORD_PUBLIC_METADATA,
   provenance: "SCOWLv2 2026.02.25, filtered and curated locally for AXOM.",
-  upstream: "https://github.com/en-wl/wordlist",
-  upstreamCommit: "7e99edab8e32f9f9ea2b15f249ca8d4d67237410",
   license: "SCOWL permissive notice; see public/third-party/DAILY_WORD_SCOWL_LICENSE.txt.",
   answersSha256: "5847d238f353fc55217a0c3183a226212316c74e581b2d17a1f0d89b4e6c3cae",
   allowedGuessesSha256: "c5db32f9c4c3cd17b042451d9adf29f175773a111fd5491bb96efdcc4cd0215d",

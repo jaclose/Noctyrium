@@ -208,6 +208,18 @@ describe("v26 → v27 migration", () => {
     expect(migratePersistedState(structuredClone(explicit), SCHEMA_VERSION).profile.hiddenDashboardWidgets).toEqual([]);
   });
 
+  it("normalizes an optional promise prompt version without bumping schema", () => {
+    const state = makeSeed();
+    state.profile.promisePromptStatus = {
+      state: "deferred",
+      updatedAt: "2026-07-12T12:00:00.000Z",
+      promptVersion: "promise-prompt-v1",
+    };
+    const migrated = migratePersistedState(structuredClone(state), SCHEMA_VERSION);
+    expect(migrated.schemaVersion).toBe(32);
+    expect(migrated.profile.promisePromptStatus).toEqual(state.profile.promisePromptStatus);
+  });
+
   it("preserves and de-duplicates existing Daily Word history without altering unrelated records", () => {
     const state = makeSeed();
     const incomplete = {

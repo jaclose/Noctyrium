@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Clock, BookText, Sparkles, ArrowRight,
   Database, Download, ShieldCheck, PackageCheck, CalendarDays,
   Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
   SlidersHorizontal, GripVertical, PlusCircle, X, Link as LinkIcon, Brain,
-  AlertTriangle, CalendarClock,
+  AlertTriangle, CalendarClock, Star, EyeOff, Settings2, RotateCcw,
 } from "lucide-react";
 import { useStore } from "../lib/store";
 import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, lastNDays, isoDate } from "../lib/scoring";
@@ -17,7 +17,7 @@ import { exportState } from "../lib/backup";
 import { gotoTrackerItem, gotoJournalDay } from "../lib/uiStore";
 import { useInView } from "../lib/useInView";
 import { canAutoFocus } from "../lib/device";
-import { DEFAULT_DASHBOARD_WIDGETS } from "../lib/seed";
+import { DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
 import { analyzePerformance } from "../lib/performance";
 import { calculateReadiness } from "../lib/energy";
@@ -29,12 +29,20 @@ import { CommandBrief } from "../components/brief/CommandBrief";
 import { DailyProgressVessel } from "../components/productivity/DailyProgressVessel";
 import { evaluateDailySuccess, type DailySuccessResult } from "../lib/dailySuccess";
 import { runAi } from "../services/aiClient";
+import { AXOM_QUOTES, type QuoteAttributionStatus } from "../data/quotes";
+import {
+  hideQuote,
+  readQuotePreferences,
+  selectQuoteForDay,
+  toggleFavoriteQuote,
+  writeQuotePreferences,
+} from "../lib/quotePreferences";
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
 const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
   { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
-  { id: "todayScore", label: "Today's requirements", note: "Progress against only the requirements you selected.", preview: "rings" },
+  { id: "todayScore", label: "Today's targets", note: "Progress against only the optional targets you selected.", preview: "rings" },
   { id: "examCountdown", label: "Exam countdown", note: "Days to your exam, phase, and a daily question target.", preview: "calendar" },
   { id: "pomodoro", label: "Pomodoro timer", note: "Focus sprints that auto-log their minutes.", preview: "rings" },
   { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
@@ -144,25 +152,142 @@ function AlphaBuildBanner({
   profileName: string;
   activeDayKey: string;
 }) {
-  const displayName = profileName && !/^(axom|noctyrium)$/i.test(profileName) ? profileName : "JD";
-  const quote = dailyDashboardMessage(activeDayKey);
+  const updateProfile = useStore((state) => state.updateProfile);
+  const displayName = explicitDisplayName(profileName);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [quotePreferences, setQuotePreferences] = useState(readQuotePreferences);
+  const [quoteOffset, setQuoteOffset] = useState(0);
+  const [quoteSettingsOpen, setQuoteSettingsOpen] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const quote = useMemo(
+    () => selectQuoteForDay(AXOM_QUOTES, quotePreferences, activeDayKey, quoteOffset),
+    [activeDayKey, quoteOffset, quotePreferences],
+  );
+  const dailyState = dailyDashboardMessage(activeDayKey);
   const date = new Date(`${activeDayKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+
+  useEffect(() => {
+    if (editingName) nameInputRef.current?.focus();
+  }, [editingName]);
+
+  useEffect(() => { setQuoteOffset(0); }, [activeDayKey]);
+
+  function saveName(event: FormEvent) {
+    event.preventDefault();
+    updateProfile({ name: nameDraft.trim().slice(0, 120) });
+    setEditingName(false);
+    setNameDraft("");
+  }
+
+  function saveQuotePreferences(next: typeof quotePreferences) {
+    setQuotePreferences(writeQuotePreferences(next));
+  }
+
   return (
     <GlassCard pad className="alpha-build-banner">
-      <div className="alpha-build-mark">
-        <PackageCheck size={19} />
-      </div>
       <div className="alpha-build-copy">
         <span>{date}</span>
-        <b>Welcome, {displayName}</b>
-        <p>{quote}</p>
+        <div className="alpha-build-title" aria-live="polite">
+          {displayName ? `Welcome, ${displayName}` : "Welcome"}
+        </div>
+        {!displayName && !editingName && (
+          <button
+            type="button"
+            className="alpha-add-name"
+            onClick={() => setEditingName(true)}
+          >
+            Add your name
+          </button>
+        )}
+        {!displayName && editingName && (
+          <form className="alpha-name-form" onSubmit={saveName}>
+            <label htmlFor="dashboard-display-name">Display name</label>
+            <input
+              ref={nameInputRef}
+              id="dashboard-display-name"
+              value={nameDraft}
+              maxLength={120}
+              autoComplete="name"
+              onChange={(event) => setNameDraft(event.target.value)}
+            />
+            <GButton size="tiny" variant="primary" type="submit"><Check size={13} /> Save</GButton>
+            <GhostButton type="button" onClick={() => {
+              setEditingName(false);
+              setNameDraft("");
+            }}><X size={13} /> Cancel</GhostButton>
+          </form>
+        )}
+        <p>{dailyState}</p>
       </div>
+      <section className="dashboard-quote" aria-label="Daily quote">
+        {quotePreferences.quoteVisible && quote ? (
+          <>
+            <blockquote>“{quote.text}”</blockquote>
+            <div className="dashboard-quote-attribution" title={quote.attributionNote}>
+              <span>{quote.author}</span>
+              <small>{attributionLabel(quote.attributionStatus)}</small>
+            </div>
+            <div className="dashboard-quote-actions">
+              <GhostButton title="Next quote" aria-label="Next quote" onClick={() => setQuoteOffset((offset) => offset + 1)}><ArrowRight size={14} /></GhostButton>
+              <GhostButton
+                title={quotePreferences.favoriteQuoteIds.includes(quote.id) ? "Remove favorite" : "Favorite quote"}
+                aria-label={quotePreferences.favoriteQuoteIds.includes(quote.id) ? "Remove favorite quote" : "Favorite quote"}
+                aria-pressed={quotePreferences.favoriteQuoteIds.includes(quote.id)}
+                onClick={() => saveQuotePreferences(toggleFavoriteQuote(quotePreferences, quote.id))}
+              ><Star size={14} /></GhostButton>
+              <GhostButton title="Hide this quote" aria-label="Hide this quote" onClick={() => saveQuotePreferences(hideQuote(quotePreferences, quote.id))}><EyeOff size={14} /></GhostButton>
+              <GhostButton
+                title="Quote settings"
+                aria-label="Quote settings"
+                aria-expanded={quoteSettingsOpen}
+                aria-controls={quoteSettingsOpen ? "dashboard-quote-settings" : undefined}
+                onClick={() => setQuoteSettingsOpen((open) => !open)}
+              ><Settings2 size={14} /></GhostButton>
+            </div>
+          </>
+        ) : (
+          <div className="dashboard-quote-hidden">
+            <span>{quotePreferences.quoteVisible ? "All eligible quotes are hidden" : "Daily quote hidden"}</span>
+            {quotePreferences.quoteVisible
+              ? <GButton size="tiny" onClick={() => saveQuotePreferences({ ...quotePreferences, hiddenQuoteIds: [] })}>Restore quotes</GButton>
+              : <GButton size="tiny" onClick={() => saveQuotePreferences({ ...quotePreferences, quoteVisible: true })}>Show quote</GButton>}
+            <GhostButton aria-label="Quote settings" aria-expanded={quoteSettingsOpen} aria-controls={quoteSettingsOpen ? "dashboard-quote-settings" : undefined} onClick={() => setQuoteSettingsOpen((open) => !open)}><Settings2 size={14} /></GhostButton>
+          </div>
+        )}
+        {quoteSettingsOpen && (
+          <div className="dashboard-quote-settings" id="dashboard-quote-settings">
+            <label><input type="checkbox" checked={quotePreferences.quoteVisible} onChange={(event) => saveQuotePreferences({ ...quotePreferences, quoteVisible: event.target.checked })} /> Show daily quote</label>
+            <label><input type="checkbox" checked={quotePreferences.includeGuilt} onChange={(event) => saveQuotePreferences({ ...quotePreferences, includeGuilt: event.target.checked })} /> Include guilt/shame category</label>
+            <span>{quotePreferences.favoriteQuoteIds.length} favorite{quotePreferences.favoriteQuoteIds.length === 1 ? "" : "s"} · {quotePreferences.hiddenQuoteIds.length} hidden</span>
+            {quotePreferences.hiddenQuoteIds.length > 0 && (
+              <button type="button" onClick={() => saveQuotePreferences({ ...quotePreferences, hiddenQuoteIds: [] })}><RotateCcw size={12} /> Restore hidden quotes</button>
+            )}
+          </div>
+        )}
+      </section>
     </GlassCard>
   );
+}
+
+function attributionLabel(status: QuoteAttributionStatus) {
+  if (status === "axom-original") return "AXOM original";
+  if (status === "commonly-attributed") return "Commonly attributed";
+  if (status === "paraphrased") return "Paraphrased";
+  if (status === "verified") return "Verified";
+  return "Attribution unverified";
+}
+
+/** A display name must be explicitly user-authored, never a seed or initials. */
+export function explicitDisplayName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim();
+  if (!name || /^(axom|noctyrium)$/i.test(name)) return null;
+  return name.slice(0, 120);
 }
 
 const DASHBOARD_MESSAGES = [
@@ -293,10 +418,10 @@ function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; 
       </div>
 
       <div className="row">
-        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: ["aiActions", "schedule", "termMap", "localData", "latestStandup", "productivityTrend", "premedHours", "resourceFocus", "boardBlueprint"] })}>
+        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS] })}>
           Reset to focused layout
         </GButton>
-        <span className="sub">Saved locally with your profile, backup, and future sync payload.</span>
+        <span className="sub">Saved locally with your profile and included in portable backups.</span>
       </div>
     </div>
   );
@@ -328,7 +453,7 @@ function TodayScoreWidget({
     <GlassCard pad data-tour="requirements">
       <div className="panel-head">
         <div>
-          <div className="panel-title">Today's requirements</div>
+          <div className="panel-title">Today's targets</div>
           <div className="panel-sub">Only the signals you selected for {prettyDate(`${activeDayKey}T12:00:00`)}</div>
         </div>
         <a className="gbtn sm" href="#productivity">Adjust</a>
