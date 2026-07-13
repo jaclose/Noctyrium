@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { calculateReadiness } from "../../lib/energy";
 import { makeSeed } from "../../lib/seed";
@@ -44,12 +44,102 @@ describe("CommandBrief recommendation provenance", () => {
     render(<CommandBrief />);
 
     expect(screen.getByRole("heading", { name: "Command Brief" })).toBeTruthy();
-    expect(screen.getByText("AXOM is learning your current workload.")).toBeTruthy();
-    expect(screen.getByRole("list", { name: "Command Brief evidence readiness" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Add or import workload" }).getAttribute("href")).toBe("#tracker");
+    expect(screen.getByText("Add one real piece of work")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Command Brief starter checklist" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /open course tracker/i }).getAttribute("href")).toBe("#tracker");
+    expect(screen.getByRole("link", { name: /set today’s focus/i }).getAttribute("href")).toBe("#dashboard");
+    expect(screen.getByRole("link", { name: /open productivity/i }).getAttribute("href")).toBe("#productivity");
+    expect(screen.getByRole("link", { name: /open question bank/i }).getAttribute("href")).toBe("#questions");
+    expect(screen.queryByRole("button", { name: "Use Command Brief now" })).toBeNull();
     expect(screen.queryByText("Next best move")).toBeNull();
     expect(screen.queryByText(/Minimum viable win/i)).toBeNull();
     expect(screen.queryByText(/Since yesterday/i)).toBeNull();
+  });
+
+  it("updates the starter checklist immediately and transitions after one action plus today context", async () => {
+    render(<CommandBrief />);
+
+    await act(() => useStore.getState().addTask("Review renal physiology", "2026-07-13", "Renal"));
+    const workRow = screen.getByText("Add or import one real study item").closest("li");
+    expect(workRow).toBeTruthy();
+    expect(within(workRow!).getByText("Ready")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use Command Brief now" })).toBeTruthy();
+    expect(screen.queryByText("Next best move")).toBeNull();
+
+    await act(() => useStore.getState().setDayPlan("2026-07-12", "Finish the renal review", []));
+    expect(screen.queryByRole("list", { name: "Command Brief starter checklist" })).toBeNull();
+    expect(screen.getByText("Current state")).toBeTruthy();
+    expect(screen.getByText("Next best move")).toBeTruthy();
+    expect(screen.getByText("Review renal physiology")).toBeTruthy();
+  });
+
+  it("marks intention and activity independently without converting seed data into evidence", async () => {
+    render(<CommandBrief />);
+
+    await act(() => useStore.getState().setDayPlan("2026-07-12", "Protect one focused block", []));
+    const intentionRow = screen.getByText("Set today’s intention").closest("li");
+    expect(intentionRow).toBeTruthy();
+    expect(within(intentionRow!).getByText("Ready")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use Command Brief now" })).toBeTruthy();
+
+    await act(() => useStore.getState().logActivity({ label: "Renal review", minutes: 20 }));
+    const activityRow = screen.getByText("Start a timer or log an activity").closest("li");
+    expect(activityRow).toBeTruthy();
+    expect(within(activityRow!).getByText("Ready")).toBeTruthy();
+    expect(screen.queryByText("Next best move")).toBeNull();
+  });
+
+  it("supports an explicit, inspectable limited-confidence activation", async () => {
+    render(<CommandBrief />);
+    await act(() => useStore.getState().addTask("Submit the anatomy worksheet", "2026-07-12", "Anatomy"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Use Command Brief now" }));
+
+    expect(screen.getByText("Limited confidence")).toBeTruthy();
+    expect(screen.getByText("Submit the anatomy worksheet")).toBeTruthy();
+    fireEvent.click(screen.getByText("Why this suggestion?"));
+    expect(screen.getByRole("list", { name: "Suggestion evidence" })).toBeTruthy();
+  });
+
+  it("uses the canonical target selector and Daily Check-In context in the rendered brief", () => {
+    const current = useStore.getState();
+    useStore.setState({
+      profile: {
+        ...current.profile,
+        dailySuccess: {
+          version: 1,
+          configuredAt: "2026-07-12",
+          requirements: [{
+            id: "questions-target",
+            label: "Practice questions",
+            enabled: true,
+            source: { kind: "practice-questions" },
+            weight: 1,
+            target: 10,
+            unit: "questions",
+            schedule: { kind: "daily" },
+            trackingStartsAt: "2026-07-12",
+            createdAt: "2026-07-12T08:00:00.000Z",
+            updatedAt: "2026-07-12T08:00:00.000Z",
+          }],
+        },
+      },
+      dayPlans: [{
+        dayKey: "2026-07-12",
+        intention: "Protect one focused block",
+        wins: [],
+        expectedStudyMinutes: 20,
+        createdAt: "2026-07-12T08:00:00.000Z",
+      }],
+    });
+
+    render(<CommandBrief />);
+
+    expect(screen.getByText("Complete Practice questions")).toBeTruthy();
+    expect(screen.getByText("~20 min · Today’s targets")).toBeTruthy();
+    fireEvent.click(screen.getByText("Why this suggestion?"));
+    expect(screen.getByText(/Scheduled target: 0 of 10 questions/)).toBeTruthy();
+    expect(screen.getByText(/Sized to the planned 20-minute block/)).toBeTruthy();
   });
 
   it("explains the threshold, calculation, unchanged data, and user overrides", () => {

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
 import { prefersReducedMotion } from "../../lib/motion";
 import {
@@ -69,6 +70,7 @@ export function GuidedTour({
   targetAttribute = "data-tour",
   skipLabel = "Skip guided tour",
   progressLabel = "Guided tour progress",
+  restoreScrollOnExit = false,
 }: {
   onExit: (reason: TourExitReason) => void;
   onNavigate: (route: string) => void;
@@ -78,6 +80,7 @@ export function GuidedTour({
   targetAttribute?: "data-tour" | "data-module-tour";
   skipLabel?: string;
   progressLabel?: string;
+  restoreScrollOnExit?: boolean;
 }) {
   const [index, setIndex] = useState(() => persistProgress ? readTourStep(steps.length) : 0);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -85,20 +88,33 @@ export function GuidedTour({
   const tipRef = useRef<HTMLDivElement>(null);
   const exitRef = useRef(onExit);
   const navigateRef = useRef(onNavigate);
+  const scrollSnapshotRef = useRef<ScrollSnapshot | null>(null);
   const titleId = useId();
   const bodyId = useId();
   const step = steps[index] ?? steps[0];
 
   useEffect(() => { exitRef.current = onExit; }, [onExit]);
   useEffect(() => { navigateRef.current = onNavigate; }, [onNavigate]);
+  useLayoutEffect(() => {
+    if (!restoreScrollOnExit) return;
+    const snapshot = captureScrollSnapshot();
+    scrollSnapshotRef.current = snapshot;
+    return () => {
+      restoreScrollSnapshot(snapshot);
+      if (scrollSnapshotRef.current === snapshot) scrollSnapshotRef.current = null;
+    };
+  }, [restoreScrollOnExit]);
   useEffect(() => {
     if (persistProgress) writeTourStep(index);
   }, [index, persistProgress]);
 
   const exitTour = useCallback((reason: TourExitReason) => {
     if (persistProgress) clearTourProgress();
+    if (restoreScrollOnExit && scrollSnapshotRef.current) {
+      restoreScrollSnapshot(scrollSnapshotRef.current);
+    }
     exitRef.current(reason);
-  }, [persistProgress]);
+  }, [persistProgress, restoreScrollOnExit]);
 
   useEffect(() => {
     if (currentRoute !== step.route) {
@@ -120,7 +136,11 @@ export function GuidedTour({
       const element = document.querySelector(`[${targetAttribute}="${step.target}"]`) as HTMLElement | null;
       if (!element) return;
       if (!scrolled) {
-        element.scrollIntoView?.({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+        revealTarget(
+          element,
+          prefersReducedMotion() ? "auto" : "smooth",
+          restoreScrollOnExit ? scrollSnapshotRef.current : null,
+        );
         scrolled = true;
       }
       const nextRect = element.getBoundingClientRect();
@@ -149,7 +169,7 @@ export function GuidedTour({
       window.removeEventListener("resize", onMove, true);
       window.removeEventListener("scroll", onMove, true);
     };
-  }, [currentRoute, index, step.route, step.target, targetAttribute]);
+  }, [currentRoute, index, restoreScrollOnExit, step.route, step.target, targetAttribute]);
 
   useEffect(() => {
     tipRef.current?.focus();
@@ -202,7 +222,7 @@ export function GuidedTour({
   const hasSpotlight = ready && onScreen;
   const tooltip = tooltipStyle(rect);
 
-  return (
+  const overlay = (
     <div className="tour-overlay">
       {hasSpotlight ? <Spotlight rect={rect!} /> : <div className="tour-haze" aria-hidden="true" />}
       {hasSpotlight && <div className="tour-ring" style={ringStyle(rect!)} aria-hidden="true" />}
@@ -246,13 +266,18 @@ export function GuidedTour({
       </div>
     </div>
   );
+
+  // Module tours are rendered from inside a scrolling page. Portalling the
+  // fixed overlay keeps it rooted to the viewport instead of any transformed
+  // or clipped page ancestor, and React removes the portal on every exit path.
+  return typeof document === "undefined" ? overlay : createPortal(overlay, document.body);
 }
 
 function Spotlight({ rect }: { rect: DOMRect }) {
-  const top = Math.max(0, rect.top - PAD);
-  const left = Math.max(0, rect.left - PAD);
-  const right = rect.right + PAD;
-  const bottom = rect.bottom + PAD;
+  const top = clamp(rect.top - PAD, 0, window.innerHeight);
+  const left = clamp(rect.left - PAD, 0, window.innerWidth);
+  const right = clamp(rect.right + PAD, left, window.innerWidth);
+  const bottom = clamp(rect.bottom + PAD, top, window.innerHeight);
   return (
     <>
       <div className="tour-panel" style={{ top: 0, left: 0, right: 0, height: top }} aria-hidden="true" />
@@ -264,11 +289,15 @@ function Spotlight({ rect }: { rect: DOMRect }) {
 }
 
 function ringStyle(rect: DOMRect): React.CSSProperties {
+  const top = clamp(rect.top - PAD, 0, window.innerHeight);
+  const left = clamp(rect.left - PAD, 0, window.innerWidth);
+  const right = clamp(rect.right + PAD, left, window.innerWidth);
+  const bottom = clamp(rect.bottom + PAD, top, window.innerHeight);
   return {
-    top: rect.top - PAD,
-    left: rect.left - PAD,
-    width: rect.width + PAD * 2,
-    height: rect.height + PAD * 2,
+    top,
+    left,
+    width: right - left,
+    height: bottom - top,
   };
 }
 
@@ -288,4 +317,95 @@ function focusableElements(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
   )].filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
+}
+
+interface ScrollPosition {
+  left: number;
+  top: number;
+}
+
+interface ScrollSnapshot {
+  elements: Map<Element, ScrollPosition>;
+  window: ScrollPosition;
+}
+
+function captureScrollSnapshot(): ScrollSnapshot {
+  const elements = new Map<Element, ScrollPosition>();
+  const remember = (element: Element | null) => {
+    if (!element || elements.has(element)) return;
+    elements.set(element, {
+      left: (element as HTMLElement).scrollLeft,
+      top: (element as HTMLElement).scrollTop,
+    });
+  };
+  remember(document.scrollingElement);
+  document.querySelectorAll(".surface-scroll").forEach(remember);
+  return {
+    elements,
+    window: { left: window.scrollX, top: window.scrollY },
+  };
+}
+
+function rememberScrollableAncestors(element: HTMLElement, snapshot: ScrollSnapshot | null) {
+  if (!snapshot) return;
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    if (isScrollContainer(ancestor) && !snapshot.elements.has(ancestor)) {
+      snapshot.elements.set(ancestor, { left: ancestor.scrollLeft, top: ancestor.scrollTop });
+    }
+    ancestor = ancestor.parentElement;
+  }
+}
+
+function restoreScrollSnapshot(snapshot: ScrollSnapshot) {
+  snapshot.elements.forEach((position, element) => {
+    if (!(element instanceof HTMLElement) || !element.isConnected) return;
+    // Assigning the offsets cancels any pending smooth scroll before restoring
+    // the exact position, without introducing body/document style mutations.
+    element.scrollLeft = position.left;
+    element.scrollTop = position.top;
+  });
+  if (window.scrollX !== snapshot.window.left || window.scrollY !== snapshot.window.top) {
+    window.scrollTo({ left: snapshot.window.left, top: snapshot.window.top, behavior: "auto" });
+  }
+}
+
+function revealTarget(element: HTMLElement, behavior: ScrollBehavior, snapshot: ScrollSnapshot | null) {
+  rememberScrollableAncestors(element, snapshot);
+  const owner = nearestScrollContainer(element);
+  if (!owner) {
+    element.scrollIntoView?.({ block: "center", inline: "nearest", behavior });
+    return;
+  }
+
+  const ownerRect = owner.getBoundingClientRect();
+  const targetRect = element.getBoundingClientRect();
+  const centeredTop = owner.scrollTop
+    + targetRect.top - ownerRect.top
+    - Math.max(0, (owner.clientHeight - targetRect.height) / 2);
+  const maxTop = Math.max(0, owner.scrollHeight - owner.clientHeight);
+  owner.scrollTo({
+    top: clamp(centeredTop, 0, maxTop),
+    left: owner.scrollLeft,
+    behavior,
+  });
+}
+
+function nearestScrollContainer(element: HTMLElement): HTMLElement | null {
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    if (isScrollContainer(ancestor)) return ancestor;
+    ancestor = ancestor.parentElement;
+  }
+  return null;
+}
+
+function isScrollContainer(element: HTMLElement): boolean {
+  if (element.classList.contains("surface-scroll")) return true;
+  const overflowY = window.getComputedStyle(element).overflowY;
+  return overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay";
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), maximum);
 }

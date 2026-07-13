@@ -48,6 +48,8 @@ export const STORAGE_KEYS = {
   quotePreferences: "axom.quotes.preferences.v1",
   /** Small device-only reminder ledger; contains date keys only, never journal content. */
   missedStandupReminder: "noctyrium-missed-standup-alert",
+  /** Daily check-in/closeout delivery state: date, status, and snooze timestamps only. */
+  dailyLoopReminders: "axom.daily-loop.reminders.v1",
   localBackupPrefix: "axom.backups.local.",
   aiGenerations: "axom.ai.generations",
   migrationFailure: "axom.storage.migrationFailure",

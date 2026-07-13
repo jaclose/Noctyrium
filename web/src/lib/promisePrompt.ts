@@ -10,7 +10,7 @@ export function promisePromptStatus(
   return { state, updatedAt: now.toISOString(), promptVersion: PROMISE_PROMPT_VERSION };
 }
 
-/** Pure eligibility rule; call only after the global guide exits. */
+/** Pure eligibility rule; call only at an explicit safe post-onboarding moment. */
 export function shouldOfferPromisePrompt(
   profile: Pick<Profile, "promise" | "promisePromptStatus">,
   now: Date = new Date(),
@@ -32,5 +32,9 @@ export function shouldOfferPromiseAfterGlobalTour(
   profile: Pick<Profile, "promise" | "promisePromptStatus">,
   now: Date = new Date(),
 ): boolean {
-  return (reason === "complete" || reason === "skip") && shouldOfferPromisePrompt(profile, now);
+  // Every way out of the *global* guide is a post-onboarding guide decision.
+  // Module tours never call this helper, so their Finish/Skip/Escape events
+  // remain completely separate from the one-time Promise presentation.
+  const isGlobalGuideDecision = reason === "complete" || reason === "skip" || reason === "escape";
+  return isGlobalGuideDecision && shouldOfferPromisePrompt(profile, now);
 }

@@ -53,7 +53,10 @@ export function assignDraftProvenancePages<T extends DraftWithProvenance>(drafts
     }
 
     const answerNeedle = draft.answerEvidenceSnippet ?? draft.answerEvidence;
-    const answerLocation = uniqueLocation(pages, answerNeedle);
+    // Numbered/labelled answer evidence is often intentionally short ("1. B"
+    // or "Answer: C"). Accept it only when it is still unique across every
+    // page; a bare repeated letter remains unattributed rather than guessed.
+    const answerLocation = uniqueLocation(pages, answerNeedle, 3);
     if (answerLocation) {
       draft.answerEvidencePage = answerLocation.page;
       draft.answerEvidenceSnippet ??= answerNeedle?.trim();
@@ -163,13 +166,13 @@ function bestQuestionNeedle(draft: DraftWithProvenance): string | undefined {
   return stem.length > 180 ? stem.slice(0, 180).trim() : stem;
 }
 
-function usefulNeedle(value: string | undefined): string | undefined {
+function usefulNeedle(value: string | undefined, minimumLength = 12): string | undefined {
   const normalized = value?.trim();
-  return normalized && normalized.length >= 12 ? normalized : undefined;
+  return normalized && normalized.length >= minimumLength ? normalized : undefined;
 }
 
-function uniqueLocation(pages: string[], needle: string | undefined): ExactLocation | undefined {
-  const value = usefulNeedle(needle);
+function uniqueLocation(pages: string[], needle: string | undefined, minimumLength = 12): ExactLocation | undefined {
+  const value = usefulNeedle(needle, minimumLength);
   if (!value) return undefined;
   let match: ExactLocation | undefined;
   let count = 0;

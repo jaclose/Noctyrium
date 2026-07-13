@@ -5,14 +5,14 @@
 // the same schema, always behind user review.
 // ===========================================================================
 import { useMemo, useState } from "react";
-import { Play, Zap, LifeBuoy, ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react";
+import { Play, Zap, LifeBuoy, ClipboardCheck, ChevronDown, ChevronUp, CheckCircle2, Circle, ArrowRight } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
   assessCommandBriefEvidence,
   buildCommandBrief,
   MODE_LABEL,
-  type BriefEvidenceCriterion,
   type BriefMode,
+  type BriefStarterDestination,
 } from "../../lib/commandBrief";
 import { detectRecoveryTriggers } from "../../lib/recovery";
 import { findLiveSession } from "../../lib/sessions";
@@ -22,6 +22,7 @@ import { CloseoutModal } from "./CloseoutModal";
 import { RecoveryPanel } from "./RecoveryPanel";
 import { explainLowEnergy, type ReadinessResult } from "../../lib/energy";
 import { gotoJournalDay } from "../../lib/uiStore";
+import { evaluateDailySuccess } from "../../lib/dailySuccess";
 
 const MODE_TONE: Record<BriefMode, "cyan" | "green" | "purple" | "orange" | "red" | "neutral"> = {
   maintain: "green",
@@ -38,6 +39,18 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const [showChanges, setShowChanges] = useState(false);
   const [showEnergyCalculation, setShowEnergyCalculation] = useState(false);
   const [energyPreviewDismissed, setEnergyPreviewDismissed] = useState(false);
+  const [manualActivation, setManualActivation] = useState(false);
+  const dailySuccess = useMemo(() => evaluateDailySuccess({
+    profile: s.profile,
+    logs: s.logs,
+    productivityTrackers: s.productivityTrackers,
+    habits: s.habits ?? [],
+    habitEntries: s.habitEntries ?? [],
+    closeouts: s.closeouts ?? [],
+    activeDayKey: s.activeDayKey,
+  }, s.activeDayKey, s.activeDayKey), [
+    s.profile, s.logs, s.productivityTrackers, s.habits, s.habitEntries, s.closeouts, s.activeDayKey,
+  ]);
 
   const evidence = useMemo(() => assessCommandBriefEvidence({
     courses: s.courses,
@@ -47,7 +60,17 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
     questions: s.questions ?? [],
     documents: s.documents ?? [],
     questionSets: s.questionSets ?? [],
-  }), [s.courses, s.tracker, s.logs, s.tasks, s.questions, s.documents, s.questionSets]);
+    activeDayKey: s.activeDayKey,
+    dayPlans: s.dayPlans ?? [],
+    sessions: s.sessions ?? [],
+    dailySuccess,
+    habits: s.habits ?? [],
+    habitEntries: s.habitEntries ?? [],
+    readiness,
+  }, { manualActivation }), [
+    s.courses, s.tracker, s.logs, s.tasks, s.questions, s.documents, s.questionSets,
+    s.activeDayKey, s.dayPlans, s.sessions, s.habits, s.habitEntries, dailySuccess, readiness, manualActivation,
+  ]);
   const brief = useMemo(
     () => evidence.ready ? buildCommandBrief({
       tasks: s.tasks,
@@ -59,8 +82,16 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
       closeouts: s.closeouts ?? [],
       questions: s.questions ?? [],
       ankiCards: s.ankiCards ?? [],
+      dayPlans: s.dayPlans ?? [],
+      dailySuccess,
+      habits: s.habits ?? [],
+      habitEntries: s.habitEntries ?? [],
+      readiness,
     }) : null,
-    [evidence.ready, s.tasks, s.tracker, s.logs, s.boardPrep, s.activeDayKey, s.sessions, s.closeouts, s.questions, s.ankiCards],
+    [
+      evidence.ready, s.tasks, s.tracker, s.logs, s.boardPrep, s.activeDayKey, s.sessions,
+      s.closeouts, s.questions, s.ankiCards, s.dayPlans, dailySuccess, s.habits, s.habitEntries, readiness,
+    ],
   );
   const recovery = useMemo(() => brief ? detectRecoveryTriggers(brief.signals) : null, [brief]);
   const recoveryDismissedToday = (s.recoveryPlans ?? []).some((plan) =>
@@ -70,8 +101,16 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   const liveSession = findLiveSession(s.sessions ?? []);
   const todayCloseout = closeoutForDay(s.closeouts ?? [], s.activeDayKey);
 
-  if (!brief) return <CommandBriefLearningState evidence={evidence} />;
+  if (!brief) {
+    return (
+      <CommandBriefLearningState
+        evidence={evidence}
+        onManualActivation={() => setManualActivation(true)}
+      />
+    );
+  }
   const readyBrief = brief;
+  const limitedConfidence = evidence.activation === "manual";
 
   function begin(kind: "move" | "mvw") {
     const target = kind === "move" ? readyBrief.move : undefined;
@@ -103,8 +142,11 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
           <div className="row" style={{ gap: 10 }}>
             <span className="h-section">Command Brief</span>
             <Tag tone={MODE_TONE[brief.mode]}>{MODE_LABEL[brief.mode]}</Tag>
+            {limitedConfidence && <Tag tone="orange">Limited confidence</Tag>}
           </div>
-          <div className="sub" style={{ maxWidth: 640 }}>{brief.modeReason}</div>
+          <div className="sub" style={{ maxWidth: 640 }}>
+            {limitedConfidence ? `${brief.modeReason} AXOM is using only the evidence currently available.` : brief.modeReason}
+          </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
           {recovery?.triggered && !recoveryDismissedToday && (
@@ -175,7 +217,20 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
                   {brief.move.contributions?.map((contribution) => (
                     <li key={contribution.id}>
                       <span>{contribution.label}</span>
-                      <small>{contribution.sourceLabel} · +{contribution.weight}</small>
+                      <small>{contribution.sourceLabel} · {contribution.weight >= 0 ? "+" : ""}{contribution.weight}</small>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {limitedConfidence && evidence.rankedEvidence.length > 0 && (
+              <>
+                <div className="brief-evidence-score">Available evidence</div>
+                <ul aria-label="Available limited-confidence evidence">
+                  {evidence.rankedEvidence.slice(0, 5).map((item) => (
+                    <li key={item.id}>
+                      <span>{item.label}</span>
+                      <small>{item.sourceLabel} · {item.count}</small>
                     </li>
                   ))}
                 </ul>
@@ -230,42 +285,122 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
   );
 }
 
-function CommandBriefLearningState({ evidence }: { evidence: ReturnType<typeof assessCommandBriefEvidence> }) {
+function CommandBriefLearningState({
+  evidence,
+  onManualActivation,
+}: {
+  evidence: ReturnType<typeof assessCommandBriefEvidence>;
+  onManualActivation: () => void;
+}) {
+  const readyIds = new Set(evidence.rankedEvidence.map((item) => item.id));
+  const checklist: StarterChecklistItem[] = [
+    {
+      id: "work",
+      title: "Add or import one real study item",
+      explanation: "Gives AXOM concrete work it can rank; shipped examples never count.",
+      ready: evidence.workload.ready,
+      label: evidence.starter?.actionLabel ?? "Open Course Tracker",
+      destination: evidence.starter?.destination ?? "tracker",
+    },
+    {
+      id: "intention",
+      title: "Set today’s intention",
+      explanation: "Adds the outcome you want AXOM to protect today.",
+      ready: readyIds.has("day-intention"),
+      label: "Set today’s focus",
+      destination: "dashboard",
+      focusSelector: '[data-tour="intention"] input',
+    },
+    {
+      id: "activity",
+      title: "Start a timer or log an activity",
+      explanation: "Adds current context without requiring a placeholder task.",
+      ready: readyIds.has("focus-session") || readyIds.has("activity-log"),
+      label: "Open Productivity",
+      destination: "productivity",
+    },
+    {
+      id: "practice",
+      title: "Optional: import or answer practice questions",
+      explanation: "Trusted due questions can become a grounded review action.",
+      ready: readyIds.has("question-practice") || readyIds.has("due-questions") || readyIds.has("trusted-questions"),
+      label: "Open Question Bank",
+      destination: "questions",
+      optional: true,
+    },
+  ];
+  const completed = checklist.filter((item) => item.ready && !item.optional).length;
+
   return (
     <GlassCard className="brief brief-learning" data-tour="command-brief">
       <div className="row wrap gap8">
         <h2 className="h-section" style={{ margin: 0 }}>Command Brief</h2>
         <Tag tone="neutral">Learning</Tag>
       </div>
-      <p className="brief-learning-title">AXOM is learning your current workload.</p>
-      <p className="sub">Recommendations stay neutral until your workspace has enough real evidence. Examples and starter records are excluded.</p>
-      <ul className="brief-evidence-list" aria-label="Command Brief evidence readiness" data-tour="recommendation-provenance">
-        <EvidenceItem criterion={evidence.workload} />
-        <EvidenceItem criterion={evidence.activeItems} />
-        <EvidenceItem criterion={evidence.activity} />
+      <p className="brief-learning-title">{evidence.starter?.title ?? "AXOM is learning your current workload."}</p>
+      <p className="sub">{evidence.starter?.explanation ?? "Recommendations stay neutral until your workspace has real evidence."}</p>
+      <div className="sr-only" role="status" aria-live="polite">{completed} of 3 setup signals ready</div>
+      <ul className="brief-starter-list" aria-label="Command Brief starter checklist" data-tour="recommendation-provenance">
+        {checklist.map((item) => <StarterChecklistRow key={item.id} item={item} />)}
       </ul>
-      <div className="row wrap gap8 brief-learning-actions">
-        <a className="gbtn primary sm" href="#tracker">Add or import workload</a>
-        <a className="gbtn sm" href="#productivity">Log activity</a>
-        <a className="gbtn sm" href="#tasks">Add a task</a>
-      </div>
+      {evidence.canActivateManually && (
+        <div className="brief-manual-activation">
+          <div>
+            <b>Want a first recommendation now?</b>
+            <p>{evidence.manualActivationReason}</p>
+          </div>
+          <GButton size="sm" onClick={onManualActivation}>Use Command Brief now</GButton>
+        </div>
+      )}
     </GlassCard>
   );
 }
 
-function EvidenceItem({ criterion }: { criterion: BriefEvidenceCriterion }) {
+interface StarterChecklistItem {
+  id: string;
+  title: string;
+  explanation: string;
+  ready: boolean;
+  label: string;
+  destination: BriefStarterDestination | "dashboard";
+  focusSelector?: string;
+  optional?: boolean;
+}
+
+function StarterChecklistRow({ item }: { item: StarterChecklistItem }) {
+  const descriptionId = `brief-starter-${item.id}-description`;
+
+  function queueFocus() {
+    if (!item.focusSelector) return;
+    window.setTimeout(() => {
+      const target = document.querySelector<HTMLElement>(item.focusSelector!);
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      target?.focus({ preventScroll: true });
+    }, 0);
+  }
+
   return (
-    <li className={criterion.ready ? "ready" : "needed"}>
-      {criterion.ready
+    <li className={item.ready ? "ready" : "needed"}>
+      {item.ready
         ? <CheckCircle2 size={16} aria-hidden="true" />
         : <Circle size={16} aria-hidden="true" />}
       <div>
         <div className="spread gap8">
-          <b>{criterion.label}</b>
-          <span>{criterion.ready ? "Ready" : `${criterion.count}/${criterion.required}`}</span>
+          <b>{item.title}</b>
+          <span>{item.ready ? "Ready" : item.optional ? "Optional" : "Next"}</span>
         </div>
-        <small>{criterion.explanation}</small>
+        <small id={descriptionId}>{item.explanation}</small>
       </div>
+      {!item.ready && (
+        <a
+          className="brief-starter-action"
+          href={`#${item.destination}`}
+          aria-describedby={descriptionId}
+          onClick={queueFocus}
+        >
+          {item.label}<ArrowRight size={13} aria-hidden="true" />
+        </a>
+      )}
     </li>
   );
 }

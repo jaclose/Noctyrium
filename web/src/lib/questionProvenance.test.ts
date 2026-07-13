@@ -31,6 +31,23 @@ describe("question provenance", () => {
     expect(draft.sourceSnippet).toBe("legacy combined source remains intact");
   });
 
+  it("attributes a raw labelled explanation span on a later page", () => {
+    const rawExplanation = "2. Rationale: Th1 cells activate macrophages through interferon gamma.";
+    const draft: DraftWithProvenance = {
+      stem: "Which cell coordinates the delayed response in this patient?",
+      options: [{ key: "A", text: "B cell" }, { key: "B", text: "Th1 cell" }],
+      explanation: "Th1 cells activate macrophages through interferon gamma.",
+      explanationSourceSnippet: rawExplanation,
+    };
+    assignDraftProvenancePages([draft], [
+      `${draft.stem}\nA. B cell\nB. Th1 cell`,
+      "Answer key\n2. B",
+      `Explanations\n${rawExplanation}`,
+    ]);
+    expect(draft.explanationSourcePage).toBe(3);
+    expect(draft.explanationSourceSnippet).toBe(rawExplanation);
+  });
+
   it("leaves an ambiguous question page unset instead of choosing the first match", () => {
     const repeated = "Which of the following findings best supports the diagnosis in this patient?";
     const draft: DraftWithProvenance = { stem: repeated, options: [{ key: "A", text: "Alpha" }] };
@@ -38,6 +55,27 @@ describe("question provenance", () => {
     expect(draft.questionSourcePage).toBeUndefined();
     expect(draft.sourcePage).toBeUndefined();
     expect(draft.questionSourceSnippet).toBeUndefined();
+  });
+
+  it("attributes short answer-key evidence only when its page occurrence is unique", () => {
+    const unique: DraftWithProvenance = {
+      stem: "A sufficiently long and unique sanitized question stem?",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      answerEvidenceSnippet: "1. B",
+    };
+    assignDraftProvenancePages([unique], [
+      "A sufficiently long and unique sanitized question stem?\nA. Alpha\nB. Beta",
+      "Answer key\n1. B",
+    ]);
+    expect(unique.answerEvidencePage).toBe(2);
+
+    const ambiguous: DraftWithProvenance = {
+      stem: "Another sufficiently long and unique sanitized question stem?",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      answerEvidenceSnippet: "1. B",
+    };
+    assignDraftProvenancePages([ambiguous], ["1. B\nQuestion page", "Answer key\n1. B"]);
+    expect(ambiguous.answerEvidencePage).toBeUndefined();
   });
 
   it("returns exact grounded candidates without inventing an unanchored fallback", () => {

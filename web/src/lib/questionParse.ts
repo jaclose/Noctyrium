@@ -13,7 +13,10 @@
 // left blank with a visible warning and a needs-review flag.
 // ===========================================================================
 import type { ExtractionConfidence, QuestionOption } from "./questions";
-import { cleanExplanationText } from "./questionExplanation";
+import {
+  sanitizeExplanationCandidate,
+  type ExplanationCleanupOperation,
+} from "./questionExplanation";
 
 export interface ParsedQuestionDraft {
   stem: string;
@@ -52,6 +55,10 @@ export interface ParsedQuestionDraft {
   /** Source-authored explanation excerpt, separate from the question block. */
   explanationSourceSnippet?: string;
   explanationSourcePage?: number;
+  /** Raw candidate retained so deterministic cleanup remains auditable. */
+  explanationRawCandidate?: string;
+  /** Stable operations applied to the raw candidate before display. */
+  explanationCleanupOperations?: ExplanationCleanupOperation[];
   /** Stable, inspectable rules that contributed to this mapping. */
   parserRuleIds?: string[];
   /** Numeric 0..1 confidence for each parser stage. */
@@ -72,6 +79,8 @@ export interface AnswerSectionEntry {
   /** Answer text that must be matched against this question's options. */
   answerText?: string;
   explanation?: string;
+  /** Exact numbered explanation entry, distinct from answer-key evidence. */
+  explanationEvidence?: string;
   /** Exact numbered entry from the source answer section. */
   evidence?: string;
 }
@@ -92,7 +101,7 @@ export interface ImportMappingDiagnostic {
 }
 
 /** Lines like "A. text", "B) text", "(C) text", "d - text". */
-const OPTION_RE = /^\s*\(?([A-Ha-h])[).:\-–]\s+(.*\S)\s*$/;
+const OPTION_RE = /^\s*\(?\s*([A-Ha-h])\s*(?:\)\s*[.:\-–]?|[.:\-–])\s+(.*\S)\s*$/;
 /** Feedback/explanation/objective markers that begin a NON-option content block.
  * Capturing group 1 is the marker keyword so callers can classify it. */
 const EXPLANATION_RE = /^\s*(correct\s+feedback|incorrect\s+feedback|feedback|answer\s+explanation|explanation|rationale|discussion|teaching\s+point|key\s+concept|why)\s*[:\-–]/i;
@@ -124,20 +133,25 @@ interface AnswerSignal {
 
 const ANSWER_PREFIX_RE = /^\s*(?:(?:the\s+)?(?:correct\s+|right\s+)?answer|(?:correct|right)\s+(?:option|choice)|(?:correct\s+)?ans|correct|key|solution)\s*(?:is)?\s*[:\-–]?\s*(.+?)\s*$/i;
 
+function isRationaleTail(value: string): boolean {
+  return /^(?:because|since|as\b|due\s+to\b|the\s+(?:mechanism|reason|finding|clue|pathway)\b|this\b|these\b|it\b)/i.test(value.trim());
+}
+
 /** Parse explicit answer lines without confusing answer text with explanation. */
 export function parseAnswerSignal(line: string): AnswerSignal | undefined {
   const match = line.match(ANSWER_PREFIX_RE);
   if (!match) return undefined;
   const payload = match[1].trim();
-  const punctuated = payload.match(/^\(?([A-Ha-h])\)?\s*[.):\-–]\s*(.*)$/);
-  const bare = payload.match(/^\(?([A-Ha-h])\)?\s*$/);
-  const spaced = payload.match(/^([A-Ha-h])\s+(.+)$/);
+  const normalizedPayload = payload.replace(/^\(\s*([A-Ha-h])\s*\)/, "($1)");
+  const punctuated = normalizedPayload.match(/^\(?([A-Ha-h])\)?\s*[.):\-–—]\s*(.*)$/);
+  const bare = normalizedPayload.match(/^\(?([A-Ha-h])\)?\s*$/);
+  const spaced = normalizedPayload.match(/^([A-Ha-h])\s+(.+)$/);
   const letter = punctuated ?? bare;
   if (!letter && spaced) {
     const key = spaced[1].toUpperCase();
     const tail = spaced[2].trim();
     // "Answer: B because ..." is an unambiguous letter plus rationale.
-    if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) {
+    if (isRationaleTail(tail)) {
       return { key, rationale: tail, ruleId: "answer.explicit-letter-rationale", evidence: line.trim(), payload };
     }
     // Otherwise the leading letter belongs to answer text until an exact,
@@ -155,7 +169,7 @@ export function parseAnswerSignal(line: string): AnswerSignal | undefined {
   const key = letter[1].toUpperCase();
   const tail = (letter[2] ?? "").trim();
   if (!tail) return { key, ruleId: "answer.explicit-letter", evidence: line.trim(), payload };
-  if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) {
+  if (isRationaleTail(tail)) {
     return { key, rationale: tail, ruleId: "answer.explicit-letter-rationale", evidence: line.trim(), payload };
   }
   return {
@@ -174,6 +188,7 @@ function comparableAnswerText(value: string): string {
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/^\(?[a-h]\)?[).:\-–]\s*/i, "")
+    .replace(/\s*([+/%])\s*/g, "$1")
     .replace(/\s+/g, " ")
     .replace(/[\s.,;:!?]+$/g, "")
     .trim();
@@ -234,6 +249,10 @@ export function normalizeSourceText(raw: string): string {
     .replace(/[\u00a0\u2007\u202f]/g, " ") // nbsp variants -> space
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
+    .replace(/^[ \t]*a[ \t]+n[ \t]+s[ \t]+w[ \t]+e[ \t]+r[ \t]+k[ \t]+e[ \t]+y[ \t]*[:\-–]?[ \t]*$/gim, "Answer Key:")
+    .replace(/^[ \t]*e[ \t]+x[ \t]+p[ \t]+l[ \t]+a[ \t]+n[ \t]+a[ \t]+t[ \t]+i[ \t]+o[ \t]+n[ \t]*[:\-–]?[ \t]*/gim, "Explanation: ")
+    .replace(/^[ \t]*q[ \t]+u[ \t]+e[ \t]+s[ \t]+t[ \t]+i[ \t]+o[ \t]+n(?=[ \t]*(?:#|:|\d))/gim, "Question")
+    .replace(/^[ \t]*a[ \t]+n[ \t]+s[ \t]+w[ \t]+e[ \t]+r(?=[ \t]*[:\-–—])/gim, "Answer")
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")            // **bold** → bold
     .replace(/__([^_\n]+)__/g, "$1")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")              // Markdown headings
@@ -286,6 +305,7 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   const stemLines: string[] = [];
   const options: QuestionOption[] = [];
   const explanationLines: string[] = [];
+  const explanationCandidateLines: string[] = [];
   const objectiveLines: string[] = [];
   const referenceLines: string[] = [];
   const rationales: Record<string, string> = {};
@@ -302,8 +322,10 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   let phase: "stem" | "options" | "explanation" = "stem";
   let metadataFlow: "objective" | "reference" | undefined;
   let explanationMarkerDetected = false;
+  let malformedNextQuestionDetected = false;
 
-  for (const rawLine of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const rawLine = lines[lineIndex];
     // Strip a correct-marker decorating this line so the option regex can see
     // through it; remember the flag for the marker heuristic below.
     let line = rawLine;
@@ -366,19 +388,36 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       explanationMarkerDetected = true;
       parserRuleIds.add(`explanation.${explanationMatch[1].toLowerCase().replace(/\s+/g, "-")}`);
       const rest = line.replace(EXPLANATION_RE, "").trim();
+      explanationCandidateLines.push(line.trim());
       if (rest) explanationLines.push(rest);
       continue;
     }
     if (answerSignal && phase !== "stem") {
       answerSignals.push(answerSignal);
       parserRuleIds.add(answerSignal.ruleId);
-      if (answerSignal.rationale) explanationLines.push(answerSignal.rationale);
+      if (answerSignal.rationale) {
+        explanationLines.push(answerSignal.rationale);
+        explanationCandidateLines.push(line.trim());
+      }
       phase = "explanation";
       feedbackFlow = Boolean(answerSignal.rationale);
       metadataFlow = undefined;
       continue;
     }
-    if (optionMatch && (phase === "options" || isLikelyFirstOption(optionMatch[1], options))) {
+    // A malformed bare-number stem ("2 Next stem" without punctuation) is
+    // not promoted to a confident second question, but an A/B-backed boundary
+    // still stops it contaminating the current explanation.
+    if (phase === "explanation" && !metadataFlow
+      && looksLikeMalformedNumberedQuestion(lines, lineIndex)) {
+      malformedNextQuestionDetected = true;
+      parserRuleIds.add("question.malformed-boundary");
+      break;
+    }
+    // Once an explanation has begun, A.–E.-leading sentences are rationale
+    // prose, not a second option list. New questions are split by the outer
+    // numbered-boundary pass before this single-block parser runs.
+    if (optionMatch && phase !== "explanation"
+      && (phase === "options" || isLikelyFirstOption(optionMatch[1], options))) {
       phase = "options";
       const letter = optionMatch[1].toUpperCase();
       // CRITICAL FIX: strip any feedback/explanation glued to the choice so it
@@ -397,12 +436,14 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
         if (isCorrectFeedback(split.marker!)) {
           feedbackCorrectLetter = feedbackCorrectLetter ?? letter;
           explanationLines.push(split.feedback);
+          explanationCandidateLines.push(rawLine.trim());
           parserRuleIds.add("answer.correct-feedback");
         } else if (isIncorrectFeedback(split.marker!)) {
           rationales[letter] = split.feedback;
           parserRuleIds.add("rationale.incorrect-feedback");
         } else {
           explanationLines.push(split.feedback);
+          explanationCandidateLines.push(rawLine.trim());
         }
         explanationMarkerDetected = true;
         feedbackFlow = true; // wrapped feedback continues on following lines
@@ -425,10 +466,12 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       // Feedback started on a prior option line — keep collecting it.
       if (feedbackFlow) {
         explanationLines.push(line.trim());
+        explanationCandidateLines.push(rawLine.trim());
       } else if (PROSE_ANSWER_RE.test(line)) {
         // "The answer is C because…" directly after options starts the explanation.
         phase = "explanation";
         explanationLines.push(line.trim());
+        explanationCandidateLines.push(rawLine.trim());
       } else {
         // Layer 2 by option TEXT: "Co-insurance Correct Feedback: …" (no letter).
         const textFeedback = line.match(/^(.*?\S)\s+((?:correct|incorrect)\s+feedback)\s*[:\-–]\s*(.*)$/i);
@@ -439,6 +482,7 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
           if (isCorrectFeedback(textFeedback[2])) feedbackCorrectLetter = feedbackCorrectLetter ?? matchedByText.key;
           else rationales[matchedByText.key] = textFeedback[3].trim();
           explanationLines.push(textFeedback[3].trim());
+          explanationCandidateLines.push(rawLine.trim());
           parserRuleIds.add(isCorrectFeedback(textFeedback[2]) ? "answer.correct-feedback-text-match" : "rationale.incorrect-feedback");
           explanationMarkerDetected = true;
           phase = "explanation";
@@ -452,14 +496,22 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     } else if (phase === "explanation") {
       if (metadataFlow === "objective") objectiveLines.push(line.trim());
       else if (metadataFlow === "reference") referenceLines.push(line.trim());
-      else explanationLines.push(line);
+      else {
+        explanationLines.push(line);
+        explanationCandidateLines.push(rawLine);
+      }
     }
   }
 
   const stem = stemLines.join("\n").trim();
   const rawExplanation = explanationLines.join("\n").trim() || undefined;
+  const explanationCandidate = explanationCandidateLines.join("\n").trim() || rawExplanation;
 
   let needsReview = false;
+  if (malformedNextQuestionDetected) {
+    warnings.push("A possible next question lacked a standard numbered delimiter — its content was not attached to this explanation.");
+    needsReview = true;
+  }
   if (!stem) {
     warnings.push("No question stem detected — paste the full question including the stem.");
   } else {
@@ -475,6 +527,12 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
   if (new Set(keys).size !== keys.length) {
     warnings.push("Duplicate option letters detected — review the split.");
     duplicateOptions = true;
+    needsReview = true;
+  }
+  const expectedKeys = keys.map((_, index) => String.fromCharCode(65 + index));
+  if (!duplicateOptions && keys.some((key, index) => key !== expectedKeys[index])) {
+    warnings.push("Option letters are missing or out of sequence — review the extracted choices.");
+    parserRuleIds.add("options.nonsequential");
     needsReview = true;
   }
 
@@ -522,7 +580,11 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
           needsReview = true;
         } else signalKey = textMatch.key;
       } else {
-        warnings.push(`Answer text "${signalAnswerText}" did not exactly match an option — review the mapping.`);
+        warnings.push(signalKey
+          ? `Answer letter "${signalKey}" is paired with text that did not match that option — left unset, needs review.`
+          : `Answer text "${signalAnswerText}" did not exactly match an option — review the mapping.`);
+        if (signalKey) structuredConflict = true;
+        signalKey = undefined;
         needsReview = true;
       }
     }
@@ -605,12 +667,13 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     needsReview = true;
   }
 
-  const explanation = cleanExplanationText(rawExplanation, { stem, options, correctKey }) || undefined;
+  const explanationCleanup = sanitizeExplanationCandidate(explanationCandidate, { stem, options, correctKey });
+  const explanation = explanationCleanup.cleanedText || undefined;
   if (rawExplanation && !explanation) {
     warnings.push("Explanation content contained only duplicated question structure or metadata and was removed.");
   }
 
-  const questionDetectionConfidence = boundedConfidence(
+  const questionDetectionConfidence = boundedConfidence(malformedNextQuestionDetected ? 0.55 :
     !stem ? (options.length ? 0.25 : 0.05)
       : options.length >= 3 && !duplicateOptions ? 0.96
         : options.length === 2 && !duplicateOptions ? 0.76
@@ -618,7 +681,9 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
             : 0.42,
   );
   const explanationDetectionConfidence = boundedConfidence(
-    explanation ? (explanationMarkerDetected ? 0.95 : 0.76) : 0,
+    explanation ? (explanationMarkerDetected
+      ? Math.max(0.95, explanationCleanup.confidence)
+      : explanationCleanup.confidence) : 0,
   );
   let overallImportConfidence = boundedConfidence(
     questionDetectionConfidence * 0.4
@@ -626,6 +691,7 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       + explanationDetectionConfidence * 0.2,
   );
   if (needsReview && answerDetectionConfidence <= 0.1) overallImportConfidence = Math.min(overallImportConfidence, 0.49);
+  else if (needsReview) overallImportConfidence = Math.min(overallImportConfidence, 0.84);
   if (correctKey && answerDetectionConfidence < 0.8) overallImportConfidence = Math.min(overallImportConfidence, 0.84);
   const confidence = categoricalConfidence(overallImportConfidence);
   const correctAnswerText = correctKey ? options.find((option) => option.key === correctKey)?.text : undefined;
@@ -664,7 +730,11 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
     sourceSnippet: sourceSnippet(raw),
     questionSourceSnippet: questionEvidence,
     answerEvidenceSnippet: answerEvidence,
-    explanationSourceSnippet: sourceSnippet(rawExplanation ?? ""),
+    explanationSourceSnippet: sourceSnippet(explanationCandidate ?? ""),
+    explanationRawCandidate: explanationCandidate,
+    explanationCleanupOperations: explanationCleanup.cleanupOperations.length
+      ? explanationCleanup.cleanupOperations
+      : undefined,
   };
 }
 
@@ -704,7 +774,7 @@ export function parseQuestionBlocks(raw: string): ParsedQuestionDraft[] {
   const lines = body.split("\n");
   const starts: number[] = [];
   lines.forEach((line, i) => {
-    if (matchQuestionStart(line)) starts.push(i);
+    if (matchQuestionStart(line) && looksLikeNumberedQuestion(lines, i)) starts.push(i);
   });
 
   let drafts: ParsedQuestionDraft[];
@@ -791,16 +861,35 @@ function markNumberedDraft(draft: ParsedQuestionDraft, originalBlock: string) {
 
 const KEY_HEADER_RE = /^\s*(answer\s*key|answers?(?:\s*(?:and|&)\s*(?:explanations?|rationales?))?|explanations?|solutions?)\s*[:\-–]?\s*$/im;
 /** Compressed pairs like "1. C", "2-B", "3) D", "Question 4: A", "5C". */
-const KEY_PAIR_RE = /(?:q(?:uestion)?\s*)?(\d{1,4})\s*[).:\-–]?\s*\(?([A-Ha-h])\)?(?![a-z0-9])/gi;
+const KEY_PAIR_RE = /(?:q(?:uestion)?\s*)?(\d{1,4})\s*[).:\-–—]?\s*\(?[ \t]*([A-Ha-h])[ \t]*\)?(?![a-z0-9])/gi;
 /** A numbered entry start inside an answer section: "1. …", "Question 3: …". */
 const ENTRY_START_RE = /^\s*(?:q(?:uestion)?\s*)?(\d{1,4})\s*(?:[).:\-–]\s*|\s+)(?=\S)/i;
-function parseAnswerSectionContent(content: string, evidence: string): AnswerSectionEntry {
-  const explicit = parseAnswerSignal(content);
+function parseAnswerSectionContent(
+  content: string,
+  evidence: string,
+  sectionIncludesExplanations = false,
+): AnswerSectionEntry {
+  const [head = "", ...tailLines] = content.split("\n");
+  const explicit = parseAnswerSignal(head) ?? parseAnswerSignal(`Answer: ${head}`);
   if (explicit) {
+    const continuation = tailLines.join("\n").trim();
+    const continuationIsExplanation = continuation
+      ? Boolean(continuation.match(EXPLANATION_RE) || isRationaleTail(continuation))
+      : false;
+    const answerText = explicit.answerText && !sectionIncludesExplanations && continuation && !continuationIsExplanation
+      ? `${explicit.answerText} ${continuation}`
+      : sectionIncludesExplanations ? undefined : explicit.answerText;
+    const explanation = [
+      explicit.rationale,
+      sectionIncludesExplanations ? explicit.answerText : undefined,
+      (sectionIncludesExplanations || continuationIsExplanation) ? continuation : undefined,
+    ]
+      .filter(Boolean).join("\n").trim() || undefined;
     return {
       letter: explicit.key,
-      answerText: explicit.answerText,
-      explanation: explicit.rationale,
+      answerText,
+      explanation,
+      explanationEvidence: explanation ? content : undefined,
       evidence,
     };
   }
@@ -808,13 +897,15 @@ function parseAnswerSectionContent(content: string, evidence: string): AnswerSec
   // A bare or punctuated letter is a key. A spaced phrase such as
   // "A rapid response" is answer text and is resolved only after the
   // corresponding question's options are available.
-  const punctuated = content.match(/^\(?([A-Ha-h])\)?\s*(?:[.,:;]|[—–-])\s*(.*)$/);
-  const bare = content.match(/^\(?([A-Ha-h])\)?\s*$/);
+  const punctuated = head.match(/^\(?\s*([A-Ha-h])\s*\)?\s*(?:[.,:;]|[—–-])\s*(.*)$/);
+  const bare = head.match(/^\(?\s*([A-Ha-h])\s*\)?\s*$/);
   const match = punctuated ?? bare;
   if (match) {
+    const explanation = [(match[2] ?? "").trim(), ...tailLines].filter(Boolean).join("\n").trim() || undefined;
     return {
       letter: match[1].toUpperCase(),
-      explanation: (match[2] ?? "").trim() || undefined,
+      explanation,
+      explanationEvidence: explanation ? content : undefined,
       evidence,
     };
   }
@@ -831,6 +922,7 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
   let body = text;
   let sectionText = "";
   let supplementalExplanationText = "";
+  let sectionIncludesExplanations = false;
 
   for (const headerMatch of headerMatches) {
     if (headerMatch.index === undefined) continue;
@@ -849,7 +941,7 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
       const content = line.slice(start[0].length).trim();
       return Boolean(
         parseAnswerSignal(content)?.key
-        || content.match(/^\(?[A-Ha-h]\)?(?:\s*$|\s*[.,:;—–-]\s*)/),
+        || content.match(/^\(?[ \t]*[A-Ha-h][ \t]*\)?(?:\s*$|\s*[.,:;—–-]\s*)/),
       );
     });
     const hasCompressedKey = candidateLines.some((line) => [...line.matchAll(KEY_PAIR_RE)].length > 1);
@@ -870,6 +962,7 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
       if (laterExplanation?.index !== undefined) {
         supplementalExplanationText = text.slice(laterExplanation.index + laterExplanation[0].length);
       }
+      sectionIncludesExplanations = /explanations?|rationales?/.test(headerLabel);
       body = text.slice(0, headerMatch.index);
       break;
     }
@@ -891,6 +984,12 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
     attachNumberedExplanations(entries, supplementalExplanationText);
     return { body, entries };
   };
+
+  const alignedTable = parseAlignedAnswerTable(sectionText);
+  if (alignedTable.size > 0) {
+    for (const [number, entry] of alignedTable) entries.set(number, entry);
+    return finish();
+  }
 
   // A compressed key on one physical line must be parsed pair-by-pair before
   // the numbered-entry parser can mistake it for one entry plus explanation.
@@ -926,7 +1025,11 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
       const num = Number(numMatch[1]);
       const content = [entryLines[0].slice(numMatch[0].length), ...entryLines.slice(1)].join("\n").trim();
 
-      const parsed = parseAnswerSectionContent(content, entryLines.join("\n").trim());
+      const parsed = parseAnswerSectionContent(
+        content,
+        entryLines.join("\n").trim(),
+        sectionIncludesExplanations,
+      );
       const proseMatch = content.match(PROSE_ANSWER_RE);
       // Cross-check: an explicit head letter vs prose letter in the same entry.
       const claims = [...new Set([parsed.letter, proseMatch?.[1]]
@@ -941,6 +1044,7 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
         entries.set(num, {
           letter: "?",
           explanation: existing.explanation ?? finalEntry.explanation,
+          explanationEvidence: existing.explanationEvidence ?? finalEntry.explanationEvidence,
           evidence: `${existing.evidence ?? ""}\n${finalEntry.evidence ?? ""}`.trim(),
         });
       } else if (!existing) {
@@ -965,12 +1069,58 @@ export function parseAnswerSections(text: string): { body: string; entries: Map<
   return finish();
 }
 
+/** PDF table extraction often emits one row of question numbers followed by
+ * one aligned row of answer letters. Only accept strict, equal-width rows;
+ * anything malformed stays unresolved instead of being guessed. */
+function parseAlignedAnswerTable(sectionText: string): Map<number, AnswerSectionEntry> {
+  const entries = new Map<number, AnswerSectionEntry>();
+  const lines = sectionText.split("\n").map((line) => line.trim()).filter(Boolean);
+  for (let index = 0; index + 1 < lines.length; index += 1) {
+    const numberTokens = lines[index].split(/[\s|,;]+/).filter(Boolean);
+    const numbers = numberTokens.map((token) => {
+      const match = token.match(/^(\d{1,4})[).:]?$/);
+      return match ? Number(match[1]) : undefined;
+    });
+    if (numbers.length < 2 || numbers.some((number) => number === undefined)) continue;
+
+    const letterTokens = lines[index + 1].split(/[\s|,;]+/).filter(Boolean);
+    const letters = letterTokens.map((token) => token.replace(/^\(\s*|\s*\)$/g, "").replace(/[).:]$/g, "").toUpperCase());
+    if (letters.length !== numbers.length || letters.some((letter) => !/^[A-H]$/.test(letter))) continue;
+
+    numbers.forEach((number, position) => {
+      const value = number!;
+      const letter = letters[position];
+      const evidence = `${numberTokens[position]} ${letterTokens[position]}`;
+      const existing = entries.get(value);
+      if (existing?.letter && existing.letter !== letter) {
+        entries.set(value, { letter: "?", evidence: `${existing.evidence ?? ""}\n${evidence}`.trim() });
+      } else if (!existing) {
+        entries.set(value, { letter, evidence });
+      }
+    });
+    index += 1;
+  }
+  return entries.size >= 2 ? entries : new Map();
+}
+
 function looksLikeNumberedQuestion(lines: string[], index: number): boolean {
   const start = matchQuestionStart(lines[index] ?? "");
   if (!start) return false;
   let optionCount = 0;
   for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
     if (matchQuestionStart(lines[cursor])) break;
+    if (OPTION_RE.test(lines[cursor])) optionCount += 1;
+    if (optionCount >= 2) return true;
+  }
+  return false;
+}
+
+function looksLikeMalformedNumberedQuestion(lines: string[], index: number): boolean {
+  const line = lines[index] ?? "";
+  if (matchQuestionStart(line) || !/^\s*\d{1,4}\s+\S/.test(line)) return false;
+  let optionCount = 0;
+  for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+    if (matchQuestionStart(lines[cursor]) || /^\s*\d{1,4}\s+\S/.test(lines[cursor])) break;
     if (OPTION_RE.test(lines[cursor])) optionCount += 1;
     if (optionCount >= 2) return true;
   }
@@ -995,6 +1145,7 @@ function attachNumberedExplanations(entries: Map<number, AnswerSectionEntry>, se
     entries.set(number, {
       ...(existing ?? {}),
       explanation: existing?.explanation ?? explanation,
+      explanationEvidence: existing?.explanationEvidence ?? entryLines.join("\n").trim(),
       evidence: existing?.evidence ?? entryLines.join("\n").trim(),
     });
   }
@@ -1040,6 +1191,24 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
           warnings: [...next.warnings.filter((item) => !/no correct answer/i.test(item)), warning],
         };
       }
+      if (entryLetter && entryLetter !== "?" && entryLetter !== textMatch.key) {
+        return {
+          ...next,
+          correctKey: undefined,
+          correctAnswerText: undefined,
+          answerEvidence: entry.evidence,
+          answerEvidenceSnippet: entry.evidence,
+          needsReview: true,
+          answerDetectionConfidence: 0.05,
+          overallImportConfidence: Math.min(next.overallImportConfidence ?? 1, 0.49),
+          confidence: "low",
+          parserRuleIds: [...new Set([...(next.parserRuleIds ?? []), "conflict.answer-section-letter-text"])],
+          warnings: [
+            ...next.warnings.filter((item) => !/no correct answer/i.test(item)),
+            `Conflict: answer letter "${entryLetter}" and attached answer text support different options — left unset, needs review.`,
+          ],
+        };
+      }
       entryLetter = textMatch.key;
       next.parserRuleIds = [...new Set([...(next.parserRuleIds ?? []), "answer.trailing-text-match"])];
     }
@@ -1055,10 +1224,15 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
         ? comparableAnswerText(optionText) === comparableAnswerText(entry.explanation)
         : false;
       if (!tailIsAnswerText) {
-        next.explanation = cleanExplanationText(entry.explanation, next) || undefined;
+        const cleanup = sanitizeExplanationCandidate(entry.explanation, next);
+        next.explanation = cleanup.cleanedText || undefined;
+        next.explanationRawCandidate = cleanup.rawCandidate;
+        next.explanationCleanupOperations = cleanup.cleanupOperations.length
+          ? cleanup.cleanupOperations
+          : undefined;
         next.explanationSource = next.explanation ? "answer-section" : undefined;
-        next.explanationSourceSnippet = next.explanation ? sourceSnippet(entry.explanation) : undefined;
-        if (next.explanation) next.explanationDetectionConfidence = 0.96;
+        next.explanationSourceSnippet = sourceSnippet(entry.explanationEvidence ?? entry.explanation);
+        if (next.explanation) next.explanationDetectionConfidence = Math.max(0.9, cleanup.confidence);
       }
     }
 
@@ -1131,7 +1305,7 @@ function refreshAnswerEntryDiagnostics(draft: ParsedQuestionDraft): ParsedQuesti
       + answerDetectionConfidence * 0.4
       + (draft.explanationDetectionConfidence ?? 0) * 0.2,
   );
-  const stillNeedsReview = warnings.some((warning) => /conflict|duplicate|doesn't match|no such option|no question stem|no answer options/i.test(warning));
+  const stillNeedsReview = warnings.some((warning) => /conflict|duplicate|doesn't match|no such option|no question stem|no answer options|missing or out of sequence/i.test(warning));
   if (stillNeedsReview) overallImportConfidence = Math.min(overallImportConfidence, 0.49);
   return {
     ...draft,

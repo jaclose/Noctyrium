@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useStore } from "../../lib/store";
 import { prefersReducedMotion } from "../../lib/motion";
+import { AxomWordmark } from "../ui/BrandMark";
 
 const PROMISE_TEXT_VERSION = "promise-of-use-v1";
 
@@ -113,7 +114,7 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
       rating: "Promise",
     });
     setStage("sealed");
-    doneTimerRef.current = window.setTimeout(() => onDoneRef.current(), reduceMotion ? 0 : 2800);
+    doneTimerRef.current = window.setTimeout(() => onDoneRef.current(), reduceMotion ? 0 : 1100);
   }
 
   return (
@@ -129,8 +130,12 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
 
       {stage !== "sealed" ? (
         <div className={`promise-paper ${stage === "sign" ? "open" : ""}`}>
-          <div className="promise-seal-mark">A</div>
-          <div className="promise-heading" id={titleId}>Promise of Use</div>
+          <header className="promise-contract-header">
+            <AxomWordmark size="lg" />
+            <span>A personal checkpoint</span>
+            <h2 id={titleId}>A promise to yourself</h2>
+            <p>A voluntary commitment to how you want to return to your work. This is not a legal contract.</p>
+          </header>
           <div className="promise-lines">
             {LINES.map((line, idx) => (
               <p key={line} className={`promise-line ${idx < shown ? "in" : ""} ${idx === LINES.length - 1 ? "accent" : ""}`}>{line}</p>
@@ -143,12 +148,15 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
                 <span>Sign your name</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoFocus />
               </label>
-              <div className="promise-oath">
-                <p>I promise to use this system as a place of return.</p>
-                <p>I promise to build with clarity instead of chaos.</p>
-                <p>I promise to become responsible for the life I say I want.</p>
-                <small>I make this promise to myself.</small>
-              </div>
+              <details className="promise-oath" open>
+                <summary>What I am promising</summary>
+                <div>
+                  <p>I promise to use this system as a place of return.</p>
+                  <p>I promise to build with clarity instead of chaos.</p>
+                  <p>I promise to become responsible for the life I say I want.</p>
+                  <small>I make this promise to myself.</small>
+                </div>
+              </details>
               <label className="promise-check">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
                 <span>I make this promise to myself.</span>
@@ -162,10 +170,13 @@ export function PromiseCutscene({ onDone }: { onDone: () => void }) {
         </div>
       ) : (
         <div className="promise-sealed">
-          <div className="promise-sealed-ring"><img src="./icon-192.png" alt="AXOM" /></div>
+          <AxomWordmark size="hero" className="promise-sealed-wordmark" />
           <div className="promise-sealed-title" id={titleId}>Promise made.</div>
-          <div className="promise-sealed-name">Contract signed. — {name.trim()}</div>
-          <div className="promise-sealed-sub">Begin.</div>
+          <div className="promise-sealed-signature" aria-label={`Signed by ${name.trim()}`}>
+            <span>{name.trim()}</span>
+            <svg viewBox="0 0 260 22" aria-hidden="true" focusable="false"><path d="M4 15c35-10 67-8 98-3 35 6 66 7 96-1 21-5 39-5 58-1" /></svg>
+          </div>
+          <div className="promise-sealed-sub">Saved to your local AXOM profile. Continue when you’re ready.</div>
         </div>
       )}
     </div>

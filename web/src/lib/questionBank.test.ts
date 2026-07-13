@@ -588,6 +588,88 @@ describe("answer-mapping regression safety", () => {
     expect(drafts.map((draft) => draft.explanationSource)).toEqual(["answer-section", "answer-section"]);
   });
 
+  it("associates labelled explanations after each question without absorbing the next stem", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Which cell coordinates delayed hypersensitivity?", "A. B cell", "B. Th1 cell", "C. Mast cell",
+      "Correct answer: B", "Rationale: Th1 cells activate macrophages in delayed hypersensitivity.",
+      "Learning Objective: Identify type IV hypersensitivity.", "",
+      "2. Which antibody fixes complement most efficiently?", "A. IgE", "B. IgA", "C. IgM",
+      "Answer: C", "Feedback: Pentameric IgM efficiently activates the classical complement pathway.",
+    ].join("\n"));
+
+    expect(drafts).toHaveLength(2);
+    expect(drafts.map((draft) => draft.explanation)).toEqual([
+      "Th1 cells activate macrophages in delayed hypersensitivity.",
+      "Pentameric IgM efficiently activates the classical complement pathway.",
+    ]);
+    expect(drafts[0].explanationRawCandidate).toBe("Rationale: Th1 cells activate macrophages in delayed hypersensitivity.");
+    expect(drafts[0].explanationCleanupOperations).toContain("remove-explanation-label");
+    expect(drafts[0].explanationSourceSnippet).not.toMatch(/Which antibody|A\. IgE/);
+    expect(drafts[0].objective).toBe("Identify type IV hypersensitivity.");
+  });
+
+  it("keeps A-E-leading rationale sentences out of the extracted option list", () => {
+    const [draft] = parseQuestionBlocks([
+      "1. Which marker is supported?", "A. Alpha", "B. Beta", "C. Gamma", "D. Delta",
+      "Answer: B", "Explanation:",
+      "A. common distraction is to choose Alpha.",
+      "B. Beta is supported by the stated observation.",
+      "C. Gamma would require a different finding.",
+    ].join("\n"));
+    expect(draft.options.map((option) => option.text)).toEqual(["Alpha", "Beta", "Gamma", "Delta"]);
+    expect(draft.explanation).toContain("A. common distraction");
+    expect(draft.explanation).toContain("B. Beta is supported");
+  });
+
+  it("normalizes an OCR-spaced Explanation label without altering its prose", () => {
+    const draft = parseQuestionText([
+      "Which marker?", "A. Alpha", "B. Beta", "C. Gamma", "Answer: B",
+      "E x p l a n a t i o n : Beta is supported by the finding.",
+    ].join("\n"));
+    expect(draft.explanation).toBe("Beta is supported by the finding.");
+    expect(draft.explanationRawCandidate).toBe("Explanation: Beta is supported by the finding.");
+    expect(draft.explanationCleanupOperations).toContain("remove-explanation-label");
+  });
+
+  it("cleans and audits labelled explanations on later trailing pages", () => {
+    const drafts = parseQuestionBlocks([
+      "1. First mechanism?", "A. Alpha", "B. Beta", "C. Gamma", "",
+      "2. Second mechanism?", "A. Alpha", "B. Beta", "C. Gamma", "",
+      "Answer key:", "1. B", "2. C", "",
+      "Explanations:",
+      "1. Explanation: Beta follows from the first mechanism.",
+      "Learning Objective: Recognize the first mechanism.",
+      "2. Why: Gamma follows from the second mechanism.",
+      "Answer key:", "1. B", "2. C",
+    ].join("\n"));
+
+    expect(drafts.map((draft) => draft.explanation)).toEqual([
+      "Beta follows from the first mechanism.",
+      "Gamma follows from the second mechanism.",
+    ]);
+    expect(drafts[0].explanationRawCandidate).toContain("Explanation:");
+    expect(drafts[0].explanationCleanupOperations).toEqual(expect.arrayContaining([
+      "remove-explanation-label",
+      "remove-objective-metadata",
+    ]));
+    expect(drafts[1].explanationCleanupOperations).toEqual(expect.arrayContaining([
+      "remove-explanation-label",
+      "stop-at-answer-key",
+    ]));
+    expect(drafts.every((draft) => (draft.explanationDetectionConfidence ?? 0) >= 0.9)).toBe(true);
+  });
+
+  it("does not split numbered learning objectives into fake questions", () => {
+    const drafts = parseQuestionBlocks([
+      "1. Which cell coordinates delayed hypersensitivity?", "A. B cell", "B. Th1 cell", "C. Mast cell",
+      "Answer: B", "Explanation: Th1 cells activate macrophages.",
+      "Learning Objectives:", "1. Identify type IV hypersensitivity.", "2. Compare antibody-mediated reactions.",
+    ].join("\n"));
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].questionNumber).toBe(1);
+    expect(drafts[0].explanation).toBe("Th1 cells activate macrophages.");
+  });
+
   it("does not turn a malformed answer-key section into fake questions", () => {
     const drafts = parseQuestionBlocks([
       "1. One?", "A. a", "B. b", "C. c", "",

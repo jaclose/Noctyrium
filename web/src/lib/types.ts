@@ -4,6 +4,8 @@
 // provides a starting point that the user can fully reshape.
 // ===========================================================================
 
+import type { JournalNotebookEntryFields, JournalNotebookPreferences } from "./journalNotebook";
+
 export type ID = string;
 export type BoardExamId = "step1" | "step2" | "step3" | "shelf" | "mcat" | "premed";
 
@@ -88,7 +90,7 @@ export interface TaskTemplate {
   createdAt: string;
 }
 
-export interface JournalEntry {
+export interface JournalEntry extends JournalNotebookEntryFields {
   id: ID;
   date: string; // ISO datetime
   today: string;
@@ -356,6 +358,12 @@ export interface DayPlan {
   dayKey: string; // the study day this plan is for (yyyy-MM-dd)
   intention: string; // what would make today a win
   wins: string[]; // a few concrete win conditions / mini-tasks
+  /** Optional, user-authored context for the Daily Check-In. */
+  expectedStudyMinutes?: number;
+  personalNote?: string;
+  priority?: string;
+  anticipatedObstacle?: string;
+  commitmentLevel?: 1 | 2 | 3 | 4 | 5;
   createdAt: string;
   reviewedAt?: string;
   outcome?: "won" | "partial" | "missed";
@@ -479,22 +487,58 @@ export type DailySuccessSource =
   | { kind: "practice-questions" }
   | { kind: "productivity-tracker"; trackerId: string }
   | { kind: "habit"; habitId: string }
+  | { kind: "activity-alias" }
+  | { kind: "manual" }
   | { kind: "journal-closeout" };
 
 /**
- * A reference layer over existing logs/habits/closeouts. It intentionally does
- * not duplicate those engines or create a separate completion ledger.
+ * A reference layer over existing logs/habits/closeouts. Sparse manual
+ * corrections are user-authored overrides; derived completion remains a pure
+ * ledger and does not duplicate those engines.
  */
 export interface DailySuccessRequirement {
   id: ID;
   label: string;
   enabled: boolean;
   source: DailySuccessSource;
+  /**
+   * Exact, case-insensitive activity labels that may contribute when a record
+   * is not already linked through the requirement's native source. Aliases are
+   * intentionally exact after punctuation/whitespace normalization; they are
+   * never substring matches.
+   */
+  aliases?: string[];
+  /** Explicit per-target activity corrections. Exclusions undo a match without
+   * deleting its source log; inclusions reassign a source log to this target. */
+  excludedSourceRecordIds?: ID[];
+  includedSourceRecordIds?: ID[];
+  /** Optional user-authored corrections for this target; no separate engine. */
+  manualContributions?: DailySuccessManualContribution[];
+  /** Relative contribution to aggregate progress; absent means 1. */
+  weight?: number;
   target: number;
   unit: string;
   schedule: DailySuccessSchedule;
   /** Local yyyy-MM-dd floor. Dates before this can never be missed. */
   trackingStartsAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * An optional user-authored correction for one target/day. These records live
+ * beside the target configuration so they can round-trip through the existing
+ * profile backup path without creating another activity engine.
+ */
+export interface DailySuccessManualContribution {
+  id: ID;
+  requirementId: ID;
+  dayKey: string;
+  value: number;
+  unit?: string;
+  note?: string;
+  /** Add a signed correction, or replace that day's derived total. */
+  mode: "add" | "override";
   createdAt: string;
   updatedAt: string;
 }
@@ -506,12 +550,23 @@ export interface DailySuccessConfig {
 }
 
 export type DashboardWidgetId =
+  | "welcome"
+  | "commandBrief"
+  | "questionBank"
+  | "courseTracker"
+  | "tasks"
+  | "readiness"
+  | "activity"
+  | "journal"
+  | "streak"
+  | "dailyWord"
   | "winDay"
   | "todayScore"
   | "examCountdown"
   | "pomodoro"
   | "weekly"
   | "suggested"
+  /** Legacy storage-only ID; intentionally absent from current catalogs. */
   | "aiActions"
   | "schedule"
   | "termMap"
@@ -521,6 +576,37 @@ export type DashboardWidgetId =
   | "premedHours"
   | "resourceFocus"
   | "boardBlueprint";
+
+export type DashboardWidgetSize = "small" | "medium" | "large" | "extra-large";
+
+export type DashboardLayoutPresetId = "focused" | "study-heavy" | "wellbeing-balanced" | "custom";
+
+/**
+ * Additive presentation state for one dashboard widget. The index signature is
+ * intentional: a newer AXOM build may add a harmless JSON preference that an
+ * older build must round-trip instead of deleting.
+ */
+export interface DashboardWidgetPreferences {
+  size: DashboardWidgetSize;
+  enabledFields?: string[];
+  preferences?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * Versioned, optional dashboard layout metadata. Legacy order/visibility
+ * fields remain supported so v32 workspaces do not require a migration.
+ */
+export interface DashboardLayoutPreferences {
+  version: 1;
+  preset: DashboardLayoutPresetId;
+  order: string[];
+  hiddenWidgetIds: string[];
+  widgets: Record<string, DashboardWidgetPreferences>;
+  dismissedExtraLargeRecommendation?: boolean;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
 
 // ===========================================================================
 // Blueprint Prep — an installable operating-system model (god-file architecture).
@@ -654,7 +740,14 @@ export interface Profile {
   focusSubscriptions: ExperienceFocusId[];
   dashboardWidgetOrder?: DashboardWidgetId[];
   hiddenDashboardWidgets?: DashboardWidgetId[];
+  /** Optional Wave 5.5D layout metadata; legacy widget fields remain valid. */
+  dashboardLayout?: DashboardLayoutPreferences;
   journalReviewTime?: string; // "20:00" local time
+  /** Optional notebook cover/paper metadata; journal text remains in entries. */
+  journalNotebook?: JournalNotebookPreferences;
+  /** Optional daily-loop reminder preferences. Reminder delivery metadata is
+   * device-only and never stored with the workspace. */
+  dailyLoopReminders?: DailyLoopReminderPreferences;
   blueprintMode?: BlueprintMode; // which lane bar (USMLE vs Pre-Health) is active
   // Repetitive-task autofill (§18): user-owned, local-only.
   taskAutofillDisabled?: boolean;
@@ -671,6 +764,17 @@ export interface Profile {
   // Custom Pomodoro durations (§3), persisted with the profile.
   pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
   pomodoroPreferences?: PomodoroPreferences;
+}
+
+export interface DailyLoopReminderPreferences {
+  checkInEnabled?: boolean;
+  checkInTime?: string; // "08:00" device-local time
+  closeoutEnabled?: boolean;
+  closeoutTime?: string; // "20:30" device-local time
+  /** Optional device-local interval in which AXOM does not publish reminder signals. */
+  quietHoursEnabled?: boolean;
+  quietHoursStart?: string; // "22:00" device-local time
+  quietHoursEnd?: string; // "07:00" device-local time
 }
 
 // New daily-loop record types live in their own modules (kept out of this file

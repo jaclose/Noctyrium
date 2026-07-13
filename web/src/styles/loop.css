@@ -129,8 +129,72 @@
   line-height: 1.4;
 }
 .brief-learning-actions { margin-top: 14px; }
+.brief-starter-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.brief-starter-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--text-80) 12%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--text-95) 3%, transparent);
+  color: var(--text-60);
+}
+.brief-starter-list li.ready { color: var(--grade-green, #46d27e); }
+.brief-starter-list li > div { min-width: 0; }
+.brief-starter-list b { color: var(--text-80); font-size: 13px; line-height: 1.35; }
+.brief-starter-list span { font-size: 11px; font-weight: 800; }
+.brief-starter-list small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-45);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.brief-starter-action {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  min-height: 32px;
+  color: var(--text-80);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.brief-starter-action:hover { color: var(--cyan); }
+.brief-starter-action:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+.brief-manual-activation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--text-80) 10%, transparent);
+}
+.brief-manual-activation b { color: var(--text-80); font-size: 13px; }
+.brief-manual-activation p { margin: 3px 0 0; color: var(--text-45); font-size: 11.5px; line-height: 1.45; }
 @media (max-width: 720px) {
   .brief-evidence-list { grid-template-columns: 1fr; }
+  .brief-starter-list { grid-template-columns: 1fr; }
+  .brief-starter-action { min-height: 44px; }
+  .brief-manual-activation { align-items: stretch; flex-direction: column; }
+  .brief-manual-activation .gbtn { min-height: 44px; justify-content: center; }
   .brief-learning-actions .gbtn { width: 100%; justify-content: center; }
 }
 

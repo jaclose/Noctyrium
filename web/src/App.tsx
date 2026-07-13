@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { TopBar } from "./components/shell/TopBar";
 import { SettingsModal, type SettingsTab } from "./components/shell/SettingsModal";
@@ -8,6 +8,7 @@ import { PromisePrompt } from "./components/shell/PromisePrompt";
 import { PromiseCutscene } from "./components/shell/PromiseCutscene";
 import { Toaster } from "./components/shell/Toaster";
 import { StandupWatcher } from "./components/shell/StandupWatcher";
+import { DailyLoopReminderWatcher } from "./components/shell/DailyLoopReminderWatcher";
 import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
 import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
@@ -18,7 +19,7 @@ import { useUi } from "./lib/uiStore";
 import { pushToast } from "./lib/toast";
 import type { StorageMigrationResult } from "./lib/storageMigrations";
 import { readOnboardingDraftMode, type OnboardingDestination, type OnboardingMode } from "./lib/onboardingProgress";
-import { promisePromptStatus, shouldOfferPromiseAfterGlobalTour } from "./lib/promisePrompt";
+import { promisePromptStatus, shouldOfferPromiseAfterGlobalTour, shouldOfferPromisePrompt } from "./lib/promisePrompt";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { CoursesPage } from "./pages/CoursesPage";
@@ -94,12 +95,22 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const [settings, setSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [refreshing, setRefreshing] = useState(false);
-  const [promisePromptOpen, setPromisePromptOpen] = useState(false);
+  // Existing users who finished or opted out of onboarding before the Promise
+  // was wired receive it at the next safe application start. This initializer
+  // deliberately runs once: route changes, module tours, and unrelated dialog
+  // exits can never become Promise triggers.
+  const [promisePromptOpen, setPromisePromptOpen] = useState(() => {
+    const profile = useStore.getState().profile;
+    return profile.onboarded === true
+      && profile.tourDone === true
+      && shouldOfferPromisePrompt(profile);
+  });
   const [promiseCutsceneOpen, setPromiseCutsceneOpen] = useState(false);
   const [setupMode, setSetupMode] = useState<OnboardingMode | null>(() =>
     readOnboardingDraftMode() === "rerun" ? "rerun" : null,
   );
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreMenuFocusRef = useRef(false);
   const onboarded = useStore((s) => s.profile.onboarded);
   const dailyGamesEnabled = useStore((s) => s.profile.experimentalFlags?.dailyGames === true);
   const tourDone = useStore((s) => s.profile.tourDone);
@@ -109,8 +120,18 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
 
   const closeDrawer = useCallback(() => {
     if (!drawer) return;
+    restoreMenuFocusRef.current = true;
     setDrawer(false);
-    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, [drawer]);
+
+  // Restore focus only after the drawer has become inert. Scheduling from the
+  // close handler can race React's render and leave focus stranded inside the
+  // now-hidden navigation surface on fast or synchronous animation frames.
+  useLayoutEffect(() => {
+    if (drawer || !restoreMenuFocusRef.current) return;
+    restoreMenuFocusRef.current = false;
+    const frame = window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
   }, [drawer]);
 
   useEffect(() => {
@@ -221,6 +242,13 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   function completeOnboarding(destination: OnboardingDestination) {
     setSetupMode(null);
     go(destination);
+    const profile = useStore.getState().profile;
+    // Finishing without the optional guide and skipping setup are both explicit
+    // guide decisions. Present the Promise only after onboarding has closed so
+    // it never competes with setup or traps the user's emergency exit.
+    if (profile.tourDone === true && shouldOfferPromisePrompt(profile)) {
+      setPromisePromptOpen(true);
+    }
   }
 
   // The guided tour navigates through React state directly (deterministic, same
@@ -315,6 +343,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
       <UpdateAvailableWatcher />
       <PomodoroFx />
       <StandupWatcher />
+      <DailyLoopReminderWatcher />
       <SessionOverlay />
       <Toaster />
     </div>

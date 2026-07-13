@@ -4,9 +4,87 @@ Living record of what is **built and working**. Update this whenever a feature s
 The companion file is [ROADMAP.md](ROADMAP.md) — in-progress and proposed work lives there,
 and items move from there to here when they ship.
 
-Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
+Last updated: 2026-07-13 · app v0.0.1-prebeta · data schema v32
 
-## Wave 5.5C — Core Comprehension and Import Reliability (review checkpoint)
+## Wave 5.5D — Personal Operating System and Widget Rehaul (review checkpoint)
+
+- **Real-layout import acceptance gate** — a dedicated
+  `npm run verify:question-imports` command sends 21 questions across eight
+  sanitized PDF, paste, Markdown, and text layouts through the production
+  extraction/parser/provenance path. The current verified fixture run has 100% exact
+  answer and explanation association, zero false-ready rows, no all-A collapse,
+  and no lost or invented questions; intentionally missing/conflicting evidence
+  remains unresolved. The parser now handles aligned table keys, OCR-like
+  spacing, wrapped options, later explanation sections, and A–E-leading rationale
+  prose without weakening the unresolved-by-default trust boundary. See
+  [docs/QUESTION-IMPORT-EVALUATION-HARNESS.md](docs/QUESTION-IMPORT-EVALUATION-HARNESS.md).
+- **Evidence-gated Command Brief** — shipped examples and template records no
+  longer activate recommendations. Automatic activation requires two actionable
+  items or one actionable item plus current-day context; any real but limited
+  evidence can be used only through an explicit user override. A learning-state
+  checklist replaces placeholder intelligence. Tasks, Course Tracker items,
+  canonically ready due questions, scheduled targets, due Habits, Daily Check-In,
+  and live sessions enter one deterministic ranking whose weights and sources are
+  shown verbatim. Neutral readiness is ignored, while grounded/user-confirmed
+  readiness may only resize effort. See
+  [docs/COMMAND-BRIEF-EVIDENCE.md](docs/COMMAND-BRIEF-EVIDENCE.md).
+- **Canonical target contribution ledger** — daily targets now explain their
+  completion source and derive finite, native-unit contribution rows from
+  activity logs, question/card quantities, linked trackers, exact aliases,
+  Habit entries, Journal closeouts, and manual facts. Stable deduplication avoids
+  double-counting; users can undo, restore, or reassign a match without changing
+  the source history. Manual quantities and overrides remain explicit, and the
+  progress vessel separates native progress from weighted contribution. A
+  target-specific, device-dismissed prompt can enable Habit Tracker without
+  duplicating the target. See
+  [docs/TARGET-CONTRIBUTION-LEDGER.md](docs/TARGET-CONTRIBUTION-LEDGER.md).
+- **Daily Check-In, closeout, and local reminders** — the optional morning card
+  captures an explicit intention, up to three win conditions, expected block,
+  priority, obstacle, note, and commitment. The 20:30-local default closeout
+  offers a deterministic Day at a Glance, quick reflection, optional Journal
+  save, and full-notebook handoff without overwriting an existing page. App-root
+  reminders reconcile on focus, visibility, `pageshow`, and a minute interval;
+  check-in/closeout times, enabled states, and optional quiet hours are
+  configurable. A bounded device ledger handles once-per-kind/day display,
+  30-minute snooze, and skip without putting workspace content in localStorage.
+  See [docs/DAILY-LOOP-REMINDER-LIFECYCLE.md](docs/DAILY-LOOP-REMINDER-LIFECYCLE.md).
+- **Tour layout and Promise contract reliability** — global and same-route tours
+  are portalled to the viewport, reveal targets inside the correct scroll
+  container, restore prior scroll/layout state on every exit, and retain focus,
+  keyboard, missing-target, mobile, and reduced-motion behavior. Exiting the
+  global guide at the safe post-onboarding decision point presents the optional
+  Promise once; module tours do not. The Promise uses the full AXOM wordmark, an
+  accessible voluntary-contract surface, typed signature, version/timestamp,
+  local profile/Journal persistence, a restrained ink-stroke confirmation, and
+  a static reduced-motion path.
+- **Dashboard widget engine** — the implemented catalog adapts every known
+  legacy widget ID, preserves unknown/future fields, and keeps removed AI
+  Suggested Actions, Suggested Moves, duplicate trends, and raw diagnostics out
+  of ordinary catalogs. Fixed Welcome + Quote and Command Brief lead a responsive
+  grid of grounded study widgets. Small, medium, large, and extra-large sizes,
+  meaningful field controls, focus-contained settings reveal, add/remove,
+  mouse-drag and keyboard ordering, focused/study-heavy/wellbeing presets, and a
+  dismissible fourth-extra-large recommendation persist additively and round-trip
+  through backup without touching source data. See
+  [docs/DASHBOARD-WIDGET-ARCHITECTURE.md](docs/DASHBOARD-WIDGET-ARCHITECTURE.md).
+- **Journal Foundation** — Journal is now a semantic premium notebook with a
+  customizable hardback cover, page library, today/prior-day writing, structured
+  closeout, free writing, wins/losses, local Day at a Glance, autosave, page
+  navigation, Markdown export, and lightweight CSS opening/page transitions.
+  Bounded JPEG/PNG/WebP/GIF attachments (3 MB each, 12 MB per page) remain in the
+  existing IndexedDB-backed workspace, validate again during hydration, and can
+  be removed or exported individually. Keyboard navigation, focus movement,
+  44 px mobile controls, and reduced motion preserve the writing path. See
+  [docs/JOURNAL-NOTEBOOK-ARCHITECTURE.md](docs/JOURNAL-NOTEBOOK-ARCHITECTURE.md).
+- **Checkpoint boundary** — schema remains v32 with optional profile, target,
+  dashboard-layout, reminder, and Journal fields. This checkpoint adds no new
+  IndexedDB store, destructive migration, hidden AI, Journal transmission,
+  cloud-sync claim, Doctordle integration, live email signup, or route-level
+  splitting. Journal Cinematic—desk scene, notebook pickup, physical cover/page
+  physics, spatial image placement, and optional sound/haptics—remains a separate
+  later wave.
+
+## Wave 5.5C — Core Comprehension and Import Reliability (shipped)
 
 - **Answer-mapping trust boundary** — PDF, pasted-text, TXT, and Markdown imports
   preserve mixed A–E keys through preview and persistence. Exact answer text is
@@ -58,10 +136,11 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
   startup or open the Promise. After the global guide is finished or skipped, unsigned
   users may sign, defer for fourteen days, or skip the current prompt version; the
   optional suppression data round-trips additively under schema v32.
-- **Widget architecture only** — a concrete design note defines small, medium/full,
-  and extra-large content contracts, responsive ordering, settings accessibility,
-  soft-limit override, persistence/backup, and reduced motion. No resizing engine,
-  layout migration, or route-level performance work is included.
+- **Widget architecture precursor** — this checkpoint defined the small,
+  medium/full, extra-large, responsive-ordering, settings, soft-limit,
+  persistence/backup, and reduced-motion contract later implemented in Wave
+  5.5D. Wave 5.5C itself did not include the engine or route-level performance
+  work.
 
 ## Daily loop (Wave 5.5A/B — Daily Loop Stabilization)
 
@@ -477,6 +556,13 @@ Last updated: 2026-07-12 · app v0.0.1-prebeta · data schema v32
   override.
 - Full browser E2E coverage and OCR remain roadmap work; parser confidence narrows
   review work but does not certify the medical correctness of source material.
-- The Dashboard widget architecture is documented, but small/medium/extra-large sizing,
-  visual flips, responsive span persistence, and extra-large override behavior are not
-  implemented in Wave 5.5C. Broader route-level splitting is also deliberately deferred.
+- The Dashboard widget engine now supports small/medium/large/extra-large sizing,
+  responsive spans, settings reveals, ordering, presets, backup, and a soft
+  extra-large recommendation. Welcome and Command Brief intentionally remain fixed;
+  some widgets expose only the fields that have a meaningful renderer, and keyboard
+  ordering is the dependable mobile path.
+- Journal Foundation stores bounded local image data inside the existing workspace
+  graph. It is not a multiple-notebook asset manager, and Journal Cinematic (desk
+  scene, pickup, physical page/cover simulation, spatial placement, sound, and
+  haptics) remains unimplemented. Broader route-level splitting is also deliberately
+  deferred.

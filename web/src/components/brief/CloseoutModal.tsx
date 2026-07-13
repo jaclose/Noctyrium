@@ -3,13 +3,16 @@
 // much as possible from today's data so the user mostly confirms, not writes.
 // Saving updates tomorrow's Command Brief (first task + mode preference).
 // ===========================================================================
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../../lib/store";
 import { closeoutForDay, type EnergyVsMorning } from "../../lib/closeout";
 import { MODE_LABEL, type BriefMode } from "../../lib/commandBrief";
 import type { DailyCloseout } from "../../lib/closeout";
 import { Modal, Field, TextAreaField } from "../ui/Modal";
 import { GButton } from "../ui/primitives";
+import { selectDayAtAGlance } from "../../lib/dayAtAGlance";
+import { entryDayKey } from "../../lib/journal";
+import { gotoJournalDay } from "../../lib/uiStore";
 
 const MODES: Array<"auto" | BriefMode> = ["auto", "maintain", "catch-up", "recovery", "sprint", "exam-week"];
 
@@ -31,36 +34,68 @@ export function CloseoutModal({ onClose }: { onClose: () => void }) {
   );
   const [remaining, setRemaining] = useState(existing?.remainingSummary ?? (openCount ? `${openCount} open task${openCount === 1 ? "" : "s"}` : ""));
   const [blocker, setBlocker] = useState(existing?.blocker ?? "");
+  const [oneWin, setOneWin] = useState(existing?.oneWin ?? "");
+  const [energyNow, setEnergyNow] = useState(existing?.energyNow ? String(existing.energyNow) : "");
   const [firstTask, setFirstTask] = useState(existing?.tomorrowFirstTask ?? "");
   const [energy, setEnergy] = useState<EnergyVsMorning | undefined>(existing?.energyVsMorning);
   const [mode, setMode] = useState<"auto" | BriefMode>(existing?.tomorrowMode ?? "auto");
+  const [saveToJournal, setSaveToJournal] = useState(false);
+  const glance = useMemo(() => selectDayAtAGlance(s, today, today), [s, today]);
+  const existingJournal = s.journal.some((entry) => entryDayKey(entry) === today);
 
-  function save() {
+  function save(openNotebook = false) {
     const record: Omit<DailyCloseout, "id" | "createdAt" | "updatedAt"> = {
       dayKey: s.activeDayKey,
       completedSummary: completed.trim() || "Nothing logged",
       remainingSummary: remaining.trim() || undefined,
       blocker: blocker.trim() || undefined,
+      oneWin: oneWin.trim() || undefined,
+      energyNow: energyNow ? Math.max(0, Math.min(100, Number(energyNow) || 0)) : undefined,
       tomorrowFirstTask: firstTask.trim() || undefined,
       energyVsMorning: energy,
       tomorrowMode: mode,
     };
     s.saveCloseout(record);
+    if (saveToJournal && !existingJournal) {
+      s.addJournal({
+        date: `${today}T20:30:00`,
+        today: [completed.trim(), oneWin.trim() ? `Win: ${oneWin.trim()}` : ""].filter(Boolean).join("\n\n") || "Daily closeout",
+        tomorrow: firstTask.trim(),
+        blockers: blocker.trim(),
+        energy: numericEnergyLabel(Number(energyNow)),
+        rating: "Daily closeout",
+      });
+    }
     onClose();
+    if (openNotebook) gotoJournalDay(today);
   }
 
   return (
     <Modal
       title="Daily closeout"
       onClose={onClose}
-      footer={<GButton variant="primary" onClick={save}>Close the day</GButton>}
+      footer={<>
+        <GButton onClick={() => save(true)}>Expand into full notebook</GButton>
+        <GButton variant="primary" onClick={() => save(false)}>Close the day</GButton>
+      </>}
     >
-      <div className="sub">Ninety seconds, tops. Tomorrow's brief starts from what you write here.</div>
-      <TextAreaField label="What got done" rows={2} value={completed} onChange={(e) => setCompleted(e.target.value)} />
-      <Field label="What remains (short)" value={remaining} onChange={(e) => setRemaining(e.target.value)} placeholder="e.g. 2 lectures, PQ set 4" />
-      <Field label="What blocked you (optional)" value={blocker} onChange={(e) => setBlocker(e.target.value)} placeholder="one sentence is enough" />
-      <Field label="Tomorrow should start with…" value={firstTask} onChange={(e) => setFirstTask(e.target.value)} placeholder="the brief will put this on top" />
+      <div className="sub">A short, honest closeout is enough. AXOM assembled the context below from today’s local records.</div>
+      <section className="closeout-glance" aria-label="Day at a glance">
+        <b>Day at a Glance</b>
+        <span>{glance.intention?.text ? `Intention: ${glance.intention.text}` : "No intention was set"}</span>
+        <span>{glance.targetCompletion.eligibleCount ? `Targets: ${glance.targetCompletion.metCount}/${glance.targetCompletion.eligibleCount} met` : "No targets scheduled"}</span>
+        <span>{glance.focusedMinutes.value} focused min · {glance.questions.trustedAttempts} questions · {glance.cards.reviewed} cards</span>
+        <span>{glance.tasks.completed.length} tasks completed · {glance.unfinishedItems.length} open loops</span>
+      </section>
+      <TextAreaField label="What went well?" rows={2} value={completed} onChange={(e) => setCompleted(e.target.value)} />
+      <Field label="One win" value={oneWin} onChange={(e) => setOneWin(e.target.value)} placeholder="the moment worth keeping" />
+      <Field label="What got in the way?" value={blocker} onChange={(e) => setBlocker(e.target.value)} placeholder="one sentence is enough" />
+      <Field label="One unfinished loop" value={remaining} onChange={(e) => setRemaining(e.target.value)} placeholder="e.g. finish the final lecture" />
+      <Field label="What matters tomorrow?" value={firstTask} onChange={(e) => setFirstTask(e.target.value)} placeholder="the brief can put this on top" />
+      <Field label="Energy now (0–100)" type="number" min="0" max="100" value={energyNow} onChange={(e) => setEnergyNow(e.target.value)} />
 
+      <details className="closeout-advanced">
+        <summary>Planning details</summary>
       <div className="stack gap6">
         <span className="field-label">Energy vs this morning</span>
         <div className="row">
@@ -82,6 +117,19 @@ export function CloseoutModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
+      </details>
+
+      <label className="row gap8 closeout-journal-option">
+        <input type="checkbox" checked={saveToJournal} disabled={existingJournal} onChange={(event) => setSaveToJournal(event.target.checked)} />
+        <span>{existingJournal ? "Today already has a journal entry; it will not be overwritten." : "Also save this as today’s Journal entry"}</span>
+      </label>
     </Modal>
   );
+}
+
+function numericEnergyLabel(value: number): "Low" | "Medium" | "High" | "" {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  if (value < 40) return "Low";
+  if (value < 70) return "Medium";
+  return "High";
 }

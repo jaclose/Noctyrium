@@ -208,6 +208,50 @@ describe("v26 → v27 migration", () => {
     expect(migratePersistedState(structuredClone(explicit), SCHEMA_VERSION).profile.hiddenDashboardWidgets).toEqual([]);
   });
 
+  it("preserves the legacy AI widget ID in storage while safely dropping unknown widget IDs", () => {
+    const legacy = makeSeed() as unknown as Record<string, unknown>;
+    const profile = legacy.profile as Record<string, unknown>;
+    profile.dashboardWidgetOrder = ["aiActions", "todayScore", "future-unknown-widget"];
+    profile.hiddenDashboardWidgets = ["aiActions", "future-unknown-widget"];
+
+    const migrated = migratePersistedState(structuredClone(legacy), SCHEMA_VERSION);
+    expect(migrated.profile.dashboardWidgetOrder?.[0]).toBe("aiActions");
+    expect(migrated.profile.dashboardWidgetOrder).toEqual(expect.arrayContaining(["todayScore", "winDay"]));
+    expect(migrated.profile.dashboardWidgetOrder).not.toContain("future-unknown-widget");
+    expect(migrated.profile.hiddenDashboardWidgets).toEqual(["aiActions"]);
+  });
+
+  it("normalizes optional widget layout metadata without a schema bump or dropping future fields", () => {
+    const state = makeSeed() as unknown as Record<string, unknown>;
+    const profile = state.profile as Record<string, unknown>;
+    profile.dashboardLayout = {
+      version: 5,
+      preset: "custom",
+      order: ["todayScore", "future-widget"],
+      hiddenWidgetIds: ["future-widget"],
+      widgets: {
+        todayScore: { size: "extra-large", enabledFields: ["progress"] },
+        "future-widget": { size: "medium", enabledFields: ["future-field"], futurePreference: true },
+      },
+      futureLayoutField: { safe: true },
+    };
+
+    const migrated = migratePersistedState(structuredClone(state), SCHEMA_VERSION);
+    expect(migrated.schemaVersion).toBe(32);
+    expect(migrated.profile.dashboardLayout).toMatchObject({
+      version: 1,
+      preset: "custom",
+      order: ["todayScore", "future-widget"],
+      hiddenWidgetIds: ["future-widget"],
+      futureLayoutField: { safe: true },
+      widgets: {
+        todayScore: { size: "extra-large", enabledFields: ["progress"] },
+        "future-widget": { size: "medium", enabledFields: ["future-field"], futurePreference: true },
+      },
+    });
+    expect(migratePersistedState(structuredClone(migrated), SCHEMA_VERSION)).toEqual(migrated);
+  });
+
   it("normalizes an optional promise prompt version without bumping schema", () => {
     const state = makeSeed();
     state.profile.promisePromptStatus = {

@@ -7,7 +7,7 @@
 // ===========================================================================
 import { parseQuestionBlocks, type ParsedQuestionDraft } from "./questionParse";
 import type { QuestionOption } from "./questions";
-import { cleanExplanationText } from "./questionExplanation";
+import { sanitizeExplanationCandidate } from "./questionExplanation";
 
 export type ImportFormat = "text" | "csv" | "json" | "pdf" | "docx" | "image" | "unsupported";
 
@@ -197,6 +197,7 @@ function comparable(value: string): string {
   return value
     .toLowerCase()
     .replace(/^\(?[a-h]\)?[).:\-–]\s*/i, "")
+    .replace(/\s*([+/%])\s*/g, "$1")
     .replace(/\s+/g, " ")
     .replace(/[\s.,;:!?]+$/g, "")
     .trim();
@@ -205,16 +206,33 @@ function comparable(value: string): string {
 /** Shared letter / "B. text" / full-answer-text resolution for CSV + JSON. */
 export function resolveAnswerValue(value: string | undefined, options: QuestionOption[]): string | undefined {
   if (!value?.trim()) return undefined;
-  const raw = value.trim();
+  const raw = value.trim().replace(/^\(\s*([A-Ha-h])\s*\)$/, "($1)");
+
+  // A punctuated leading letter is explicit evidence, so validate it before
+  // stripping the label for full-text matching. "A. Mast cells" must not be
+  // silently remapped to option C merely because C's text is "Mast cells".
+  const labeled = raw.match(/^\(?\s*([A-Ha-h])\s*\)?\s*[).:\-–—]\s*(.*)$/);
+  if (labeled) {
+    const key = labeled[1].toUpperCase();
+    const matchingOptions = options.filter((candidate) => candidate.key === key);
+    if (matchingOptions.length !== 1) return undefined;
+    const tail = labeled[2].trim();
+    if (!tail) return key;
+    if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) return key;
+    return comparable(tail) === comparable(matchingOptions[0].text) ? key : undefined;
+  }
+
   // Full-text equality wins before letter parsing so an option such as
   // "B lymphocytes" is not misread as answer letter B.
   const fullTextMatches = options.filter((option) => comparable(option.text) === comparable(raw));
-  if (fullTextMatches.length === 1) return fullTextMatches[0].key;
-  const letter = raw.match(/^\(?([A-Ha-h])\)?(?:[).:\-–]\s*|\s+|$)(.*)$/);
+  if (fullTextMatches.length === 1
+    && options.filter((option) => option.key === fullTextMatches[0].key).length === 1) return fullTextMatches[0].key;
+  const letter = raw.match(/^\(?([A-Ha-h])\)?(?:\s+|$)(.*)$/);
   if (letter) {
     const key = letter[1].toUpperCase();
-    const option = options.find((candidate) => candidate.key === key);
-    if (!option) return undefined;
+    const matchingOptions = options.filter((candidate) => candidate.key === key);
+    if (matchingOptions.length !== 1) return undefined;
+    const option = matchingOptions[0];
     const tail = letter[2].trim();
     return !tail || comparable(tail) === comparable(option.text) ? key : undefined;
   }
@@ -222,17 +240,31 @@ export function resolveAnswerValue(value: string | undefined, options: QuestionO
 }
 
 function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDraft {
-  const explanation = cleanExplanationText(draft.explanation, draft) || undefined;
+  const optionKeys = draft.options.map((option) => option.key);
+  const duplicateKeys = new Set(optionKeys).size !== optionKeys.length;
+  const expectedKeys = optionKeys.map((_, index) => String.fromCharCode(65 + index));
+  const nonSequentialKeys = !duplicateKeys && optionKeys.some((key, index) => key !== expectedKeys[index]);
+  const structuralWarnings = [
+    ...draft.warnings,
+    ...(duplicateKeys ? ["Duplicate option letters detected — the answer was left unset for review."] : []),
+    ...(nonSequentialKeys ? ["Option letters are missing or out of sequence — review the extracted choices."] : []),
+  ];
+  const correctKey = duplicateKeys ? undefined : draft.correctKey;
+  const diagnosticDraft = { ...draft, correctKey, warnings: structuralWarnings };
+  const explanationCleanup = sanitizeExplanationCandidate(draft.explanation, diagnosticDraft);
+  const explanation = explanationCleanup.cleanedText || undefined;
   const questionDetectionConfidence = draft.stem && draft.options.length >= 3 ? 0.96 : draft.stem ? 0.6 : 0.1;
-  const answerDetectionConfidence = draft.correctKey ? 0.98 : 0;
+  const answerDetectionConfidence = correctKey ? 0.98 : duplicateKeys ? 0.05 : 0;
   const explanationDetectionConfidence = explanation ? 0.94 : 0;
   const overallImportConfidence = Math.max(0, Math.min(1,
     questionDetectionConfidence * 0.4 + answerDetectionConfidence * 0.4 + explanationDetectionConfidence * 0.2));
-  const needsReview = !draft.correctKey || questionDetectionConfidence < 0.75 || draft.warnings.length > 0;
+  const needsReview = !correctKey || questionDetectionConfidence < 0.75 || structuralWarnings.length > 0;
   return {
     ...draft,
+    correctKey,
+    warnings: structuralWarnings,
     explanation,
-    correctAnswerText: draft.correctKey ? draft.options.find((option) => option.key === draft.correctKey)?.text : undefined,
+    correctAnswerText: correctKey ? draft.options.find((option) => option.key === correctKey)?.text : undefined,
     needsReview: needsReview || undefined,
     questionDetectionConfidence,
     answerDetectionConfidence,
@@ -241,7 +273,9 @@ function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDr
     confidence: overallImportConfidence >= 0.85 && !needsReview ? "high" : overallImportConfidence >= 0.6 ? "medium" : "low",
     parserRuleIds: [
       "import.structured-record",
-      ...(draft.correctKey ? ["answer.structured-value"] : []),
+      ...(correctKey ? ["answer.structured-value"] : []),
+      ...(duplicateKeys ? ["conflict.duplicate-option-key"] : []),
+      ...(nonSequentialKeys ? ["options.nonsequential"] : []),
       ...(explanation ? ["explanation.structured-field"] : []),
     ],
     sourceSnippet: [draft.stem, ...draft.options.map((option) => `${option.key}. ${option.text}`)].join("\n").slice(0, 800),
@@ -250,5 +284,8 @@ function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDr
     answerEvidenceSnippet: draft.answerEvidenceSnippet ?? draft.answerEvidence,
     explanationSourceSnippet: draft.explanationSourceSnippet ?? explanation,
     explanationSource: explanation ? (draft.explanationSource ?? "inline") : undefined,
+    explanationRawCandidate: draft.explanationRawCandidate ?? (draft.explanation || undefined),
+    explanationCleanupOperations: draft.explanationCleanupOperations
+      ?? (explanationCleanup.cleanupOperations.length ? explanationCleanup.cleanupOperations : undefined),
   };
 }

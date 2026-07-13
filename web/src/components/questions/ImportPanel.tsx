@@ -10,7 +10,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ClipboardPaste, FileUp, Save, Sparkles, RefreshCw, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useStore } from "../../lib/store";
-import { parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
+import { createImportMappingLedger, parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
 import { detectImportFormat, importFromCsv, importFromJson, importFromText } from "../../lib/questionImport";
 import { extractDocxText, extractPdfText, extractPlainText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
@@ -26,6 +26,7 @@ import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
 import { assignDraftProvenancePages } from "../../lib/questionProvenance";
+import { draftImportStatus, summarizeImportDrafts } from "../../lib/questionImportTrust";
 
 export type ImportTab = "paste" | "file" | "ai";
 type SaveMode = "set" | "doc" | "both";
@@ -169,7 +170,9 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
         const manuallyReviewedAnswer = Boolean(
           d.correctKey && d.parserRuleIds?.includes("answer.user-reviewed-mapping"),
         );
-        const extractionReviewed = manuallyReviewedAnswer || (!d.needsReview && d.confidence === "high");
+        const extractionReviewed = Boolean(
+          d.correctKey && (manuallyReviewedAnswer || (!d.needsReview && d.confidence === "high")),
+        );
         const result = s.addQuestion({
           source: d.source,
           stem: d.stem,
@@ -213,6 +216,8 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             explanationSourceSnippet: d.explanationSourceSnippet,
             explanationSourcePage: d.explanationSourcePage,
             explanationSource: d.explanationSource,
+            explanationRawCandidate: d.explanationRawCandidate,
+            explanationCleanupOperations: d.explanationCleanupOperations,
           },
         });
         if (result.ok && result.id) questionIds.push(result.id);
@@ -365,6 +370,8 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
   }
 
   const includedCount = drafts.filter((d) => d.include).length;
+  const importSummary = useMemo(() => summarizeImportDrafts(drafts), [drafts]);
+  const developerLedger = useMemo(() => import.meta.env.DEV ? createImportMappingLedger(drafts) : [], [drafts]);
 
   return (
     <GlassCard>
@@ -428,6 +435,49 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
             <ul className="intake-warnings">{batchWarnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
           )}
 
+          {drafts.length > 0 && (
+            <section className="import-summary" aria-labelledby="import-summary-title">
+              <div className="spread wrap gap8">
+                <div>
+                  <b id="import-summary-title">Import summary</b>
+                  <div className="sub">Wrong trusted answers are blocked. Review anything AXOM could not ground cleanly.</div>
+                  {importSummary.unresolved > 0 && (
+                    <div className="sub">Unresolved questions may be saved as drafts, but they cannot enter a practice block until repaired.</div>
+                  )}
+                </div>
+                <div className="row wrap gap6" aria-label="Import trust counts">
+                  <Tag tone="green">Ready {importSummary.ready}</Tag>
+                  <Tag tone="orange">Review suggested {importSummary.reviewSuggested}</Tag>
+                  <Tag tone="red">Unresolved {importSummary.unresolved}</Tag>
+                </div>
+              </div>
+              <div className="row wrap gap8 sub">
+                <span>Explanations found <b>{importSummary.explanationsFound}</b></span>
+                <span>Missing <b>{importSummary.explanationsMissing}</b></span>
+                <span>Source confidence: <b>{importSummary.sourceConfidence.high} high</b> · {importSummary.sourceConfidence.medium} medium · {importSummary.sourceConfidence.low} low</span>
+              </div>
+              <div className="row wrap gap6">
+                <GhostButton onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: draftImportStatus(d) === "ready" })))}>
+                  Approve ready ({importSummary.ready})
+                </GhostButton>
+                <GhostButton onClick={() => setDrafts((all) => all.map((d) => ({
+                  ...d,
+                  include: draftImportStatus(d) === "review-suggested",
+                  expanded: draftImportStatus(d) === "review-suggested" || d.expanded,
+                })))}>
+                  Review suggested ({importSummary.reviewSuggested})
+                </GhostButton>
+                <GhostButton onClick={() => setDrafts((all) => all.map((d) => ({
+                  ...d,
+                  include: draftImportStatus(d) === "unresolved",
+                  expanded: draftImportStatus(d) === "unresolved" || d.expanded,
+                })))}>
+                  Repair unresolved ({importSummary.unresolved})
+                </GhostButton>
+              </div>
+            </section>
+          )}
+
           {drafts.length > 1 && (
             <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
               <span className="sub">Quick select:</span>
@@ -440,6 +490,24 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
               <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: true })))}>All</button>
               <button className="filter-pill" onClick={() => setDrafts((all) => all.map((d) => ({ ...d, include: false })))}>None</button>
             </div>
+          )}
+
+          {import.meta.env.DEV && drafts.length > 0 && (
+            <details className="question-import-diagnostics">
+              <summary>Import diagnostics (development only)</summary>
+              <div className="stack gap6">
+                {developerLedger.map((entry, index) => (
+                  <div className="question-explanation" key={`${entry.questionNumber ?? "draft"}-${index}`}>
+                    <b>Question {entry.questionNumber ?? index + 1}</b>
+                    <div>Options: {entry.extractedOptions.map((option) => `${option.key}. ${option.text}`).join(" · ") || "none"}</div>
+                    <div>Evidence: {entry.answerEvidence ?? "none"}</div>
+                    <div>Mapping: {entry.selectedMapping ?? "unresolved"} · confidence {Math.round(entry.confidence * 100)}%</div>
+                    {entry.conflictReason && <div>Conflict: {entry.conflictReason}</div>}
+                    <div>Source spans: {entry.sourceSpans.map((span) => `${span.kind}${span.page ? ` p.${span.page}` : ""}`).join(" · ") || "none"}</div>
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
 
           <div className="stack gap6">

@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS, makeSeed } from "../lib/seed";
+import {
+  DEFAULT_DASHBOARD_WIDGETS,
+  DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
+  STORED_DASHBOARD_WIDGET_IDS,
+  makeSeed,
+} from "../lib/seed";
 import { useStore } from "../lib/store";
 import { DashboardPage } from "./DashboardPage";
 import { STORAGE_KEYS } from "../lib/brand";
@@ -80,10 +85,22 @@ describe("DashboardPage declutter", () => {
     expect(screen.queryByText("Welcome, JD", { exact: true })).toBeNull();
   });
 
-  it("hides both suggestion widgets in focused defaults without invalidating explicit preferences", () => {
-    expect(DEFAULT_HIDDEN_DASHBOARD_WIDGETS).toEqual(expect.arrayContaining(["suggested", "aiActions"]));
-    useStore.getState().updateProfile({ hiddenDashboardWidgets: ["aiActions"] });
+  it("removes AI Suggested Actions from defaults and catalogs without rewriting a legacy preference", () => {
+    expect(DEFAULT_DASHBOARD_WIDGETS).not.toContain("aiActions");
+    expect(DEFAULT_HIDDEN_DASHBOARD_WIDGETS).not.toContain("aiActions");
+    expect(STORED_DASHBOARD_WIDGET_IDS).toContain("aiActions");
+    useStore.getState().updateProfile({
+      dashboardWidgetOrder: ["aiActions", ...DEFAULT_DASHBOARD_WIDGETS],
+      hiddenDashboardWidgets: ["aiActions"],
+    });
     render(<DashboardPage />);
+    expect(screen.queryByText("AI Suggested Actions", { exact: true })).toBeNull();
+    expect(screen.queryByText("AI actions", { exact: true })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit dashboard" }));
+    expect(screen.queryByText("AI actions", { exact: true })).toBeNull();
+    expect(screen.queryByText(/Provider-backed action queue/)).toBeNull();
+    expect(useStore.getState().profile.dashboardWidgetOrder?.[0]).toBe("aiActions");
     expect(useStore.getState().profile.hiddenDashboardWidgets).toEqual(["aiActions"]);
   });
 

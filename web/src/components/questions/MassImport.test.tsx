@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SourceDocument } from "../../lib/library";
 import { extractPdfText } from "../../lib/extractText";
-import { MassImport } from "./MassImport";
+import { MassImport, massImportFileStatus } from "./MassImport";
 
 const mocked = vi.hoisted(() => ({
   addDocument: vi.fn(),
@@ -54,6 +54,16 @@ async function processReadyText(onInspect = vi.fn()) {
 }
 
 describe("Mass Import trust handoff", () => {
+  it("never marks a high-confidence draft with no mapped answer ready", () => {
+    expect(massImportFileStatus([{
+      stem: "Unresolved despite a malformed confidence value",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }, { key: "C", text: "Gamma" }],
+      correctKey: undefined,
+      confidence: "high",
+      warnings: [],
+    }])).toBe("needs-review");
+  });
+
   it("hands every source field and warning to the Import Center", async () => {
     const onInspect = vi.fn();
     const { user, file } = await processReadyText(onInspect);

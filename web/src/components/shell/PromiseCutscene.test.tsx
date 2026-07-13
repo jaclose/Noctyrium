@@ -23,7 +23,9 @@ describe("PromiseCutscene", () => {
   it("skips the timed reveal for reduced motion and lets Escape defer", () => {
     const onDone = vi.fn();
     render(<PromiseCutscene onDone={onDone} />);
-    expect(screen.getByRole("dialog", { name: "Promise of Use" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "A promise to yourself" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "AXOM" })).toBeTruthy();
+    expect(screen.getByText("This is not a legal contract.", { exact: false })).toBeTruthy();
     const name = screen.getByLabelText("Sign your name");
     const later = screen.getByRole("button", { name: "Maybe later" });
     later.focus();
@@ -41,7 +43,10 @@ describe("PromiseCutscene", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "I make this promise to myself." }));
     fireEvent.click(screen.getByRole("button", { name: "Sign the promise" }));
     expect(useStore.getState().profile.promise?.signedName).toBe("Ada");
+    expect(useStore.getState().profile.promise?.promiseTextVersion).toBe("promise-of-use-v1");
     expect(useStore.getState().journal.at(-1)?.rating).toBe("Promise");
+    expect(screen.getByLabelText("Signed by Ada").querySelector("svg path")).toBeTruthy();
+    expect(screen.queryByText(/Contract signed/)).toBeNull();
     view.unmount();
     vi.runAllTimers();
     expect(onDone).not.toHaveBeenCalled();

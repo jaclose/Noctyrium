@@ -7,6 +7,7 @@ import { TopBar } from "./TopBar";
 import App from "../../App";
 import { useStore } from "../../lib/store";
 import { STORAGE_KEYS } from "../../lib/brand";
+import { PROMISE_PROMPT_VERSION } from "../../lib/promisePrompt";
 import {
   DAILY_GAMES_FOLDER,
   getNavAnnouncementId,
@@ -34,6 +35,11 @@ beforeEach(() => {
       ...state.profile,
       onboarded: true,
       tourDone: true,
+      promisePromptStatus: {
+        state: "skipped",
+        updatedAt: "2026-07-13T00:00:00.000Z",
+        promptVersion: PROMISE_PROMPT_VERSION,
+      },
       hiddenNav: [],
       prepCollapsed: false,
       toolsCollapsed: false,

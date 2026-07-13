@@ -3,6 +3,102 @@ import { mergeStates, parseImport, toPortableState } from "./backup";
 import { makeSeed } from "./seed";
 
 describe("portable backup safety", () => {
+  it("round-trips notebook metadata, autosaved writing, and bounded local attachments on schema v32", () => {
+    const state = makeSeed();
+    state.profile.journalNotebook = {
+      title: "Clinical notebook",
+      subtitle: "Daily rounds",
+      coverTone: "forest",
+      paperTone: "cream",
+    };
+    state.journal = [{
+      id: "journal-notebook-page",
+      date: "2026-07-13T12:00:00.000Z",
+      today: "Protected a focus block.",
+      tomorrow: "Review renal questions.",
+      blockers: "Late start.",
+      energy: "Medium",
+      rating: "Useful",
+      freeWriting: "A local notebook paragraph.",
+      wins: ["Finished the lecture"],
+      losses: ["Carry flashcards"],
+      attachments: [{
+        id: "journal-image",
+        name: "study-desk.png",
+        type: "image/png",
+        size: 4,
+        createdAt: "2026-07-13T12:01:00.000Z",
+        dataUrl: "data:image/png;base64,YXhvbQ==",
+      }],
+      dayAtAGlance: {
+        hiddenSections: ["energy"],
+        corrections: { focus: "75 min" },
+        includedText: "Focused time: 75 min",
+        includedAt: "2026-07-13T12:02:00.000Z",
+      },
+      notebookStatus: "draft",
+      updatedAt: "2026-07-13T12:03:00.000Z",
+    }];
+
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.profile.journalNotebook).toEqual(state.profile.journalNotebook);
+    expect(parsed.journal).toEqual(state.journal);
+    expect(JSON.stringify(parsed.journal)).not.toContain("https://");
+
+    const merged = mergeStates(state, makeSeed());
+    expect(merged.journal).toEqual(state.journal);
+    expect(merged.profile.journalNotebook).toEqual(state.profile.journalNotebook);
+  });
+
+  it("round-trips additive dashboard layouts and preserves current layout on non-destructive merge", () => {
+    const state = makeSeed();
+    state.profile.dashboardLayout = {
+      version: 1,
+      preset: "custom",
+      order: ["welcome", "todayScore", "future-widget"],
+      hiddenWidgetIds: ["future-hidden"],
+      widgets: {
+        welcome: { size: "large", enabledFields: ["date", "quote"] },
+        todayScore: { size: "extra-large", enabledFields: [], preferences: { style: "rings" } },
+        "future-widget": { size: "medium", enabledFields: ["future-field"], futurePreference: { safe: true } },
+      },
+      dismissedExtraLargeRecommendation: true,
+      updatedAt: "2026-07-13T12:00:00.000Z",
+      futureLayoutField: "preserved",
+    };
+
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.profile.dashboardLayout).toMatchObject(state.profile.dashboardLayout);
+    const reparsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(parsed) }));
+    expect(reparsed.profile.dashboardLayout).toEqual(parsed.profile.dashboardLayout);
+
+    const imported = makeSeed();
+    imported.profile.dashboardLayout = {
+      ...state.profile.dashboardLayout,
+      preset: "study-heavy",
+      order: ["questionBank"],
+      widgets: { questionBank: { size: "large", enabledFields: ["due"] } },
+    };
+    expect(mergeStates(state, imported).profile.dashboardLayout).toEqual(state.profile.dashboardLayout);
+  });
+
+  it("round-trips a legacy AI widget preference without restoring it to current defaults", () => {
+    const state = makeSeed();
+    state.profile.dashboardWidgetOrder = ["aiActions", ...(state.profile.dashboardWidgetOrder ?? [])];
+    state.profile.hiddenDashboardWidgets = ["aiActions"];
+    const portable = toPortableState(state) as unknown as Record<string, unknown>;
+    const profile = portable.profile as Record<string, unknown>;
+    profile.dashboardWidgetOrder = [...(profile.dashboardWidgetOrder as string[]), "future-unknown-widget"];
+
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...portable }));
+    expect(restored.profile.dashboardWidgetOrder?.[0]).toBe("aiActions");
+    expect(restored.profile.dashboardWidgetOrder).not.toContain("future-unknown-widget");
+    expect(restored.profile.hiddenDashboardWidgets).toEqual(["aiActions"]);
+    expect(makeSeed().profile.dashboardWidgetOrder).not.toContain("aiActions");
+  });
+
   it("round-trips versioned promise prompt suppression without a schema change", () => {
     const state = makeSeed();
     state.profile.promisePromptStatus = {
@@ -13,6 +109,25 @@ describe("portable backup safety", () => {
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
     expect(parsed.schemaVersion).toBe(32);
     expect(parsed.profile.promisePromptStatus).toEqual(state.profile.promisePromptStatus);
+  });
+
+  it("round-trips optional daily-loop preferences without exporting delivery metadata", () => {
+    const state = makeSeed();
+    state.profile.dailyLoopReminders = {
+      checkInEnabled: false,
+      checkInTime: "09:15",
+      closeoutEnabled: true,
+      closeoutTime: "21:00",
+      quietHoursEnabled: true,
+      quietHoursStart: "23:00",
+      quietHoursEnd: "06:30",
+    };
+    const portable = toPortableState(state) as unknown as Record<string, unknown>;
+    expect(JSON.stringify(portable)).not.toContain("snoozedUntil");
+
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...portable }));
+    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.profile.dailyLoopReminders).toEqual(state.profile.dailyLoopReminders);
   });
 
   it("keeps question-bank records and import diagnostics in the portable state", () => {
@@ -231,6 +346,20 @@ describe("portable backup safety", () => {
         label: "Practice questions",
         enabled: true,
         source: { kind: "practice-questions" },
+        aliases: ["UWorld block"],
+        excludedSourceRecordIds: ["wrong-match-log"],
+        includedSourceRecordIds: ["reassigned-log"],
+        weight: 2,
+        manualContributions: [{
+          id: "manual-questions",
+          requirementId: "req-questions",
+          dayKey: "2026-07-12",
+          value: 15,
+          unit: "questions",
+          mode: "override",
+          createdAt: "2026-07-12T12:00:00.000Z",
+          updatedAt: "2026-07-12T12:00:00.000Z",
+        }],
         target: 20,
         unit: "questions",
         schedule: { kind: "weekdays", weekdays: [1, 3, 5] },
@@ -263,9 +392,24 @@ describe("portable backup safety", () => {
     expect(parsed.profile.dailySuccess?.requirements[0]).toMatchObject({
       id: "req-questions",
       target: 20,
+      aliases: ["UWorld block"],
+      excludedSourceRecordIds: ["wrong-match-log"],
+      includedSourceRecordIds: ["reassigned-log"],
+      weight: 2,
       trackingStartsAt: "2026-07-12",
       schedule: { kind: "weekdays", weekdays: [1, 3, 5] },
     });
+    expect(parsed.profile.dailySuccess?.requirements[0].manualContributions).toEqual([
+      expect.objectContaining({
+        id: "manual-questions",
+        requirementId: "req-questions",
+        dayKey: "2026-07-12",
+        value: 15,
+        mode: "override",
+      }),
+    ]);
+    const reparsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(parsed) }));
+    expect(reparsed.profile.dailySuccess).toEqual(parsed.profile.dailySuccess);
     expect(parsed.profile.pomodoroPreferences?.savedPresets).toHaveLength(1);
     expect(parsed.profile.pomodoroPreferences?.savedPresets[0]).toMatchObject({
       id: "preset-deep", focus: 90, break: 20, longBreak: 30, cyclesBeforeLongBreak: 2, useCount: 4,

@@ -20,6 +20,7 @@ import {
   selectDailyWordPuzzle,
   type LetterEvaluation,
 } from "./dailyWord";
+import { deriveDailyWordStatsFromNormalizedHistory } from "./dailyWordStats";
 
 describe("Daily Word calendar and deterministic answer selection", () => {
   it("formats calendar parts in the explicit IANA timezone", () => {
@@ -211,6 +212,8 @@ describe("Daily Word history, statistics, and sharing", () => {
     const stats = deriveDailyWordStats([...history, history[3]]);
     expect(stats).toMatchObject({ gamesPlayed: 4, wins: 3, currentStreak: 1, maxStreak: 2 });
     expect(stats.guessDistribution).toMatchObject({ 2: 1, 3: 1, 4: 1, 6: 0 });
+    expect(deriveDailyWordStatsFromNormalizedHistory(normalizeDailyWordHistory([...history, history[3]])))
+      .toEqual(stats);
   });
 
   it("does not inflate the live streak when an older completion arrives later", () => {

@@ -14,7 +14,7 @@ import { blueprintById } from "./blueprintCatalog";
 import { instantiateBlueprint, duplicateInstall, reconcileBlueprint } from "./blueprintInstall";
 import {
   APP_VERSION_LABEL, DEFAULT_CLOCK_PREFERENCES, DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS,
-  DEFAULT_TIME_ZONE_PREFERENCE,
+  DEFAULT_TIME_ZONE_PREFERENCE, STORED_DASHBOARD_WIDGET_IDS,
   defaultProductivityTrackers,
   driveResourceFields, makeSeed, SCHEMA_VERSION, SGU_DRIVES,
 } from "./seed";
@@ -49,6 +49,9 @@ import { normalizeTrackerPath, trackerPathKey } from "./pathUtils";
 import { normalizeResourceUrl } from "./resourceUtils";
 import { normalizeDailySuccessConfig } from "./dailySuccess";
 import { normalizePomodoroPreferences } from "./pomodoroPreferences";
+import { normalizeDailyLoopReminderPreferences } from "./dailyLoopReminders";
+import { normalizeDashboardLayoutPreferences } from "./dashboardWidgets";
+import { normalizeJournalEntries, normalizeJournalNotebookPreferences } from "./journalNotebook";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import {
   closeOpenSegment, findLiveSession, openNewSegment, restoreSession, sessionElapsedMinutes,
@@ -168,7 +171,12 @@ interface Actions {
   removeBoardBlueprintLog: (exam: BoardExamId, id: string) => void;
 
   // win the day
-  setDayPlan: (dayKey: string, intention: string, wins: string[]) => void;
+  setDayPlan: (
+    dayKey: string,
+    intention: string,
+    wins: string[],
+    details?: Pick<DayPlan, "expectedStudyMinutes" | "personalNote" | "priority" | "anticipatedObstacle" | "commitmentLevel">,
+  ) => void;
   reviewDayPlan: (dayKey: string, outcome: DayPlan["outcome"], reviewNote?: string) => void;
 
   // blueprint prep (installable operating-system containers)
@@ -737,7 +745,7 @@ export const useStore = create<Store>()(
           };
         }),
 
-      setDayPlan: (dk, intention, wins) =>
+      setDayPlan: (dk, intention, wins, details) =>
         set((s) => {
           const rest = s.dayPlans.filter((p) => p.dayKey !== dk);
           if (!intention.trim()) return { dayPlans: rest };
@@ -745,6 +753,11 @@ export const useStore = create<Store>()(
           return {
             dayPlans: [
               { dayKey: dk, intention, wins, createdAt: prev?.createdAt ?? now(),
+                expectedStudyMinutes: details?.expectedStudyMinutes ?? prev?.expectedStudyMinutes,
+                personalNote: details?.personalNote ?? prev?.personalNote,
+                priority: details?.priority ?? prev?.priority,
+                anticipatedObstacle: details?.anticipatedObstacle ?? prev?.anticipatedObstacle,
+                commitmentLevel: details?.commitmentLevel ?? prev?.commitmentLevel,
                 reviewedAt: prev?.reviewedAt, outcome: prev?.outcome, reviewNote: prev?.reviewNote },
               ...rest,
             ],
@@ -1451,6 +1464,7 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
   // Keeping these defaults unconditional makes direct/imported v32 payloads
   // idempotent without turning the optional module on or bumping the schema.
   s.profile = normalizeProfile(s.profile);
+  s.journal = normalizeJournalEntries(s.journal);
   s.dailyWordPuzzles = normalizeDailyWordPuzzles(s.dailyWordPuzzles);
   s.schemaVersion = SCHEMA_VERSION;
   return s as unknown as NoctyriumState;
@@ -1743,11 +1757,21 @@ function normalizeProfile(value: unknown): Profile {
     focusSubscriptions,
     dashboardWidgetOrder,
     hiddenDashboardWidgets,
+    dashboardLayout: normalizeDashboardLayoutPreferences(profile.dashboardLayout, {
+      order: dashboardWidgetOrder,
+      hiddenWidgetIds: hiddenDashboardWidgets,
+    }),
     hiddenNav,
     toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
     prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
     dailyGamesCollapsed: typeof profile.dailyGamesCollapsed === "boolean" ? profile.dailyGamesCollapsed : undefined,
     journalReviewTime,
+    journalNotebook: profile.journalNotebook === undefined
+      ? undefined
+      : normalizeJournalNotebookPreferences(profile.journalNotebook),
+    dailyLoopReminders: profile.dailyLoopReminders === undefined
+      ? undefined
+      : normalizeDailyLoopReminderPreferences(profile.dailyLoopReminders),
     // Preserve optional opt-in fields so they survive reset/migration.
     blueprintMode: profile.blueprintMode === "usmle" || profile.blueprintMode === "prehealth"
       ? profile.blueprintMode as Profile["blueprintMode"] : undefined,
@@ -1900,7 +1924,7 @@ function upsertDailyWordPuzzle(
 
 function normalizeDashboardWidgetOrder(value: unknown): Profile["dashboardWidgetOrder"] {
   if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
-  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const valid = new Set(STORED_DASHBOARD_WIDGET_IDS);
   const incoming = value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   );
@@ -1909,7 +1933,7 @@ function normalizeDashboardWidgetOrder(value: unknown): Profile["dashboardWidget
 
 function normalizeDashboardWidgetList(value: unknown): Profile["hiddenDashboardWidgets"] {
   if (!Array.isArray(value)) return [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS];
-  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const valid = new Set(STORED_DASHBOARD_WIDGET_IDS);
   return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   ))];

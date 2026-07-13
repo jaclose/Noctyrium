@@ -15,6 +15,7 @@
     "build": "tsc -b && vite build && node scripts/verify-daily-games-bundle.mjs",
     "verify:daily-games-bundle": "node scripts/verify-daily-games-bundle.mjs",
     "verify:daily-games-offline": "node scripts/verify-daily-games-offline.mjs",
+    "verify:question-imports": "vitest run src/lib/questionImportEvaluation.test.ts --reporter=verbose",
     "preview": "vite preview",
     "package": "bash scripts/package-web.sh",
     "quality": "npm run typecheck && npm run lint && npm run test && npm run build"

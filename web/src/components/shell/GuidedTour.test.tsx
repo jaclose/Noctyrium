@@ -92,7 +92,7 @@ describe("GuidedTour", () => {
     expect(screen.getByText(/Import → Review → Practice → Understand/)).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByRole("status", { name: "Current tour route" }).textContent).toBe("questions");
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: expectedBehavior });
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "center", inline: "nearest", behavior: expectedBehavior });
     });
   });
 

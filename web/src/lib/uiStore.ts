@@ -20,6 +20,10 @@ interface UiState {
   onboardingRequested: boolean;
   requestOnboarding: () => void;
   clearOnboardingRequest: () => void;
+  // One-shot handoff from the app-root reminder watcher to Dashboard.
+  dailyLoopRequest: { kind: "check-in" | "closeout"; dayKey: string } | null;
+  requestDailyLoop: (kind: "check-in" | "closeout", dayKey: string) => void;
+  clearDailyLoopRequest: () => void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -35,6 +39,9 @@ export const useUi = create<UiState>((set) => ({
   onboardingRequested: false,
   requestOnboarding: () => set({ onboardingRequested: true }),
   clearOnboardingRequest: () => set({ onboardingRequested: false }),
+  dailyLoopRequest: null,
+  requestDailyLoop: (kind, dayKey) => set({ dailyLoopRequest: { kind, dayKey } }),
+  clearDailyLoopRequest: () => set({ dailyLoopRequest: null }),
 }));
 
 /** Open setup in rerun mode without making App mistake it for first launch. */

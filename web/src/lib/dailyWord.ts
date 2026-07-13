@@ -1,19 +1,16 @@
 import type { DailyWordPuzzleState, TimeZonePreference } from "./types";
+import { isCalendarDateKey } from "./dailyWordCalendar";
+import {
+  DAILY_WORD_MAX_GUESSES,
+  deriveDailyWordStatsFromNormalizedHistory,
+  type DailyWordStats,
+} from "./dailyWordStats";
 
 export type { DailyWordPuzzleState, TimeZonePreference } from "./types";
-
-export const DAILY_WORD_MAX_GUESSES = 6;
+export { isCalendarDateKey, isNextCalendarDate } from "./dailyWordCalendar";
+export { DAILY_WORD_MAX_GUESSES, type DailyWordStats } from "./dailyWordStats";
 
 export type LetterEvaluation = "correct" | "present" | "absent";
-
-export interface DailyWordStats {
-  gamesPlayed: number;
-  wins: number;
-  currentStreak: number;
-  maxStreak: number;
-  guessDistribution: Record<number, number>;
-  lastCompletedPuzzleId?: string;
-}
 
 export type DailyWordSelectionStatus = "current" | "locked" | "clock-behind";
 
@@ -31,7 +28,6 @@ interface SelectDailyWordPuzzleOptions {
   wordListVersion: string;
 }
 
-const DATE_KEY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const VERSION_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const FIVE_LETTERS = /^[A-Z]{5}$/;
 
@@ -115,24 +111,6 @@ export function millisecondsUntilNextCalendarDate(date: Date, timeZone: string):
     else high = middle;
   }
   return Math.max(0, high - start);
-}
-
-export function isCalendarDateKey(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  const match = DATE_KEY.exec(value);
-  if (!match) return false;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (year < 1 || month < 1 || month > 12 || day < 1) return false;
-  return day <= daysInMonth(year, month);
-}
-
-export function isNextCalendarDate(previous: string, next: string): boolean {
-  const parsed = parseCalendarDate(previous);
-  if (!parsed || !isCalendarDateKey(next)) return false;
-  const advanced = nextCalendarDate(parsed.year, parsed.month, parsed.day);
-  return formatCalendarDate(advanced.year, advanced.month, advanced.day) === next;
 }
 
 export function buildDailyWordPuzzleId(wordListVersion: string, puzzleDate: string): string {
@@ -324,48 +302,7 @@ export function mergeDailyWordHistories(
 
 /** Aggregate statistics are derived from unique history, so reload is idempotent. */
 export function deriveDailyWordStats(history: readonly DailyWordPuzzleState[]): DailyWordStats {
-  const completed = normalizeDailyWordHistory(history)
-    .filter((puzzle) => puzzle.completed)
-    .sort((left, right) => completionTimestamp(left).localeCompare(completionTimestamp(right)) || left.puzzleId.localeCompare(right.puzzleId));
-  const distribution: Record<number, number> = Object.fromEntries(
-    Array.from({ length: DAILY_WORD_MAX_GUESSES }, (_, index) => [index + 1, 0]),
-  );
-  let wins = 0;
-  let currentStreak = 0;
-  let maxStreak = 0;
-  let streakDate = "";
-  let previousDateWon = false;
-
-  for (const puzzle of completed) {
-    if (puzzle.won) {
-      wins += 1;
-      const bucket = Math.min(DAILY_WORD_MAX_GUESSES, Math.max(1, puzzle.guesses.length));
-      distribution[bucket] = (distribution[bucket] ?? 0) + 1;
-    }
-
-    // Older/same-day completions can be imported or arise after a list-version
-    // change. They count as games but never inflate or reset the live streak.
-    if (streakDate && puzzle.puzzleDate <= streakDate) continue;
-    if (!puzzle.won) {
-      currentStreak = 0;
-    } else if (previousDateWon && isNextCalendarDate(streakDate, puzzle.puzzleDate)) {
-      currentStreak += 1;
-    } else {
-      currentStreak = 1;
-    }
-    streakDate = puzzle.puzzleDate;
-    previousDateWon = puzzle.won;
-    maxStreak = Math.max(maxStreak, currentStreak);
-  }
-
-  return {
-    gamesPlayed: completed.length,
-    wins,
-    currentStreak,
-    maxStreak,
-    guessDistribution: distribution,
-    lastCompletedPuzzleId: completed.at(-1)?.puzzleId,
-  };
+  return deriveDailyWordStatsFromNormalizedHistory(normalizeDailyWordHistory(history));
 }
 
 /** Build a result-only share block. It accepts evaluations, not the answer. */
@@ -391,38 +328,9 @@ function normalizeFiveLetterWord(value: string, label: string): string {
   return normalized;
 }
 
-function parseCalendarDate(value: string): { year: number; month: number; day: number } | undefined {
-  if (!isCalendarDateKey(value)) return undefined;
-  const [, year, month, day] = DATE_KEY.exec(value) ?? [];
-  return { year: Number(year), month: Number(month), day: Number(day) };
-}
-
-function nextCalendarDate(year: number, month: number, day: number) {
-  if (day < daysInMonth(year, month)) return { year, month, day: day + 1 };
-  if (month < 12) return { year, month: month + 1, day: 1 };
-  return { year: year + 1, month: 1, day: 1 };
-}
-
-function daysInMonth(year: number, month: number): number {
-  if (month === 2) return isLeapYear(year) ? 29 : 28;
-  return [4, 6, 9, 11].includes(month) ? 30 : 31;
-}
-
-function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
-
-function formatCalendarDate(year: number, month: number, day: number): string {
-  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
 function validIsoTimestamp(value: unknown): string | undefined {
   if (typeof value !== "string" || !value) return undefined;
   return Number.isFinite(new Date(value).getTime()) ? value : undefined;
-}
-
-function completionTimestamp(puzzle: DailyWordPuzzleState): string {
-  return puzzle.completedAt ?? puzzle.updatedAt ?? puzzle.startedAt;
 }
 
 function comparePuzzleRecency(left: DailyWordPuzzleState, right: DailyWordPuzzleState): number {

@@ -43,6 +43,45 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("source-document-first import", () => {
+  it("never records an unresolved mapping as reviewed even if confidence is malformed high", async () => {
+    const user = userEvent.setup();
+    render(<ImportPanel seed={{
+      drafts: [{ ...draft, correctKey: undefined, correctAnswerText: undefined }],
+      rawText: "Which option is correct?\nA. Alpha\nB. Beta",
+      title: "Unresolved import",
+      fileName: "unresolved.txt",
+      fileType: "text",
+    }} />);
+
+    await user.click(screen.getByRole("button", { name: /^Save$/ }));
+    expect(mocked.addQuestion).toHaveBeenCalledWith(expect.objectContaining({
+      correctKey: undefined,
+      extraction: expect.objectContaining({ reviewed: false, reviewedAt: undefined }),
+    }));
+  });
+
+  it("summarizes ready, suggested, unresolved, and explanation coverage", () => {
+    render(<ImportPanel seed={{
+      drafts: [
+        { ...draft, explanation: "Grounded rationale." },
+        { ...draft, correctKey: "A", correctAnswerText: "Alpha", confidence: "medium" },
+        { ...draft, correctKey: undefined, correctAnswerText: undefined, confidence: "low", needsReview: true },
+      ],
+      rawText: "Sanitized source",
+      title: "Trust summary",
+      fileName: "summary.txt",
+      fileType: "text",
+    }} />);
+
+    expect(screen.getByText("Ready 1").textContent).toBe("Ready 1");
+    expect(screen.getByText("Review suggested 1").textContent).toBe("Review suggested 1");
+    expect(screen.getByText("Unresolved 1").textContent).toBe("Unresolved 1");
+    expect(screen.getByText(/Explanations found/).textContent).toContain("1");
+    expect(screen.getByRole("button", { name: "Approve ready (1)" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Review suggested (1)" }).hasAttribute("disabled")).toBe(false);
+    expect(screen.getByRole("button", { name: "Repair unresolved (1)" }).hasAttribute("disabled")).toBe(false);
+  });
+
   it("persists an explicit manual answer confirmation at medium confidence", async () => {
     const user = userEvent.setup();
     render(<ImportPanel seed={{

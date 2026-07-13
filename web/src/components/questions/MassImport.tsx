@@ -24,6 +24,7 @@ import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
 import { assignDraftProvenancePages } from "../../lib/questionProvenance";
 import type { ImportSeed } from "./ImportPanel";
+import { draftImportStatus } from "../../lib/questionImportTrust";
 
 type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "no-text" | "error" | "saved";
 
@@ -45,6 +46,11 @@ interface QueuedFile {
 
 const uid = () => crypto.randomUUID();
 const CONCURRENCY = 3;
+
+export function massImportFileStatus(drafts: readonly ParsedQuestionDraft[]): "error" | "needs-review" | "ready" {
+  if (drafts.length === 0) return "error";
+  return drafts.every((draft) => draftImportStatus(draft) === "ready") ? "ready" : "needs-review";
+}
 
 export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { title: string; drafts: ParsedQuestionDraft[]; rawText: string; fileName: string }) => void }) {
   const s = useStore();
@@ -133,9 +139,9 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
       if (kind === "pdf" && pageTexts) assignSourcePages(drafts, pageTexts);
       warnings = [...warnings, ...result.warnings];
       const answerKeyDetected = drafts.some((d) => d.correctKey);
-      const needsReview = drafts.length === 0 || drafts.some((d) => d.needsReview || d.confidence !== "high");
+      const importStatus = massImportFileStatus(drafts);
       patch(id, {
-        status: drafts.length === 0 ? "error" : needsReview ? "needs-review" : "ready",
+        status: importStatus,
         drafts,
         warnings,
         answerKeyDetected,
@@ -198,6 +204,8 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
             explanationSourceSnippet: d.explanationSourceSnippet,
             explanationSourcePage: d.explanationSourcePage,
             explanationSource: d.explanationSource,
+            explanationRawCandidate: d.explanationRawCandidate,
+            explanationCleanupOperations: d.explanationCleanupOperations,
           },
         });
         if (result.ok && result.id) questionIds.push(result.id);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanExplanationText } from "./questionExplanation";
+import { cleanExplanationText, sanitizeExplanationCandidate } from "./questionExplanation";
 
 const ppdQuestion = {
   stem: "A 36-year-old man with tuberculosis exposure has a positive PPD skin test. Which cells mediate this reaction?",
@@ -61,5 +61,68 @@ describe("cleanExplanationText", () => {
     const clean = "The reaction is mediated by Th1 cells and macrophages.";
     expect(cleanExplanationText(clean, ppdQuestion)).toBe(clean);
     expect(cleanExplanationText(cleanExplanationText(clean, ppdQuestion), ppdQuestion)).toBe(clean);
+  });
+
+  it("emits the raw candidate, cleaned prose, operations, and bounded confidence", () => {
+    const raw = [
+      `1. ${ppdQuestion.stem}`,
+      "A. B lymphocytes",
+      "B. CD4+ T lymphocytes",
+      "Correct answer: B. CD4+ T lymphocytes",
+      "Rationale: Delayed hypersensitivity is driven by sensitized T cells.",
+      "Learning Objective: Distinguish the four hypersensitivity types.",
+      "Recognize the cellular mediators for each type.",
+      "Teaching point: Th1 signals recruit and activate macrophages.",
+    ].join("\n");
+
+    const result = sanitizeExplanationCandidate(raw, ppdQuestion);
+    expect(result.rawCandidate).toBe(raw);
+    expect(result.cleanedText).toBe([
+      "Delayed hypersensitivity is driven by sensitized T cells.",
+      "Th1 signals recruit and activate macrophages.",
+    ].join("\n"));
+    expect(result.cleanupOperations).toEqual(expect.arrayContaining([
+      "start-at-explanation-marker",
+      "remove-explanation-label",
+      "remove-objective-metadata",
+    ]));
+    expect(result.confidence).toBeGreaterThanOrEqual(0.9);
+    expect(result.confidence).toBeLessThanOrEqual(1);
+  });
+
+  it("stops at a proven next-question boundary or trailing answer key", () => {
+    const nextQuestion = sanitizeExplanationCandidate([
+      "Explanation: This response depends on sensitized T cells.",
+      "2. Which mediator is released next?",
+      "A. Histamine",
+      "B. Interferon gamma",
+      "C. Interleukin 4",
+    ].join("\n"), ppdQuestion);
+    expect(nextQuestion.cleanedText).toBe("This response depends on sensitized T cells.");
+    expect(nextQuestion.cleanupOperations).toContain("stop-at-next-question");
+
+    const answerKey = sanitizeExplanationCandidate([
+      "Why: Th1 cells coordinate the delayed response.",
+      "Answer key:",
+      "1. B",
+      "2. C",
+    ].join("\n"), ppdQuestion);
+    expect(answerKey.cleanedText).toBe("Th1 cells coordinate the delayed response.");
+    expect(answerKey.cleanupOperations).toContain("stop-at-answer-key");
+  });
+
+  it("removes repeated structure while preserving a correct-answer rationale", () => {
+    const result = sanitizeExplanationCandidate([
+      ppdQuestion.stem,
+      "A. B lymphocytes",
+      "B. CD4+ T lymphocytes",
+      "Correct answer: B because the infiltrate is T-cell predominant.",
+    ].join("\n"), ppdQuestion);
+    expect(result.cleanedText).toBe("Because the infiltrate is T-cell predominant.");
+    expect(result.cleanupOperations).toEqual(expect.arrayContaining([
+      "remove-question-stem",
+      "remove-option-duplication",
+      "extract-answer-rationale",
+    ]));
   });
 });

@@ -1,16 +1,19 @@
 import type {
   DailySuccessConfig,
+  DailySuccessManualContribution,
   DailySuccessRequirement,
   DailySuccessSchedule,
   DailySuccessSource,
   Habit,
   NoctyriumState,
   ProductivityTracker,
-  StudyLog,
 } from "./types";
 import { addLocalDays, localDateKey } from "./dailyRollover";
+import { buildTargetContributionLedger, type TargetContribution } from "./targetContributions";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+const MIN_REQUIREMENT_WEIGHT = 0.1;
+const MAX_REQUIREMENT_WEIGHT = 5;
 
 export type DailyRequirementStatus =
   | "not-eligible"
@@ -29,6 +32,7 @@ export interface DailyRequirementResult {
   status: DailyRequirementStatus;
   sourceLabel: string;
   sourceRecordIds: string[];
+  contributions: TargetContribution[];
   calculation: string;
 }
 
@@ -64,8 +68,9 @@ export function evaluateDailySuccess(
   const mode = configured ? "configured" : "legacy";
   const results = requirements.map((requirement) => evaluateRequirement(requirement, state, dayKey, today));
   const eligible = results.filter((result) => result.eligible && result.status !== "unavailable");
-  const progress = eligible.length
-    ? Math.round((eligible.reduce((sum, result) => sum + result.ratio, 0) / eligible.length) * 100)
+  const totalWeight = eligible.reduce((sum, result) => sum + normalizeWeight(result.requirement.weight), 0);
+  const progress = eligible.length && totalWeight > 0
+    ? Math.round((eligible.reduce((sum, result) => sum + result.ratio * normalizeWeight(result.requirement.weight), 0) / totalWeight) * 100)
     : 0;
   const metCount = eligible.filter((result) => result.status === "met").length;
   const anyActivity = eligible.some((result) => result.current > 0);
@@ -121,6 +126,7 @@ export function evaluateRequirement(
     ratio: 0,
     sourceLabel: sourceLabel(requirement.source),
     sourceRecordIds: [] as string[],
+    contributions: [] as TargetContribution[],
     calculation: "Not eligible on this date.",
   };
   if (!requirement.enabled || dayKey < requirement.trackingStartsAt) {
@@ -145,7 +151,7 @@ export function evaluateRequirement(
     return evaluateWeeklyRequirement(requirement, state, dayKey, today, base);
   }
 
-  const observed = observedValue(requirement.source, state, dayKey);
+  const observed = observedValue(requirement, state, dayKey);
   const current = observed.value;
   const ratio = clampRatio(current / target);
   const met = current >= target;
@@ -164,6 +170,7 @@ export function evaluateRequirement(
     ratio,
     status,
     sourceRecordIds: observed.ids,
+    contributions: observed.contributions,
     calculation: `${formatNumber(current)} of ${formatNumber(target)} ${requirement.unit}`,
   };
 }
@@ -194,9 +201,11 @@ function evaluateWeeklyRequirement(
   for (let cursor = start; cursor <= end; cursor = addLocalDays(cursor, 1)) {
     if (cursor >= requirement.trackingStartsAt && cursor <= cutoff) days.push(cursor);
   }
-  const matching: Array<{ value: number; ids: string[] }> = [];
+  const observedDays: Array<{ value: number; ids: string[]; contributions: TargetContribution[] }> = [];
+  const matching: Array<{ value: number; ids: string[]; contributions: TargetContribution[] }> = [];
   for (const date of days) {
-    const observed = observedValue(requirement.source, state, date);
+    const observed = observedValue(requirement, state, date);
+    observedDays.push(observed);
     if (observed.value >= base.target) matching.push(observed);
   }
   // A requirement created late in its first week can never demand more
@@ -215,49 +224,27 @@ function evaluateWeeklyRequirement(
     target: targetOccurrences,
     ratio: clampRatio(current / targetOccurrences),
     status: met ? "met" : closed ? "missed" : current ? "in-progress" : "awaiting",
-    sourceRecordIds: matching.flatMap((result) => result.ids),
+    sourceRecordIds: [...new Set(observedDays.flatMap((result) => result.ids))],
+    contributions: observedDays.flatMap((result) => result.contributions),
     calculation: `${current} of ${targetOccurrences} scheduled completions for ${start}–${end}`,
   };
 }
 
-function observedValue(source: DailySuccessSource, state: DailySuccessState, dayKey: string): { value: number; ids: string[] } {
-  const dayLogs = state.logs.filter((log) => log.dayKey === dayKey);
-  if (source.kind === "study-minutes") {
-    const logs = dayLogs.filter((log) => log.academic !== false && finite(log.minutes) !== 0);
-    return sumSignedObserved(logs, (log) => finite(log.minutes));
-  }
-  if (source.kind === "cards-reviewed") {
-    const logs = dayLogs.filter((log) => finite(log.cards) !== 0 || log.quantityKind === "cards");
-    return sumSignedObserved(logs, (log) => finite(log.quantity) !== 0 ? finite(log.quantity) : finite(log.cards));
-  }
-  if (source.kind === "practice-questions") {
-    const logs = dayLogs.filter((log) => log.quantityKind === "questions");
-    return sumObserved(logs, (log) => positive(log.quantity));
-  }
-  if (source.kind === "productivity-tracker") {
-    const logs = dayLogs.filter((log) => log.trackerId === source.trackerId);
-    return sumObserved(logs, (log) => positive(log.quantity) || positive(log.minutes) || positive(log.cards));
-  }
-  if (source.kind === "habit") {
-    const entries = state.habitEntries.filter((entry) => entry.habitId === source.habitId && entry.date === dayKey);
-    return {
-      value: entries.reduce((sum, entry) => sum + (entry.status === "done" ? positive(entry.value) || 1 : entry.status === "partial" ? positive(entry.value) || 0.5 : 0), 0),
-      ids: entries.map((entry) => entry.id),
-    };
-  }
-  const closeout = state.closeouts.find((entry) => entry.dayKey === dayKey);
-  return { value: closeout ? 1 : 0, ids: closeout ? [closeout.id] : [] };
-}
-
-function sumObserved(logs: StudyLog[], value: (log: StudyLog) => number) {
-  return { value: logs.reduce((sum, log) => sum + positive(value(log)), 0), ids: logs.map((log) => log.id) };
-}
-
-function sumSignedObserved(logs: StudyLog[], value: (log: StudyLog) => number) {
-  return {
-    value: Math.max(0, logs.reduce((sum, log) => sum + finite(value(log)), 0)),
-    ids: logs.map((log) => log.id),
-  };
+function observedValue(
+  requirement: DailySuccessRequirement,
+  state: DailySuccessState,
+  dayKey: string,
+): { value: number; ids: string[]; contributions: TargetContribution[] } {
+  const ledger = buildTargetContributionLedger({
+    requirement,
+    dayKey,
+    logs: state.logs,
+    productivityTrackers: state.productivityTrackers,
+    habits: state.habits,
+    habitEntries: state.habitEntries,
+    closeouts: state.closeouts,
+  });
+  return { value: ledger.value, ids: ledger.sourceRecordIds, contributions: ledger.contributions };
 }
 
 function hasSource(source: DailySuccessSource, trackers: ProductivityTracker[], habits: Habit[]): boolean {
@@ -270,7 +257,7 @@ function hasSource(source: DailySuccessSource, trackers: ProductivityTracker[], 
 
 export function makeDailyRequirement(
   input: Pick<DailySuccessRequirement, "id" | "label" | "source" | "target" | "unit"> &
-    Partial<Pick<DailySuccessRequirement, "enabled" | "schedule" | "trackingStartsAt" | "createdAt" | "updatedAt">>,
+    Partial<Pick<DailySuccessRequirement, "enabled" | "aliases" | "excludedSourceRecordIds" | "includedSourceRecordIds" | "manualContributions" | "weight" | "schedule" | "trackingStartsAt" | "createdAt" | "updatedAt">>,
   today: string = localDateKey(),
 ): DailySuccessRequirement {
   const timestamp = new Date().toISOString();
@@ -279,6 +266,11 @@ export function makeDailyRequirement(
     label: input.label.trim() || sourceLabel(input.source),
     source: input.source,
     enabled: input.enabled ?? true,
+    aliases: normalizeAliases(input.aliases),
+    excludedSourceRecordIds: normalizeRecordIds(input.excludedSourceRecordIds),
+    includedSourceRecordIds: normalizeRecordIds(input.includedSourceRecordIds),
+    manualContributions: normalizeManualContributions(input.manualContributions, input.id),
+    weight: normalizeWeight(input.weight),
     target: safePositive(input.target, 1),
     unit: input.unit.trim() || "times",
     schedule: normalizeSchedule(input.schedule),
@@ -309,6 +301,11 @@ export function normalizeDailySuccessConfig(value: unknown): DailySuccessConfig 
         : sourceLabel(source),
       enabled: candidate.enabled !== false,
       source,
+      aliases: normalizeAliases(candidate.aliases),
+      excludedSourceRecordIds: normalizeRecordIds(candidate.excludedSourceRecordIds),
+      includedSourceRecordIds: normalizeRecordIds(candidate.includedSourceRecordIds),
+      manualContributions: normalizeManualContributions(candidate.manualContributions, id),
+      weight: normalizeWeight(candidate.weight),
       target: safePositive(candidate.target, 1),
       unit: typeof candidate.unit === "string" && candidate.unit.trim() ? candidate.unit.trim().slice(0, 40) : "times",
       schedule: normalizeSchedule(candidate.schedule),
@@ -350,7 +347,7 @@ function legacyRequirements(state: DailySuccessState): DailySuccessRequirement[]
 
 function normalizeSource(value: unknown): DailySuccessSource | undefined {
   if (!isRecord(value) || typeof value.kind !== "string") return undefined;
-  if (["study-minutes", "cards-reviewed", "practice-questions", "journal-closeout"].includes(value.kind)) {
+  if (["study-minutes", "cards-reviewed", "practice-questions", "journal-closeout", "activity-alias", "manual"].includes(value.kind)) {
     return { kind: value.kind } as DailySuccessSource;
   }
   if (value.kind === "productivity-tracker" && typeof value.trackerId === "string" && value.trackerId.trim()) {
@@ -380,11 +377,83 @@ function normalizeSchedule(value: unknown): DailySuccessSchedule {
   return { kind: "daily" };
 }
 
+function normalizeAliases(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const aliases: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of value) {
+    if (typeof candidate !== "string") continue;
+    const alias = candidate.trim().replace(/\s+/g, " ").slice(0, 80);
+    const key = alias.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    if (!alias || !key || seen.has(key)) continue;
+    seen.add(key);
+    aliases.push(alias);
+    if (aliases.length >= 20) break;
+  }
+  return aliases.length ? aliases : undefined;
+}
+
+function normalizeRecordIds(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const ids = [...new Set(value
+    .filter((candidate): candidate is string => typeof candidate === "string")
+    .map((candidate) => candidate.trim().slice(0, 160))
+    .filter(Boolean))].slice(0, 200);
+  return ids.length ? ids : undefined;
+}
+
+function normalizeManualContributions(
+  value: unknown,
+  requirementId: string,
+): DailySuccessManualContribution[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const records = new Map<string, DailySuccessManualContribution>();
+  for (const candidate of value) {
+    if (!isRecord(candidate)) continue;
+    const id = typeof candidate.id === "string" ? candidate.id.trim().slice(0, 160) : "";
+    const dayKey = validDate(candidate.dayKey);
+    const numericValue = Number(candidate.value);
+    if (!id || !dayKey || !Number.isFinite(numericValue)) continue;
+    const createdAt = safeTimestamp(candidate.createdAt, `${dayKey}T12:00:00.000Z`);
+    const mode = candidate.mode === "add" ? "add" : "override";
+    const record: DailySuccessManualContribution = {
+      id,
+      requirementId,
+      dayKey,
+      value: mode === "override" ? Math.max(0, numericValue) : numericValue,
+      unit: typeof candidate.unit === "string" && candidate.unit.trim()
+        ? candidate.unit.trim().slice(0, 40)
+        : undefined,
+      note: typeof candidate.note === "string" && candidate.note.trim()
+        ? candidate.note.trim().slice(0, 240)
+        : undefined,
+      mode,
+      createdAt,
+      updatedAt: safeTimestamp(candidate.updatedAt, createdAt),
+    };
+    const current = records.get(id);
+    if (!current || compareManualContribution(current, record) < 0) records.set(id, record);
+  }
+  const normalized = [...records.values()].sort(compareManualContribution);
+  return normalized.length ? normalized : undefined;
+}
+
+function compareManualContribution(a: DailySuccessManualContribution, b: DailySuccessManualContribution): number {
+  return a.updatedAt.localeCompare(b.updatedAt)
+    || a.createdAt.localeCompare(b.createdAt)
+    || a.id.localeCompare(b.id)
+    || a.mode.localeCompare(b.mode)
+    || (a.note ?? "").localeCompare(b.note ?? "")
+    || a.value - b.value;
+}
+
 function sourceLabel(source: DailySuccessSource): string {
   if (source.kind === "study-minutes") return "Study activity";
   if (source.kind === "cards-reviewed") return "Card reviews";
   if (source.kind === "practice-questions") return "Practice questions";
   if (source.kind === "journal-closeout") return "Daily closeout";
+  if (source.kind === "activity-alias") return "Matched activity";
+  if (source.kind === "manual") return "Manual check-in";
   if (source.kind === "habit") return "Habit activity";
   return "Productivity activity";
 }
@@ -410,13 +479,14 @@ function positive(value: unknown): number {
   return Number.isFinite(number) && number > 0 ? number : 0;
 }
 
-function finite(value: unknown): number {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
-}
-
 function safePositive(value: unknown, fallback: number): number {
   return positive(value) || fallback;
+}
+
+function normalizeWeight(value: unknown): number {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return 1;
+  return Math.max(MIN_REQUIREMENT_WEIGHT, Math.min(MAX_REQUIREMENT_WEIGHT, number));
 }
 
 function clampRatio(value: number): number {

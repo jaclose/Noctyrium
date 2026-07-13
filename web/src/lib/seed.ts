@@ -20,7 +20,6 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "pomodoro",
   "weekly",
   "suggested",
-  "aiActions",
   "schedule",
   "termMap",
   "localData",
@@ -32,7 +31,6 @@ export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
 ];
 export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "suggested",
-  "aiActions",
   "schedule",
   "termMap",
   "localData",
@@ -41,6 +39,26 @@ export const DEFAULT_HIDDEN_DASHBOARD_WIDGETS: DashboardWidgetId[] = [
   "premedHours",
   "resourceFocus",
   "boardBlueprint",
+];
+
+/**
+ * IDs accepted when hydrating old profiles and portable backups. `aiActions`
+ * is storage-only legacy metadata: retaining it avoids rewriting historical
+ * preferences, while the current dashboard and widget catalogs omit it.
+ */
+export const STORED_DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
+  ...DEFAULT_DASHBOARD_WIDGETS,
+  "welcome",
+  "commandBrief",
+  "questionBank",
+  "courseTracker",
+  "tasks",
+  "readiness",
+  "activity",
+  "journal",
+  "streak",
+  "dailyWord",
+  "aiActions",
 ];
 
 export const DEFAULT_TIME_ZONE_PREFERENCE: TimeZonePreference = { mode: "system" };

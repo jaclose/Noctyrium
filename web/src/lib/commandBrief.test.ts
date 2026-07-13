@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   assessCommandBriefEvidence, buildCommandBrief, deriveMinimumViableWin, deriveMode, deriveNextBestMove, deriveSignals,
   rankCommandBriefCandidates,
-  type BriefStateSlice, type BriefSignals,
+  type BriefEvidenceState, type BriefStateSlice, type BriefSignals,
 } from "./commandBrief";
 import type { NoctyriumState, Task, TrackerItem } from "./types";
+import type { Habit } from "./types";
 import { newSchedule, type AnkiCard } from "./ankiCards";
 import { makeSeed } from "./seed";
+import type { QuestionRecord } from "./questions";
+import type { DailySuccessResult } from "./dailySuccess";
+import type { ReadinessResult } from "./energy";
 
 const TODAY = "2026-07-07";
 
@@ -43,6 +47,122 @@ function signals(patch: Partial<BriefSignals> = {}): BriefSignals {
     backlogScore: 0, examDaysAway: null, reviewFlagged: 0, dueQuestionCount: 0, dueCardCount: 0,
     yesterdayMinutes: 60, todayMinutes: 0,
     ...patch,
+  };
+}
+
+function evidenceState(patch: Partial<BriefEvidenceState> = {}): BriefEvidenceState {
+  return {
+    courses: [],
+    tracker: [],
+    logs: [],
+    tasks: [],
+    questions: [],
+    documents: [],
+    questionSets: [],
+    activeDayKey: TODAY,
+    dayPlans: [],
+    sessions: [],
+    ...patch,
+  };
+}
+
+function question(patch: Partial<QuestionRecord> = {}): QuestionRecord {
+  return {
+    id: crypto.randomUUID(),
+    source: "manual",
+    stem: "Which option is supported?",
+    options: [{ key: "A", text: "One" }, { key: "B", text: "Two" }],
+    correctKey: "B",
+    status: "unseen",
+    tags: [],
+    attempts: [],
+    createdAt: "2026-07-01T00:00:00.000Z",
+    updatedAt: "2026-07-01T00:00:00.000Z",
+    ...patch,
+  };
+}
+
+function dailyTarget(patch: {
+  id?: string;
+  label?: string;
+  current?: number;
+  target?: number;
+  status?: "awaiting" | "in-progress" | "met" | "not-eligible";
+  eligible?: boolean;
+  unit?: string;
+  weight?: number;
+  source?: DailySuccessResult["requirements"][number]["requirement"]["source"];
+} = {}): DailySuccessResult {
+  const current = patch.current ?? 0;
+  const target = patch.target ?? 30;
+  const status = patch.status ?? (current > 0 ? "in-progress" : "awaiting");
+  const eligible = patch.eligible ?? status !== "not-eligible";
+  const id = patch.id ?? "target";
+  const unit = patch.unit ?? "minutes";
+  return {
+    mode: "configured",
+    dayKey: TODAY,
+    requirements: [{
+      requirement: {
+        id,
+        label: patch.label ?? "Focused study",
+        enabled: true,
+        source: patch.source ?? { kind: "study-minutes" },
+        weight: patch.weight ?? 1,
+        target,
+        unit,
+        schedule: { kind: "daily" },
+        trackingStartsAt: TODAY,
+        createdAt: `${TODAY}T08:00:00.000Z`,
+        updatedAt: `${TODAY}T08:00:00.000Z`,
+      },
+      eligible,
+      current,
+      target,
+      ratio: Math.min(1, current / target),
+      status,
+      sourceLabel: "Study activity",
+      sourceRecordIds: [],
+      contributions: [],
+      calculation: `${current} of ${target} ${unit}`,
+    }],
+    eligibleCount: eligible ? 1 : 0,
+    metCount: status === "met" ? 1 : 0,
+    progress: Math.round(Math.min(1, current / target) * 100),
+    status: status === "met" ? "met" : current > 0 ? "in-progress" : "neutral",
+    statusLabel: status === "met" ? "Daily requirements met" : "In progress",
+  };
+}
+
+function habit(patch: Partial<Habit> = {}): Habit {
+  return {
+    id: "habit-1",
+    name: "Review anatomy",
+    type: "scheduled",
+    schedule: [2],
+    createdAt: "2026-07-01T08:00:00.000Z",
+    updatedAt: "2026-07-01T08:00:00.000Z",
+    ...patch,
+  };
+}
+
+function readiness(score: number, grounded = true): ReadinessResult {
+  return {
+    date: TODAY,
+    selfReportedEnergy: {
+      score,
+      label: score < 45 ? "Low" : score < 75 ? "Medium" : "High",
+      source: grounded ? "journal-today" : undefined,
+    },
+    estimatedReadiness: score,
+    readinessLabel: score < 40 ? "Low" : score < 55 ? "Recovering" : score < 78 ? "Ready" : "High",
+    baseline: 62,
+    totalImpact: score - 62,
+    carryoverImpact: 0,
+    contributions: [],
+    possibleSignals: [],
+    primarySignal: grounded ? "Self-reported energy" : "No readiness factors logged yet",
+    recommendation: "Use the available evidence.",
   };
 }
 
@@ -170,6 +290,171 @@ describe("next best move priority", () => {
     const move = deriveNextBestMove(empty, "maintain", deriveSignals(empty));
     expect(move.title).toMatch(/tracker/i);
   });
+
+  it("ranks an unfinished scheduled target and omits completed or off-day targets", () => {
+    const unfinished = rankCommandBriefCandidates(slice({
+      dailySuccess: dailyTarget({ id: "questions", label: "Practice questions", current: 4, target: 10, unit: "questions" }),
+    }), "maintain", new Date(`${TODAY}T08:00:00Z`));
+
+    expect(unfinished[0]).toMatchObject({
+      candidateId: "target:questions",
+      title: "Complete Practice questions",
+      estimatedMinutes: 12,
+    });
+    expect(unfinished[0].contributions).toContainEqual(expect.objectContaining({
+      id: "scheduled-target:questions",
+      sourceLabel: "Today’s targets",
+    }));
+
+    expect(rankCommandBriefCandidates(slice({
+      dailySuccess: dailyTarget({ status: "met", current: 30 }),
+    }), "maintain")).toEqual([]);
+    expect(rankCommandBriefCandidates(slice({
+      dailySuccess: dailyTarget({ status: "not-eligible", eligible: false }),
+    }), "maintain")).toEqual([]);
+  });
+
+  it("uses the pinned priority, planned time, and grounded low energy without inventing evidence", () => {
+    const ranked = rankCommandBriefCandidates(slice({
+      tasks: [
+        task({ id: "priority", title: "Review renal transport" }),
+        task({ id: "other", title: "Organize notes" }),
+      ],
+      dayPlans: [{
+        dayKey: TODAY,
+        intention: "Protect one focused block",
+        priority: "Review renal transport",
+        wins: [],
+        expectedStudyMinutes: 20,
+        createdAt: `${TODAY}T08:00:00.000Z`,
+      }],
+      readiness: readiness(35),
+    }), "maintain", new Date(`${TODAY}T09:00:00Z`));
+
+    expect(ranked[0].candidateId).toBe("task:priority");
+    expect(ranked[0].estimatedMinutes).toBe(20);
+    expect(ranked[0].reason).toBe("You pinned this as today’s priority.");
+    expect(ranked[0].contributions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "pinned-priority", weight: 72 }),
+      expect.objectContaining({ id: "available-time", sourceLabel: "Daily Check-In" }),
+      expect.objectContaining({ id: "readiness-context", label: "Adjusted for reported readiness (35/100)" }),
+    ]));
+    expect(ranked[0].contributions.reduce((sum, item) => sum + item.weight, 0)).toBe(ranked[0].score);
+  });
+
+  it("does not let the neutral readiness baseline alter ranking or effort", () => {
+    const [candidate] = rankCommandBriefCandidates(slice({
+      tasks: [task({ id: "task", title: "Review renal transport" })],
+      readiness: readiness(35, false),
+    }), "maintain", new Date(`${TODAY}T09:00:00Z`));
+
+    expect(candidate.estimatedMinutes).toBe(45);
+    expect(candidate.contributions.some((item) => item.id === "readiness-context")).toBe(false);
+  });
+
+  it("keeps an active linked focus session ahead of a competing task and estimates remaining effort", () => {
+    const ranked = rankCommandBriefCandidates(slice({
+      tasks: [
+        task({ id: "active", title: "Review renal transport" }),
+        task({ id: "late", title: "Submit worksheet", due: "2026-07-06" }),
+      ],
+      sessions: [{
+        id: "session",
+        title: "Review renal transport",
+        link: { kind: "task", id: "active", label: "Review renal transport" },
+        plannedMinutes: 30,
+        segments: [{ startedAt: `${TODAY}T08:50:00.000Z` }],
+        status: "active",
+        quickLogs: [],
+        source: "manual",
+        dayKey: TODAY,
+        createdAt: `${TODAY}T08:50:00.000Z`,
+      }],
+    }), "maintain", new Date(`${TODAY}T09:00:00.000Z`));
+
+    expect(ranked[0].candidateId).toBe("task:active");
+    expect(ranked[0].estimatedMinutes).toBe(20);
+    expect(ranked[0].contributions).toContainEqual(expect.objectContaining({ id: "active-session", weight: 95 }));
+  });
+
+  it("preserves a free active focus session as a grounded action instead of falling back to setup", () => {
+    const ranked = rankCommandBriefCandidates(slice({
+      sessions: [{
+        id: "free-session",
+        title: "Outline renal mechanisms",
+        link: { kind: "free", label: "Renal outline" },
+        plannedMinutes: 25,
+        segments: [{ startedAt: `${TODAY}T08:55:00.000Z` }],
+        status: "active",
+        quickLogs: [],
+        source: "manual",
+        dayKey: TODAY,
+        createdAt: `${TODAY}T08:55:00.000Z`,
+      }],
+    }), "maintain", new Date(`${TODAY}T09:00:00.000Z`));
+
+    expect(ranked[0]).toMatchObject({
+      candidateId: "session:free-session",
+      title: "Continue Outline renal mechanisms",
+      estimatedMinutes: 20,
+      reason: "This is the focus session already in progress.",
+    });
+  });
+
+  it("ranks only genuinely due recurring habits and avoids a second candidate for a linked target", () => {
+    const due = habit();
+    const done = habit({ id: "done", name: "Hydrate" });
+    const weekly = habit({ id: "weekly", name: "Weekly review", type: "weekly", schedule: undefined, weeklyTarget: 3 });
+    const offDay = habit({ id: "off-day", name: "Monday planning", schedule: [1] });
+    const future = habit({ id: "future", name: "Future habit", trackingStartsAt: "2026-07-08" });
+    const ranked = rankCommandBriefCandidates(slice({
+      habits: [due, done, weekly, offDay, future],
+      habitEntries: [{
+        id: "done-entry", habitId: "done", date: TODAY, status: "done", createdAt: `${TODAY}T09:00:00.000Z`,
+      }],
+    }), "maintain");
+
+    expect(ranked.map((candidate) => candidate.candidateId)).toEqual(["habit:habit-1"]);
+
+    const linked = rankCommandBriefCandidates(slice({
+      habits: [due],
+      habitEntries: [],
+      dailySuccess: dailyTarget({
+        id: "habit-target",
+        label: due.name,
+        target: 1,
+        unit: "times",
+        source: { kind: "habit", habitId: due.id },
+      }),
+    }), "maintain");
+    expect(linked.map((candidate) => candidate.candidateId)).toEqual(["target:habit-target"]);
+  });
+
+  it("uses only a repeated grounded defer/block pattern as avoidance evidence", () => {
+    const blockedSession = (id: string, dayKey: string, log: "blocked" | "rescheduled") => ({
+      id,
+      title: "Review renal transport",
+      link: { kind: "task" as const, id: "task", label: "Review renal transport" },
+      segments: [],
+      status: "completed" as const,
+      quickLogs: [{ at: `${dayKey}T10:00:00.000Z`, log }],
+      source: "manual" as const,
+      dayKey,
+      createdAt: `${dayKey}T09:00:00.000Z`,
+    });
+    const ranked = rankCommandBriefCandidates(slice({
+      tasks: [task({ id: "task", title: "Review renal transport" })],
+      sessions: [
+        blockedSession("one", "2026-07-04", "blocked"),
+        blockedSession("two", "2026-07-06", "rescheduled"),
+      ],
+    }), "maintain", new Date(`${TODAY}T09:00:00.000Z`));
+
+    expect(ranked[0].contributions).toContainEqual(expect.objectContaining({
+      id: "recent-avoidance",
+      label: "Deferred or blocked 2 times recently",
+    }));
+  });
 });
 
 describe("minimum viable win", () => {
@@ -246,7 +531,7 @@ function detectMode(value: BriefSignals) {
 describe("Command Brief evidence readiness", () => {
   it("excludes every canonical seed course, example tracker row, and starter task", () => {
     const seed = makeSeed();
-    const evidence = assessCommandBriefEvidence({
+    const evidence = assessCommandBriefEvidence(evidenceState({
       courses: seed.courses,
       tracker: seed.tracker,
       logs: seed.logs,
@@ -254,62 +539,61 @@ describe("Command Brief evidence readiness", () => {
       questions: seed.questions,
       documents: seed.documents,
       questionSets: seed.questionSets,
-    });
+    }));
 
     expect(evidence.ready).toBe(false);
+    expect(evidence.confidence).toBe("none");
+    expect(evidence.canActivateManually).toBe(false);
     expect(evidence.workload.count).toBe(0);
     expect(evidence.activeItems.count).toBe(0);
     expect(evidence.activity.count).toBe(0);
+    expect(evidence.rankedEvidence).toEqual([]);
+    expect(evidence.starter?.id).toBe("empty");
   });
 
-  it("requires all three independent evidence boundaries", () => {
-    const seed = makeSeed();
-    const evidence = assessCommandBriefEvidence({
-      courses: [{ id: "course-real", termId: "term-1", code: "RENAL", name: "Renal block", files: 0, modules: [] }],
-      tracker: [
-        tracker({ id: "real-1", path: "Renal/Week 1", label: "Glomerular physiology", passes: 0 }),
-        tracker({ id: "real-2", path: "Renal/Week 1", label: "Tubular transport", passes: 1 }),
-      ],
-      logs: [],
-      tasks: seed.tasks,
-      questions: [],
-      documents: [],
-      questionSets: [],
+  it("recognises one manually added tracker item and offers an honest limited-confidence activation", () => {
+    const state = evidenceState({
+      tracker: [tracker({ id: "real-1", path: "Renal/Week 1", label: "Glomerular physiology", passes: 0 })],
     });
+    const evidence = assessCommandBriefEvidence(state);
 
-    expect(evidence.workload.ready).toBe(true);
+    expect(evidence.workload.count).toBe(1);
     expect(evidence.activeItems.ready).toBe(true);
+    expect(evidence.actionableCount).toBe(1);
     expect(evidence.activity.ready).toBe(false);
     expect(evidence.ready).toBe(false);
+    expect(evidence.confidence).toBe("limited");
+    expect(evidence.canActivateManually).toBe(true);
+    expect(evidence.starter).toMatchObject({ id: "limited-action", destination: "tracker" });
+
+    const activated = assessCommandBriefEvidence(state, { manualActivation: true });
+    expect(activated.ready).toBe(true);
+    expect(activated.activation).toBe("manual");
+    expect(activated.confidence).toBe("limited");
+    expect(activated.starter).toBeNull();
   });
 
-  it("activates only after a real workload, two active items, and a real signal exist", () => {
-    const evidence = assessCommandBriefEvidence({
+  it("automatically activates from two independently actionable records without an opaque activity gate", () => {
+    const evidence = assessCommandBriefEvidence(evidenceState({
       courses: [{ id: "course-real", termId: "term-real", code: "CARD", name: "Cardiology", files: 0, modules: [] }],
       tracker: [
         tracker({ id: "real-1", path: "Cardiology/Lectures", label: "Heart failure", passes: 0 }),
-        tracker({ id: "real-2", path: "Cardiology/PQs", label: "Cardiology questions", kind: "PQ", passes: 1 }),
+        tracker({ id: "real-2", path: "Cardiology/PQs", label: "Cardiology questions", kind: "PQ", passes: 0 }),
       ],
-      logs: [{
-        id: "log-real", dayKey: TODAY, ts: `${TODAY}T09:00:00.000Z`, type: "Study",
-        minutes: 30, cards: 0, academic: true, productive: true,
-      }],
-      tasks: [],
-      questions: [],
-      documents: [],
-      questionSets: [],
-    });
+    }));
 
     expect(evidence.ready).toBe(true);
-    expect(evidence.workload.count).toBe(1);
-    expect(evidence.activeItems.count).toBe(2);
-    expect(evidence.activity.count).toBe(1);
+    expect(evidence.activation).toBe("automatic");
+    expect(evidence.confidence).toBe("strong");
+    expect(evidence.workload.count).toBe(3);
+    expect(evidence.actionableCount).toBe(2);
+    expect(evidence.currentSignalCount).toBe(0);
   });
 
-  it("treats progress beyond a template baseline as meaningful without counting shipped progress", () => {
+  it("treats progress beyond a template baseline as meaningful without preserving the old two-tracker-row rule", () => {
     const seed = makeSeed();
     const progressed = seed.tracker.slice(0, 2).map((item) => ({ ...item, passes: item.passes + 1 }));
-    const evidence = assessCommandBriefEvidence({
+    const evidence = assessCommandBriefEvidence(evidenceState({
       courses: seed.courses,
       tracker: progressed,
       logs: [],
@@ -320,11 +604,213 @@ describe("Command Brief evidence readiness", () => {
         uploadedAt: `${TODAY}T08:00:00.000Z`, rawText: "", sizeBytes: 100, tags: [], linkedQuestionSetIds: [], libraryOnly: true,
       }],
       questionSets: [],
-    });
+    }));
 
     expect(evidence.workload.ready).toBe(true);
-    expect(evidence.activeItems.count).toBe(2);
-    expect(evidence.activity.ready).toBe(true);
+    expect(evidence.actionableCount).toBe(3);
+    expect(evidence.activity.ready).toBe(false);
     expect(evidence.ready).toBe(true);
   });
+
+  it("uses only same-day activity, intention, timer, and practice as current context", () => {
+    const realTask = task({ id: "today-task", title: "Review renal physiology" });
+    const oldOnly = assessCommandBriefEvidence(evidenceState({
+      tasks: [realTask],
+      logs: [{
+        id: "old", dayKey: "2026-07-06", ts: "2026-07-06T09:00:00.000Z", type: "Study",
+        minutes: 60, cards: 0, academic: true, productive: true,
+      }],
+    }));
+    expect(oldOnly.currentSignalCount).toBe(0);
+    expect(oldOnly.ready).toBe(false);
+
+    const current = assessCommandBriefEvidence(evidenceState({
+      tasks: [realTask],
+      logs: [{
+        id: "today", dayKey: TODAY, ts: `${TODAY}T09:00:00.000Z`, type: "Study",
+        minutes: 30, cards: 0, academic: true, productive: true,
+      }],
+      dayPlans: [{
+        dayKey: TODAY, intention: "Finish renal review", wins: [], createdAt: `${TODAY}T08:00:00.000Z`,
+      }],
+      sessions: [{
+        id: "session", title: "Renal block", link: { kind: "task", id: realTask.id, label: realTask.title },
+        segments: [{ startedAt: `${TODAY}T10:00:00.000Z` }], status: "active", quickLogs: [],
+        source: "manual", dayKey: TODAY, createdAt: `${TODAY}T10:00:00.000Z`,
+      }],
+      questions: [question({
+        id: "practice", attemptedAt: `${TODAY}T11:00:00.000Z`,
+        attempts: [{ at: `${TODAY}T11:00:00.000Z`, answerKey: "B", status: "correct" }],
+      })],
+    }));
+
+    expect(current.currentSignalCount).toBe(4);
+    expect(current.ready).toBe(true);
+    expect(current.rankedEvidence.map((item) => item.id)).toEqual(expect.arrayContaining([
+      "activity-log", "day-intention", "focus-session", "question-practice",
+    ]));
+  });
+
+  it("treats scheduled targets and due habits as actions, with grounded readiness only as context", () => {
+    const targetOnly = assessCommandBriefEvidence(evidenceState({
+      dailySuccess: dailyTarget({ id: "focus", label: "Focused study" }),
+    }));
+    expect(targetOnly).toMatchObject({
+      ready: false,
+      confidence: "limited",
+      actionableCount: 1,
+      currentSignalCount: 0,
+    });
+    expect(targetOnly.rankedEvidence).toContainEqual(expect.objectContaining({ id: "scheduled-targets", count: 1 }));
+    expect(targetOnly.starter).toMatchObject({ id: "limited-action", destination: "productivity" });
+
+    const grounded = assessCommandBriefEvidence(evidenceState({
+      dailySuccess: dailyTarget({ id: "focus", label: "Focused study" }),
+      readiness: readiness(35),
+    }));
+    expect(grounded).toMatchObject({ ready: true, actionableCount: 1, currentSignalCount: 1 });
+    expect(grounded.rankedEvidence).toContainEqual(expect.objectContaining({ id: "readiness", count: 1 }));
+
+    const neutral = assessCommandBriefEvidence(evidenceState({
+      dailySuccess: dailyTarget({ id: "focus", label: "Focused study" }),
+      readiness: readiness(35, false),
+    }));
+    expect(neutral).toMatchObject({ ready: false, currentSignalCount: 0 });
+
+    const habits = assessCommandBriefEvidence(evidenceState({ habits: [habit()] }));
+    expect(habits).toMatchObject({ actionableCount: 1, confidence: "limited" });
+    expect(habits.rankedEvidence).toContainEqual(expect.objectContaining({ id: "due-habits", count: 1 }));
+  });
+
+  it("counts a planned time block as same-day context while a completed plan does not qualify", () => {
+    const realTask = task({ id: "today-task", title: "Review renal physiology" });
+    const planned = assessCommandBriefEvidence(evidenceState({
+      tasks: [realTask],
+      dayPlans: [{
+        dayKey: TODAY,
+        intention: "",
+        wins: [],
+        expectedStudyMinutes: 25,
+        createdAt: `${TODAY}T08:00:00.000Z`,
+      }],
+    }));
+    expect(planned).toMatchObject({ ready: true, actionableCount: 1, currentSignalCount: 1 });
+
+    const completed = assessCommandBriefEvidence(evidenceState({
+      tasks: [realTask],
+      dayPlans: [{
+        dayKey: TODAY,
+        intention: "Review renal physiology",
+        wins: [],
+        outcome: "won",
+        createdAt: `${TODAY}T08:00:00.000Z`,
+      }],
+    }));
+    expect(completed).toMatchObject({ ready: false, actionableCount: 1, currentSignalCount: 0 });
+  });
+
+  it("counts only trusted due questions as actionable while retaining current practice as context", () => {
+    const dueAt = "2026-07-01T00:00:00.000Z";
+    const ready = question({
+      id: "ready", reviewDueAt: dueAt, attemptedAt: `${TODAY}T09:00:00.000Z`,
+      attempts: [{ at: `${TODAY}T09:00:00.000Z`, answerKey: "B", status: "incorrect" }],
+    });
+    const unresolved = question({ id: "unresolved", correctKey: undefined, reviewDueAt: dueAt, needsReview: true });
+    const evidence = assessCommandBriefEvidence(evidenceState({ questions: [unresolved, ready] }), {
+      now: new Date(`${TODAY}T12:00:00.000Z`),
+    });
+
+    expect(evidence.actionableCount).toBe(1);
+    expect(evidence.currentSignalCount).toBe(1);
+    expect(evidence.ready).toBe(true);
+    expect(evidence.rankedEvidence).toContainEqual(expect.objectContaining({ id: "due-questions", count: 1 }));
+  });
+
+  it("provides deterministic starter guidance for imports and courses that do not yet contain rankable work", () => {
+    const imported = assessCommandBriefEvidence(evidenceState({
+      documents: [{
+        id: "source-1", title: "Renal notes", fileName: "renal.pdf", fileType: "application/pdf",
+        uploadedAt: `${TODAY}T08:00:00.000Z`, rawText: "", sizeBytes: 100, tags: [], linkedQuestionSetIds: [], libraryOnly: true,
+      }],
+    }));
+    expect(imported.ready).toBe(false);
+    expect(imported.canActivateManually).toBe(true);
+    expect(imported.starter).toMatchObject({ id: "source-needs-review", destination: "questions" });
+    expect(assessCommandBriefEvidence(evidenceState({ documents: importedDocument() }), { manualActivation: true })).toMatchObject({
+      ready: true,
+      activation: "manual",
+      confidence: "limited",
+    });
+
+    const courseOnly = assessCommandBriefEvidence(evidenceState({
+      courses: [{ id: "course", termId: "term", code: "REN", name: "Renal", files: 0, modules: [] }],
+    }));
+    expect(courseOnly.starter).toMatchObject({ id: "course-needs-items", destination: "tracker" });
+
+    const seed = makeSeed();
+    const importedTemplateCourse = { ...seed.courses[0], origin: "import" as const };
+    const importedCourse = assessCommandBriefEvidence(evidenceState({ courses: [importedTemplateCourse] }));
+    expect(importedCourse.workload.count).toBe(1);
+    expect(importedCourse.starter?.id).toBe("course-needs-items");
+  });
+
+  it("allows an explicit limited brief from every user-backed evidence family", () => {
+    const cases: Array<[string, BriefEvidenceState]> = [
+      ["activity", evidenceState({ logs: [{
+        id: "log", dayKey: TODAY, ts: `${TODAY}T09:00:00.000Z`, type: "Exercise",
+        minutes: 20, cards: 0, academic: false, productive: true,
+      }] })],
+      ["intention", evidenceState({ dayPlans: [{
+        dayKey: TODAY, intention: "Choose a renal review target", wins: [], createdAt: `${TODAY}T08:00:00.000Z`,
+      }] })],
+      ["question", evidenceState({ questions: [question({ correctKey: undefined, needsReview: true })] })],
+    ];
+
+    for (const [label, state] of cases) {
+      const learning = assessCommandBriefEvidence(state);
+      expect(learning.canActivateManually, label).toBe(true);
+      expect(learning.confidence, label).toBe("limited");
+      expect(assessCommandBriefEvidence(state, { manualActivation: true }), label).toMatchObject({
+        ready: true,
+        activation: "manual",
+        confidence: "limited",
+      });
+    }
+  });
+
+  it("is deterministic after JSON hydration and independent of input ordering", () => {
+    const original = evidenceState({
+      tasks: [task({ id: "b", title: "B" }), task({ id: "a", title: "A" })],
+      tracker: [tracker({ id: "tracker", path: "Renal/Week 1", label: "Renal transport" })],
+      logs: [{
+        id: "today", dayKey: TODAY, ts: `${TODAY}T09:00:00.000Z`, type: "Study",
+        minutes: 30, cards: 0, academic: true, productive: true,
+      }],
+    });
+    const reversed = { ...original, tasks: [...original.tasks].reverse(), tracker: [...original.tracker].reverse() };
+    const hydrated = JSON.parse(JSON.stringify(original)) as BriefEvidenceState;
+
+    const first = assessCommandBriefEvidence(original, { now: new Date(`${TODAY}T12:00:00.000Z`) });
+    const second = assessCommandBriefEvidence(reversed, { now: new Date(`${TODAY}T12:00:00.000Z`) });
+    const third = assessCommandBriefEvidence(hydrated, { now: new Date(`${TODAY}T12:00:00.000Z`) });
+
+    expect(second).toEqual(first);
+    expect(third).toEqual(first);
+    expect(first.rankedEvidence.map((item) => item.id)).toEqual([
+      "open-tasks", "active-tracker", "activity-log",
+    ]);
+  });
+
+  it("never lets an empty or seed-only workspace bypass learning mode manually", () => {
+    const empty = assessCommandBriefEvidence(evidenceState(), { manualActivation: true });
+    expect(empty).toMatchObject({ ready: false, activation: "learning", confidence: "none", canActivateManually: false });
+    expect(empty.manualActivationReason).toMatch(/add real work/i);
+  });
 });
+
+function importedDocument(): BriefEvidenceState["documents"] {
+  return [{
+    id: "source-1", title: "Renal notes", fileName: "renal.pdf", fileType: "application/pdf",
+    uploadedAt: `${TODAY}T08:00:00.000Z`, rawText: "", sizeBytes: 100, tags: [], linkedQuestionSetIds: [], libraryOnly: true,
+  }];
+}

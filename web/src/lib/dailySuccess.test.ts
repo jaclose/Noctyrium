@@ -79,6 +79,57 @@ describe("daily success", () => {
     expect(result.requirements.map((item) => item.status)).toEqual(["not-eligible", "not-eligible", "in-progress"]);
   });
 
+  it("weights aggregate progress while preserving each target's native ratio", () => {
+    const primary = requirement({ id: "primary", target: 30, weight: 3 });
+    const secondary = requirement({ id: "secondary", target: 30, weight: 1, source: { kind: "practice-questions" }, unit: "questions" });
+    const result = evaluateDailySuccess(state([primary, secondary], [log({ minutes: 30 })]));
+    expect(result.progress).toBe(75);
+    expect(result.requirements.map((item) => ({ ratio: item.ratio, weight: item.requirement.weight }))).toEqual([
+      { ratio: 1, weight: 3 },
+      { ratio: 0, weight: 1 },
+    ]);
+  });
+
+  it("evaluates a manual-only target without requiring a habit or tracker", () => {
+    const manual = requirement({
+      id: "manual-target",
+      source: { kind: "manual" },
+      target: 1,
+      unit: "check-in",
+      manualContributions: [{
+        id: "manual-complete",
+        requirementId: "manual-target",
+        dayKey: TODAY,
+        value: 1,
+        mode: "override",
+        createdAt: "2026-07-12T12:00:00.000Z",
+        updatedAt: "2026-07-12T12:00:00.000Z",
+      }],
+    });
+    const result = evaluateDailySuccess(state([manual]));
+    expect(result.requirements[0]).toMatchObject({ current: 1, ratio: 1, status: "met" });
+    expect(result.requirements[0].sourceLabel).toBe("Manual check-in");
+  });
+
+  it("keeps an alias-only activity target available and neutral until an exact alias contributes", () => {
+    const activity = requirement({
+      id: "reading-pages",
+      source: { kind: "activity-alias" },
+      target: 10,
+      unit: "pages",
+      aliases: [],
+    });
+    const empty = evaluateDailySuccess(state([activity], [log({ type: "Reading", quantity: 10, quantityLabel: "Pages" })]));
+    expect(empty.requirements[0]).toMatchObject({ status: "awaiting", current: 0 });
+    expect(empty.requirements[0].sourceLabel).toBe("Matched activity");
+
+    const matched = evaluateDailySuccess(state([{ ...activity, aliases: ["Reading"] }], [
+      log({ id: "reading-log", type: "reading", quantity: 10, quantityLabel: "Pages" }),
+    ]));
+    expect(matched.requirements[0]).toMatchObject({ status: "met", current: 10 });
+    expect(matched.requirements[0].sourceRecordIds).toEqual(["reading-log"]);
+  });
+
   it("supports selected weekdays without creating off-day misses", () => {
     const weekdays = requirement({ schedule: { kind: "weekdays", weekdays: [1, 2, 3, 4, 5] } });
     const result = evaluateDailySuccess(state([weekdays])); // Sunday
@@ -143,6 +194,71 @@ describe("daily success", () => {
     ]));
     expect(result.requirements[0]).toMatchObject({ current: 75, status: "in-progress" });
     expect(result.requirements[0].sourceRecordIds).toEqual(["modern-add", "modern-correction", "legacy-add"]);
+  });
+
+  it("evaluates exact activity aliases through the canonical contribution ledger", () => {
+    const questions = requirement({
+      id: "questions",
+      label: "Practice questions",
+      source: { kind: "practice-questions" },
+      target: 20,
+      unit: "questions",
+      aliases: ["UWorld block"],
+    });
+    const result = evaluateDailySuccess(state([questions], [
+      log({ id: "alias-log", type: "uworld—BLOCK", quantity: 20, quantityKind: "count" }),
+      log({ id: "weak-match", type: "UWorld block notes", quantity: 50, quantityKind: "count" }),
+    ]));
+    expect(result.requirements[0]).toMatchObject({ current: 20, status: "met" });
+    expect(result.requirements[0].sourceRecordIds).toEqual(["alias-log"]);
+    expect(result.requirements[0].contributions[0]).toMatchObject({ matchedBy: "alias", unit: "questions" });
+  });
+
+  it("honors an explicit per-day manual override while retaining source provenance", () => {
+    const minutes = requirement({
+      manualContributions: [{
+        id: "manual-value",
+        requirementId: "minutes",
+        dayKey: TODAY,
+        value: 25,
+        unit: "minutes",
+        mode: "override",
+        createdAt: "2026-07-12T12:00:00.000Z",
+        updatedAt: "2026-07-12T12:00:00.000Z",
+      }],
+    });
+    const result = evaluateDailySuccess(state([minutes], [log({ id: "derived", minutes: 60 })]));
+    expect(result.requirements[0]).toMatchObject({ current: 25, status: "in-progress" });
+    expect(result.requirements[0].sourceRecordIds).toEqual(["derived", "manual-value"]);
+    expect(result.requirements[0].contributions.find((row) => row.manualOverride)).toMatchObject({
+      sourceRecordId: "manual-value",
+      value: 25,
+    });
+  });
+
+  it("counts linked and aliased activity once per eligible day for a weekly schedule", () => {
+    const weekly = requirement({
+      id: "weekly-questions",
+      label: "Question blocks",
+      source: { kind: "practice-questions" },
+      target: 10,
+      unit: "questions",
+      aliases: ["Amboss block"],
+      schedule: { kind: "times-per-week", times: 3, weekStartsOn: 1 },
+      trackingStartsAt: "2026-07-06",
+    });
+    const result = evaluateDailySuccess(state([weekly], [
+      log({ id: "monday", dayKey: "2026-07-06", quantity: 10, quantityKind: "questions" }),
+      log({ id: "tuesday", dayKey: "2026-07-07", type: "Amboss block", quantity: 10, quantityKind: "count" }),
+      log({ id: "wednesday", dayKey: "2026-07-08", quantity: 10, quantityKind: "questions" }),
+    ]));
+    expect(result.requirements[0]).toMatchObject({ current: 3, target: 3, status: "met" });
+    expect(result.requirements[0].sourceRecordIds).toEqual(["monday", "tuesday", "wednesday"]);
+    expect(new Set(result.requirements[0].contributions.map((row) => row.dayKey))).toEqual(new Set([
+      "2026-07-06",
+      "2026-07-07",
+      "2026-07-08",
+    ]));
   });
 
   it("handles a weekly habit fairly and never backfills before creation", () => {
@@ -259,5 +375,50 @@ describe("daily success", () => {
     expect(normalized?.requirements).toHaveLength(1);
     expect(normalized?.requirements[0].target).toBe(1);
     expect(Number.isFinite(normalized?.requirements[0].target)).toBe(true);
+  });
+
+  it("normalizes additive aliases and manual corrections without a schema bump", () => {
+    const normalized = normalizeDailySuccessConfig({
+      version: 1,
+      configuredAt: TODAY,
+      requirements: [{
+        ...requirement(),
+        weight: 99,
+        aliases: [" UWorld  block ", "uworld-block", "", 10],
+        manualContributions: [
+          { id: "manual", requirementId: "wrong-target", dayKey: TODAY, value: -5, unit: " minutes ", mode: "add", createdAt: "bad", updatedAt: "2026-07-12T13:00:00.000Z" },
+          { id: "manual", requirementId: "minutes", dayKey: TODAY, value: 50, mode: "override" },
+          { id: "invalid", requirementId: "minutes", dayKey: "not-a-day", value: Number.NaN, mode: "override" },
+        ],
+      }],
+    });
+    expect(normalized?.version).toBe(1);
+    expect(normalized?.requirements[0].weight).toBe(5);
+    expect(normalized?.requirements[0].aliases).toEqual(["UWorld block"]);
+    expect(normalized?.requirements[0].manualContributions).toHaveLength(1);
+    expect(normalized?.requirements[0].manualContributions?.[0]).toMatchObject({
+      id: "manual",
+      requirementId: "minutes",
+      dayKey: TODAY,
+      value: -5,
+      unit: "minutes",
+      mode: "add",
+    });
+  });
+
+  it("defaults invalid weights to one and preserves the manual source", () => {
+    const normalized = normalizeDailySuccessConfig({
+      version: 1,
+      configuredAt: TODAY,
+      requirements: [
+        { ...requirement({ id: "negative", weight: undefined }), weight: -4 },
+        { ...requirement({ id: "not-finite", weight: undefined }), weight: Number.NaN },
+        { ...requirement({ id: "manual-source", source: { kind: "manual" }, weight: undefined }), weight: 0.01 },
+        { ...requirement({ id: "activity-source", source: { kind: "activity-alias" }, aliases: ["Reading"], weight: undefined }), weight: 1 },
+      ],
+    });
+    expect(normalized?.requirements.map((item) => item.weight)).toEqual([1, 1, 0.1, 1]);
+    expect(normalized?.requirements[2].source).toEqual({ kind: "manual" });
+    expect(normalized?.requirements[3].source).toEqual({ kind: "activity-alias" });
   });
 });

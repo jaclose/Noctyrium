@@ -321,6 +321,28 @@ select.field, .scope-select {
   gap: 7px;
   font-size: 11.5px;
 }
+.settings-reminder-fieldset {
+  gap: 10px;
+}
+.settings-reminder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(132px, 0.32fr);
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(230,226,214,0.08);
+}
+.settings-reminder-time {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.settings-reminder-time-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: min(286px, 100%);
+}
 .settings-timezone-input {
   display: flex;
   align-items: flex-end;
@@ -793,16 +815,20 @@ select.field, .scope-select {
     flex-direction: column;
   }
   .settings-utility-row,
-  .settings-timezone-input {
+  .settings-timezone-input,
+  .settings-reminder-row {
     align-items: stretch;
     flex-direction: column;
   }
+  .settings-reminder-row { grid-template-columns: 1fr; }
+  .settings-reminder-time-range { min-width: 0; }
   .settings-inline-toggle { width: 100%; }
   .settings-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 420px) {
   .settings-compact-grid { grid-template-columns: 1fr; }
+  .settings-reminder-time-range { grid-template-columns: 1fr; }
 }
 
 /* Empty state — intentional, not apologetic. */

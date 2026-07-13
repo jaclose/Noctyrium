@@ -34,6 +34,7 @@ export function ModuleTour({
       targetAttribute="data-module-tour"
       skipLabel={`Skip ${name} tour`}
       progressLabel={`${name} tour progress`}
+      restoreScrollOnExit
     />
   );
 }

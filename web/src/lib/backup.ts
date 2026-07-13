@@ -5,6 +5,7 @@ import type { ClockPreferences, DailyWordPuzzleState, NoctyriumState, TimeZonePr
 import {
   APP_VERSION_LABEL, DEFAULT_CLOCK_PREFERENCES, DEFAULT_DASHBOARD_WIDGETS,
   DEFAULT_HIDDEN_DASHBOARD_WIDGETS, DEFAULT_TIME_ZONE_PREFERENCE, SCHEMA_VERSION,
+  STORED_DASHBOARD_WIDGET_IDS,
 } from "./seed";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
@@ -13,6 +14,9 @@ import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience
 import { isAcademicStageId, resolveTrack } from "./tracks";
 import { normalizeDailySuccessConfig } from "./dailySuccess";
 import { normalizePomodoroPreferences } from "./pomodoroPreferences";
+import { normalizeDailyLoopReminderPreferences } from "./dailyLoopReminders";
+import { normalizeDashboardLayoutPreferences } from "./dashboardWidgets";
+import { normalizeJournalEntries, normalizeJournalNotebookPreferences } from "./journalNotebook";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
@@ -252,11 +256,21 @@ export function parseImport(text: string): NoctyriumState {
       focusSubscriptions,
       dashboardWidgetOrder: normalizeDashboardWidgetOrder(profile.dashboardWidgetOrder),
       hiddenDashboardWidgets: normalizeDashboardWidgetList(profile.hiddenDashboardWidgets),
+      dashboardLayout: normalizeDashboardLayoutPreferences(profile.dashboardLayout, {
+        order: profile.dashboardWidgetOrder,
+        hiddenWidgetIds: profile.hiddenDashboardWidgets,
+      }),
       hiddenNav: normalizeHiddenNav(profile.hiddenNav, educationTrack),
       toolsCollapsed: typeof profile.toolsCollapsed === "boolean" ? profile.toolsCollapsed : undefined,
       prepCollapsed: typeof profile.prepCollapsed === "boolean" ? profile.prepCollapsed : undefined,
       dailyGamesCollapsed: typeof profile.dailyGamesCollapsed === "boolean" ? profile.dailyGamesCollapsed : undefined,
       journalReviewTime: normalizeJournalReviewTime(profile.journalReviewTime),
+      journalNotebook: profile.journalNotebook === undefined
+        ? undefined
+        : normalizeJournalNotebookPreferences(profile.journalNotebook),
+      dailyLoopReminders: profile.dailyLoopReminders === undefined
+        ? undefined
+        : normalizeDailyLoopReminderPreferences(profile.dailyLoopReminders),
       // Preserve newer opt-in settings across export/import.
       taskAutofillDisabled: typeof profile.taskAutofillDisabled === "boolean" ? profile.taskAutofillDisabled : undefined,
       taskTemplates: Array.isArray(profile.taskTemplates) ? profile.taskTemplates as NoctyriumState["profile"]["taskTemplates"] : undefined,
@@ -279,7 +293,7 @@ export function parseImport(text: string): NoctyriumState {
     productivityTrackers: Array.isArray(data.productivityTrackers) ? data.productivityTrackers : [],
     resources: data.resources ?? [],
     tasks: data.tasks ?? [],
-    journal: data.journal ?? [],
+    journal: normalizeJournalEntries(data.journal),
     premedExperiences: data.premedExperiences ?? [],
     prompts: data.prompts ?? [],
     folders: data.folders ?? [],
@@ -358,7 +372,7 @@ function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
 
 function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumState["profile"]["dashboardWidgetOrder"]> {
   if (!Array.isArray(value)) return [...DEFAULT_DASHBOARD_WIDGETS];
-  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const valid = new Set(STORED_DASHBOARD_WIDGET_IDS);
   const incoming = value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   );
@@ -367,7 +381,7 @@ function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumSta
 
 function normalizeDashboardWidgetList(value: unknown): NonNullable<NoctyriumState["profile"]["hiddenDashboardWidgets"]> {
   if (!Array.isArray(value)) return [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS];
-  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
+  const valid = new Set(STORED_DASHBOARD_WIDGET_IDS);
   return [...new Set(value.filter((item): item is typeof DEFAULT_DASHBOARD_WIDGETS[number] =>
     typeof item === "string" && valid.has(item as typeof DEFAULT_DASHBOARD_WIDGETS[number]),
   ))];

@@ -57,4 +57,30 @@ describe("Import Center persistence invariant", () => {
     const keys = savedSet!.questionIds.map((id) => state.questions.find((question) => question.id === id)?.correctKey);
     expect(keys).toEqual(["B", "D", "A", "C", "E"]);
   });
+
+  it("persists the raw explanation candidate beside cleaned prose and cleanup operations", async () => {
+    const user = userEvent.setup();
+    const rawText = [
+      "1. Which option?", "A. Alpha", "B. Beta", "C. Gamma", "",
+      "Answer key:", "1. B", "",
+      "Explanations:",
+      "1. Explanation: Beta follows from the finding.",
+      "Learning Objective: Recognize the relevant finding.",
+    ].join("\n");
+    const drafts = parseQuestionBlocks(rawText);
+
+    render(<ImportPanel seed={{ drafts, rawText, title: "Explanation audit", fileName: "audit.txt", fileType: "text" }} />);
+    await user.click(screen.getByRole("button", { name: /^Save$/ }));
+
+    const saved = useStore.getState().questions.find((question) => question.bank === "Explanation audit");
+    expect(saved?.explanation).toBe("Beta follows from the finding.");
+    expect(saved?.extraction?.explanationRawCandidate).toContain("Explanation:");
+    expect(saved?.extraction?.explanationRawCandidate).toContain("Learning Objective:");
+    expect(saved?.extraction?.explanationCleanupOperations).toEqual(expect.arrayContaining([
+      "remove-explanation-label",
+      "remove-objective-metadata",
+    ]));
+    expect(saved?.extraction?.explanationSourceSnippet).toContain("Explanation:");
+    expect(saved?.extraction?.explanationDetectionConfidence).toBeGreaterThanOrEqual(0.9);
+  });
 });

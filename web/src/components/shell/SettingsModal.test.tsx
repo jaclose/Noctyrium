@@ -168,6 +168,78 @@ describe("Settings information architecture", () => {
     });
   });
 
+  it("shows canonical daily-loop reminder defaults and persists personalized times and enablement", async () => {
+    const user = userEvent.setup();
+    useStore.setState((state) => ({
+      profile: { ...state.profile, dailyLoopReminders: undefined },
+    }));
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+
+    const checkInToggle = screen.getByRole("checkbox", { name: "Enable Daily Check-In" });
+    const closeoutToggle = screen.getByRole("checkbox", { name: "Enable evening closeout" });
+    const checkInTime = screen.getByLabelText("Daily Check-In time") as HTMLInputElement;
+    const closeoutTime = screen.getByLabelText("Evening closeout time") as HTMLInputElement;
+    const quietHoursToggle = screen.getByRole("checkbox", { name: "Enable quiet hours" });
+    const quietHoursStart = screen.getByLabelText("Quiet hours start") as HTMLInputElement;
+    const quietHoursEnd = screen.getByLabelText("Quiet hours end") as HTMLInputElement;
+
+    expect((checkInToggle as HTMLInputElement).checked).toBe(true);
+    expect((closeoutToggle as HTMLInputElement).checked).toBe(true);
+    expect(checkInTime.value).toBe("08:00");
+    expect(closeoutTime.value).toBe("20:30");
+    expect((quietHoursToggle as HTMLInputElement).checked).toBe(false);
+    expect(quietHoursStart.value).toBe("22:00");
+    expect(quietHoursEnd.value).toBe("07:00");
+    expect(quietHoursStart.disabled).toBe(true);
+    expect(quietHoursEnd.disabled).toBe(true);
+    expect(screen.getByText(/optional in-app prompts use this device's local time.*at most once per day/i)).toBeTruthy();
+
+    fireEvent.change(checkInTime, { target: { value: "07:15" } });
+    fireEvent.change(closeoutTime, { target: { value: "21:45" } });
+    await user.click(quietHoursToggle);
+    fireEvent.change(quietHoursStart, { target: { value: "23:15" } });
+    fireEvent.change(quietHoursEnd, { target: { value: "06:30" } });
+    await user.click(checkInToggle);
+    await user.click(closeoutToggle);
+
+    expect(useStore.getState().profile.dailyLoopReminders).toEqual({
+      checkInEnabled: false,
+      checkInTime: "07:15",
+      closeoutEnabled: false,
+      closeoutTime: "21:45",
+      quietHoursEnabled: true,
+      quietHoursStart: "23:15",
+      quietHoursEnd: "06:30",
+    });
+    expect(checkInTime.disabled).toBe(true);
+    expect(closeoutTime.disabled).toBe(true);
+  });
+
+  it("normalizes malformed persisted reminder preferences before editing", () => {
+    useStore.setState((state) => ({
+      profile: {
+        ...state.profile,
+        dailyLoopReminders: {
+          checkInEnabled: false,
+          checkInTime: "99:99",
+          closeoutTime: "not-a-time",
+          quietHoursEnabled: true,
+          quietHoursStart: "25:00",
+          quietHoursEnd: "sunrise",
+        },
+      },
+    }));
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+
+    expect((screen.getByRole("checkbox", { name: "Enable Daily Check-In" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: "Enable evening closeout" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Daily Check-In time") as HTMLInputElement).value).toBe("08:00");
+    expect((screen.getByLabelText("Evening closeout time") as HTMLInputElement).value).toBe("20:30");
+    expect((screen.getByRole("checkbox", { name: "Enable quiet hours" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Quiet hours start") as HTMLInputElement).value).toBe("22:00");
+    expect((screen.getByLabelText("Quiet hours end") as HTMLInputElement).value).toBe("07:00");
+  });
+
   it("confirmation-gates the scoped Daily Word reset without changing enablement or unrelated data", async () => {
     const user = userEvent.setup();
     useStore.setState((state) => ({

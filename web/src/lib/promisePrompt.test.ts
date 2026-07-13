@@ -4,10 +4,10 @@ import { PROMISE_DEFER_DAYS, PROMISE_PROMPT_VERSION, promisePromptStatus, should
 const NOW = new Date("2026-07-12T12:00:00.000Z");
 
 describe("post-guide promise eligibility", () => {
-  it("accepts global completion and skip, but not Escape", () => {
+  it("accepts every explicit exit from the global guide", () => {
     expect(shouldOfferPromiseAfterGlobalTour("complete", {}, NOW)).toBe(true);
     expect(shouldOfferPromiseAfterGlobalTour("skip", {}, NOW)).toBe(true);
-    expect(shouldOfferPromiseAfterGlobalTour("escape", {}, NOW)).toBe(false);
+    expect(shouldOfferPromiseAfterGlobalTour("escape", {}, NOW)).toBe(true);
   });
 
   it("offers only when unsigned and unsuppressed", () => {

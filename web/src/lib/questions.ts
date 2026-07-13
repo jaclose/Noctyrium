@@ -130,6 +130,10 @@ export interface QuestionImportDiagnostics {
   explanationSourceSnippet?: string;
   explanationSourcePage?: number;
   explanationSource?: "inline" | "answer-section" | "feedback" | "manual";
+  /** Raw parser candidate retained alongside the cleaned `explanation` field. */
+  explanationRawCandidate?: string;
+  /** Stable deterministic cleanup operations applied to the raw candidate. */
+  explanationCleanupOperations?: string[];
 }
 
 export interface QuestionRecord {
@@ -492,6 +496,8 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
             answerEvidencePage: positiveInteger(input.extraction.answerEvidencePage),
             explanationSourceSnippet: cleanString(input.extraction.explanationSourceSnippet),
             explanationSourcePage: positiveInteger(input.extraction.explanationSourcePage),
+            explanationRawCandidate: cleanString(input.extraction.explanationRawCandidate),
+            explanationCleanupOperations: stringArray(input.extraction.explanationCleanupOperations),
             explanationSource: (["inline", "answer-section", "feedback", "manual"] as const)
               .includes(input.extraction.explanationSource as "inline")
               ? input.extraction.explanationSource as QuestionImportDiagnostics["explanationSource"]

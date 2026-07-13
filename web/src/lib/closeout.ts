@@ -14,6 +14,9 @@ export interface DailyCloseout {
   completedSummary: string;
   remainingSummary?: string;
   blocker?: string;
+  /** Optional user-authored highlight and current energy from Quick Closeout. */
+  oneWin?: string;
+  energyNow?: number;
   tomorrowFirstTask?: string;
   energyVsMorning?: EnergyVsMorning;
   /** "auto" lets the Command Brief rules decide tomorrow's mode. */

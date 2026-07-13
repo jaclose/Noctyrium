@@ -17,13 +17,22 @@ import { prettyDate } from "../../lib/scoring";
 import type { AcademicStageId, DashboardWidgetId, EducationTrackId, ExperienceFocusId } from "../../lib/types";
 import { HardDrive } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
-import { DEFAULT_DASHBOARD_WIDGETS, SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
+import { AxomWordmark } from "../ui/BrandMark";
+import { SCHEMA_VERSION, APP_BUILD_LABEL } from "../../lib/seed";
 import { lastBackupAt } from "../../lib/backup";
 import { listLocalBackups } from "../../lib/localBackup";
 import { restoreLocalWorkspaceBackup } from "../../lib/storageRecovery";
 import { runStorageMigrations } from "../../lib/storageMigrations";
 import { requestOnboardingRerun } from "../../lib/uiStore";
 import { canonicalTimeZone, normalizeClockPreferences, normalizeTimeZonePreference, systemTimeZone } from "../../lib/clock";
+import { normalizeDailyLoopReminderPreferences } from "../../lib/dailyLoopReminders";
+import {
+  CURRENT_DASHBOARD_WIDGET_IDS,
+  adaptLegacyDashboardLayout,
+  applyDashboardLayoutPreset,
+  dashboardWidgetCatalogItem,
+  normalizeDashboardLayoutPreferences,
+} from "../../lib/dashboardWidgets";
 
 type SettingsSection = "profile" | "data" | "backup" | "personalization" | "advanced";
 /** Legacy names remain accepted so existing deep links keep opening safely. */
@@ -387,24 +396,6 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   );
 }
 
-const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
-  winDay: "Win the day",
-  todayScore: "Today’s targets",
-  examCountdown: "Exam countdown",
-  pomodoro: "Pomodoro timer",
-  weekly: "Weekly overview",
-  suggested: "Suggested moves",
-  aiActions: "AI actions",
-  schedule: "Schedule",
-  termMap: "Term map",
-  localData: "Local data",
-  latestStandup: "Latest standup",
-  productivityTrend: "Productivity trend",
-  premedHours: "Pre-med hours",
-  resourceFocus: "Resource focus",
-  boardBlueprint: "Blueprint pulse",
-};
-
 function DailyUtilitiesSettings() {
   const profile = useStore((state) => state.profile);
   const updateProfile = useStore((state) => state.updateProfile);
@@ -412,6 +403,7 @@ function DailyUtilitiesSettings() {
   const puzzleCount = useStore((state) => state.dailyWordPuzzles.length);
   const clock = normalizeClockPreferences(profile.clockPreferences);
   const timeZone = normalizeTimeZonePreference(profile.timeZonePreference);
+  const reminders = normalizeDailyLoopReminderPreferences(profile.dailyLoopReminders);
   const [customTimeZone, setCustomTimeZone] = useState(timeZone.customTimezone ?? systemTimeZone());
   const [timeZoneError, setTimeZoneError] = useState("");
   const timeZoneErrorId = useId();
@@ -422,6 +414,12 @@ function DailyUtilitiesSettings() {
 
   function updateClock(patch: Partial<typeof clock>) {
     updateProfile({ clockPreferences: { ...clock, ...patch } });
+  }
+
+  function updateReminders(patch: Partial<typeof reminders>) {
+    updateProfile({
+      dailyLoopReminders: normalizeDailyLoopReminderPreferences({ ...reminders, ...patch }),
+    });
   }
 
   function useSystemTimeZone() {
@@ -471,6 +469,97 @@ function DailyUtilitiesSettings() {
             <span>Show clock</span>
           </label>
         </div>
+
+        <fieldset className="settings-timezone-fieldset settings-reminder-fieldset">
+          <legend>Daily rhythm reminders</legend>
+          <div className="sub">
+            Optional in-app prompts use this device's local time. Each enabled prompt appears at most once per day unless you choose Snooze.
+          </div>
+          <div className="settings-reminder-row">
+            <div>
+              <div className="sync-title">Daily Check-In</div>
+              <div className="sub">A calm morning prompt to choose what matters today.</div>
+            </div>
+            <label className="settings-inline-toggle">
+              <input
+                type="checkbox"
+                checked={reminders.checkInEnabled}
+                onChange={(event) => updateReminders({ checkInEnabled: event.target.checked })}
+              />
+              <span>Enable Daily Check-In</span>
+            </label>
+            <label className="settings-reminder-time">
+              <span className="field-label">Daily Check-In time</span>
+              <input
+                className="field"
+                type="time"
+                value={reminders.checkInTime}
+                disabled={!reminders.checkInEnabled}
+                onChange={(event) => updateReminders({ checkInTime: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="settings-reminder-row">
+            <div>
+              <div className="sync-title">Evening closeout</div>
+              <div className="sub">A gentle prompt to notice a win, close open loops, and set up tomorrow.</div>
+            </div>
+            <label className="settings-inline-toggle">
+              <input
+                type="checkbox"
+                checked={reminders.closeoutEnabled}
+                onChange={(event) => updateReminders({ closeoutEnabled: event.target.checked })}
+              />
+              <span>Enable evening closeout</span>
+            </label>
+            <label className="settings-reminder-time">
+              <span className="field-label">Evening closeout time</span>
+              <input
+                className="field"
+                type="time"
+                value={reminders.closeoutTime}
+                disabled={!reminders.closeoutEnabled}
+                onChange={(event) => updateReminders({ closeoutTime: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="settings-reminder-row settings-reminder-quiet-hours">
+            <div>
+              <div className="sync-title">Quiet hours</div>
+              <div className="sub">Pause prompts in this device-local window. A pending prompt can resume later the same day, but never carries into a new day.</div>
+            </div>
+            <label className="settings-inline-toggle">
+              <input
+                type="checkbox"
+                checked={reminders.quietHoursEnabled}
+                onChange={(event) => updateReminders({ quietHoursEnabled: event.target.checked })}
+              />
+              <span>Enable quiet hours</span>
+            </label>
+            <div className="settings-reminder-time-range">
+              <label className="settings-reminder-time">
+                <span className="field-label">Quiet hours start</span>
+                <input
+                  className="field"
+                  type="time"
+                  value={reminders.quietHoursStart}
+                  disabled={!reminders.quietHoursEnabled}
+                  onChange={(event) => updateReminders({ quietHoursStart: event.target.value })}
+                />
+              </label>
+              <label className="settings-reminder-time">
+                <span className="field-label">Quiet hours end</span>
+                <input
+                  className="field"
+                  type="time"
+                  value={reminders.quietHoursEnd}
+                  disabled={!reminders.quietHoursEnabled}
+                  onChange={(event) => updateReminders({ quietHoursEnd: event.target.value })}
+                />
+              </label>
+            </div>
+          </div>
+        </fieldset>
 
         <div className="settings-compact-grid" aria-label="Clock display preferences">
           <label><input type="checkbox" checked={clock.showDigital} onChange={(event) => updateClock({ showDigital: event.target.checked })} /> Digital time</label>
@@ -528,22 +617,34 @@ function DailyUtilitiesSettings() {
 function DashboardVisibilitySettings() {
   const profile = useStore((state) => state.profile);
   const updateProfile = useStore((state) => state.updateProfile);
-  const hidden = new Set(profile.hiddenDashboardWidgets ?? []);
+  const layout = normalizeDashboardLayoutPreferences(profile.dashboardLayout, {
+    order: profile.dashboardWidgetOrder,
+    hiddenWidgetIds: profile.hiddenDashboardWidgets,
+  }) ?? applyDashboardLayoutPreset(adaptLegacyDashboardLayout(), "focused", "1970-01-01T00:00:00.000Z");
+  const hidden = new Set(layout.hiddenWidgetIds);
   function setVisible(id: DashboardWidgetId, visible: boolean) {
     const next = new Set(hidden);
     if (visible) next.delete(id);
     else next.add(id);
-    updateProfile({ hiddenDashboardWidgets: [...next] });
+    updateProfile({
+      dashboardLayout: {
+        ...layout,
+        preset: "custom",
+        order: layout.order.includes(id) ? layout.order : [...layout.order, id],
+        hiddenWidgetIds: [...next],
+        updatedAt: new Date().toISOString(),
+      },
+    });
   }
   return (
     <details className="backup-actions-panel">
       <summary>Dashboard widgets</summary>
       <div className="sub" style={{ margin: "8px 0" }}>Choose what appears on the dashboard. This changes presentation only.</div>
       <div className="settings-widget-grid">
-        {DEFAULT_DASHBOARD_WIDGETS.map((id) => (
+        {CURRENT_DASHBOARD_WIDGET_IDS.filter((id) => id !== "welcome" && id !== "commandBrief").map((id) => (
           <label className="early-feature-row" key={id}>
             <input type="checkbox" checked={!hidden.has(id)} onChange={(event) => setVisible(id, event.target.checked)} />
-            <span>{DASHBOARD_WIDGET_LABELS[id]}</span>
+            <span>{dashboardWidgetCatalogItem(id).label}</span>
           </label>
         ))}
       </div>
@@ -595,8 +696,12 @@ function PromiseSheet({ onClose }: { onClose: () => void }) {
     <div className="promise-scrim" onMouseDown={onClose}>
       <div className="promise-orbs"><i /><i /><i /></div>
       <div className="promise-paper open" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="promise-seal-mark">A</div>
-        <div className="promise-heading">Promise of Use</div>
+        <header className="promise-contract-header">
+          <AxomWordmark size="lg" />
+          <span>Saved personal promise</span>
+          <h2>A promise to yourself</h2>
+          <p>A voluntary commitment, stored in your local AXOM profile. It is not a legal contract.</p>
+        </header>
         <div className="promise-lines">
           {PROMISE_LINES.map((line, i) => (
             <p key={line} className={`promise-line in ${i === PROMISE_LINES.length - 1 ? "accent" : ""}`}>{line}</p>

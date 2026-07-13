@@ -353,6 +353,17 @@
 .import-confidence-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid rgba(230,226,214,.08); border-radius: 10px; background: rgba(230,226,214,.06); }
 .import-confidence-grid span { padding: 8px; display: grid; gap: 1px; color: var(--text-45); background: rgba(9,9,10,.78); font-size: 9.5px; }
 .import-confidence-grid b { color: var(--text-80); font-size: 11.5px; }
+.import-summary,
+.question-import-diagnostics {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 18%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cyan) 4%, transparent);
+}
+.question-import-diagnostics summary { cursor: pointer; color: var(--text-60); font-size: 12px; }
+.question-import-diagnostics[open] summary { margin-bottom: 8px; }
 
 .quiz-player-modal { max-width: 880px; padding: 24px; }
 .quiz-player-modal .modal-actions {

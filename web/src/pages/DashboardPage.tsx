@@ -1,35 +1,54 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
-  Clock, BookText, Sparkles, ArrowRight,
-  Database, Download, ShieldCheck, PackageCheck, CalendarDays,
-  Sunrise, Trophy, Check, Circle, ArrowRightCircle, RefreshCw, Bot, ExternalLink,
-  SlidersHorizontal, GripVertical, PlusCircle, X, Link as LinkIcon, Brain,
+  BookText, ArrowRight,
+  Database, Download, ShieldCheck, PackageCheck,
+  Sunrise, Trophy, Check, Circle, ArrowRightCircle, ExternalLink,
+  SlidersHorizontal, GripVertical, PlusCircle, X,
   AlertTriangle, CalendarClock, Star, EyeOff, Settings2, RotateCcw,
+  BookOpenCheck, ListTodo, BatteryMedium, Activity, Flame, Gamepad2,
+  ChevronUp, ChevronDown,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { dayKey, dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, lastNDays, isoDate } from "../lib/scoring";
-import { missedStandupDays, planForDay, standupStatusToday } from "../lib/journal";
-import type { Grade } from "../lib/scoring";
-import type { Course, Term, TrackerItem } from "../lib/types";
-import type { DashboardWidgetId } from "../lib/types";
-import { PASS_COLOR, suggestMoves } from "../lib/tracker";
+import { dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, lastNDays, isoDate } from "../lib/scoring";
+import { missedStandupDays, planForDay } from "../lib/journal";
+import type {
+  TrackerItem, DashboardLayoutPreferences, DashboardWidgetId,
+  DashboardWidgetPreferences, DashboardWidgetSize,
+} from "../lib/types";
 import { exportState } from "../lib/backup";
-import { gotoTrackerItem, gotoJournalDay } from "../lib/uiStore";
+import { gotoJournalDay, useUi } from "../lib/uiStore";
 import { useInView } from "../lib/useInView";
-import { canAutoFocus } from "../lib/device";
 import { DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS } from "../lib/seed";
 import { resolveTrack } from "../lib/tracks";
-import { analyzePerformance } from "../lib/performance";
 import { calculateReadiness } from "../lib/energy";
 import { pickFocusExam, buildExamCountdown, countdownHeadline, type PrepIntensity } from "../lib/examPlan";
 import { AnimatedProgressBar } from "../components/ui/motion";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Pomodoro } from "../components/productivity/Pomodoro";
 import { CommandBrief } from "../components/brief/CommandBrief";
+import { CloseoutModal } from "../components/brief/CloseoutModal";
 import { DailyProgressVessel } from "../components/productivity/DailyProgressVessel";
 import { evaluateDailySuccess, type DailySuccessResult } from "../lib/dailySuccess";
-import { runAi } from "../services/aiClient";
+import { closeoutForDay } from "../lib/closeout";
+import { dailyLoopReminderLedger, normalizeDailyLoopReminderPreferences } from "../lib/dailyLoopReminders";
 import { AXOM_QUOTES, type QuoteAttributionStatus } from "../data/quotes";
+import {
+  CURRENT_DASHBOARD_WIDGET_IDS,
+  DASHBOARD_LAYOUT_PRESETS,
+  adaptLegacyDashboardLayout,
+  applyDashboardLayoutPreset,
+  dashboardWidgetCatalogItem,
+  defaultDashboardWidgetPreferences,
+  extraLargeWidgetRecommendation,
+  normalizeDashboardLayoutPreferences,
+} from "../lib/dashboardWidgets";
+import {
+  DashboardWidgetFrame,
+  type DashboardWidgetFrameSettings,
+} from "../components/dashboard/DashboardWidgetFrame";
+import { Modal } from "../components/ui/Modal";
+import { dueQuestions, questionMappingStatus, summarizeQuestionMappings } from "../lib/questions";
+import { deriveDailyWordStatsFromNormalizedHistory } from "../lib/dailyWordStats";
 import {
   hideQuote,
   readQuotePreferences,
@@ -40,48 +59,16 @@ import {
 
 const HOSTED_ALPHA_URL = "https://noctyrium-cktjdhuhw-jacloses-projects.vercel.app/#dashboard";
 
-const DASHBOARD_WIDGETS: Array<{ id: DashboardWidgetId; label: string; note: string; preview: string }> = [
-  { id: "winDay", label: "Win the day", note: "Morning intention and evening close-out.", preview: "intention" },
-  { id: "todayScore", label: "Today's targets", note: "Progress against only the optional targets you selected.", preview: "rings" },
-  { id: "examCountdown", label: "Exam countdown", note: "Days to your exam, phase, and a daily question target.", preview: "calendar" },
-  { id: "pomodoro", label: "Pomodoro timer", note: "Focus sprints that auto-log their minutes.", preview: "rings" },
-  { id: "weekly", label: "Weekly overview", note: "Seven-day rhythm and active days.", preview: "bars" },
-  { id: "suggested", label: "Suggested moves", note: "Clickable tracker/task jumps.", preview: "list" },
-  { id: "aiActions", label: "AI actions", note: "Provider-backed action queue; hidden by default.", preview: "ai" },
-  { id: "schedule", label: "Schedule", note: "Month activity map.", preview: "calendar" },
-  { id: "termMap", label: "Term map", note: "Current course structure; hidden by default.", preview: "map" },
-  { id: "localData", label: "Local data & package", note: "Backup, vault, and alpha package status.", preview: "vault" },
-  { id: "latestStandup", label: "Latest standup", note: "Most recent journal entry.", preview: "journal" },
-  { id: "productivityTrend", label: "Productivity trend", note: "Trend commentary from logged effort.", preview: "trend" },
-  { id: "premedHours", label: "Pre-Med hours", note: "Clinical/service/research hour progress.", preview: "hours" },
-  { id: "resourceFocus", label: "Resource focus", note: "Pinned resources and SGU drive state.", preview: "links" },
-  { id: "boardBlueprint", label: "Blueprint pulse", note: "Current exam/prep lane status.", preview: "brain" },
-];
+const FIXED_DASHBOARD_SURFACES = new Set<DashboardWidgetId>(["welcome", "commandBrief"]);
+const CURRENT_DASHBOARD_ID_SET = new Set<string>(CURRENT_DASHBOARD_WIDGET_IDS);
 
 export function DashboardPage() {
   const s = useStore();
   const [editDashboard, setEditDashboard] = useState(false);
+  const [pendingExtraLargeLayout, setPendingExtraLargeLayout] = useState<DashboardLayoutPreferences | null>(null);
   const track = resolveTrack(s.profile.educationTrack);
   const dailyProgress = useMemo(() => evaluateDailySuccess(s, s.activeDayKey, s.activeDayKey), [s]);
-  const missedSet = useMemo(() => new Set(missedStandupDays(s)), [s.journal, s.logs, s.dayPlans]);
   const week = weeklySummary(s);
-  const cardTarget = s.profile.dailyCardTarget || 120;
-  const minTarget = s.profile.dailyMinuteTarget || 240;
-
-  const suggestions = buildSuggestions(s);
-  const schedule = buildDashboardSchedule(s.logs, s.tasks);
-  const termMap = buildTermSequence(s.terms, s.courses, s.tracker);
-  const performance = analyzePerformance({
-    logs: s.logs,
-    journal: s.journal,
-    tasks: s.tasks,
-    tracker: s.tracker,
-    dayPlans: s.dayPlans,
-    activeDayKey: s.activeDayKey,
-    minuteTarget: minTarget,
-    cardTarget,
-    range: 14,
-  });
   const readiness = useMemo(() => calculateReadiness({
     date: s.activeDayKey,
     factors: s.energyFactors ?? [],
@@ -91,30 +78,77 @@ export function DashboardPage() {
     dayPlans: s.dayPlans,
     productivityTrackers: s.productivityTrackers,
   }), [s.activeDayKey, s.energyFactors, s.journal, s.logs, s.tasks, s.dayPlans, s.productivityTrackers]);
-  const widgetOrder = normalizeWidgetOrder(s.profile.dashboardWidgetOrder);
-  const hiddenWidgets = new Set(s.profile.hiddenDashboardWidgets ?? []);
-  const showWidget = (id: DashboardWidgetId) => !hiddenWidgets.has(id);
-  const renderWidget = (widgetId: DashboardWidgetId) => {
-    if (!showWidget(widgetId)) return null;
-    if (widgetId === "winDay") return <WinTheDay key={widgetId} />;
-    if (widgetId === "todayScore") {
-      return <TodayScoreWidget key={widgetId} result={dailyProgress} activeDayKey={s.activeDayKey} />;
+  const layout = useMemo(
+    () => resolveDashboardLayout(s.profile.dashboardLayout, s.profile.dashboardWidgetOrder, s.profile.hiddenDashboardWidgets),
+    [s.profile.dashboardLayout, s.profile.dashboardWidgetOrder, s.profile.hiddenDashboardWidgets],
+  );
+  const hiddenWidgets = new Set(layout.hiddenWidgetIds);
+  const visibleWidgetIds = layout.order.filter((id, index, order) => (
+    CURRENT_DASHBOARD_ID_SET.has(id)
+    && !FIXED_DASHBOARD_SURFACES.has(id as DashboardWidgetId)
+    && !hiddenWidgets.has(id)
+    && order.indexOf(id) === index
+  )) as DashboardWidgetId[];
+
+  function saveLayout(nextValue: DashboardLayoutPreferences) {
+    const next = normalizeDashboardLayoutPreferences(nextValue) ?? nextValue;
+    s.updateProfile({ dashboardLayout: next });
+  }
+
+  function saveWidgetSettings(widgetId: DashboardWidgetId, settings: DashboardWidgetFrameSettings) {
+    const current = layout.widgets[widgetId] ?? defaultDashboardWidgetPreferences(widgetId);
+    const next: DashboardLayoutPreferences = {
+      ...layout,
+      preset: "custom",
+      widgets: {
+        ...layout.widgets,
+        [widgetId]: {
+          ...current,
+          size: settings.size,
+          enabledFields: Object.entries(settings.fields).filter(([, enabled]) => enabled).map(([id]) => id),
+        },
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    const recommendation = extraLargeWidgetRecommendation(next);
+    if (current.size !== "extra-large" && settings.size === "extra-large" && recommendation.shouldShow) {
+      setPendingExtraLargeLayout(next);
+      return;
     }
-    if (widgetId === "examCountdown") return <ExamCountdownWidget key={widgetId} />;
-    if (widgetId === "pomodoro") return <Pomodoro key={widgetId} compact />;
-    if (widgetId === "weekly") return <WeeklyWidget key={widgetId} week={week} />;
-    if (widgetId === "suggested") return <SuggestedMovesWidget key={widgetId} suggestions={suggestions} />;
-    if (widgetId === "aiActions") return <AiSuggestedActions key={widgetId} />;
-    if (widgetId === "schedule") return <ScheduleWidget key={widgetId} schedule={schedule} missedSet={missedSet} />;
-    if (widgetId === "termMap") return <TermMapWidget key={widgetId} termMap={termMap} trackShort={track.short} tracker={s.tracker} />;
-    if (widgetId === "localData") return <LocalDataWidget key={widgetId} state={s} />;
-    if (widgetId === "latestStandup") return <LatestStandupWidget key={widgetId} />;
-    if (widgetId === "productivityTrend") return <ProductivityTrendWidget key={widgetId} performance={performance} week={week} />;
-    if (widgetId === "premedHours") return <PremedHoursWidget key={widgetId} />;
-    if (widgetId === "resourceFocus") return <ResourceFocusWidget key={widgetId} />;
-    if (widgetId === "boardBlueprint") return <BoardBlueprintWidget key={widgetId} />;
-    return null;
-  };
+    saveLayout(next);
+  }
+
+  function renderWidget(widgetId: DashboardWidgetId) {
+    const meta = dashboardWidgetCatalogItem(widgetId);
+    const preferences = layout.widgets[widgetId] ?? defaultDashboardWidgetPreferences(widgetId);
+    const enabledFields = new Set(preferences.enabledFields ?? []);
+    const configurableFields = widgetConfigurableFields(widgetId, preferences);
+    const content = renderDashboardWidget({
+      widgetId,
+      size: preferences.size,
+      enabledFields,
+      dailyProgress,
+      week,
+      readiness,
+      activeDayKey: s.activeDayKey,
+      state: s,
+    });
+    if (!content) return null;
+    return (
+      <DashboardWidgetFrame
+        key={widgetId}
+        widgetId={widgetId}
+        title={meta.label}
+        size={preferences.size}
+        allowedSizes={meta.supportedSizes}
+        fields={configurableFields}
+        settingsDescription="Choose the amount of space and detail this widget deserves."
+        onSave={(settings) => saveWidgetSettings(widgetId, settings)}
+      >
+        {content}
+      </DashboardWidgetFrame>
+    );
+  }
 
   return (
     <>
@@ -130,18 +164,42 @@ export function DashboardPage() {
       <GlassCard pad className="dashboard-control-card">
         <div className="spread">
           <div className="dashboard-control-copy">
-            <div className="dashboard-control-kicker">Your workspace</div>
-            <div className="dashboard-control-title">{track.short} · {widgetOrder.length - hiddenWidgets.size} focused widgets</div>
-            <div className="dashboard-control-meta"><span>Reorder, hide, or restore widgets without deleting their data.</span></div>
+            <div className="dashboard-control-kicker">{track.short} workspace</div>
+            <div className="dashboard-control-title">Build your dashboard</div>
+            <div className="dashboard-control-meta"><span>Choose what deserves your attention. Hidden widgets keep their data.</span></div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
             <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
           </GButton>
         </div>
-        {editDashboard && <DashboardWidgetEditor order={widgetOrder} hidden={hiddenWidgets} />}
+        {editDashboard && <DashboardWidgetEditor layout={layout} onChange={saveLayout} />}
       </GlassCard>
 
-      {widgetOrder.map(renderWidget)}
+      <section className="dashboard-widget-grid" aria-label="Dashboard widgets">
+        {visibleWidgetIds.map(renderWidget)}
+      </section>
+
+      {pendingExtraLargeLayout && (
+        <Modal
+          title="Keep the dashboard readable?"
+          onClose={() => setPendingExtraLargeLayout(null)}
+          footer={(
+            <>
+              <GButton onClick={() => setPendingExtraLargeLayout(null)}>Keep recommended layout</GButton>
+              <GButton variant="primary" onClick={() => {
+                saveLayout(pendingExtraLargeLayout);
+                setPendingExtraLargeLayout(null);
+              }}>Add anyway</GButton>
+              <GhostButton onClick={() => {
+                saveLayout({ ...pendingExtraLargeLayout, dismissedExtraLargeRecommendation: true });
+                setPendingExtraLargeLayout(null);
+              }}>Do not ask again</GhostButton>
+            </>
+          )}
+        >
+          <p>AXOM usually recommends no more than three extra-large widgets to keep the dashboard readable. Continue anyway?</p>
+        </Modal>
+      )}
     </>
   );
 }
@@ -321,109 +379,194 @@ function wrapUpMessage(key: string) {
   return WRAP_MESSAGES[code % WRAP_MESSAGES.length];
 }
 
-function DashboardWidgetEditor({ order, hidden }: { order: DashboardWidgetId[]; hidden: Set<DashboardWidgetId> }) {
-  const updateProfile = useStore((state) => state.updateProfile);
+function DashboardWidgetEditor({
+  layout,
+  onChange,
+}: {
+  layout: DashboardLayoutPreferences;
+  onChange: (next: DashboardLayoutPreferences) => void;
+}) {
+  const s = useStore();
   const [dragId, setDragId] = useState<DashboardWidgetId | null>(null);
   const [overId, setOverId] = useState<DashboardWidgetId | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const hidden = new Set(layout.hiddenWidgetIds);
+  const orderedIds = [
+    ...layout.order.filter((id): id is DashboardWidgetId => CURRENT_DASHBOARD_ID_SET.has(id)),
+    ...CURRENT_DASHBOARD_WIDGET_IDS.filter((id) => !layout.order.includes(id)),
+  ].filter((id, index, values) => values.indexOf(id) === index && !FIXED_DASHBOARD_SURFACES.has(id));
+  const visible = orderedIds.filter((id) => !hidden.has(id));
+  const experimentalIds = new Set<DashboardWidgetId>(["dailyWord"]);
+  const hiddenIds = orderedIds.filter((id) => hidden.has(id));
+  const suggested = hiddenIds.filter((id) => !experimentalIds.has(id) && widgetIsSuggested(id, s));
+  const available = hiddenIds.filter((id) => !experimentalIds.has(id) && !layout.order.includes(id));
+  const hiddenCatalog = hiddenIds.filter((id) => !experimentalIds.has(id) && !suggested.includes(id) && !available.includes(id));
+  const experimental = orderedIds.filter((id) => experimentalIds.has(id));
 
-  function setOrder(next: DashboardWidgetId[]) {
-    updateProfile({ dashboardWidgetOrder: normalizeWidgetOrder(next) });
+  function update(patch: Partial<DashboardLayoutPreferences>) {
+    onChange({
+      ...layout,
+      ...patch,
+      preset: patch.preset ?? "custom",
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   function remove(id: DashboardWidgetId) {
     const next = new Set(hidden);
     next.add(id);
-    updateProfile({ hiddenDashboardWidgets: [...next] });
+    update({ hiddenWidgetIds: [...next] });
+    setAnnouncement(`${dashboardWidgetCatalogItem(id).label} removed. Its data was kept.`);
   }
 
-  function subscribe(id: DashboardWidgetId) {
+  function add(id: DashboardWidgetId) {
     const next = new Set(hidden);
     next.delete(id);
-    updateProfile({ hiddenDashboardWidgets: [...next], dashboardWidgetOrder: normalizeWidgetOrder(order) });
+    const order = layout.order.includes(id) ? layout.order : [...layout.order, id];
+    update({ hiddenWidgetIds: [...next], order });
+    setAnnouncement(`${dashboardWidgetCatalogItem(id).label} added to the dashboard.`);
+  }
+
+  function move(id: DashboardWidgetId, direction: -1 | 1) {
+    const visibleIndex = visible.indexOf(id);
+    const neighbor = visible[visibleIndex + direction];
+    if (!neighbor) return;
+    const current = [...layout.order];
+    const from = current.indexOf(id);
+    const to = current.indexOf(neighbor);
+    if (from < 0 || to < 0) return;
+    [current[from], current[to]] = [current[to], current[from]];
+    update({ order: current });
+    setAnnouncement(`${dashboardWidgetCatalogItem(id).label} moved ${direction < 0 ? "earlier" : "later"}.`);
   }
 
   function handleDrop(targetId: DashboardWidgetId) {
     if (!dragId || dragId === targetId) return;
-    const current = normalizeWidgetOrder(order);
+    const current = [...layout.order];
     const from = current.indexOf(dragId);
     const to = current.indexOf(targetId);
     if (from < 0 || to < 0) return;
     const next = [...current];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
-    setOrder(next);
+    update({ order: next });
+    setAnnouncement(`${dashboardWidgetCatalogItem(dragId).label} moved to position ${to + 1}.`);
     setDragId(null);
     setOverId(null);
   }
-
-  const visible = order.filter((id) => !hidden.has(id));
-  const available = order.filter((id) => hidden.has(id));
 
   return (
     <div className="dashboard-widget-editor">
       <div className="widget-editor-head">
         <div>
-          <span className="widget-library-eyebrow">Widget Library</span>
-          <b>Drag to arrange</b>
-          <span>Grab anywhere on a widget row. Remove sends it back to the library.</span>
+          <span className="widget-library-eyebrow">Edit dashboard</span>
+          <b>Build your dashboard</b>
+          <span>Choose what deserves your attention. Hidden widgets keep their data.</span>
         </div>
-        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: [] })}>
-          Show all
-        </GButton>
+        <div className="dashboard-preset-picker" aria-label="Dashboard presets">
+          {DASHBOARD_LAYOUT_PRESETS.filter((preset) => preset.id !== "custom").map((preset) => (
+            <button
+              type="button"
+              className={layout.preset === preset.id ? "on" : ""}
+              key={preset.id}
+              title={preset.description}
+              onClick={() => {
+                onChange(applyDashboardLayoutPreset(layout, preset.id));
+                setAnnouncement(`${preset.label} dashboard preset applied.`);
+              }}
+            >{preset.label}</button>
+          ))}
+        </div>
       </div>
+
+      <p className="dashboard-fixed-surfaces"><ShieldCheck size={14} /> Welcome and Command Brief stay at the top so orientation and the best next action are never lost.</p>
+      <div className="sr-only" aria-live="polite">{announcement}</div>
 
       <div className="widget-editor-zones">
         <section className="widget-editor-zone">
-          <div className="widget-zone-title">On Dashboard</div>
-          {visible.map((id) => {
-            const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
-            if (!meta) return null;
+          <div className="widget-zone-title">On your dashboard</div>
+          {visible.length === 0 && <div className="widget-zone-empty">Your fixed welcome and Command Brief remain visible. Add a widget when it earns the space.</div>}
+          {visible.map((id, index) => {
+            const meta = dashboardWidgetCatalogItem(id);
             return (
-              <div className={`widget-library-row draggable ${overId === id ? "drop-target" : ""}`} key={id}
+              <article className={`widget-library-row draggable ${overId === id ? "drop-target" : ""}`} key={id}
                 draggable
                 onDragStart={() => setDragId(id)}
                 onDragOver={(event) => { event.preventDefault(); setOverId(id); }}
                 onDragEnd={() => { setDragId(null); setOverId(null); }}
                 onDrop={(event) => { event.preventDefault(); handleDrop(id); }}>
                 <GripVertical size={16} className="widget-grip" />
-                <WidgetPreview kind={meta.preview} />
+                <WidgetPreview kind={id} />
                 <div className="grow">
                   <b>{meta.label}</b>
-                  <span>{meta.note}</span>
+                  <span>{meta.description}</span>
+                  <small>{preferencesSizeLabel(layout.widgets[id]?.size ?? meta.defaultSize)} · {widgetDataStatus(id, s)}</small>
                 </div>
-                <button className="ghost-btn" title="Remove widget" onClick={() => remove(id)}><X size={14} /></button>
-              </div>
+                <div className="widget-row-actions">
+                  <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => move(id, -1)}><ChevronUp size={15} /></button>
+                  <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === visible.length - 1} onClick={() => move(id, 1)}><ChevronDown size={15} /></button>
+                  <button type="button" aria-label={`Remove ${meta.label}`} onClick={() => remove(id)}><X size={15} /></button>
+                </div>
+              </article>
             );
           })}
         </section>
 
-        <section className="widget-editor-zone available">
-          <div className="widget-zone-title">Available Widgets</div>
-          {available.map((id) => {
-            const meta = DASHBOARD_WIDGETS.find((widget) => widget.id === id);
-            if (!meta) return null;
-            return (
-              <div className="widget-library-row off" key={id}>
-                <PlusCircle size={16} className="widget-grip" />
-                <WidgetPreview kind={meta.preview} />
-                <div className="grow">
-                  <b>{meta.label}</b>
-                  <span>{meta.note}</span>
-                </div>
-                <GButton size="sm" onClick={() => subscribe(id)}>Subscribe</GButton>
-              </div>
-            );
-          })}
-        </section>
+        <WidgetCatalogSection title="Suggested" ids={suggested} layout={layout} state={s} onAdd={add} />
+        <WidgetCatalogSection title="Available" ids={available} layout={layout} state={s} onAdd={add} />
+        <WidgetCatalogSection title="Experimental" ids={experimental} layout={layout} state={s} onAdd={add} />
+        <WidgetCatalogSection title="Hidden" ids={hiddenCatalog} layout={layout} state={s} onAdd={add} />
       </div>
 
       <div className="row">
-        <GButton size="sm" onClick={() => updateProfile({ dashboardWidgetOrder: [...DEFAULT_DASHBOARD_WIDGETS], hiddenDashboardWidgets: [...DEFAULT_HIDDEN_DASHBOARD_WIDGETS] })}>
-          Reset to focused layout
+        <GButton size="sm" onClick={() => {
+          onChange(applyDashboardLayoutPreset(layout, "focused"));
+          setAnnouncement("Focused dashboard restored. No source data changed.");
+        }}>
+          Restore focused defaults
         </GButton>
         <span className="sub">Saved locally with your profile and included in portable backups.</span>
       </div>
     </div>
+  );
+}
+
+function WidgetCatalogSection({
+  title,
+  ids,
+  layout,
+  state,
+  onAdd,
+}: {
+  title: string;
+  ids: DashboardWidgetId[];
+  layout: DashboardLayoutPreferences;
+  state: ReturnType<typeof useStore.getState>;
+  onAdd: (id: DashboardWidgetId) => void;
+}) {
+  return (
+    <section className="widget-editor-zone available">
+      <div className="widget-zone-title">{title}</div>
+      {ids.length === 0 && <div className="widget-zone-empty">Nothing here right now.</div>}
+      {ids.map((id) => {
+        const meta = dashboardWidgetCatalogItem(id);
+        const visible = !layout.hiddenWidgetIds.includes(id);
+        return (
+          <article className={`widget-library-row off ${visible ? "already-on" : ""}`} key={id}>
+            <PlusCircle size={16} className="widget-grip" />
+            <WidgetPreview kind={id} />
+            <div className="grow">
+              <b>{meta.label}</b>
+              <span>{meta.description}</span>
+              <small>{meta.supportedSizes.map(preferencesSizeLabel).join(" · ")} · {widgetDataStatus(id, state)}</small>
+            </div>
+            {visible
+              ? <Tag tone="green">On dashboard</Tag>
+              : <GButton size="sm" onClick={() => onAdd(id)}>Add</GButton>}
+          </article>
+        );
+      })}
+    </section>
   );
 }
 
@@ -435,19 +578,380 @@ function WidgetPreview({ kind }: { kind: string }) {
   );
 }
 
-function normalizeWidgetOrder(value: unknown): DashboardWidgetId[] {
-  const valid = new Set(DEFAULT_DASHBOARD_WIDGETS);
-  const incoming = Array.isArray(value)
-    ? value.filter((item): item is DashboardWidgetId => typeof item === "string" && valid.has(item as DashboardWidgetId))
-    : [];
-  return [...new Set([...incoming, ...DEFAULT_DASHBOARD_WIDGETS])];
+function resolveDashboardLayout(
+  stored: unknown,
+  legacyOrder: unknown,
+  legacyHidden: unknown,
+): DashboardLayoutPreferences {
+  const normalized = normalizeDashboardLayoutPreferences(stored, {
+    order: legacyOrder,
+    hiddenWidgetIds: legacyHidden,
+  });
+  if (normalized) return normalized;
+  const legacy = adaptLegacyDashboardLayout({ order: legacyOrder, hiddenWidgetIds: legacyHidden });
+  const isUntouchedLegacyDefault = sameStringList(legacyOrder, DEFAULT_DASHBOARD_WIDGETS)
+    && sameStringList(legacyHidden, DEFAULT_HIDDEN_DASHBOARD_WIDGETS);
+  return isUntouchedLegacyDefault
+    ? applyDashboardLayoutPreset(legacy, "focused", "1970-01-01T00:00:00.000Z")
+    : legacy;
+}
+
+function sameStringList(value: unknown, expected: readonly string[]) {
+  return Array.isArray(value)
+    && value.length === expected.length
+    && value.every((item, index) => item === expected[index]);
+}
+
+function preferencesSizeLabel(size: DashboardWidgetSize) {
+  return size === "extra-large" ? "Extra large" : `${size.slice(0, 1).toUpperCase()}${size.slice(1)}`;
+}
+
+const WIDGET_FIELDS_IMPLEMENTED = new Set<DashboardWidgetId>([
+  "questionBank", "courseTracker", "tasks", "readiness", "activity", "journal",
+  "streak", "dailyWord", "todayScore", "weekly",
+]);
+
+function widgetConfigurableFields(widgetId: DashboardWidgetId, preferences: DashboardWidgetPreferences) {
+  if (!WIDGET_FIELDS_IMPLEMENTED.has(widgetId)) return [];
+  const enabled = new Set(preferences.enabledFields ?? []);
+  return dashboardWidgetCatalogItem(widgetId).fields.map((field) => ({
+    id: field.id,
+    label: field.label,
+    checked: enabled.has(field.id),
+  }));
+}
+
+interface DashboardWidgetRenderContext {
+  widgetId: DashboardWidgetId;
+  size: DashboardWidgetSize;
+  enabledFields: Set<string>;
+  dailyProgress: DailySuccessResult;
+  week: ReturnType<typeof weeklySummary>;
+  readiness: ReturnType<typeof calculateReadiness>;
+  activeDayKey: string;
+  state: ReturnType<typeof useStore.getState>;
+}
+
+function renderDashboardWidget(context: DashboardWidgetRenderContext) {
+  const { widgetId, size, enabledFields, dailyProgress, week, readiness, activeDayKey, state } = context;
+  if (widgetId === "winDay") return <WinTheDay />;
+  if (widgetId === "todayScore") return <TodayScoreWidget result={dailyProgress} activeDayKey={activeDayKey} enabledFields={enabledFields} />;
+  if (widgetId === "examCountdown") return <ExamCountdownWidget />;
+  if (widgetId === "pomodoro") return <Pomodoro compact />;
+  if (widgetId === "weekly") return <WeeklyWidget week={week} enabledFields={enabledFields} />;
+  if (widgetId === "questionBank") return <QuestionBankWidget size={size} enabledFields={enabledFields} />;
+  if (widgetId === "courseTracker") return <CourseTrackerDashboardWidget size={size} enabledFields={enabledFields} />;
+  if (widgetId === "tasks") return <TasksDashboardWidget size={size} enabledFields={enabledFields} />;
+  if (widgetId === "readiness") return <ReadinessDashboardWidget readiness={readiness} enabledFields={enabledFields} />;
+  if (widgetId === "activity") return <ActivityDashboardWidget activeDayKey={activeDayKey} week={week} enabledFields={enabledFields} />;
+  if (widgetId === "journal") return <JournalDashboardWidget activeDayKey={activeDayKey} enabledFields={enabledFields} />;
+  if (widgetId === "streak") return <ConsistencyDashboardWidget state={state} enabledFields={enabledFields} />;
+  if (widgetId === "dailyWord") return <DailyWordDashboardWidget activeDayKey={activeDayKey} enabledFields={enabledFields} />;
+  if (widgetId === "localData") return <LocalDataWidget state={state} />;
+  if (widgetId === "premedHours") return <PremedHoursWidget />;
+  return null;
+}
+
+function widgetDataStatus(id: DashboardWidgetId, s: ReturnType<typeof useStore.getState>) {
+  if (id === "questionBank") {
+    const summary = summarizeQuestionMappings(s.questions);
+    return s.questions.length ? `${summary.ready} ready · ${summary.issueCount} to review` : "No questions imported";
+  }
+  if (id === "courseTracker") {
+    const rows = realTrackerRows(s.tracker);
+    return rows.length ? `${rows.length} real study items` : "Waiting for your first real item";
+  }
+  if (id === "tasks") {
+    const open = realTasks(s.tasks).filter((task) => !task.done && !task.archived).length;
+    return open ? `${open} open` : "No real open tasks";
+  }
+  if (id === "readiness") return s.energyFactors.length || s.journal.length ? "Local signals available" : "No confirmed signal yet";
+  if (id === "activity") return s.logs.some((log) => log.dayKey === s.activeDayKey) ? "Activity logged today" : "No activity today";
+  if (id === "journal") return s.journal.length ? `${s.journal.length} local entr${s.journal.length === 1 ? "y" : "ies"}` : "No entries yet";
+  if (id === "dailyWord") return s.profile.experimentalFlags?.dailyGames ? "Daily Games enabled" : "Optional module is off";
+  if (id === "todayScore") return s.profile.dailySuccess?.requirements.some((item) => item.enabled) ? "Targets configured" : "No targets selected";
+  if (id === "examCountdown") return pickFocusExam(s.boardPrep) ? "Exam focus available" : "No exam focus yet";
+  if (id === "premedHours") return s.premedExperiences.length ? `${s.premedExperiences.length} experiences` : "No experience entries yet";
+  if (id === "localData") return "Stored on this device";
+  if (id === "winDay") return s.dayPlans.some((plan) => plan.dayKey === s.activeDayKey) ? "Checked in today" : "Ready for today";
+  if (id === "weekly" || id === "streak") return s.logs.length ? "History available" : "Learning your rhythm";
+  if (id === "pomodoro") return "Ready to focus";
+  return "Available";
+}
+
+function widgetIsSuggested(id: DashboardWidgetId, s: ReturnType<typeof useStore.getState>) {
+  if (id === "winDay" || id === "todayScore" || id === "pomodoro") return true;
+  if (id === "questionBank") return s.questions.length > 0;
+  if (id === "courseTracker") return realTrackerRows(s.tracker).length > 0;
+  if (id === "tasks") return realTasks(s.tasks).some((task) => !task.done && !task.archived);
+  if (id === "readiness") return s.energyFactors.length > 0 || s.journal.length > 0;
+  if (id === "activity" || id === "weekly" || id === "streak") return s.logs.length > 0;
+  if (id === "journal") return s.journal.length > 0;
+  if (id === "examCountdown") return Boolean(pickFocusExam(s.boardPrep));
+  if (id === "premedHours") return s.premedExperiences.length > 0;
+  return false;
+}
+
+function realTrackerRows(rows: TrackerItem[]) {
+  return rows.filter((row) => !/^example(?:[:\s]|$)/i.test(row.label.trim()));
+}
+
+function realTasks(tasks: ReturnType<typeof useStore.getState>["tasks"]) {
+  const starter = new Set([
+    "create today's standup",
+    "add your real lecture/dla/pq list",
+    "save progress from settings",
+  ]);
+  return tasks.filter((task) => !starter.has(task.title.trim().toLowerCase()));
+}
+
+function QuestionBankWidget({
+  size,
+  enabledFields,
+}: {
+  size: DashboardWidgetSize;
+  enabledFields: Set<string>;
+}) {
+  const questions = useStore((s) => s.questions);
+  const mapping = summarizeQuestionMappings(questions);
+  const ready = questions.filter((question) => questionMappingStatus(question) === "ready");
+  const due = dueQuestions(ready);
+  const attempts = ready.flatMap((question) => question.attempts);
+  const scored = attempts.filter((attempt) => attempt.status === "correct" || attempt.status === "incorrect");
+  const accuracy = scored.length ? Math.round((scored.filter((attempt) => attempt.status === "correct").length / scored.length) * 100) : null;
+  return (
+    <GlassCard pad className="dashboard-core-widget question-bank-widget">
+      <PanelHeader title="Question Bank" sub="Only trusted mappings can enter a scored block"
+        action={<a className="gbtn sm primary" href="#questions"><BookOpenCheck size={14} /> Open</a>} />
+      {questions.length === 0 ? (
+        <div className="dashboard-widget-empty"><BookOpenCheck size={20} /><b>No practice questions yet</b><span>Import a source or save the document first. AXOM will not invent an answer key.</span></div>
+      ) : (
+        <>
+          <div className="dashboard-widget-focal"><b>{mapping.ready}</b><span>ready to practice</span></div>
+          <div className="dashboard-widget-metrics">
+            {enabledFields.has("due") && <span><b>{due.length}</b> due</span>}
+            {enabledFields.has("needsReview") && <span><b>{mapping.issueCount}</b> mapping review</span>}
+            {enabledFields.has("accuracy") && <span><b>{accuracy === null ? "—" : `${accuracy}%`}</b> attempt accuracy</span>}
+          </div>
+          {size !== "small" && mapping.issueCount > 0 && <p className="dashboard-widget-note">Review uncertain answer evidence before those questions become runnable.</p>}
+        </>
+      )}
+    </GlassCard>
+  );
+}
+
+function CourseTrackerDashboardWidget({
+  size,
+  enabledFields,
+}: {
+  size: DashboardWidgetSize;
+  enabledFields: Set<string>;
+}) {
+  const tracker = useStore((s) => s.tracker);
+  const rows = realTrackerRows(tracker);
+  const untouched = rows.filter((row) => row.passes === 0);
+  const weak = rows.filter((row) => row.yield === "review" || (row.passes > 0 && row.passes < 2));
+  const progress = rows.length ? Math.round(rows.reduce((sum, row) => sum + Math.min(4, row.passes), 0) / (rows.length * 4) * 100) : 0;
+  return (
+    <GlassCard pad className="dashboard-core-widget course-tracker-widget">
+      <PanelHeader title="Course Tracker" sub="Real course items, passes, and untouched work"
+        action={<a className="gbtn sm primary" href="#tracker"><ArrowRight size={14} /> Open</a>} />
+      {rows.length === 0 ? (
+        <div className="dashboard-widget-empty"><BookText size={20} /><b>Add or import your first study item</b><span>Shipped examples teach the interface but never count as your workload.</span></div>
+      ) : (
+        <>
+          {enabledFields.has("progress") && <div className="dashboard-widget-focal"><b>{progress}%</b><span>pass progress</span></div>}
+          <div className="dashboard-widget-metrics">
+            {enabledFields.has("untouched") && <span><b>{untouched.length}</b> untouched</span>}
+            {enabledFields.has("weak") && <span><b>{weak.length}</b> need another pass</span>}
+            <span><b>{rows.length}</b> real items</span>
+          </div>
+          {size !== "small" && enabledFields.has("suggestion") && <p className="dashboard-widget-note">{untouched[0] ? `Start with ${untouched[0].label}.` : weak[0] ? `Revisit ${weak[0].label}.` : "Your tracked items have at least one pass."}</p>}
+        </>
+      )}
+    </GlassCard>
+  );
+}
+
+function TasksDashboardWidget({
+  size,
+  enabledFields,
+}: {
+  size: DashboardWidgetSize;
+  enabledFields: Set<string>;
+}) {
+  const tasks = realTasks(useStore((s) => s.tasks));
+  const today = isoDate(new Date());
+  const open = tasks.filter((task) => !task.done && !task.archived);
+  const overdue = open.filter((task) => task.due && task.due.slice(0, 10) < today);
+  const completed = tasks.filter((task) => task.done).length;
+  return (
+    <GlassCard pad className="dashboard-core-widget tasks-widget">
+      <PanelHeader title="Tasks" sub="Due work without the setup examples"
+        action={<a className="gbtn sm primary" href="#tasks"><ListTodo size={14} /> Open</a>} />
+      <div className="dashboard-widget-focal"><b>{open.length}</b><span>open</span></div>
+      <div className="dashboard-widget-metrics">
+        {enabledFields.has("overdue") && <span><b>{overdue.length}</b> overdue</span>}
+        {enabledFields.has("due") && <span><b>{open.filter((task) => task.due?.slice(0, 10) === today).length}</b> due today</span>}
+        {enabledFields.has("completed") && <span><b>{completed}</b> completed</span>}
+      </div>
+      {size !== "small" && open.slice(0, 3).map((task) => <div className="dashboard-widget-list-row" key={task.id}><Circle size={13} /><span>{task.title}</span>{task.due && <small>{task.due.slice(0, 10)}</small>}</div>)}
+      {!open.length && <p className="dashboard-widget-note">No real open tasks. Add one only when it helps make the next action concrete.</p>}
+    </GlassCard>
+  );
+}
+
+function ReadinessDashboardWidget({
+  readiness,
+  enabledFields,
+}: {
+  readiness: ReturnType<typeof calculateReadiness>;
+  enabledFields: Set<string>;
+}) {
+  const hasEvidence = readiness.contributions.length > 0 || readiness.selfReportedEnergy.label !== "Unlogged";
+  return (
+    <GlassCard pad className="dashboard-core-widget readiness-widget">
+      <PanelHeader title="Readiness" sub="A deterministic estimate from local, confirmed signals"
+        action={<a className="gbtn sm" href="#reports">Why?</a>} />
+      {hasEvidence ? (
+        <>
+          {enabledFields.has("score") && <div className="dashboard-widget-focal"><b>{readiness.estimatedReadiness}</b><span>{readiness.readinessLabel}</span></div>}
+          {enabledFields.has("energy") && <p className="dashboard-widget-note">Reported energy: {readiness.selfReportedEnergy.label}</p>}
+          {enabledFields.has("contributors") && readiness.contributions[0] && <p className="dashboard-widget-note">Strongest contributor: {readiness.contributions[0].label} ({readiness.contributions[0].appliedDelta > 0 ? "+" : ""}{readiness.contributions[0].appliedDelta})</p>}
+        </>
+      ) : <div className="dashboard-widget-empty"><BatteryMedium size={20} /><b>No readiness signal yet</b><span>Log energy or a confirmed factor before AXOM interprets capacity.</span></div>}
+    </GlassCard>
+  );
+}
+
+function ActivityDashboardWidget({
+  activeDayKey,
+  week,
+  enabledFields,
+}: {
+  activeDayKey: string;
+  week: ReturnType<typeof weeklySummary>;
+  enabledFields: Set<string>;
+}) {
+  const logs = useStore((s) => s.logs);
+  const today = dayTotals(logs, activeDayKey);
+  const recent = logs.filter((log) => log.dayKey === activeDayKey).slice(0, 3);
+  return (
+    <GlassCard pad className="dashboard-core-widget activity-widget">
+      <PanelHeader title="Activity" sub="What you recorded, not an inferred score"
+        action={<a className="gbtn sm primary" href="#productivity"><Activity size={14} /> Log</a>} />
+      {enabledFields.has("today") && <div className="dashboard-widget-focal"><b>{today.minutes}m</b><span>today · {today.cards} cards</span></div>}
+      {enabledFields.has("weekly") && <div className="dashboard-widget-metrics"><span><b>{week.minutes}m</b> this week</span><span><b>{week.activeDays}</b> active days</span></div>}
+      {enabledFields.has("recent") && recent.map((log) => <div className="dashboard-widget-list-row" key={log.id}><Activity size={13} /><span>{log.type}</span><small>{log.minutes ? `${log.minutes}m` : `${log.quantity ?? 0} ${log.quantityLabel ?? "count"}`}</small></div>)}
+      {!recent.length && <p className="dashboard-widget-note">No activity logged today. One honest record is enough to create signal.</p>}
+    </GlassCard>
+  );
+}
+
+function JournalDashboardWidget({
+  activeDayKey,
+  enabledFields,
+}: {
+  activeDayKey: string;
+  enabledFields: Set<string>;
+}) {
+  const entries = useStore((s) => s.journal);
+  const current = entries.find((entry) => entry.date.slice(0, 10) === activeDayKey) ?? entries[0];
+  return (
+    <GlassCard pad className="dashboard-core-widget journal-widget">
+      <PanelHeader title="Journal" sub="A private, device-local record of the day"
+        action={<a className="gbtn sm primary" href="#journal"><BookText size={14} /> Open</a>} />
+      {current ? (
+        <>
+          {enabledFields.has("latest") && <div className="dashboard-widget-journal-excerpt"><b>{current.date.slice(0, 10) === activeDayKey ? "Today" : prettyDate(current.date)}</b><p>{truncateText(current.today, 120)}</p></div>}
+          <div className="dashboard-widget-metrics">
+            {enabledFields.has("energy") && <span><b>{current.energy || "—"}</b> energy</span>}
+            {enabledFields.has("unfinished") && <span><b>{current.tomorrow ? "1+" : "0"}</b> next-day loops</span>}
+          </div>
+        </>
+      ) : <div className="dashboard-widget-empty"><BookText size={20} /><b>Your notebook is ready</b><span>Write freely or close the loop with a short reflection.</span></div>}
+    </GlassCard>
+  );
+}
+
+function ConsistencyDashboardWidget({
+  state,
+  enabledFields,
+}: {
+  state: ReturnType<typeof useStore.getState>;
+  enabledFields: Set<string>;
+}) {
+  const summary = consistencySummary(state);
+  return (
+    <GlassCard pad className="dashboard-core-widget consistency-widget">
+      <PanelHeader title="Consistency" sub="Only eligible days after tracking began" action={<a className="gbtn sm" href="#reports">Trend</a>} />
+      {summary.eligibleDays ? (
+        <>
+          {enabledFields.has("current") && <div className="dashboard-widget-focal"><b>{summary.current}</b><span>current streak</span></div>}
+          <div className="dashboard-widget-metrics">
+            {enabledFields.has("best") && <span><b>{summary.best}</b> best</span>}
+            {enabledFields.has("eligibleDays") && <span><b>{summary.eligibleDays}</b> eligible days</span>}
+          </div>
+        </>
+      ) : <div className="dashboard-widget-empty"><Flame size={20} /><b>No eligible history yet</b><span>AXOM will not count dates before your targets started.</span></div>}
+    </GlassCard>
+  );
+}
+
+function DailyWordDashboardWidget({
+  activeDayKey,
+  enabledFields,
+}: {
+  activeDayKey: string;
+  enabledFields: Set<string>;
+}) {
+  const enabled = useStore((s) => s.profile.experimentalFlags?.dailyGames === true);
+  const puzzles = useStore((s) => s.dailyWordPuzzles);
+  const stats = deriveDailyWordStatsFromNormalizedHistory(puzzles);
+  const today = puzzles.find((puzzle) => puzzle.puzzleDate === activeDayKey);
+  return (
+    <GlassCard pad className="dashboard-core-widget daily-word-widget">
+      <PanelHeader title="Daily Word" sub="Deterministic, local, and offline after first load"
+        action={<a className="gbtn sm primary" href="#daily-word"><Gamepad2 size={14} /> {enabled ? "Play" : "Enable"}</a>} />
+      {!enabled ? <div className="dashboard-widget-empty"><Gamepad2 size={20} /><b>Daily Games is optional</b><span>Open Daily Word to enable it explicitly. No puzzle data is deleted while hidden.</span></div> : (
+        <>
+          <div className="dashboard-widget-focal"><b>{today?.completed ? (today.won ? "Won" : "Complete") : today ? `${today.guesses.length}/6` : "Ready"}</b><span>today's puzzle</span></div>
+          <div className="dashboard-widget-metrics">
+            {enabledFields.has("streak") && <span><b>{stats.currentStreak}</b> streak</span>}
+            {enabledFields.has("distribution") && <span><b>{stats.wins}/{stats.gamesPlayed}</b> wins</span>}
+          </div>
+        </>
+      )}
+    </GlassCard>
+  );
+}
+
+function consistencySummary(s: ReturnType<typeof useStore.getState>) {
+  const days = lastNDays(30)
+    .map((date) => isoDate(date))
+    .filter((key) => key < s.activeDayKey)
+    .map((key) => evaluateDailySuccess(s, key, s.activeDayKey))
+    .filter((result) => result.eligibleCount > 0);
+  let current = 0;
+  for (let index = days.length - 1; index >= 0; index -= 1) {
+    if (days[index].status !== "met") break;
+    current += 1;
+  }
+  let best = 0;
+  let run = 0;
+  for (const day of days) {
+    run = day.status === "met" ? run + 1 : 0;
+    best = Math.max(best, run);
+  }
+  return { current, best, eligibleDays: days.length };
 }
 
 function TodayScoreWidget({
-  result, activeDayKey,
+  result, activeDayKey, enabledFields,
 }: {
   result: DailySuccessResult;
   activeDayKey: string;
+  enabledFields: Set<string>;
 }) {
   return (
     <GlassCard pad data-tour="requirements">
@@ -458,8 +962,8 @@ function TodayScoreWidget({
         </div>
         <a className="gbtn sm" href="#productivity">Adjust</a>
       </div>
-      <DailyProgressVessel result={result} compact />
-      {result.requirements.filter((item) => item.eligible && item.status !== "unavailable").length > 0 && (
+      {enabledFields.has("progress") && <DailyProgressVessel result={result} compact />}
+      {enabledFields.has("targets") && result.requirements.filter((item) => item.eligible && item.status !== "unavailable").length > 0 && (
         <div className="dashboard-requirement-list">
           {result.requirements.filter((item) => item.eligible && item.status !== "unavailable").map((item) => (
             <div key={item.requirement.id}>
@@ -474,7 +978,13 @@ function TodayScoreWidget({
   );
 }
 
-function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
+function WeeklyWidget({
+  week,
+  enabledFields,
+}: {
+  week: ReturnType<typeof weeklySummary>;
+  enabledFields: Set<string>;
+}) {
   const reveal = useInView<HTMLDivElement>();
   const [selectedKey, setSelectedKey] = useState(() => week.days.at(-1)?.key ?? "");
   const selected = week.days.find((day) => day.key === selectedKey) ?? week.days.at(-1) ?? week.days[0];
@@ -482,17 +992,17 @@ function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
     <GlassCard pad className="weekly-card">
       <PanelHeader title="Weekly Overview" sub="Last 7 calendar days from your local study log"
         action={<Tag tone={week.activeDays >= 5 ? "green" : week.activeDays >= 3 ? "orange" : "neutral"}>{week.activeDays}/7 active</Tag>} />
-      <div className="weekly-hero">
+      {(enabledFields.has("minutes") || enabledFields.has("activeDays")) && <div className="weekly-hero">
         <div>
-          <div className="week-total">{Math.round(week.minutes / 60)}h</div>
+          {enabledFields.has("minutes") && <div className="week-total">{Math.round(week.minutes / 60)}h</div>}
           <div className="sub">{week.minutes} minutes · {week.cards} cards · {week.tasksDone} tasks done</div>
         </div>
-        <div className="weekly-score">
+        {enabledFields.has("activeDays") && <div className="weekly-score">
           <span style={{ color: gradeColor(week.grade) }}>{gradeLabel(week.grade).replace("👑 ", "")}</span>
           <small>week result</small>
-        </div>
-      </div>
-      <div className={`week-bars reveal-bars ${reveal.inView ? "in-view" : ""}`} ref={reveal.ref}>
+        </div>}
+      </div>}
+      {enabledFields.has("trend") && <div className={`week-bars reveal-bars ${reveal.inView ? "in-view" : ""}`} ref={reveal.ref}>
         {week.days.map((d) => (
           <button type="button" className={`week-day ${selected?.key === d.key ? "on" : ""}`} key={d.key}
             title={`${d.key}: ${d.minutes}m, ${d.cards} cards, readiness ${d.readiness}`}
@@ -505,8 +1015,8 @@ function WeeklyWidget({ week }: { week: ReturnType<typeof weeklySummary> }) {
             <span>{d.label}</span>
           </button>
         ))}
-      </div>
-      {selected && (
+      </div>}
+      {enabledFields.has("trend") && selected && (
         <div className="weekly-day-detail">
           <div className="weekly-day-head">
             <div>
@@ -538,150 +1048,6 @@ function DetailMetric({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <b>{value}</b>
     </div>
-  );
-}
-
-function SuggestedMovesWidget({ suggestions }: { suggestions: DashSuggestion[] }) {
-  return (
-    <GlassCard pad>
-      <PanelHeader title="Suggested next moves" sub="Reactive to your current state" />
-      <div className="stack gap8">
-        {suggestions.map((sg, i) => {
-          const clickable = !!(sg.itemId || sg.route);
-          const go = () => { if (sg.itemId) gotoTrackerItem(sg.itemId); else if (sg.route) location.hash = sg.route; };
-          const interactive = clickable ? { role: "button" as const, tabIndex: 0, onClick: go } : {};
-          return (
-            <div className={`sugg ${clickable ? "clickable" : ""}`} key={i} {...interactive}>
-              <span className="sugg-dot" style={{ background: sg.color }} />
-              <div className="grow">
-                <div className="sugg-title">{sg.title}</div>
-                <div className="sugg-reason">{sg.reason}</div>
-              </div>
-              {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Sparkles size={15} style={{ color: "var(--cyan)" }} />}
-            </div>
-          );
-        })}
-      </div>
-    </GlassCard>
-  );
-}
-
-function ScheduleWidget({ schedule, missedSet }: { schedule: ReturnType<typeof buildDashboardSchedule>; missedSet: Set<string> }) {
-  return (
-    <GlassCard pad className="dashboard-schedule-card" data-tour="schedule">
-      <PanelHeader title="Schedule" sub={`${schedule.monthLabel} · updates automatically with each new week and month`}
-        action={<Tag tone={schedule.weekActive >= 5 ? "green" : schedule.weekActive >= 3 ? "orange" : "neutral"}>{schedule.weekActive}/7 this week</Tag>} />
-      <div className="dashboard-schedule">
-        <div className="schedule-calendar">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
-          {schedule.cells.map((cell, i) => cell
-            ? <button key={cell.key}
-                className={`cal-day schedule-day ${cell.key === schedule.todayKey ? "today" : ""} ${cell.active ? "worked" : ""} ${missedSet.has(cell.key) ? "remediable" : ""}`}
-                style={{ borderColor: !missedSet.has(cell.key) && cell.active ? gradeColor(cell.grade) : undefined }}
-                title={missedSet.has(cell.key) ? `${prettyDate(cell.key)}: missed standup — click to remediate` : `${prettyDate(cell.key)}: ${cell.minutes}m, ${cell.cards} cards`}
-                onClick={() => (missedSet.has(cell.key) ? gotoJournalDay(cell.key) : (location.hash = "productivity"))}>
-                <span>{cell.date.getDate()}</span>
-                <i style={{ background: cell.active ? gradeColor(cell.grade) : "rgba(255,255,255,0.08)" }} />
-              </button>
-            : <span className="cal-day blank" key={`blank-${i}`} />)}
-        </div>
-        <div className="schedule-side">
-          <div className="schedule-stat">
-            <CalendarDays size={15} />
-            <div><b>{schedule.weekMinutes}m</b><span>this week · {schedule.weekCards} cards</span></div>
-          </div>
-          <div className="schedule-stat">
-            <Clock size={15} />
-            <div><b>{schedule.monthMinutes}m</b><span>this month · {schedule.monthActive}/{schedule.days.length} active</span></div>
-          </div>
-          <div className="schedule-note">
-            <b>{schedule.noteTitle}</b>
-            <span>{schedule.noteBody}</span>
-          </div>
-        </div>
-      </div>
-      <div className="heat-legend">
-        <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red: logged, below baseline</span>
-        <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
-        <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
-        <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> Blue: excellent day</span>
-      </div>
-      <div className="pass-legend">
-        <span><i style={{ background: PASS_COLOR.red }} />1 pass: red</span>
-        <span><i style={{ background: PASS_COLOR.young }} />2 passes: young</span>
-        <span><i style={{ background: PASS_COLOR.mature }} />3 passes: mature</span>
-        <span><i style={{ background: PASS_COLOR.mastered }} />4+: mastered</span>
-      </div>
-    </GlassCard>
-  );
-}
-
-function TermMapWidget({
-  termMap, trackShort, tracker,
-}: {
-  termMap: ReturnType<typeof buildTermSequence>;
-  trackShort: string;
-  tracker: TrackerItem[];
-}) {
-  return (
-    <GlassCard pad className="term-map-card">
-      <PanelHeader title="Term Map" sub={`${trackShort} runway: user-created course shells, modules, tracker maturity, and review pressure`}
-        action={<div className="term-map-actions"><Tag tone={termMap.ready >= 70 ? "green" : termMap.ready >= 35 ? "orange" : "neutral"}>{termMap.ready}% overall</Tag><a className="gbtn sm" href="#courses">Open Courses <ArrowRight size={14} /></a></div>} />
-      <div className="term-map-overview">
-        <div><b>{termMap.entries.length}</b><span>active nodes</span></div>
-        <div><b>{termMap.modules}</b><span>modules</span></div>
-        <div><b>{termMap.review}</b><span>review signals</span></div>
-      </div>
-      <div className="term-sequence" aria-label="Term sequence">
-        {termMap.entries.map(({ term, courses, stats }, index) => {
-          const current = index === termMap.focusIndex;
-          return (
-            <section className={`term-node-card ${current ? "current" : ""}`} key={term.id}>
-              <div className="term-node-cap">
-                <span className="term-index">T{index + 1}</span>
-                <div>
-                  <b>{term.name}</b>
-                  <span>{stats.primaryCode || "Course shell"} · {stats.modules} module{stats.modules === 1 ? "" : "s"}</span>
-                </div>
-                <Tag tone={current ? "cyan" : stats.ready >= 70 ? "green" : stats.ready >= 35 ? "orange" : "neutral"}>{current ? "focus" : `${stats.ready}%`}</Tag>
-              </div>
-              <div className="term-course-lane">
-                {courses.map((course) => {
-                  const courseStats = summarizeCourse(course, tracker);
-                  return (
-                    <button className="term-course-pill" key={course.id} onClick={() => (location.hash = "courses")}>
-                      <div className="spread">
-                        <b>{course.code}</b>
-                        <span>{courseStats.items ? `${courseStats.ready}%` : "shell"}</span>
-                      </div>
-                      <em>{course.name || "Course shell"}</em>
-                      <small>{course.modules.length} modules · {courseStats.items || 0} tracker rows{courseStats.review ? ` · ${courseStats.review} review` : ""}</small>
-                    </button>
-                  );
-                })}
-                {!courses.length && <div className="term-empty">Add a course shell for this term.</div>}
-              </div>
-              <div className="term-node-meter">
-                <div className="spread"><span>Readiness</span><b>{stats.ready}%</b></div>
-                <div className="track">
-                  <div className="track-fill" style={{ width: `${stats.ready}%`, background: stats.ready >= 70 ? PASS_COLOR.mastered : stats.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.34)" }} />
-                </div>
-              </div>
-              <div className="term-node-signals">
-                <span>{stats.items} tracked</span>
-                <span>{stats.review} review</span>
-                <span>{stats.highYield} high-yield</span>
-              </div>
-              <div className="term-module-row">
-                {stats.moduleNames.slice(0, 5).map((module) => <span key={module}>{module}</span>)}
-                {stats.moduleNames.length > 5 && <span>+{stats.moduleNames.length - 5}</span>}
-                {!stats.moduleNames.length && <span>Modules ready to add</span>}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-    </GlassCard>
   );
 }
 
@@ -728,43 +1094,6 @@ function LocalDataWidget({ state }: { state: ReturnType<typeof useStore.getState
   );
 }
 
-function LatestStandupWidget() {
-  const entry = useStore((state) => state.journal[0]);
-  return (
-    <GlassCard pad>
-      <PanelHeader title="Latest standup" sub="From your Journal" />
-      {entry ? (
-        <div className="journal-card">
-          <div className="jc-date">{prettyDate(entry.date)}</div>
-          <div className="jc-line"><b>Today:</b> {entry.today}</div>
-          <div className="jc-line dim"><b>Tomorrow:</b> {entry.tomorrow}</div>
-        </div>
-      ) : <div className="dim">No journal entries yet.</div>}
-    </GlassCard>
-  );
-}
-
-function ProductivityTrendWidget({
-  performance,
-  week,
-}: {
-  performance: ReturnType<typeof analyzePerformance>;
-  week: ReturnType<typeof weeklySummary>;
-}) {
-  return (
-    <GlassCard pad>
-      <PanelHeader title="Productivity Trend" sub="A short read on the week, not another noisy chart"
-        action={<Tag tone={performance.performanceScore >= 70 ? "green" : performance.performanceScore >= 45 ? "orange" : "neutral"}>{performance.performanceScore}/100</Tag>} />
-      <div className="trend-widget">
-        <div><b>{Math.round(week.minutes / 60)}h</b><span>this week</span></div>
-        <div><b>{week.activeDays}/7</b><span>active days</span></div>
-        <div><b>{week.cards}</b><span>cards</span></div>
-      </div>
-      <div className="trend-comment">{performance.recommendation}</div>
-    </GlassCard>
-  );
-}
-
 function PremedHoursWidget() {
   const entries = useStore((state) => state.premedExperiences ?? []);
   const total = entries.reduce((sum, entry) => sum + entry.hours, 0);
@@ -783,30 +1112,6 @@ function PremedHoursWidget() {
       <div className="premed-mini-bars">
         <ProgressBar label="Clinical + shadowing" value={clinical} target={150} pct={Math.min(100, Math.round((clinical / 150) * 100))} color="var(--green)" />
         <ProgressBar label="Service" value={service} target={100} pct={Math.min(100, Math.round((service / 100) * 100))} color="var(--cyan)" />
-      </div>
-    </GlassCard>
-  );
-}
-
-function ResourceFocusWidget() {
-  const s = useStore();
-  const favorites = s.resources.filter((resource) => resource.favorite).slice(0, 4);
-  const drives = s.resources.filter((resource) => resource.category === "Drives").length;
-  return (
-    <GlassCard pad>
-      <PanelHeader title="Resource Focus" sub={`${favorites.length} pinned resources · ${drives} drives`}
-        action={<a className="gbtn sm" href="#resources">Library <LinkIcon size={14} /></a>} />
-      <div className="stack gap8">
-        {favorites.length ? favorites.map((resource) => (
-          <a className="sugg clickable" href={resource.url} target="_blank" rel="noreferrer" key={resource.id}>
-            <span className="sugg-dot" style={{ background: "var(--cyan)" }} />
-            <div className="grow">
-              <div className="sugg-title">{resource.title}</div>
-              <div className="sugg-reason">{resource.category}</div>
-            </div>
-            <ExternalLink size={14} />
-          </a>
-        )) : <div className="dim">Favorite resources to make this widget useful.</div>}
       </div>
     </GlassCard>
   );
@@ -863,29 +1168,6 @@ function ExamCountdownWidget() {
   );
 }
 
-function BoardBlueprintWidget() {
-  const installs = useStore((s) => s.blueprintInstalls);
-  const nodes = installs.flatMap((i) => i.nodes);
-  const total = nodes.length;
-  const mastered = nodes.filter((n) => n.status === "mastered" || n.status === "done").length;
-  const pct = total ? Math.round(nodes.reduce((sum, n) => sum + n.mastery, 0) / total) : 0;
-  const usmle = installs.some((i) => ["step1", "step2", "dedicated", "shelf", "step3"].includes(i.laneId));
-  return (
-    <GlassCard pad>
-      <PanelHeader title="Blueprint Pulse" sub="Installed operating-system containers"
-        action={<a className="gbtn sm" href={usmle ? "#step" : "#premed"}><Brain size={14} /> Open</a>} />
-      <div className="trend-widget">
-        <div><b>{installs.length}</b><span>installed</span></div>
-        <div><b>{mastered}</b><span>mastered</span></div>
-        <div><b>{pct}%</b><span>overall</span></div>
-      </div>
-      <div className="trend-comment">{installs.length
-        ? `${mastered}/${total} mastery objects complete across ${installs.length} container${installs.length === 1 ? "" : "s"}. Macro or detailed — keep the evidence honest.`
-        : "Install a source-backed blueprint from the USMLE or Pre-Health lane to spin up a container."}</div>
-    </GlassCard>
-  );
-}
-
 const OUTCOMES: { key: "won" | "partial" | "missed"; label: string; tone: "green" | "orange" | "red" }[] = [
   { key: "won", label: "Won it", tone: "green" },
   { key: "partial", label: "Partial", tone: "orange" },
@@ -897,9 +1179,76 @@ const OUTCOMES: { key: "won" | "partial" | "missed"; label: string; tone: "green
 // disappears entirely when there's nothing to do.
 function StandupPrompt() {
   const s = useStore();
-  const missed = useMemo(() => missedStandupDays(s), [s.journal, s.logs, s.dayPlans]);
-  const status = standupStatusToday(s);
-  if (!missed.length && status !== "due") return null;
+  const dailyLoopRequest = useUi((state) => state.dailyLoopRequest);
+  const clearDailyLoopRequest = useUi((state) => state.clearDailyLoopRequest);
+  const missed = missedStandupDays(s);
+  const preferences = normalizeDailyLoopReminderPreferences(s.profile.dailyLoopReminders);
+  const today = s.activeDayKey;
+  const closeoutDone = Boolean(closeoutForDay(s.closeouts ?? [], today));
+  const closeoutDue = preferences.closeoutEnabled && !closeoutDone && isAfterLocalTime(preferences.closeoutTime);
+  const [showCloseout, setShowCloseout] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    const entry = dailyLoopReminderLedger.read(today).closeout;
+    return entry.disposition !== "pending"
+      || Boolean(entry.snoozedUntil && Date.parse(entry.snoozedUntil) > Date.now());
+  });
+  const [editingTime, setEditingTime] = useState(false);
+
+  useEffect(() => {
+    const entry = dailyLoopReminderLedger.read(today).closeout;
+    setDismissed(entry.disposition !== "pending"
+      || Boolean(entry.snoozedUntil && Date.parse(entry.snoozedUntil) > Date.now()));
+    setShowCloseout(false);
+    setEditingTime(false);
+  }, [today]);
+
+  useEffect(() => {
+    if (dailyLoopRequest?.kind !== "closeout" || dailyLoopRequest.dayKey !== today) return;
+    setDismissed(false);
+    setShowCloseout(true);
+    clearDailyLoopRequest();
+  }, [clearDailyLoopRequest, dailyLoopRequest, today]);
+
+  if (!missed.length && (!closeoutDue || dismissed)) return null;
+
+  if (closeoutDue && !dismissed) {
+    return (
+      <>
+        <GlassCard pad className="standup-prompt-card due daily-closeout-card">
+          <div className="standup-prompt-head">
+            <span className="standup-prompt-mark"><BookText size={18} /></span>
+            <div className="grow">
+              <b>Close the loop on today?</b>
+              <span>Review your intention, activity, targets, focus sessions, questions, tasks, and energy. A short closeout is optional.</span>
+            </div>
+          </div>
+          <div className="row wrap gap8 daily-closeout-actions">
+            <GButton size="sm" variant="primary" onClick={() => gotoJournalDay(today)}>Open today’s journal</GButton>
+            <GButton size="sm" onClick={() => setShowCloseout(true)}>Quick closeout</GButton>
+            <GhostButton onClick={() => {
+              const now = new Date();
+              dailyLoopReminderLedger.snooze(today, "closeout", new Date(now.getTime() + 30 * 60_000), now);
+              setDismissed(true);
+            }}>Remind me later</GhostButton>
+            <GhostButton onClick={() => {
+              dailyLoopReminderLedger.skip(today, "closeout");
+              setDismissed(true);
+            }}>Skip tonight</GhostButton>
+            <GhostButton aria-expanded={editingTime} onClick={() => setEditingTime((value) => !value)}>Change reminder time</GhostButton>
+          </div>
+          {editingTime && (
+            <label className="daily-closeout-time">
+              <span>Evening closeout reminder</span>
+              <input className="field" type="time" value={preferences.closeoutTime} onChange={(event) => s.updateProfile({
+                dailyLoopReminders: { ...preferences, closeoutTime: event.target.value },
+              })} />
+            </label>
+          )}
+        </GlassCard>
+        {showCloseout && <CloseoutModal onClose={() => setShowCloseout(false)} />}
+      </>
+    );
+  }
 
   if (missed.length) {
     return (
@@ -907,8 +1256,8 @@ function StandupPrompt() {
         <div className="standup-prompt-head">
           <span className="standup-prompt-mark warn"><AlertTriangle size={18} /></span>
           <div className="grow">
-            <b>Oh no — you missed {missed.length} standup{missed.length === 1 ? "" : "s"}</b>
-            <span>Remediate while the day is still fresh. Flagged days pulse here and on Productivity.</span>
+            <b>{missed.length} prior reflection{missed.length === 1 ? " is" : "s are"} still open</b>
+            <span>Catch up only if it would help. Existing journal content is never overwritten.</span>
           </div>
         </div>
         <div className="standup-prompt-days">
@@ -927,24 +1276,15 @@ function StandupPrompt() {
     );
   }
 
-  return (
-    <GlassCard pad className="standup-prompt-card due">
-      <div className="standup-prompt-head">
-        <span className="standup-prompt-mark"><BookText size={18} /></span>
-        <div className="grow">
-          <b>Standup time</b>
-          <span>It’s past your {s.profile.journalReviewTime ?? "20:00"} review time. Close out today before the window passes.</span>
-        </div>
-        <GButton size="sm" variant="primary" onClick={() => gotoJournalDay(dayKey())}><ArrowRight size={14} /> Write standup</GButton>
-      </div>
-    </GlassCard>
-  );
+  return null;
 }
 
-// "Win the day": a morning intention, an end-of-day review, and a gentle
-// carry-over nudge if a past day was planned but never closed out.
+// Daily Check-In: optional first-open direction plus a gentle carry-over nudge.
+// It never infers an intention and never steals focus on app launch.
 function WinTheDay() {
   const s = useStore();
+  const dailyLoopRequest = useUi((state) => state.dailyLoopRequest);
+  const clearDailyLoopRequest = useUi((state) => state.clearDailyLoopRequest);
   const today = s.activeDayKey;
   const todayPlan = s.dayPlans.find((p) => p.dayKey === today);
   const pendingPast = s.dayPlans
@@ -954,19 +1294,80 @@ function WinTheDay() {
   const [intention, setIntention] = useState("");
   const [wins, setWins] = useState("");
   const [note, setNote] = useState("");
+  const [expectedMinutes, setExpectedMinutes] = useState("");
+  const [personalNote, setPersonalNote] = useState("");
+  const [priority, setPriority] = useState("");
+  const [obstacle, setObstacle] = useState("");
+  const [commitment, setCommitment] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [showContext, setShowContext] = useState(false);
+  const [promptDismissed, setPromptDismissed] = useState(() => (
+    dailyLoopReminderLedger.read(today).checkIn.disposition !== "pending"
+  ));
   const [showWrapPrompt, setShowWrapPrompt] = useState(false);
 
   const openTasks = s.tasks.filter((t) => !t.done && !t.archived).slice(0, 3);
   const reviewDue = isAfterLocalTime(s.profile.journalReviewTime ?? "20:00");
+  const selectedTargets = useMemo(
+    () => evaluateDailySuccess(s, today, today).requirements
+      .filter((item) => item.eligible && item.status !== "unavailable")
+      .map((item) => item.requirement.label),
+    [s, today],
+  );
 
   useEffect(() => {
     if (todayPlan && !todayPlan.outcome && reviewDue) setShowWrapPrompt(true);
-  }, [reviewDue, todayPlan?.dayKey, todayPlan?.outcome]);
+  }, [reviewDue, todayPlan]);
+
+  useEffect(() => {
+    setPromptDismissed(dailyLoopReminderLedger.read(today).checkIn.disposition !== "pending");
+    setIntention("");
+    setWins("");
+    setNote("");
+    setExpectedMinutes("");
+    setPersonalNote("");
+    setPriority("");
+    setObstacle("");
+    setCommitment(3);
+    setShowContext(false);
+    setShowWrapPrompt(false);
+  }, [today]);
+
+  useEffect(() => {
+    if (dailyLoopRequest?.kind !== "check-in" || dailyLoopRequest.dayKey !== today) return;
+    setPromptDismissed(false);
+    clearDailyLoopRequest();
+  }, [clearDailyLoopRequest, dailyLoopRequest, today]);
 
   function save() {
     if (!intention.trim()) return;
-    s.setDayPlan(today, intention.trim(), wins.split("\n").map((w) => w.trim()).filter(Boolean));
+    s.setDayPlan(
+      today,
+      intention.trim(),
+      wins.split("\n").map((w) => w.trim()).filter(Boolean).slice(0, 3),
+      {
+        expectedStudyMinutes: expectedMinutes ? Math.max(0, Number(expectedMinutes) || 0) : undefined,
+        personalNote: personalNote.trim() || undefined,
+        priority: priority.trim() || undefined,
+        anticipatedObstacle: obstacle.trim() || undefined,
+        commitmentLevel: commitment,
+      },
+    );
+    dailyLoopReminderLedger.markShown(today, "check-in");
     setIntention(""); setWins("");
+  }
+
+  function useTargets() {
+    if (!selectedTargets.length) {
+      location.hash = "productivity";
+      return;
+    }
+    s.setDayPlan(today, "Complete today’s chosen targets", selectedTargets.slice(0, 3), { commitmentLevel: commitment });
+    dailyLoopReminderLedger.markShown(today, "check-in");
+  }
+
+  function skipCheckIn() {
+    dailyLoopReminderLedger.skip(today, "check-in");
+    setPromptDismissed(true);
   }
 
   return (
@@ -998,16 +1399,37 @@ function WinTheDay() {
         </div>
       )}
 
-      {!todayPlan ? (
+      {!todayPlan && promptDismissed ? (
+        <div className="daily-checkin-collapsed">
+          <div>
+            <div className="panel-title">Daily Check-In</div>
+            <div className="panel-sub">Optional. Add direction whenever it would help.</div>
+          </div>
+          <GButton size="sm" onClick={() => setPromptDismissed(false)}>Open check-in</GButton>
+        </div>
+      ) : !todayPlan ? (
         <>
-          <PanelHeader title="Win the day" sub="Set one intention before you start — how would today be a win?" />
+          <PanelHeader title="Daily Check-In" sub="Before the day runs away from you, what would make today count?" />
           <div className="stack gap8">
-            <input className="field" placeholder="e.g. Finish NB3 lectures + 100 cards, no doomscrolling"
-              value={intention} onChange={(e) => setIntention(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} autoFocus={canAutoFocus()} />
-            <textarea className="field" rows={2} placeholder="Win conditions (one per line, optional)"
+            <label className="stack gap6"><span className="field-label">Primary intention</span><input className="field" placeholder="e.g. Finish the renal review before lunch"
+              value={intention} onChange={(e) => setIntention(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} /></label>
+            <label className="stack gap6"><span className="field-label">One to three win conditions (optional)</span><textarea className="field" rows={2} placeholder="One per line"
               value={wins} onChange={(e) => setWins(e.target.value)} />
-            <div className="row">
-              <GButton variant="primary" className="right" onClick={save}><Sunrise size={15} /> Set today's intention</GButton>
+            </label>
+            <details className="daily-checkin-context" open={showContext} onToggle={(event) => setShowContext(event.currentTarget.open)}>
+              <summary>Add context (optional)</summary>
+              <div className="daily-checkin-context-grid">
+                <label><span>Expected study block</span><input className="field" type="number" min="0" inputMode="numeric" placeholder="minutes" value={expectedMinutes} onChange={(event) => setExpectedMinutes(event.target.value)} /></label>
+                <label><span>Priority course or topic</span><input className="field" value={priority} onChange={(event) => setPriority(event.target.value)} /></label>
+                <label><span>Anticipated obstacle</span><input className="field" value={obstacle} onChange={(event) => setObstacle(event.target.value)} /></label>
+                <label><span>Personal note</span><input className="field" value={personalNote} onChange={(event) => setPersonalNote(event.target.value)} /></label>
+                <fieldset><legend>Commitment level</legend><div className="row gap6">{([1, 2, 3, 4, 5] as const).map((level) => <button key={level} type="button" className={`filter-pill ${commitment === level ? "on" : ""}`} aria-pressed={commitment === level} onClick={() => setCommitment(level)}>{level}</button>)}</div></fieldset>
+              </div>
+            </details>
+            <div className="row wrap gap8 daily-checkin-actions">
+              <GButton variant="primary" onClick={save} disabled={!intention.trim()}><Sunrise size={15} /> Set today’s focus</GButton>
+              <GButton onClick={useTargets}>Use my targets</GButton>
+              <GhostButton onClick={skipCheckIn}>Skip for now</GhostButton>
             </div>
           </div>
         </>
@@ -1015,7 +1437,7 @@ function WinTheDay() {
         <>
           <div className="panel-head">
             <div>
-              <div className="panel-title">Today's intention</div>
+              <div className="panel-title">Daily Check-In</div>
               <div className="panel-sub">“{todayPlan.intention}”</div>
             </div>
             {todayPlan.outcome
@@ -1028,6 +1450,14 @@ function WinTheDay() {
           {todayPlan.wins.length > 0 && (
             <div className="win-conditions">
               {todayPlan.wins.map((w, i) => <span key={i} className="win-cond"><Check size={12} /> {w}</span>)}
+            </div>
+          )}
+
+          {(todayPlan.priority || todayPlan.expectedStudyMinutes || todayPlan.anticipatedObstacle) && (
+            <div className="daily-checkin-snapshot">
+              {todayPlan.priority && <span><b>Priority</b>{todayPlan.priority}</span>}
+              {todayPlan.expectedStudyMinutes ? <span><b>Expected block</b>{todayPlan.expectedStudyMinutes} min</span> : null}
+              {todayPlan.anticipatedObstacle && <span><b>Watch for</b>{todayPlan.anticipatedObstacle}</span>}
             </div>
           )}
 
@@ -1071,140 +1501,6 @@ function WinTheDay() {
   );
 }
 
-interface AiMove { title: string; why: string; mode: string; effortMinutes: number; itemId?: string; route?: string }
-
-// AI-backed "what should I do right now" queue. Builds context from the live
-// tracker/tasks/board-prep state so the mock (or configured) provider can react
-// to the same signals as the rule-based "Suggested next moves" card.
-function AiSuggestedActions() {
-  const s = useStore();
-  const [queue, setQueue] = useState<AiMove[] | null>(null);
-  const [rule, setRule] = useState("");
-  const [provider, setProvider] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function fetchSuggestions() {
-    setLoading(true);
-    setError("");
-    try {
-      const weakAreas = [...new Set(
-        s.tracker.filter((t) => t.yield === "review" || t.yield === "high").map((t) => t.label),
-      )].slice(0, 5);
-      const dueReviews = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
-      const tasks = s.tasks.filter((t) => !t.done).map((t) => t.title);
-      const focusCourse = s.courses[0];
-      const exam: "step1" | "step2" = s.profile.phase === "step2-dedicated" ? "step2" : "step1";
-
-      const res = await runAi("next-move", {
-        userId: s.profile.userId,
-        context: {
-          weakAreas,
-          dueReviews,
-          tasks,
-          currentCourse: focusCourse?.code,
-          stepStatus: s.boardPrep[exam]?.contentStarted,
-        },
-      });
-
-      const result = res.result as { queue?: AiMove[]; rule?: string };
-      setQueue(result.queue ?? []);
-      setRule(result.rule ?? "");
-      setProvider(res.provider);
-    } catch {
-      const local = buildLocalAiQueue(s);
-      setQueue(local.queue);
-      setRule(local.rule);
-      setProvider("local strategist");
-      setError("");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { fetchSuggestions(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <GlassCard pad>
-      <PanelHeader title="AI Suggested Actions" sub="Context-aware queue from your tracker, tasks, and board prep"
-        action={
-          <div className="row gap6">
-            {provider && <Tag tone="purple">{provider}</Tag>}
-            <GhostButton title="Refresh" onClick={fetchSuggestions} disabled={loading}>
-              <RefreshCw size={15} className={loading ? "spin" : ""} />
-            </GhostButton>
-          </div>} />
-
-      {error && <div className="sub" style={{ color: "var(--red)" }}>Couldn't reach the AI service: {error}</div>}
-
-      {!error && (
-        <div className="stack gap8">
-          {(queue ?? []).map((move, i) => {
-            const clickable = Boolean(move.itemId || move.route);
-            const go = () => { if (move.itemId) gotoTrackerItem(move.itemId); else if (move.route) location.hash = move.route; };
-            return (
-            <div className={`sugg ${clickable ? "clickable" : ""}`} key={i}
-              role={clickable ? "button" : undefined} tabIndex={clickable ? 0 : undefined}
-              onClick={clickable ? go : undefined}>
-              <span className="sugg-dot" style={{ background: i === 0 ? "var(--cyan)" : "var(--purple)" }} />
-              <div className="grow">
-                <div className="sugg-title">{move.title}</div>
-                <div className="sugg-reason">{move.why} · {move.mode} · ~{move.effortMinutes}m</div>
-              </div>
-              {clickable ? <ArrowRight size={15} style={{ color: "var(--cyan)" }} /> : <Bot size={15} style={{ color: "var(--cyan)" }} />}
-            </div>
-          );})}
-          {!loading && queue && queue.length === 0 && (
-            <div className="dim">No AI suggestions yet — keep logging study activity and check back.</div>
-          )}
-          {loading && !queue && <div className="dim">Thinking…</div>}
-        </div>
-      )}
-
-      {rule && <div className="sub" style={{ marginTop: 8 }}>{rule}</div>}
-    </GlassCard>
-  );
-}
-
-function buildLocalAiQueue(s: ReturnType<typeof useStore.getState>): { queue: AiMove[]; rule: string } {
-  const trackerMoves = suggestMoves(s.tracker, 2);
-  const openTasks = s.tasks.filter((t) => !t.done && !t.archived);
-  const dueReviews = s.tracker.filter((t) => t.yield === "review" || t.passes < 2).length;
-  const phase = s.profile.phase || "preclinical";
-  const queue: AiMove[] = trackerMoves.map((move, index) => ({
-    title: move.title,
-    why: move.reason,
-    mode: index === 0 ? "active recall" : "targeted repair",
-    effortMinutes: index === 0 ? 35 : 25,
-    itemId: move.itemId,
-  }));
-
-  if (openTasks.length) {
-    queue.push({
-      title: `Clear: ${openTasks[0].title}`,
-      why: `${openTasks.length} open task${openTasks.length === 1 ? "" : "s"} are competing with study execution.`,
-      mode: "task closure",
-      effortMinutes: 15,
-      route: "tasks",
-    });
-  }
-
-  if (!queue.length) {
-    queue.push({
-      title: phase.includes("step") ? "Run a timed question block" : "Log one focused study block",
-      why: dueReviews ? `${dueReviews} review signals need fresh evidence.` : "No urgent signal yet; generate signal with retrieval or questions.",
-      mode: "signal generation",
-      effortMinutes: phase.includes("step") ? 45 : 30,
-      route: phase.includes("step") ? "step" : "productivity",
-    });
-  }
-
-  return {
-    queue: queue.slice(0, 4),
-    rule: "Local strategist fallback: prioritize review flags, red/untouched items, then one small task closure. Configure Vercel API + AI_PROVIDER for provider-backed output.",
-  };
-}
-
 function ProgressBar({
   label, value, target, pct, color,
 }: { label: string; value: number; target: number; pct: number; color: string }) {
@@ -1217,74 +1513,6 @@ function ProgressBar({
       <div className="track"><div className="track-fill" style={{ width: `${pct}%`, background: color }} /></div>
     </div>
   );
-}
-
-interface DashSuggestion { title: string; reason: string; color: string; itemId?: string; route?: string }
-
-function buildSuggestions(s: ReturnType<typeof useStore.getState>): DashSuggestion[] {
-  const out: DashSuggestion[] = [];
-
-  out.push(...suggestMoves(s.tracker, 3).map((sg) => ({ title: sg.title, reason: sg.reason, color: sg.color, itemId: sg.itemId })));
-
-  const open = s.tasks.filter((t) => !t.done);
-  if (open.length) out.push({ title: `Clear ${open.length} open task${open.length > 1 ? "s" : ""}`, reason: open[0].title, color: "var(--orange)", route: "tasks" });
-
-  const young = s.tracker.filter((t) => t.passes > 0 && t.passes < 3);
-  if (young.length) out.push({ title: `Push ${young.length} young/red item${young.length > 1 ? "s" : ""} to mature`, reason: "One focused pass can stabilize the weak middle.", color: "var(--cyan)", route: "tracker" });
-
-  if (!out.length) out.push({ title: "You're on track", reason: "Nothing urgent — keep the streak going", color: "var(--green)" });
-  return out.slice(0, 4);
-}
-
-function buildTermSequence(terms: Term[], courses: Course[], tracker: TrackerItem[]) {
-  const entries = terms.map((term) => {
-    const termCourses = courses.filter((course) => course.termId === term.id);
-    return { term, courses: termCourses, stats: summarizeTermCourses(termCourses, tracker) };
-  });
-  const ready = entries.length ? Math.round(entries.reduce((sum, entry) => sum + entry.stats.ready, 0) / entries.length) : 0;
-  const focus = entries.findIndex((entry) => entry.courses.length > 0 && (entry.stats.ready < 70 || entry.stats.review > 0));
-  return {
-    entries,
-    ready,
-    focusIndex: focus >= 0 ? focus : Math.max(0, entries.length - 1),
-    courseCount: courses.length,
-    modules: entries.reduce((sum, entry) => sum + entry.stats.modules, 0),
-    review: entries.reduce((sum, entry) => sum + entry.stats.review, 0),
-  };
-}
-
-function summarizeTermCourses(courses: Course[], tracker: TrackerItem[]) {
-  const stats = courses.map((course) => summarizeCourse(course, tracker));
-  const ready = stats.length ? Math.round(stats.reduce((sum, item) => sum + item.ready, 0) / stats.length) : 0;
-  const moduleNames = courses.flatMap((course) => course.modules.map((module) => module.name));
-  return {
-    ready,
-    primaryCode: courses.map((course) => course.code).join(" / "),
-    modules: courses.reduce((sum, course) => sum + course.modules.length, 0),
-    items: stats.reduce((sum, item) => sum + item.items, 0),
-    review: stats.reduce((sum, item) => sum + item.review, 0),
-    highYield: stats.reduce((sum, item) => sum + item.highYield, 0),
-    moduleNames,
-  };
-}
-
-function summarizeCourse(course: Course, tracker: TrackerItem[]) {
-  const needles = [
-    course.code,
-    course.code.replace(/\s+/g, ""),
-    course.name,
-    ...course.modules.map((module) => module.name),
-  ].map((value) => value.toLowerCase()).filter(Boolean);
-  const items = tracker.filter((item) => {
-    const hay = `${item.path} ${item.label}`.toLowerCase().replace(/\s+/g, "");
-    return needles.some((needle) => hay.includes(needle.replace(/\s+/g, "")));
-  });
-  const ready = items.length
-    ? Math.round(items.reduce((sum, item) => sum + Math.min(100, (Math.min(item.passes, 4) / 4) * 100), 0) / items.length)
-    : 0;
-  const review = items.filter((item) => item.yield === "review" || item.passes < 2).length;
-  const highYield = items.filter((item) => item.yield === "high").length;
-  return { items: items.length, ready, review, highYield };
 }
 
 function weeklySummary(s: ReturnType<typeof useStore.getState>) {
@@ -1387,94 +1615,6 @@ function correctionForDay({
 function truncateText(value: string, max: number) {
   const clean = value.replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
-}
-
-interface ScheduleDay {
-  key: string;
-  date: Date;
-  minutes: number;
-  cards: number;
-  grade: Grade;
-  active: boolean;
-}
-
-function buildDashboardSchedule(
-  logs: ReturnType<typeof useStore.getState>["logs"],
-  tasks: ReturnType<typeof useStore.getState>["tasks"],
-) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayKey = isoDate(today);
-  const days = currentMonthDays(today).map((date) => {
-    const key = isoDate(date);
-    const totals = dayTotals(logs, key);
-    return {
-      key,
-      date,
-      minutes: totals.minutes,
-      cards: totals.cards,
-      grade: todayGrade(totals.minutes, totals.cards),
-      active: totals.minutes > 0 || totals.cards > 0,
-    };
-  });
-  const cells = buildMonthCells(days);
-  const monthMinutes = days.reduce((sum, day) => sum + day.minutes, 0);
-  const monthCards = days.reduce((sum, day) => sum + day.cards, 0);
-  const monthActive = days.filter((day) => day.active).length;
-  const weekStart = startOfWeek(today);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  const weekDays = days.filter((day) => day.date >= weekStart && day.date <= weekEnd);
-  const weekMinutes = weekDays.reduce((sum, day) => sum + day.minutes, 0);
-  const weekCards = weekDays.reduce((sum, day) => sum + day.cards, 0);
-  const weekActive = weekDays.filter((day) => day.active).length;
-  const dueThisWeek = tasks.filter((task) => task.due && task.due >= isoDate(weekStart) && task.due <= isoDate(weekEnd) && !task.done).length;
-  const monthLabel = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-  const noteTitle = weekActive >= 5 ? "Strong weekly cadence" : weekActive >= 3 ? "Good base forming" : "Schedule needs a floor";
-  const noteBody = weekActive >= 5
-    ? "You have enough active days to protect retention. Keep the next sessions mixed: questions, review, then Anki."
-    : weekActive >= 3
-      ? "The week is alive. Add one short retrieval block on the next quiet day."
-      : "It is okay to pick the pace back up. Start with one 30-minute block and mark it here.";
-
-  return {
-    todayKey,
-    days,
-    cells,
-    monthLabel,
-    monthMinutes,
-    monthCards,
-    monthActive,
-    weekMinutes,
-    weekCards,
-    weekActive,
-    dueThisWeek,
-    noteTitle,
-    noteBody: dueThisWeek ? `${noteBody} ${dueThisWeek} open task${dueThisWeek === 1 ? "" : "s"} due this week.` : noteBody,
-  };
-}
-
-function currentMonthDays(anchor: Date): Date[] {
-  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
-  const out: Date[] = [];
-  for (let day = 1; day <= last.getDate(); day++) {
-    out.push(new Date(first.getFullYear(), first.getMonth(), day));
-  }
-  return out;
-}
-
-function buildMonthCells(days: ScheduleDay[]): Array<ScheduleDay | null> {
-  const blanks = days[0]?.date.getDay() ?? 0;
-  return [...Array.from({ length: blanks }, () => null), ...days];
-}
-
-function startOfWeek(date: Date): Date {
-  const start = new Date(date);
-  start.setDate(date.getDate() - date.getDay());
-  start.setHours(0, 0, 0, 0);
-  return start;
 }
 
 function isAfterLocalTime(value: string): boolean {
