@@ -29,7 +29,9 @@ recorded as done.
 | E2c | Terminology standardization (canonical vocabulary adopted; import surfaces migrated) | **done 2026-07-15** (page-by-page sweep continues with E3+ touch-passes) |
 | E2d | Old-palette ghost removal | **done 2026-07-15** — zero legacy literals in product code |
 | E2e | Depth/elevation long-tail: canonical shadow vocabulary + floating consolidation | **done 2026-07-15** — every literal now classified & explained |
-| E3 | Dashboard Welcome → mission control hierarchy | queued |
+| E2f | Typography scale & rhythm (identity foundation — do not interrupt) | **next** |
+| E2g | Icon language: optical sizing, stroke, alignment, interactive usage | queued |
+| E3 | Dashboard mission control (Welcome hierarchy + Command Brief presentation + focused widgets + identity) | queued |
 | E4 | Command Brief presentation refinement (spacing, hierarchy, feedback) | queued |
 | E5 | Question Bank noise reduction (dedupe controls, whitespace, grouping) | queued |
 | E6 | Course Tracker visual progression (connectedness, chronology, deps) | queued |
@@ -340,3 +342,92 @@ No architecture/schema/storage/persistence changes · no Universal Import
 Engine work · no OCR · no Journal Cinematic · no Knowledge Graph
 implementation · no Course Central adapters · no accounts · nothing
 committed without explicit instruction.
+
+## Deferred — Question Bank Functional Wave (Q1–Q3)
+
+Directed 2026-07-15 (JD), recorded during E2e as **backlog only**. These are
+functional systems, **not** part of the E-series identity work. **No Question
+Bank files may be touched for these until the identity foundation (E2f
+typography + E2g icons) is stable.** Sequence: run after E2f → E2g → E3, then
+Q1 → Q2 → Q3. Reconcile with the binding parser contracts
+([UNIVERSAL-QUESTION-IMPORT-ENGINE.md](UNIVERSAL-QUESTION-IMPORT-ENGINE.md),
+Pre-Alpha contract) before any code — answer invariants (e.g. "unknown is never
+A") and measured (never claimed) acceptance targets still govern.
+
+### Q1 — Answer Trust & Explanation Pipeline (next functional P0)
+
+- **Answer-mapping defect [P0, highest].** Correct answer is visible in parser
+  *evidence* but does not transfer into the finalized `correctKey`. Breakdown is
+  *after* extraction — trace: answer signal → answer resolution → reviewed draft
+  → import normalization → persisted `correctKey`. Must add tests for **pasted
+  text specifically, including GPT-cleaned input** (a polished source that fails
+  to map is the most damning case). "The software solved the hard part, then
+  loses the answer carrying it across the room."
+- **Duplicate import entry cleanup** (finish what E1/E5 flagged — ImportPanel
+  file pill still duplicates queue intake when seedless).
+- **Structured explanation fields per question:** why-correct; why-A/B/C/D/E-
+  wrong (per option); general teaching explanation; per-rationale source
+  provenance. Priority ladder: (1) extract source-provided rationales →
+  (2) map explicit distractor rationales to their option → (3) derive only when
+  source supports → (4) *optionally* AI-generate missing. **AI content labeled
+  per generated field** ("AI-generated rationale. No source explanation was
+  available."), never one buried Settings disclaimer. Never alters source
+  answer truth.
+- **Set creation simplified.**
+- **Provenance model:** distinguish source answer / source explanation / derived
+  / AI-generated at the field level.
+- **Next-question scroll/focus repair** (small fix, outsized effect — see Q2).
+
+### Q2 — Quiz Toolkit & Annotation Layer
+
+- **Post-answer feedback:** preserve selected + correct appearance; expandable
+  concise rationale beneath any option; wrong pick shows why-wrong + why-correct-
+  is-better; other distractors collapsed; **feedback must not reset when using
+  strikeout/other tools**; keyboard nav intact.
+- **Highlighting/annotations:** stem + option highlights, restrained multi-color,
+  clear-all, attached notes, screenshot/image notes, slide-like attachments
+  tagged as notes, persistent across sessions, export/backup-compatible.
+  **Store highlights as anchored text ranges with a fallback excerpt** (raw
+  char offsets break after edits). Provenance: imported asset / user note /
+  user screenshot / generated explanation.
+- **Strikeout (pre-submit elimination):** click or keyboard; option stays
+  readable at reduced emphasis (no illegible line-through); does not select;
+  survives submission; correctness styling coexists with strikeout history;
+  eliminated option's rationale still inspectable; reset-eliminations command.
+  Later analytics (optional, not surveillance): eliminated-correct, eliminated-
+  distractor, changed-from-eliminated-to-selected, selected-without-elimination.
+- **Reading tools (per-user, persistent, reset-to-default):** stem/option font
+  size, reading width, high-contrast, reduced-distraction mode. **Calculator**
+  in the toolkit when the block/type enables it: basic first, keyboard-
+  accessible, non-obscuring, optional session-scoped history; Exam Mode can
+  disable it.
+- **Question tags (real model):** user / imported-source / AXOM-suggested /
+  institution-course / topic-system / error-pattern; restrained color/icon;
+  bulk assign-remove; filter intersection + union; rename/merge; preserve
+  provenance + user ownership. Standard filters: unseen, seen, incorrect,
+  correct, guessed-correctly, changed-answer, flagged, needs-inspection,
+  no-source-explanation, has-notes, has-image, repeat-offender, user tag.
+- **State vocabulary decision (recommended, avoids one word = two meanings):**
+  **Viewed** = opened · **Attempted** = submitted · **Unseen** = never opened ·
+  **Unattempted** = viewed but never submitted.
+- **Next-question scroll behavior (belongs with the toolkit; repair in Q1):**
+  clicking Next positions the new question at the **start of its stem**. Scroll
+  the quiz's *actual scroll container* (not `window`); move focus to the
+  question heading / focusable stem; announce the new question number to AT;
+  instant scroll under reduced motion; only restore prior position on an
+  explicit "return to previous"; never land at the prior question's explanation
+  depth. ("Reading Q12 from halfway down because Q11 had a long explanation
+  becomes homicidal around hour 500.")
+
+### Q3 — Tutor & Exam Simulation (future, after Q1/Q2 stable)
+
+- **Tutor Mode:** ask what the learner is thinking; progressive hints;
+  differential narrowing; clue identification; mechanism walkthrough; explain
+  one distractor at a time; "Tell me more" / "Give me the answer"; AI content
+  clearly labeled; never alters source answer truth; never required for ordinary
+  practice.
+- **Exam simulation:** configurable profiles (generic secure exam, Examplify-
+  *inspired* sequence, school-defined, custom). Optional lobby flow (downloaded
+  → device check → instructions acknowledged → waiting for proctor → begin).
+  **Reproduce the workflow concept only — no Examplify branding, assets, or
+  proprietary interface.**
