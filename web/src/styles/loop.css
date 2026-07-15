@@ -215,7 +215,7 @@
   background: rgba(17,17,19, 0.92);
   -webkit-backdrop-filter: var(--blur-panel);
   backdrop-filter: var(--blur-panel);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-floating);
 }
 .session-clock { font-size: 22px; font-weight: 800; min-width: 74px; }
 .session-quicklog-wrap { position: relative; }

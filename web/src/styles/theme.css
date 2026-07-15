@@ -124,13 +124,26 @@
   --font-display: "Poppins", var(--font-ui);
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 
-  /* Depth — deep, soft, architectural shadows with a whisper-thin top light.
-     Elevation scale (Product Identity Wave E2b): card < raised < overlay <
-     shell. Neutral depth only — gold/violet glows stay semantic per component. */
+  /* Depth — canonical elevation system (Product Identity Wave E2b/E2e).
+     Neutral depth only; gold/violet identity glow stays separate (--shadow-gold)
+     and semantic status glow lives per-component. Role ladder (low → high):
+       none      · flat, no elevation (opt out of inherited depth)
+       surface   · ordinary cards / containers (alias of --shadow-card)
+       card      · ordinary cards / containers
+       raised    · interactive / hover-raised cards
+       floating  · scrim-less overlays — popovers, menus, toasts, floating bars
+       overlay   · scrimmed dialogs / modals / drawers (pairs with a scrim)
+       shell     · the application frame itself
+       critical  · reserved — urgent/blocking recovery surfaces (semantic red edge)
+       gold      · identity emphasis; never ordinary surfaces */
+  --shadow-none: none;
   --shadow-shell: 0 40px 90px rgba(0, 0, 0, 0.72), 0 2px 0 rgba(230, 226, 214, 0.04) inset, 0 1px 0 rgba(230, 226, 214, 0.06) inset;
   --shadow-card: 0 20px 46px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(230, 226, 214, 0.05);
+  --shadow-surface: var(--shadow-card);
   --shadow-raised: 0 24px 54px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(230, 226, 214, 0.06);
+  --shadow-floating: 0 16px 40px rgba(0, 0, 0, 0.48);
   --shadow-overlay: 0 16px 36px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(230, 226, 214, 0.07);
+  --shadow-critical: 0 18px 44px rgba(0, 0, 0, 0.5), 0 0 0 1px color-mix(in srgb, var(--red) 34%, transparent);
   --shadow-gold: 0 0 0 1px rgba(200, 169, 106, 0.28), 0 10px 28px rgba(200, 169, 106, 0.12);
 
   /* Glass blur scale — one blur language (E2b). veil: scrims · soft: subtle
@@ -227,7 +240,9 @@
   --shadow-shell: 0 32px 80px rgba(65, 48, 28, 0.19), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
   --shadow-card: 0 16px 38px rgba(65, 48, 28, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
   --shadow-raised: 0 20px 44px rgba(65, 48, 28, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-floating: 0 16px 38px rgba(65, 48, 28, 0.18);
   --shadow-overlay: 0 14px 32px rgba(65, 48, 28, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-critical: 0 16px 36px rgba(65, 48, 28, 0.16), 0 0 0 1px color-mix(in srgb, var(--red) 30%, transparent);
   --shadow-gold: 0 0 0 1px rgba(138, 100, 41, 0.25), 0 10px 24px rgba(138, 100, 41, 0.1);
   --frame-gold: 0 0 0 1px rgba(138,100,41,0.45), 0 0 0 2px rgba(255,255,255,0.65), inset 0 1px 0 rgba(255,255,255,0.9);
 }

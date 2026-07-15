@@ -28,7 +28,7 @@ recorded as done.
 | E2b | Visual Language System: elevation + blur tokens, safe migrations | **done 2026-07-15** |
 | E2c | Terminology standardization (canonical vocabulary adopted; import surfaces migrated) | **done 2026-07-15** (page-by-page sweep continues with E3+ touch-passes) |
 | E2d | Old-palette ghost removal | **done 2026-07-15** — zero legacy literals in product code |
-| E2e | Bespoke-shadow long tail (rendered before/after required) | next |
+| E2e | Depth/elevation long-tail: canonical shadow vocabulary + floating consolidation | **done 2026-07-15** — every literal now classified & explained |
 | E3 | Dashboard Welcome → mission control hierarchy | queued |
 | E4 | Command Brief presentation refinement (spacing, hierarchy, feedback) | queued |
 | E5 | Question Bank noise reduction (dedupe controls, whitespace, grouping) | queued |
@@ -83,6 +83,143 @@ affected e2e) green. Daily-progress contribution visibility ("+45m Focus,
    (hairline ticks, underline caps), `50%`/`30%` circles, `inherit`,
    `--shell-radius` (26px app shell), the dev-only `design-preview.css`
    sandbox, and one inline 10px color dot in `HabitTrackerPage.tsx`.
+
+## E2e — Depth / Elevation Long Tail (done 2026-07-15)
+
+**Objective (per directive):** complete the depth system so a user knows without
+thought what belongs to the page / is interactive / selected / floating / modal /
+critical / decorative. *Make depth predictable, not dramatic.* Not a "zero
+literals" target — the bar is **zero *unexplained* literals**.
+
+**Disk prerequisite:** required ≥15 GB free; measured **20.51 GB** at start (the
+prior session's 100%-full condition was resolved between sessions — Data volume
+411→389 GB). PASS. (Mid-run, Playwright's browser cache proved to have been wiped
+by that cleanup; `chromium` reinstalled — ~/Library cache only, no repo impact.
+Disk stayed ≥18.9 GB.)
+
+**Baseline drift note:** the E1–E2d working tree that was "intentionally
+uncommitted" last session is now **committed** as `99fa3ac "wave6+"`; tree clean
+at E2e start. E2e therefore lands as an isolated 3-file diff.
+
+**Inventory:** 152 shadow declarations across 13 active CSS files (pages 62,
+components 26, motion 14, questionbank 13, tour 11, journal-notebook 8, shell 5,
+daily-games 5, global 3, dashboard-widgets 2, theme 1, loop 1, design-preview 1).
+TSX/TS product code: effectively zero (one comment in lib/motion.ts). Full
+classification A–N below.
+
+**Existing system (from E2b):** `--shadow-shell/card/raised/overlay/gold`, each
+dark+light. Only 10 of 152 lines consumed tokens. Canonical gaps: no
+`none`, no scrim-less `floating` tier, no semantic `critical`.
+
+**Tokens added (theme.css, dark `:root` + light override), additive & documented
+inline as a role ladder:**
+
+- `--shadow-none: none` — opt out of inherited depth.
+- `--shadow-surface: var(--shadow-card)` — canonical alias; ordinary cards.
+- `--shadow-floating` — dark `0 16px 40px rgba(0,0,0,0.48)`, light
+  `0 16px 38px rgba(65,48,28,0.18)`. Scrim-less overlays: popovers, menus,
+  toasts, floating bars. **Now theme-aware** (the migrated literals were not).
+- `--shadow-critical` — depth + semantic red edge (`color-mix … var(--red)`),
+  dark+light. Reserved for urgent/blocking recovery surfaces; adoption deferred
+  (no such surface exists yet — defining it completes the vocabulary without a
+  page-named token). No consumers by design.
+Existing 5 tokens unchanged (no value edits → zero risk to current consumers).
+
+**Neutral-depth migrations (3, all scrim-less floating overlays with ad-hoc,
+theme-blind alphas → one token):**
+
+- `.toast` (pages.css) `0 18px 40px rgba(0,0,0,0.5)` → `var(--shadow-floating)`
+- `.session-loop-bar` (loop.css) `0 12px 40px rgba(0,0,0,0.45)` → same
+- `.stat-overview` popover (pages.css) `0 20px 44px rgba(0,0,0,0.55)` → same
+
+**Rendered before/after** (isolated harness, real token values, both themes;
+stored under the ignored scratchpad `e2e-audit/floating-{dark,light}.png`, not
+staged): **dark = visually equal** (0.48 sits between the old 0.45/0.5/0.55) and
+now consistent across all three; **light = better** — the old literals were
+theme-blind hard-black and cast a heavy gray halo on the cream page (the §12-Q10
+failure); the token's brown-tinted `0.18` reads clean and matches the light
+shadow system. "Equal or better" (§16) confirmed. Page-level regression proof:
+the full 6-spec Playwright suite (real pages, both themes, all supported
+viewports, keyboard-reorder) stayed green.
+
+**Identity-glow separation (§5):** neutral depth and gold/violet identity were
+kept in separate token families — `--shadow-gold` stays the only identity-glow
+token; the three migrations carried **no** glow (pure neutral), so nothing was
+flattened into neutral. No composite gold/violet surface was altered.
+
+**Documented exceptions — kept literal *with reason* (this is what "explained"
+means):**
+
+- *Identity glow composites* (`.account-avatar`, `.focus-card.primary` violet,
+  `.filter-pill.on`, `.qb-cta` hover gold, `.cal-day.on`): intentional emphasis
+  on selected/primary/hero surfaces (§5/§6). Transient (hover) or selected-state,
+  never persistent glow on an ordinary resting surface.
+- *Animation keyframes* (ring-pulse, nm-milestone/anki/pomodoro pulses, tour
+  ring): glow values are animated frame-by-frame — cannot be a static token.
+  Identity/semantic, bounded to their component.
+- *Journal material simulation* (journal-notebook.css ×8: cover inset, spine,
+  page-edge, stack): physical realism (§9). Centralized in the Journal system,
+  light/dark present.
+- *Data-vis / game state* (daily-games inset underlines for correct/present,
+  gold ring; `.result-dot`, `.hour-tick`, `.pass-color`/heat insets): state-
+  specific, meaning must not change (§10).
+- *Edge highlights* (`inset 0 1px 0 rgba(255,255,255,X)`): the system's
+  "whisper-thin top light" glass language, not elevation; most already live
+  inside the card/raised/overlay tokens.
+- *Focus rings* (`0 0 0 3px rgba(…)`): a11y indicators, semantic not depth.
+  Candidate for a future `--focus-ring` token — queued for E11 (a11y sweep),
+  out of E2e scope.
+- *Construction skeuomorph* (`.uc-tape`, `.uc-badge`): decorative caution-tape
+  lift; tokenizing would flatten the effect.
+- *Mobile drawer* (shell.css `0 0 50px`): symmetric ambient halo is correct for
+  a full-height left drawer; a directional overlay token would shadow only
+  downward. Kept as documented exception.
+
+**Classification (A–N):** A page-shell (`--shadow-shell` ×3) · B standard card
+(`--shadow-card` ×5) · C interactive/raised (`--shadow-raised`, hover states) ·
+D selected (filter-pill.on, focus-card.primary, cal-day.on, podium.you) ·
+E floating (**migrated** ×3) · F popover/menu (uses `--shadow-overlay`) ·
+G modal/dialog/drawer (`--shadow-overlay`, tour dialogs, mobile drawer) ·
+H toast → folded into E · I decorative identity glow (avatar, gold rings,
+construction) · J semantic status glow (green/orange/red, currentColor dots) ·
+K journal material (×8) · L game/data-vis state (daily-games, dots, heat) ·
+M dev-only (design-preview.css, untouched) · N unknown → **none remain**.
+
+**Apple Test (depth system, logo removed):** floating tier now reads as
+*intentional* rather than *accumulated* (three identical-role overlays previously
+carried three different hand-picked alphas → now one token). PASS for the floating
+layer. Cards/modals/shell already tokenized in E2b (PASS). Remaining
+PASS-WITH-MINOR-POLISH items are queued, not E2e: focus-ring tokenization (E11),
+Dashboard hierarchy (E3), type scale (E2f).
+
+**500-Hour Rule:** no persistent glow added to any ordinary surface; no new hover
+lift; the change *reduces* attention (softer, consistent floating shadow, no
+hard-black halo in light). Calm, near-invisible consistency — the preferred
+direction.
+
+**Hover/focus · glass/depth · responsive · a11y:** unchanged by this checkpoint
+(only 3 transient overlays + additive tokens touched); verified not regressed by
+the e2e suite (dashboard keyboard-reorder, productivity tour at every viewport,
+QB themed+responsive, theme persistence light/dark). No horizontal overflow, no
+clipped-shadow edges introduced (floating token blur 40px ≤ prior 44px).
+
+**Deferred functional requirements (recorded per mid-checkpoint scope warning —
+NOT touched in E2e):** Question Bank answer mapping, explanation/distractor
+rationale generation, tutor mode, exam simulation, set creation, update-safe
+persistence, and future accounts. These are new functional systems, out of the
+E2e depth scope; logged here for the wave backlog. No repro defects surfaced
+during visual verification.
+
+**Gates:** typecheck ✓ · lint ✓ (no new warning) · vitest **806/806** ✓ · e2e
+**6/6** ✓ · build ✓ · verify:question-imports (100% exact, 0 false-ready, no
+all-A) ✓ · verify:daily-games-offline (`workspaceLocalStorageKeys: []`) ✓ ·
+`git diff --check` ✓. **Diff = 3 CSS files** (theme.css +18 net, loop.css,
+pages.css). No schema / IndexedDB / parser / backup / storage-key / dependency /
+lockfile change; no design-preview output; no PDF-worker path change; no
+screenshots or reports staged.
+
+**Proceed decision:** **E2f (Typography Scale) — GO.** Depth vocabulary is now
+complete and every literal explained; type scale is the next independent layer.
 
 ## E2c/E2d — Language & Palette Reconciliation (done 2026-07-15)
 
