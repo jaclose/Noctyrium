@@ -4,8 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeSeed } from "../lib/seed";
 import { useStore } from "../lib/store";
 import { useUi } from "../lib/uiStore";
+import { dayKey } from "../lib/scoring";
+import { localDateKey } from "../lib/dailyRollover";
 import type { JournalImageAttachment } from "../lib/journalNotebook";
 import { JournalPage } from "./JournalPage";
+
+// Derive dates exactly the way the app does — hard-coded calendar dates made
+// this suite expire two days after it was written (found 2026-07-15).
+const TODAY_KEY = dayKey();
+const LOCAL_TODAY = localDateKey();
+function shiftKey(key: string, days: number): string {
+  const d = new Date(`${key}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+const YESTERDAY_KEY = shiftKey(TODAY_KEY, -1);
 
 const localImage: JournalImageAttachment = {
   id: "local-image",
@@ -19,14 +34,14 @@ const localImage: JournalImageAttachment = {
 beforeEach(() => {
   useStore.setState({
     ...makeSeed(),
-    activeDayKey: "2026-07-13",
-    lastActiveLocalDate: "2026-07-13",
+    activeDayKey: TODAY_KEY,
+    lastActiveLocalDate: LOCAL_TODAY,
     dayPlans: [],
     logs: [],
     tasks: [],
     journal: [{
       id: "yesterday",
-      date: "2026-07-12T12:00:00",
+      date: `${YESTERDAY_KEY}T12:00:00`,
       today: "Yesterday was grounded.",
       tomorrow: "Continue.",
       blockers: "",
@@ -56,7 +71,7 @@ describe("Journal notebook foundation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next journal page" }));
     expect(await screen.findByDisplayValue("A sentence that must survive the turn.")).toBeTruthy();
 
-    expect(useStore.getState().journal.find((entry) => entry.date.startsWith("2026-07-13"))?.today)
+    expect(useStore.getState().journal.find((entry) => entry.date.startsWith(TODAY_KEY))?.today)
       .toBe("A sentence that must survive the turn.");
   });
 
@@ -98,7 +113,7 @@ describe("Journal notebook foundation", () => {
     expect(screen.getByText("Saving locally…")).toBeTruthy();
 
     await act(async () => { vi.advanceTimersByTime(450); });
-    expect(useStore.getState().journal.find((entry) => entry.date.startsWith("2026-07-13")))
+    expect(useStore.getState().journal.find((entry) => entry.date.startsWith(TODAY_KEY)))
       .toMatchObject({ freeWriting: "Local autosave text", notebookStatus: "draft" });
     expect(screen.getByText("Saved locally")).toBeTruthy();
   });
@@ -107,7 +122,7 @@ describe("Journal notebook foundation", () => {
     useStore.setState({
       journal: [{
         id: "today",
-        date: "2026-07-13T12:00:00",
+        date: `${TODAY_KEY}T12:00:00`,
         today: "Saved page",
         tomorrow: "",
         blockers: "",
@@ -143,7 +158,7 @@ describe("Journal notebook foundation", () => {
     useStore.setState({
       journal: [{
         id: "unsafe-import",
-        date: "2026-07-13T12:00:00",
+        date: `${TODAY_KEY}T12:00:00`,
         today: "Imported text remains intact.",
         tomorrow: "",
         blockers: "",

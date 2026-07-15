@@ -41,7 +41,7 @@ export function QuizFeedback({
             ? `Correct — you picked ${pickedKey}`
             : result === "incorrect"
               ? `Incorrect — you picked ${pickedKey ?? "nothing"}, answer is ${question.correctKey}`
-              : "Needs review — no reliable answer was mapped"}
+              : "Needs inspection — no reliable answer was mapped"}
         </strong>
       </div>
 

@@ -48,7 +48,7 @@ async function processReadyText(onInspect = vi.fn()) {
   ].join("\n");
   const file = new File([contents], "mapped.txt", { type: "text/plain" });
   await user.upload(screen.getByLabelText("Choose multiple question files"), file);
-  await user.click(screen.getByRole("button", { name: "Process queue" }));
+  await user.click(screen.getByRole("button", { name: "Import files" }));
   await screen.findByText("ready");
   return { user, file, onInspect };
 }
@@ -98,7 +98,7 @@ describe("Mass Import trust handoff", () => {
     render(<MassImport onInspect={onInspect} />);
     const file = new File(["pdf bytes"], "mapped.pdf", { type: "application/pdf" });
     await user.upload(screen.getByLabelText("Choose multiple question files"), file);
-    await user.click(screen.getByRole("button", { name: "Process queue" }));
+    await user.click(screen.getByRole("button", { name: "Import files" }));
     await screen.findByText("ready");
     await user.click(screen.getByRole("button", { name: "Inspect" }));
 

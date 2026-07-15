@@ -7,7 +7,7 @@
 /* ---- Marble hero -------------------------------------------------------- */
 .qb-hero {
   position: relative;
-  border-radius: 22px;
+  border-radius: var(--radius-xl);
   border: 1px solid rgba(230, 226, 214, 0.09);
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.5),
@@ -44,7 +44,7 @@
 /* Framed CTA — black glass, thin gold edge, bone label. Never a yellow fill. */
 .qb-cta {
   display: inline-flex; align-items: center; gap: 8px;
-  min-height: 44px; padding: 0 18px; border-radius: 12px;
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius-md);
   font-size: 13px; font-weight: 650; color: var(--bone);
   background: linear-gradient(180deg, rgba(230,226,214,0.05), rgba(0,0,0,0.2)), rgba(10,10,11,0.7);
   border: 1px solid rgba(200, 169, 106, 0.55);
@@ -75,7 +75,7 @@
 .qb-stat {
   position: relative;
   display: flex; flex-direction: column; gap: 1px;
-  padding: 15px 16px; border-radius: 15px;
+  padding: 15px 16px; border-radius: var(--radius-lg);
   background: linear-gradient(160deg, rgba(230,226,214,0.05), rgba(0,0,0,0.22));
   border: 1px solid rgba(230, 226, 214, 0.08);
   box-shadow: inset 0 1px 0 rgba(230,226,214,0.05);
@@ -95,7 +95,7 @@
 .qb-quick-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-45); }
 .qb-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  padding: 6px 13px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600;
   color: var(--bone);
   background: rgba(0,0,0,0.35);
   border: 1px solid rgba(200, 169, 106, 0.4);
@@ -108,13 +108,13 @@
 /* ---- Segmented control -------------------------------------------------- */
 .qb-segment {
   display: flex; gap: 3px; flex-wrap: wrap;
-  padding: 4px; border-radius: 14px;
+  padding: 4px; border-radius: var(--radius-md);
   background: rgba(0, 0, 0, 0.32);
   border: 1px solid rgba(230, 226, 214, 0.07);
 }
 .qb-seg {
   flex: 1 1 auto; min-width: max-content;
-  padding: 9px 15px; border-radius: 10px;
+  padding: 9px 15px; border-radius: var(--radius-sm);
   font-size: 12.5px; font-weight: 600; color: var(--text-60);
   background: transparent; border: 1px solid transparent; cursor: pointer;
   transition: color .14s ease, background .14s ease, border-color .14s ease;
@@ -137,7 +137,7 @@
   align-items: start;
   padding: 22px;
   border: 1px solid var(--hairline-soft);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--surface-1);
 }
 .qb-first-process h2 { margin: 5px 0 0; color: var(--text); font-size: 18px; }
@@ -154,7 +154,7 @@
   min-width: 0;
   padding: 14px;
   border: 1px solid var(--hairline-soft);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--surface-2);
   counter-increment: qb-process;
 }
@@ -191,7 +191,7 @@
 .qb-insight-card {
   min-height: 150px;
   padding: 20px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(230,226,214,0.09);
   background: linear-gradient(150deg, rgba(230,226,214,0.045), rgba(8,8,9,0.42));
   box-shadow: inset 0 1px 0 rgba(230,226,214,0.04);
@@ -208,7 +208,7 @@
   gap: 14px;
   padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--orange) 38%, transparent);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--orange) 7%, var(--surface-1));
 }
 .qb-mapping-icon { display: grid; place-items: center; color: var(--orange); }
@@ -229,7 +229,7 @@
   gap: 7px;
   color: var(--text-80);
   text-align: left;
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(230,226,214,0.08);
   background: rgba(230,226,214,0.025);
   transition: transform .14s ease, border-color .14s ease, background .14s ease;
@@ -242,7 +242,7 @@
 .qb-library-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .qb-secondary-intelligence .qb-library-strip { grid-template-columns: 1fr; align-content: start; }
 .qb-library-link {
-  padding: 14px 15px; border-radius: 14px; border: 1px solid rgba(230,226,214,.08);
+  padding: 14px 15px; border-radius: var(--radius-md); border: 1px solid rgba(230,226,214,.08);
   background: rgba(255,255,255,.022); color: var(--text-80); text-align: left;
 }
 .qb-library-link:hover { border-color: rgba(200,169,106,.34); }
@@ -256,7 +256,7 @@
 .qset-grid.compact { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
 .qset-card {
   padding: 20px;
-  border-radius: 20px;
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -274,11 +274,11 @@
 .qset-accuracy.orange { color: var(--orange); }
 .qset-accuracy.red { color: var(--red); }
 .qset-accuracy.neutral { color: var(--text-45); }
-.qset-metric-strip { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; border: 1px solid rgba(230,226,214,.07); border-radius: 12px; overflow: hidden; background: rgba(230,226,214,.06); }
+.qset-metric-strip { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; border: 1px solid rgba(230,226,214,.07); border-radius: var(--radius-md); overflow: hidden; background: rgba(230,226,214,.06); }
 .qset-metric-strip span { padding: 9px 10px; display: grid; gap: 1px; background: rgba(10,10,11,.76); color: var(--text-45); font-size: 9.5px; }
 .qset-metric-strip b { color: var(--text-80); font-size: 12px; }
 .qset-progress-copy { display: flex; justify-content: space-between; gap: 8px; color: var(--text-45); font-size: 10.5px; }
-.qset-progress { height: 6px; border-radius: 99px; overflow: hidden; background: rgba(230,226,214,.09); }
+.qset-progress { height: 6px; border-radius: var(--radius-pill); overflow: hidden; background: rgba(230,226,214,.09); }
 .qset-progress span { display: block; height: 100%; border-radius: inherit; transition: width .3s ease; }
 .qset-progress.green span { background: var(--green); }
 .qset-progress.gold span { background: var(--gold); }
@@ -293,19 +293,19 @@
   gap: 10px;
   padding: 13px;
   border: 1px solid color-mix(in srgb, var(--orange) 35%, transparent);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--orange) 6%, var(--surface-1));
 }
 
 /* ---- Structured quiz feedback ----------------------------------------- */
 .quiz-feedback { display: grid; gap: 12px; }
-.result-banner { min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 13px; border: 1px solid; font-size: 13px; }
+.result-banner { min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--radius-md); border: 1px solid; font-size: 13px; }
 .result-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 14px currentColor; }
 .result-banner.correct { color: var(--green); background: rgba(127,184,148,.09); border-color: rgba(127,184,148,.3); }
 .result-banner.incorrect { color: var(--red); background: rgba(217,122,114,.09); border-color: rgba(217,122,114,.3); }
 .result-banner.review { color: var(--gold); background: rgba(200,169,106,.09); border-color: rgba(200,169,106,.3); }
 .answer-compare { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
-.answer-row { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(230,226,214,.08); background: rgba(230,226,214,.025); }
+.answer-row { padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid rgba(230,226,214,.08); background: rgba(230,226,214,.025); }
 .answer-row span, .answer-row strong { display: block; }
 .answer-row span { color: var(--text-45); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; }
 .answer-row strong { margin-top: 5px; color: var(--text-80); font-size: 13px; line-height: 1.45; }
@@ -313,26 +313,26 @@
 .answer-row.correct-answer strong { color: var(--green); }
 .answer-row.your-answer.wrong { border-color: rgba(217,122,114,.24); }
 .answer-row.your-answer.wrong strong { color: var(--red); }
-.feedback-explanation, .learning-objective { padding: 14px 15px; border-radius: 13px; border: 1px solid rgba(230,226,214,.08); background: rgba(230,226,214,.025); }
+.feedback-explanation, .learning-objective { padding: 14px 15px; border-radius: var(--radius-md); border: 1px solid rgba(230,226,214,.08); background: rgba(230,226,214,.025); }
 .feedback-explanation p, .learning-objective p { margin: 7px 0 0; color: var(--text-80); font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
 .learning-objective { border-left: 2px solid var(--gold); }
 .learning-objective > span { color: var(--gold); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.source-evidence { border: 1px solid rgba(230,226,214,.08); border-radius: 12px; background: rgba(0,0,0,.18); }
+.source-evidence { border: 1px solid rgba(230,226,214,.08); border-radius: var(--radius-md); background: rgba(0,0,0,.18); }
 .source-evidence summary { display: flex; align-items: center; gap: 8px; padding: 11px 13px; cursor: pointer; color: var(--text-60); font-size: 12px; font-weight: 650; }
 .source-evidence-body { display: grid; gap: 8px; padding: 0 13px 13px; }
 .source-line { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-45); font-size: 10.5px; }
 .source-line b { color: var(--text-80); }
-.source-evidence pre { max-height: 180px; overflow: auto; margin: 0; padding: 10px; border-radius: 9px; color: var(--text-60); background: rgba(0,0,0,.24); white-space: pre-wrap; font: 10.5px/1.5 var(--font-mono); }
+.source-evidence pre { max-height: 180px; overflow: auto; margin: 0; padding: 10px; border-radius: var(--radius-sm); color: var(--text-60); background: rgba(0,0,0,.24); white-space: pre-wrap; font: 10.5px/1.5 var(--font-mono); }
 .source-rules { color: var(--text-30); font: 9.5px/1.4 var(--font-mono); }
-.question-provenance { display: grid; gap: 10px; padding: 13px; border: 1px solid rgba(230,226,214,.08); border-radius: 13px; background: rgba(230,226,214,.025); }
+.question-provenance { display: grid; gap: 10px; padding: 13px; border: 1px solid rgba(230,226,214,.08); border-radius: var(--radius-md); background: rgba(230,226,214,.025); }
 .question-provenance [id^="question-provenance-"] { display: inline-flex; align-items: center; gap: 6px; }
 .question-provenance-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
-.question-provenance-item { min-width: 0; padding: 10px; border: 1px solid rgba(230,226,214,.07); border-radius: 10px; background: rgba(0,0,0,.12); }
+.question-provenance-item { min-width: 0; padding: 10px; border: 1px solid rgba(230,226,214,.07); border-radius: var(--radius-sm); background: rgba(0,0,0,.12); }
 .question-provenance-item p { margin: 7px 0 0; color: var(--text-60); font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .question-provenance-item details { margin-top: 7px; }
 .question-provenance-item summary { color: var(--text-45); cursor: pointer; font-size: 10.5px; }
 .question-provenance-item pre { max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 10.5px/1.5 var(--font-mono); }
-.source-candidate { display: grid; gap: 6px; width: 100%; padding: 10px 11px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--surface-1); color: var(--text-60); text-align: left; font-size: 11px; line-height: 1.45; }
+.source-candidate { display: grid; gap: 6px; width: 100%; padding: 10px 11px; border: 1px solid var(--hairline); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-60); text-align: left; font-size: 11px; line-height: 1.45; }
 .source-candidate:hover, .source-candidate:focus-visible { border-color: color-mix(in srgb, var(--gold) 45%, var(--hairline)); color: var(--text-80); }
 .feedback-repair { display: grid; gap: 7px; }
 .import-dropzone {
@@ -342,7 +342,7 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px dashed rgba(200,169,106,.42);
   background: radial-gradient(circle at 50% 0%, rgba(200,169,106,.07), transparent 55%), rgba(0,0,0,.16);
   color: var(--gold);
@@ -350,7 +350,7 @@
 .import-dropzone > div { display: grid; gap: 3px; flex: 1; max-width: 360px; }
 .import-dropzone b { color: var(--bone); font-size: 13px; }
 .import-dropzone span { color: var(--text-45); font-size: 11px; }
-.import-confidence-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid rgba(230,226,214,.08); border-radius: 10px; background: rgba(230,226,214,.06); }
+.import-confidence-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; overflow: hidden; border: 1px solid rgba(230,226,214,.08); border-radius: var(--radius-sm); background: rgba(230,226,214,.06); }
 .import-confidence-grid span { padding: 8px; display: grid; gap: 1px; color: var(--text-45); background: rgba(9,9,10,.78); font-size: 9.5px; }
 .import-confidence-grid b { color: var(--text-80); font-size: 11.5px; }
 .import-summary,
@@ -359,7 +359,7 @@
   gap: 10px;
   padding: 12px;
   border: 1px solid color-mix(in srgb, var(--cyan) 18%, var(--line));
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--cyan) 4%, transparent);
 }
 .question-import-diagnostics summary { cursor: pointer; color: var(--text-60); font-size: 12px; }
@@ -374,12 +374,12 @@
   padding: 13px 24px calc(13px + env(safe-area-inset-bottom));
   background: rgba(11,11,13,.94);
   border-top: 1px solid rgba(230,226,214,.09);
-  -webkit-backdrop-filter: blur(22px);
-  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: var(--blur-glass);
+  backdrop-filter: var(--blur-glass);
 }
 .quiz-player-body .question-stem { font-size: clamp(16px, 1.8vw, 19px); line-height: 1.7; color: var(--bone); }
-.quiz-player-body .option-row { min-height: 58px; padding: 14px 16px; border-radius: 15px; }
-.quiz-player-body .option-key { width: 31px; height: 31px; border-radius: 10px; }
+.quiz-player-body .option-row { min-height: 58px; padding: 14px 16px; border-radius: var(--radius-lg); }
+.quiz-player-body .option-key { width: 31px; height: 31px; border-radius: var(--radius-sm); }
 
 @media (max-width: 900px) {
   .qb-command-grid { grid-template-columns: 1fr; }

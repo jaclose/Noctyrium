@@ -38,17 +38,16 @@ const NO_DOCUMENTS: SourceDocument[] = [];
 
 export const QUESTION_BANK_TOUR_STEPS: readonly ModuleTourStep[] = [
   { target: "qb-import", title: "Import", body: "Bring in a supported file or paste question text. Saving a source first is always available when you want to review it later." },
-  { target: "qb-mappings", title: "Review mappings", body: "AXOM separates supported answers from uncertain ones. Review only the mappings that need a decision before trusting them in practice." },
+  { target: "qb-mappings", title: "Inspect mappings", body: "AXOM separates supported answers from uncertain ones. Inspect only the mappings that need a decision before trusting them in practice." },
   { target: "qb-practice", title: "Build or start a block", body: "Start the recommended block or open saved sets and Block Builder when you want tighter filters." },
   { target: "qb-feedback", title: "Understand feedback", body: "After an answer, feedback separates the result, explanation, and source evidence so you can repair the question without rewriting attempts." },
 ] as const;
 
-type BankTab = "overview" | "import" | "mass" | "sets" | "library" | "blocks" | "bank" | "insights";
+type BankTab = "overview" | "import" | "sets" | "library" | "blocks" | "bank" | "insights";
 
 const ALL_TABS: Array<[BankTab, string]> = [
   ["overview", "Command Center"],
-  ["import", "Import Center"],
-  ["mass", "Mass Import"],
+  ["import", "Import"],
   ["sets", "Question Sets"],
   ["library", "Source Library"],
   ["blocks", "Block Builder"],
@@ -476,18 +475,25 @@ export function QuestionWorkspacePage() {
       )}
 
       {tab === "import" && (
-        <ImportPanel
-          key={`${importSeed?.sourceDocumentId ?? importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"}-${importEntry}`}
-          seed={importSeed}
-          initialTab={importEntry}
-        />
-      )}
-      {tab === "mass" && (
-        <MassImport onInspect={(payload) => {
-          setImportSeed(payload);
-          setImportEntry("file");
-          setTab("import");
-        }} />
+        // One Import surface: the multi-file queue leads on a fresh visit; the
+        // paste/review panel leads when arriving with an inspect/parse seed.
+        <>
+          {importSeed && (
+            <ImportPanel
+              key={`${importSeed.sourceDocumentId ?? importSeed.reference?.title ?? importSeed.fileName ?? "plain"}-${importEntry}`}
+              seed={importSeed}
+              initialTab={importEntry}
+            />
+          )}
+          <MassImport onInspect={(payload) => {
+            setImportSeed(payload);
+            setImportEntry("file");
+            setTab("import");
+          }} />
+          {!importSeed && (
+            <ImportPanel key={`plain-${importEntry}`} seed={importSeed} initialTab={importEntry} />
+          )}
+        </>
       )}
       {tab === "sets" && (
         <QuestionSetList

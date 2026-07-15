@@ -81,14 +81,14 @@ describe("QuestionWorkspacePage first use", () => {
     expect(screen.getByLabelText("Choose a question file to import")).toBeTruthy();
   });
 
-  it("routes Paste text into the real Import Center paste mode", async () => {
+  it("routes Paste text into the real paste mode on the unified Import tab", async () => {
     const user = userEvent.setup();
     render(<QuestionWorkspacePage />);
 
     await user.click(screen.getByRole("button", { name: "Paste text" }));
-    expect(screen.getByRole("heading", { name: "Import Center" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Paste & inspect" })).toBeTruthy();
     expect(screen.getByLabelText(/Paste one question or a whole numbered set/)).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Extract & review" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Extract & inspect" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("opens a same-route, missing-target-safe Question Bank tour", async () => {
@@ -98,9 +98,9 @@ describe("QuestionWorkspacePage first use", () => {
     await user.click(screen.getByRole("button", { name: "Open Question Bank help tour" }));
     expect(screen.getByRole("dialog", { name: "Import" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(screen.getByRole("dialog", { name: "Review mappings" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Inspect mappings" })).toBeTruthy();
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Review mappings" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Inspect mappings" })).toBeNull();
     expect(window.location.hash).toBe(startHash);
   });
 
@@ -274,7 +274,7 @@ describe("QuestionWorkspacePage returning state", () => {
     expect(screen.getByRole("button", { name: "Import questions" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: /Begin/ }));
-    expect(screen.getByRole("heading", { name: "Import Center" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Paste & inspect" })).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: /Tutor/ })).toBeNull();
   });
 });

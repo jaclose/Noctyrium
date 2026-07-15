@@ -15,20 +15,24 @@ export function passStage(passes: number): PassStage {
   return "mastered";
 }
 
+// Mineralized to the AXOM identity (Product Identity Wave E2d): the stage
+// progression stays hue-distinct (steel-blue → terracotta → light sage →
+// sage → deep sage) without the legacy web-bright palette.
 export const PASS_COLOR: Record<PassStage, string> = {
-  untouched: "#38bdf8",
-  red: "#ff5563",
-  young: "#a3e635", // light green / young
-  mature: "#46d27e", // normal green
-  mastered: "#10b981", // deep emerald — mastered
+  untouched: "#8fb0c8",
+  red: "#d97a72",
+  young: "#a9c48f", // light sage / young
+  mature: "#7fb894", // sage — mature
+  mastered: "#55997a", // deep sage — mastered
 };
 
 export const PASS_LABEL: Record<PassStage, string> = {
   untouched: "Untouched", red: "1 pass", young: "Young (2)", mature: "Mature (3)", mastered: "Mastered (4+)",
 };
 
-// Anki rounds: orange → yellow → purple
-export const ANKI_COLORS = ["#ffa64d", "#ffe14d", "#b07bff"]; // index 0..2 for rounds 1..3
+// Anki rounds: amber → bone-yellow → violet-bone (mineralized, E2d; kept
+// hue-distinct from the identity gold so rounds never read as "selected").
+export const ANKI_COLORS = ["#d9a566", "#cfc26e", "#a79ac9"]; // index 0..2 for rounds 1..3
 export function ankiColor(round: number): string {
   return ANKI_COLORS[Math.min(Math.max(round, 1), 3) - 1];
 }

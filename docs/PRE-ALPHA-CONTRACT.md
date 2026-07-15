@@ -61,6 +61,36 @@ Every new feature must improve one of the six systems above. If a feature
 does not strengthen one of them, it is deferred until after Alpha.
 **The default decision is no.**
 
+## AXOM design philosophy (permanent)
+
+AXOM never competes for the user's attention — it quietly organizes it. It
+never overwhelms with possibilities — it reduces uncertainty. Every
+recommendation is explainable. Every workflow feels natural. Every feature
+strengthens another feature; nothing exists in isolation. **Complexity
+belongs inside the software, not inside the user's head.** Premium software
+is defined not by how much it can do, but by how little the user has to think
+while doing difficult things.
+
+**Identity-driven development:** every checkpoint asks *"does this still feel
+like AXOM?"* before *"what should AXOM do next?"*
+
+**The five working levels** (always in this order): 1 — product vision (what
+feeling should this create?) · 2 — user psychology (what is the user
+thinking, and what should they be thinking?) · 3 — system design (how do all
+existing systems become stronger — one action, many systems smarter?) ·
+4 — UI (the visual consequence of good architecture) · 5 — implementation.
+Never start at level 4 or 5.
+
+**Four questions before any feature:** What would make this disappear
+(remove friction instead of adding UI)? · What makes this delightful (small
+moments, not flash)? · What makes this trustworthy (show me why — trust
+compounds)? · What survives five years?
+
+**The 500-Hour Rule:** every interface must become *better* after the 500th
+use, not just impressive on the first. For every page ask: would this annoy
+me after six months of daily use? Is there unnecessary motion, text,
+clicking, or decoration? Does this save me thought instead of demanding it?
+
 ## Engineering rule — no black boxes
 
 Every major feature must expose its logic. Users must always be able to

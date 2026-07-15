@@ -42,7 +42,7 @@
   block-size: 2.75rem;
   padding: 0;
   border: 1px solid var(--glass-card-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-60);
   background: color-mix(in srgb, var(--surface-2) 86%, transparent);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .12);
@@ -124,7 +124,7 @@
   align-items: flex-start;
   padding: .6rem .7rem;
   border: 1px solid var(--glass-card-border);
-  border-radius: .75rem;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-2) 82%, transparent);
   cursor: pointer;
 }
@@ -265,7 +265,7 @@
   align-items: center;
   padding: 6px 9px;
   border: 1px solid var(--hairline);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-60);
   background: var(--surface-1);
   font-size: 10.5px;
@@ -288,7 +288,7 @@
   align-content: center;
   padding: 15px;
   border: 1px dashed var(--hairline);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-1) 84%, transparent);
 }
 
@@ -316,7 +316,7 @@
   margin: 12px 0;
   padding: 11px 12px;
   border-left: 2px solid var(--gold-line);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--surface-1);
 }
 
@@ -329,7 +329,7 @@
   min-height: 36px;
   padding: 7px 10px;
   border: 1px solid var(--hairline);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-60);
   background: var(--surface-1);
   font: inherit;
@@ -346,7 +346,7 @@
   margin: 10px 0 0;
   padding: 9px 11px;
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--text-60);
   background: var(--surface-1);
   font-size: 10.5px;
@@ -356,7 +356,7 @@
 .widget-zone-empty {
   padding: 12px;
   border: 1px dashed var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--text-45);
   font-size: 11px;
 }
@@ -369,7 +369,7 @@
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   color: var(--text-60);
   background: transparent;
   cursor: pointer;

@@ -171,10 +171,10 @@ function HabitRow({ habit }: { habit: Habit }) {
       <div className="habit-heat" aria-hidden="true">
         {cells.map((cell) => {
           const tone = cell.status === "none" ? undefined : STATUS_META[cell.status].tone;
-          const bg = tone === "green" ? `rgba(70,210,126,${0.25 + cell.intensity * 0.6})`
-            : tone === "cyan" ? `rgba(90,215,239,${0.25 + cell.intensity * 0.6})`
-              : tone === "orange" ? `rgba(255,159,67,${0.2 + cell.intensity * 0.5})`
-                : tone === "neutral" ? "rgba(180,226,255,0.18)"
+          const bg = tone === "green" ? `color-mix(in srgb, var(--grade-green) ${Math.round((0.25 + cell.intensity * 0.6) * 100)}%, transparent)`
+            : tone === "cyan" ? `color-mix(in srgb, var(--cyan) ${Math.round((0.25 + cell.intensity * 0.6) * 100)}%, transparent)`
+              : tone === "orange" ? `color-mix(in srgb, var(--grade-orange) ${Math.round((0.2 + cell.intensity * 0.5) * 100)}%, transparent)`
+                : tone === "neutral" ? "color-mix(in srgb, var(--bone) 18%, transparent)"
                   : undefined;
           return (
             <span key={cell.date}

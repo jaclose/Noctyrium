@@ -376,9 +376,9 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
   return (
     <GlassCard>
       <PanelHeader
-        title="Import Center"
+        title="Paste & inspect"
         headingLevel={2}
-        sub="Upload PDF, DOCX, TXT, Markdown, CSV, or JSON — or paste a block. Everything passes through review before it becomes a question set."
+        sub="Paste a question block, generate with AI, or review drafts from your imported files. Everything passes through inspection before it becomes a question set."
       />
       {!reviewing && (
         <div className="row" style={{ flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
@@ -714,7 +714,7 @@ function PasteTab({ onParsed }: { onParsed: (drafts: ParsedQuestionDraft[], warn
       />
       <div className="row">
         <GButton variant="primary" disabled={!raw.trim()} onClick={parse}>
-          <ClipboardPaste size={14} /> Extract & review
+          <ClipboardPaste size={14} /> Extract & inspect
         </GButton>
       </div>
     </div>

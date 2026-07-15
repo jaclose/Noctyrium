@@ -75,12 +75,12 @@ describe("QuizFeedback", () => {
 
   it("uses a needs-review banner when no reliable answer exists", () => {
     render(<QuizFeedback question={{ ...question, correctKey: undefined, correctAnswerText: undefined }} pickedKey="A" />);
-    expect(screen.getByRole("status").textContent).toContain("Needs review — no reliable answer was mapped");
+    expect(screen.getByRole("status").textContent).toContain("Needs inspection — no reliable answer was mapped");
   });
 
   it("does not reveal an unreviewed truthy key as trusted", () => {
     render(<QuizFeedback question={{ ...question, needsReview: true }} pickedKey="B" />);
-    expect(screen.getByRole("status").textContent).toContain("Needs review — no reliable answer was mapped");
+    expect(screen.getByRole("status").textContent).toContain("Needs inspection — no reliable answer was mapped");
     expect(screen.queryByText("Correct answer")).toBeNull();
   });
 

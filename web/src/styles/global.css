@@ -130,7 +130,7 @@ input, textarea, select { font-family: inherit; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
   background: rgba(230, 226, 214, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -140,7 +140,7 @@ input, textarea, select { font-family: inherit; }
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--gold-line);
   outline-offset: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* =========================== App layout shell =========================== */
@@ -217,8 +217,8 @@ input, textarea, select { font-family: inherit; }
   background:
     linear-gradient(150deg, rgba(230,226,214,0.05), rgba(230,226,214,0.018) 46%, rgba(16,16,19,0.7)),
     rgba(14,14,17,0.66);
-  backdrop-filter: blur(34px) saturate(150%);
-  -webkit-backdrop-filter: blur(34px) saturate(150%);
+  backdrop-filter: var(--blur-deep);
+  -webkit-backdrop-filter: var(--blur-deep);
   border: 1px solid rgba(230, 226, 214, 0.10);
   box-shadow: var(--shadow-shell);
   overflow: hidden;

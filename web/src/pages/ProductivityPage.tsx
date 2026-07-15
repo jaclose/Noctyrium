@@ -210,10 +210,10 @@ export function ProductivityPage() {
           </div>
           <InsightList insights={monthly.insights} compact />
           <div className="heat-legend">
-            <span className="lg"><span className="sw" style={{ background: "rgba(255,85,99,0.8)" }} /> Red: logged, below baseline</span>
-            <span className="lg"><span className="sw" style={{ background: "rgba(255,159,67,0.82)" }} /> Orange: solid day</span>
-            <span className="lg"><span className="sw" style={{ background: "rgba(70,210,126,0.78)" }} /> Green: strong day</span>
-            <span className="lg"><span className="sw" style={{ background: "rgba(77,141,255,0.88)" }} /> 👑 Blue: excellent day</span>
+            <span className="lg"><span className="sw" style={{ background: "color-mix(in srgb, var(--grade-red) 80%, transparent)" }} /> Red: logged, below baseline</span>
+            <span className="lg"><span className="sw" style={{ background: "color-mix(in srgb, var(--grade-orange) 82%, transparent)" }} /> Orange: solid day</span>
+            <span className="lg"><span className="sw" style={{ background: "color-mix(in srgb, var(--grade-green) 78%, transparent)" }} /> Green: strong day</span>
+            <span className="lg"><span className="sw" style={{ background: "color-mix(in srgb, var(--grade-blue) 88%, transparent)" }} /> 👑 Blue: excellent day</span>
           </div>
         </GlassCard>
       </div>}

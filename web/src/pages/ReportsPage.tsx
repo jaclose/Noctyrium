@@ -423,7 +423,7 @@ export function ReportsPage() {
                     </Tag>
                   </div>
                   <div className="report-bar-track">
-                    <div className="report-bar-fill" style={{ width: `${cov.ready}%`, background: cov.ready >= 70 ? PASS_COLOR.mastered : cov.ready >= 35 ? PASS_COLOR.young : "rgba(90,215,239,0.34)" }} />
+                    <div className="report-bar-fill" style={{ width: `${cov.ready}%`, background: cov.ready >= 70 ? PASS_COLOR.mastered : cov.ready >= 35 ? PASS_COLOR.young : "color-mix(in srgb, var(--cyan) 34%, transparent)" }} />
                   </div>
                   <div className="report-course-foot sub">
                     {cov.items} tracker row{cov.items === 1 ? "" : "s"}

@@ -7,8 +7,8 @@
   background:
     linear-gradient(155deg, rgba(230,226,214,0.045), rgba(230,226,214,0.012) 40%, rgba(14,14,17,0.5)),
     var(--glass-card-fill);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
   border: 1px solid var(--glass-card-border);
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-card);
@@ -29,7 +29,7 @@
 .glass-card.hoverable:hover {
   border-color: var(--glass-card-border-hover);
   transform: translateY(-2px);
-  box-shadow: 0 24px 54px rgba(0,0,0,0.46), inset 0 1px 0 rgba(230,226,214,0.06);
+  box-shadow: var(--shadow-raised);
 }
 
 /* Glass button (glassButton) */
@@ -58,7 +58,7 @@
 }
 .gbtn:active { transform: translateY(0) scale(0.99); }
 .gbtn.sm { height: 30px; padding: 0 12px; font-size: 11.5px; }
-.gbtn.tiny { height: 26px; padding: 0 9px; font-size: 11px; border-radius: 9px; }
+.gbtn.tiny { height: 26px; padding: 0 9px; font-size: 11px; border-radius: var(--radius-sm); }
 /* Primary — black glass with a machined-gold FRAME and warm-white label.
    The gold is a thin edge, never a fill: premium, not "yellow button". */
 .gbtn.primary {
@@ -102,7 +102,7 @@
   font-size: 10.5px;
   font-weight: 650;
   letter-spacing: 0.01em;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--cyan);
   background: var(--cool-accent-soft);
   border: 1px solid var(--cool-accent-line);
@@ -157,7 +157,7 @@
   font-weight: 450;
   background: rgba(230,226,214,0.045);
   border: 1px solid rgba(230,226,214,0.1);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   outline: none;
   transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
 }
@@ -182,7 +182,7 @@ select.field, .scope-select {
 .modal-scrim {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(6,6,7,0.68);
-  backdrop-filter: blur(10px);
+  backdrop-filter: var(--blur-panel);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
   animation: fade .15s ease;
@@ -192,7 +192,7 @@ select.field, .scope-select {
   max-height: 86vh; overflow-y: auto;
   background: linear-gradient(135deg, rgba(32,31,30,0.96), rgba(12,12,14,0.98));
   border: 1px solid var(--glass-card-border-hover);
-  border-radius: 22px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-shell);
   padding: 22px;
   animation: pop .16s ease;
@@ -210,14 +210,14 @@ select.field, .scope-select {
   display: grid;
   gap: 4px;
   padding: 9px 11px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(circle at 0% 0%, rgba(230,226,214,0.07), transparent 38%),
     rgba(255,255,255,0.04);
   border: 1px solid rgba(230,226,214,0.1);
 }
 .settings-tabs { gap: 5px; padding: 3px; }
-.settings-tabs .filter-pill { min-height: 34px; padding: 6px 9px; border-radius: 9px; font-size: 10.5px; }
+.settings-tabs .filter-pill { min-height: 34px; padding: 6px 9px; border-radius: var(--radius-sm); font-size: 10.5px; }
 .settings-tabs .filter-pill svg { margin-right: 4px !important; }
 .settings-intro b {
   font-size: 13.5px;
@@ -232,11 +232,11 @@ select.field, .scope-select {
   align-items: center;
   gap: 12px;
   padding: 10px 11px;
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(230,226,214,0.09);
 }
-.settings-profile-disclosure { padding: 9px 11px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-1); }
+.settings-profile-disclosure { padding: 9px 11px; border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--surface-1); }
 .settings-profile-disclosure > summary { min-height: 28px; cursor: pointer; color: var(--text-60); font-size: 11px; font-weight: 800; }
 .settings-profile-disclosure[open] > summary { margin-bottom: 8px; color: var(--text); }
 .settings-profile-disclosure > p { margin: 0 0 10px; }
@@ -267,7 +267,7 @@ select.field, .scope-select {
   flex: 0 0 auto;
   padding: 7px 10px;
   border: 1px solid var(--hairline);
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   color: var(--text-80);
   background: var(--surface-1);
   font-size: 12px;
@@ -290,7 +290,7 @@ select.field, .scope-select {
   gap: 7px;
   padding: 8px 9px;
   border: 1px solid var(--hairline);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--text-60);
   background: rgba(255,255,255,0.025);
   font-size: 11.5px;
@@ -305,7 +305,7 @@ select.field, .scope-select {
   margin: 0;
   padding: 12px;
   border: 1px solid var(--hairline);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.025);
 }
 .settings-timezone-fieldset legend {
@@ -364,7 +364,7 @@ select.field, .scope-select {
   margin: 0;
   padding: 13px;
   border: 1px solid var(--hairline);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--surface-1);
 }
 .theme-setting legend { padding: 0 5px; color: var(--text-80); font-size: 12.5px; font-weight: 800; }
@@ -381,7 +381,7 @@ select.field, .scope-select {
   color: var(--text-60);
   background: var(--surface-1);
   border: 1px solid var(--hairline);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: color .13s ease, background .13s ease, border-color .13s ease, box-shadow .13s ease;
 }
@@ -449,11 +449,11 @@ select.field, .scope-select {
   gap: 12px;
   padding: 14px;
   border: 1px solid rgba(230,226,214,0.14);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 8% 0%, rgba(200,169,106,0.14), transparent 34%),
     linear-gradient(145deg, rgba(255,255,255,0.082), rgba(255,255,255,0.026) 46%, rgba(12,12,14,0.72));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 38px rgba(0,0,0,0.22);
+  box-shadow: var(--shadow-overlay);
 }
 .account-lounge {
   gap: 14px;
@@ -468,7 +468,7 @@ select.field, .scope-select {
   width: 54px;
   height: 54px;
   flex: 0 0 auto;
-  border-radius: 17px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -509,7 +509,7 @@ select.field, .scope-select {
   gap: 6px;
   min-height: 28px;
   padding: 0 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-60);
   background: rgba(255,255,255,0.055);
   border: 1px solid rgba(230,226,214,0.09);
@@ -519,7 +519,7 @@ select.field, .scope-select {
 .account-status-row svg { color: var(--cyan); }
 .account-roadmap {
   min-height: 180px;
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 10% 0%, rgba(200,169,106,0.12), transparent 36%),
     radial-gradient(circle at 100% 20%, rgba(163,150,201,0.1), transparent 34%),
@@ -533,7 +533,7 @@ select.field, .scope-select {
 }
 .account-roadmap-inner > div,
 .account-card {
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   background: rgba(255,255,255,0.045);
   border: 1px solid rgba(230,226,214,0.09);
 }
@@ -576,7 +576,7 @@ select.field, .scope-select {
   align-items: center;
   height: 24px;
   padding: 0 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-60);
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
@@ -600,7 +600,7 @@ select.field, .scope-select {
 }
 .sync-flow > div {
   padding: 9px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(230,226,214,0.075);
 }
@@ -640,7 +640,7 @@ select.field, .scope-select {
 .sync-meta-item {
   min-width: 0;
   padding: 9px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.045);
   border: 1px solid rgba(255,255,255,0.07);
 }
@@ -683,7 +683,7 @@ select.field, .scope-select {
   align-items: center;
   gap: 10px;
   padding: 9px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.045);
   border: 1px solid rgba(255,255,255,0.07);
 }
@@ -703,7 +703,7 @@ select.field, .scope-select {
   font-size: 11.5px;
   line-height: 1.35;
   padding: 9px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(247,217,154,0.08);
   border: 1px solid rgba(247,217,154,0.16);
 }
@@ -721,7 +721,7 @@ select.field, .scope-select {
 }
 .backup-explainer-card,
 .backup-actions-panel {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 0% 0%, rgba(200,169,106,0.08), transparent 38%),
     rgba(255,255,255,0.04);
@@ -773,7 +773,7 @@ select.field, .scope-select {
   flex-basis: 100%;
   margin-top: 8px;
   padding: 9px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(200,169,106,0.07);
   border: 1px solid rgba(200,169,106,0.12);
 }
@@ -782,7 +782,7 @@ select.field, .scope-select {
   font-size: 12px;
   font-weight: 800;
   padding: 9px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(200,169,106,0.08);
   border: 1px solid rgba(200,169,106,0.14);
 }
@@ -838,7 +838,7 @@ select.field, .scope-select {
 }
 .empty .empty-icon {
   color: var(--cyan);
-  width: 46px; height: 46px; border-radius: 14px;
+  width: 46px; height: 46px; border-radius: var(--radius-md);
   display: grid; place-items: center;
   background: var(--gold-soft);
   border: 1px solid rgba(200, 169, 106, 0.2);
@@ -853,20 +853,20 @@ select.field, .scope-select {
 /* Status pills used by Course Tracker */
 .status-pills { display: inline-flex; gap: 4px; }
 .spill {
-  padding: 4px 10px; font-size: 10.5px; font-weight: 700; border-radius: 8px;
+  padding: 4px 10px; font-size: 10.5px; font-weight: 700; border-radius: var(--radius-sm);
   color: var(--text-60); background: rgba(255,255,255,0.05);
   border: 1px solid transparent; transition: all .12s ease;
 }
 .spill:hover { color: var(--text); background: rgba(255,255,255,0.1); }
 .spill.on.anki { color: #ffd27a; background: rgba(255,184,77,0.18); border-color: rgba(255,184,77,0.4); }
 .spill.on.working { color: var(--cyan); background: rgba(200,169,106,0.18); border-color: rgba(200,169,106,0.4); }
-.spill.on.mature { color: var(--green); background: rgba(74,222,128,0.18); border-color: rgba(74,222,128,0.4); }
+.spill.on.mature { color: var(--green); background: color-mix(in srgb, var(--green) 18%, transparent); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
 .spill.on.reset { color: var(--text-60); background: rgba(255,255,255,0.08); }
 
 /* small inline icon button (ghost) */
 .ghost-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: auto; min-width: 28px; height: 28px; padding: 0 8px; gap: 6px; border-radius: 8px;
+  width: auto; min-width: 28px; height: 28px; padding: 0 8px; gap: 6px; border-radius: var(--radius-sm);
   color: var(--text-45); background: transparent; border: none;
   transition: color .12s ease, background .12s ease;
 }
@@ -880,7 +880,7 @@ select.field, .scope-select {
   display: flex; align-items: center; justify-content: center;
   padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   background: rgba(6,6,7,0.5);
-  backdrop-filter: blur(14px);
+  backdrop-filter: var(--blur-panel);
   animation: fade .2s ease;
 }
 .onboarding-card {
@@ -927,7 +927,7 @@ select.field, .scope-select {
   flex: 0 0 auto;
   padding: 7px 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   color: var(--text-45);
   background: transparent;
   font-size: 11.5px;
@@ -966,7 +966,7 @@ select.field, .scope-select {
   gap: 9px;
   padding: 12px;
   border: 1px solid var(--hairline);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: var(--surface-1);
 }
 .onboarding-section-title { font-size: 13px; font-weight: 850; }
@@ -988,7 +988,7 @@ select.field, .scope-select {
 }
 .onboarding-disclosure {
   border: 1px solid var(--hairline);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--surface-1);
   padding: 10px 12px;
 }
@@ -1007,7 +1007,7 @@ select.field, .scope-select {
   gap: 10px;
   align-items: flex-start;
   padding: 9px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   cursor: pointer;
 }
@@ -1030,7 +1030,7 @@ select.field, .scope-select {
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--hairline);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   color: var(--text);
   background: rgba(255,255,255,0.035);
   cursor: pointer;
@@ -1057,7 +1057,7 @@ select.field, .scope-select {
   gap: 14px;
   padding: 12px 13px;
   border: 1px solid var(--hairline);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   color: var(--text);
   background: rgba(255,255,255,0.035);
 }
@@ -1086,7 +1086,7 @@ select.field, .scope-select {
   gap: 9px;
   padding: 12px;
   border: 1px solid var(--hairline);
-  border-radius: 13px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.035);
 }
 .onboarding-safety-grid svg { flex: 0 0 auto; color: var(--cyan); }
@@ -1149,7 +1149,7 @@ select.field, .scope-select {
   box-shadow: 0 0 16px rgba(200,169,106,0.4);
 }
 .onboarding-step-dot.done > span {
-  color: var(--green); background: rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.35);
+  color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); border-color: color-mix(in srgb, var(--green) 35%, transparent);
 }
 .onboarding-step-dot small { font-size: 10px; font-weight: 700; text-align: center; letter-spacing: .02em; }
 .onboarding-step-dot.on small, .onboarding-step-dot.done small { color: var(--text-60); }
@@ -1158,19 +1158,19 @@ select.field, .scope-select {
 .onboarding-body h2 { margin: 0; font-size: 24px; font-weight: 900; }
 .onboarding-lede { margin: 0; font-size: 13.5px; color: var(--text-60); line-height: 1.55; }
 .onboarding-mark {
-  width: 52px; height: 52px; border-radius: 16px;
+  width: 52px; height: 52px; border-radius: var(--radius-lg);
   display: flex; align-items: center; justify-content: center;
   color: var(--cyan); background: rgba(200,169,106,0.12);
   border: 1px solid rgba(200,169,106,0.25);
 }
-.onboarding-mark.good { color: var(--green); background: rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.3); }
+.onboarding-mark.good { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); border-color: color-mix(in srgb, var(--green) 30%, transparent); }
 
 .onboarding-phase-grid {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
 .onboarding-phase {
   display: flex; align-items: flex-start; gap: 10px; text-align: left;
-  padding: 12px; border-radius: 14px;
+  padding: 12px; border-radius: var(--radius-md);
   background: rgba(255,255,255,0.03); border: 1px solid var(--hairline);
   color: var(--text); cursor: pointer; transition: all .12s ease;
   position: relative;
@@ -1181,7 +1181,7 @@ select.field, .scope-select {
   box-shadow: 0 0 0 1px rgba(200,169,106,0.18) inset;
 }
 .onboarding-phase-icon {
-  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   color: var(--cyan); background: rgba(200,169,106,0.12);
 }
@@ -1195,7 +1195,7 @@ select.field, .scope-select {
 }
 .focus-group {
   padding: 12px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 0% 0%, rgba(200,169,106,0.08), transparent 36%),
     rgba(255,255,255,0.025);
@@ -1225,7 +1225,7 @@ select.field, .scope-select {
   position: relative;
   text-align: left;
   padding: 12px 46px 12px 12px;
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   color: var(--text);
   background:
     linear-gradient(145deg, rgba(255,255,255,0.052), rgba(255,255,255,0.018));
@@ -1256,7 +1256,7 @@ select.field, .scope-select {
   flex-shrink: 0;
   width: 34px;
   height: 34px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1277,7 +1277,7 @@ select.field, .scope-select {
   top: 12px;
   width: 24px;
   height: 24px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1294,7 +1294,7 @@ select.field, .scope-select {
 
 .onboarding-presets { display: flex; flex-wrap: wrap; gap: 6px; }
 .onboarding-preset {
-  padding: 6px 10px; border-radius: 9px; font-size: 11px; font-weight: 700;
+  padding: 6px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700;
   color: var(--text-45); background: rgba(255,255,255,0.04); border: 1px solid var(--hairline);
   cursor: pointer; transition: all .12s ease;
 }
@@ -1310,7 +1310,7 @@ select.field, .scope-select {
   display: grid;
   gap: 5px;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(circle at 0% 0%, rgba(163,150,201,0.1), transparent 42%),
     rgba(255,255,255,0.035);
@@ -1328,7 +1328,7 @@ select.field, .scope-select {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
 .onboarding-summary > div {
-  padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--hairline);
+  padding: 12px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--hairline);
   display: flex; flex-direction: column; gap: 4px;
 }
 .onboarding-summary span { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-45); }
@@ -1347,7 +1347,7 @@ select.field, .scope-select {
 /* Program / track summary note + SGU drive toggle */
 .onboarding-track-note {
   display: flex; align-items: flex-start; gap: 9px;
-  padding: 10px 12px; border-radius: 12px;
+  padding: 10px 12px; border-radius: var(--radius-md);
   background: rgba(200,169,106,0.08); border: 1px solid rgba(200,169,106,0.2);
   font-size: 12px; line-height: 1.45; color: var(--text-60);
 }
@@ -1358,7 +1358,7 @@ select.field, .scope-select {
 
 .onboarding-toggle-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 11px 13px; border-radius: 13px;
+  padding: 11px 13px; border-radius: var(--radius-md);
   background: rgba(255,255,255,0.035); border: 1px solid var(--hairline);
 }
 .onboarding-toggle-copy { display: flex; align-items: center; gap: 9px; }
@@ -1366,7 +1366,7 @@ select.field, .scope-select {
 .onboarding-toggle-copy b { display: block; font-size: 12.5px; font-weight: 800; }
 .onboarding-toggle-copy small { display: block; color: var(--text-45); font-size: 11px; line-height: 1.4; }
 .onboarding-switch {
-  flex-shrink: 0; width: 44px; height: 25px; border-radius: 999px; position: relative;
+  flex-shrink: 0; width: 44px; height: 25px; border-radius: var(--radius-pill); position: relative;
   background: rgba(255,255,255,0.1); border: 1px solid var(--hairline); cursor: pointer;
   transition: background .14s ease, border-color .14s ease;
 }
@@ -1390,7 +1390,7 @@ select.field, .scope-select {
   .onboarding-card {
     max-height: calc(100dvh - 20px);
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     background: linear-gradient(145deg, rgba(34,33,31,0.99), rgba(13,13,15,1));
   }
   .onboarding-card::before {
@@ -1416,7 +1416,7 @@ select.field, .scope-select {
   .onboarding-mark { animation: none; }
   .onboarding-identity-header { align-items: flex-start; gap: 11px; }
   .onboarding-identity-header .onboarding-mark { width: 40px; height: 40px; }
-  .focus-group { padding: 10px; border-radius: 14px; }
+  .focus-group { padding: 10px; border-radius: var(--radius-md); }
   .focus-card {
     min-height: 78px;
     padding: 11px 42px 11px 11px;
@@ -1459,7 +1459,7 @@ select.field, .scope-select {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;
 }
 .track-setting-card {
-  text-align: left; padding: 11px 12px; border-radius: 13px; cursor: pointer;
+  text-align: left; padding: 11px 12px; border-radius: var(--radius-md); cursor: pointer;
   background: rgba(255,255,255,0.035); border: 1px solid rgba(230,226,214,0.085);
   color: var(--text); transition: transform .12s ease, border-color .12s ease, background .12s ease;
 }
@@ -1480,7 +1480,7 @@ select.field, .scope-select {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: rgba(255,255,255,0.035);
   border: 1px solid rgba(230,226,214,0.085);
 }

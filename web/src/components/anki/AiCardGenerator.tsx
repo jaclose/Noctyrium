@@ -180,7 +180,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
                 <span style={{ fontWeight: 600 }}>{d.front}</span>
                 {d.back && <span className="sub">{d.back}</span>}
                 {d.flags.length > 0 && (
-                  <span className="sub" style={{ color: "var(--grade-orange, #ff9f43)" }}>
+                  <span className="sub" style={{ color: "var(--grade-orange)" }}>
                     {d.flags.map((f) => f.message).join(" · ")}
                   </span>
                 )}

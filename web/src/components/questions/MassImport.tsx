@@ -269,7 +269,7 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
     }
     pushToast({
       title: sets ? `Saved ${sets} set${sets === 1 ? "" : "s"} · ${totalQ} questions` : "Nothing clean to save",
-      body: sets ? "Flagged files still need inspection before they save." : "Process files first, then inspect any flagged ones.",
+      body: sets ? "Flagged files still need inspection before they save." : "Import files first, then inspect any flagged ones.",
       tone: sets ? "success" : "warn",
     });
   }
@@ -280,8 +280,8 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
   return (
     <GlassCard>
       <PanelHeader
-        title="Mass Import"
-        sub="Queue many PDFs/DOCX/text files, extract in one pass, batch-save the clean ones, and inspect anything flagged."
+        title="Import"
+        sub="Upload one file or several related files — extraction, review routing, and batch save happen automatically."
         action={
           <div className="row">
             <input
@@ -295,7 +295,7 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
             />
             <GhostButton onClick={() => fileInput.current?.click()}><FileUp size={14} /> Add files</GhostButton>
             <GButton size="sm" variant="primary" disabled={!anyQueued || processing} onClick={() => void processAll()}>
-              {processing ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />} {processing ? "Processing…" : "Process queue"}
+              {processing ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />} {processing ? "Importing…" : "Import files"}
             </GButton>
           </div>
         }
@@ -386,8 +386,8 @@ function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
 }
 
 function StatusIcon({ status }: { status: FileStatus }) {
-  if (status === "saved" || status === "ready") return <CheckCircle2 size={16} style={{ color: "var(--grade-green, #46d27e)" }} />;
-  if (status === "needs-review" || status === "no-text" || status === "error") return <AlertTriangle size={16} style={{ color: "var(--grade-orange, #ff9f43)" }} />;
+  if (status === "saved" || status === "ready") return <CheckCircle2 size={16} style={{ color: "var(--grade-green)" }} />;
+  if (status === "needs-review" || status === "no-text" || status === "error") return <AlertTriangle size={16} style={{ color: "var(--grade-orange)" }} />;
   if (status === "extracting" || status === "parsing") return <RefreshCw size={16} className="spin" />;
   return <FileUp size={16} className="dim" />;
 }

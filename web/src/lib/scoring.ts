@@ -28,12 +28,13 @@ export function gradeColor(g: Grade): string {
   }[g];
 }
 
-/** Heatmap cell fill — mirrors Heatmap.color(minutes:cards:). */
+/** Heatmap cell fill — mirrors Heatmap.color(minutes:cards:). Uses the
+ * grade tokens (E2d) so heatmaps re-theme with light/dark like gradeColor. */
 export function heatColor(minutes: number, cards: number): string {
-  if (minutes >= 480 || cards >= 350) return "rgba(77,141,255,0.88)";
-  if (minutes >= 360 || cards >= 250) return "rgba(70,210,126,0.78)";
-  if (minutes >= 300 || (cards >= 150 && cards <= 200)) return "rgba(255,159,67,0.82)";
-  if (minutes > 0 || cards > 0) return "rgba(255,85,99,0.8)";
+  if (minutes >= 480 || cards >= 350) return "color-mix(in srgb, var(--grade-blue) 88%, transparent)";
+  if (minutes >= 360 || cards >= 250) return "color-mix(in srgb, var(--grade-green) 78%, transparent)";
+  if (minutes >= 300 || (cards >= 150 && cards <= 200)) return "color-mix(in srgb, var(--grade-orange) 82%, transparent)";
+  if (minutes > 0 || cards > 0) return "color-mix(in srgb, var(--grade-red) 80%, transparent)";
   return "rgba(255,255,255,0.055)";
 }
 

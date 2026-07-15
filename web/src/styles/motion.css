@@ -22,7 +22,7 @@
   position: relative;
   width: 100%;
   height: 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(230,226,214, 0.1);
   overflow: hidden;
@@ -33,16 +33,16 @@
   position: absolute;
   inset: 0 auto 0 0;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition-property: width;
   transition-timing-function: var(--nm-ease-out);
   background-size: 220% 100%;
   animation: nm-flow 2.4s linear infinite;
 }
 .nm-progress-fill.tone-cyan { background-image: linear-gradient(100deg, #a8894f, #cdb078, #a8894f); }
-.nm-progress-fill.tone-green { background-image: linear-gradient(100deg, #2c9d5b, #46d27e, #2c9d5b); }
-.nm-progress-fill.tone-orange { background-image: linear-gradient(100deg, #d97a1f, #ff9f43, #d97a1f); }
-.nm-progress-fill.tone-red { background-image: linear-gradient(100deg, #cc3a47, #ff5563, #cc3a47); }
+.nm-progress-fill.tone-green { background-image: linear-gradient(100deg, color-mix(in srgb, var(--green) 78%, black), var(--green), color-mix(in srgb, var(--green) 78%, black)); }
+.nm-progress-fill.tone-orange { background-image: linear-gradient(100deg, color-mix(in srgb, var(--orange) 78%, black), var(--orange), color-mix(in srgb, var(--orange) 78%, black)); }
+.nm-progress-fill.tone-red { background-image: linear-gradient(100deg, color-mix(in srgb, var(--red) 78%, black), var(--red), color-mix(in srgb, var(--red) 78%, black)); }
 .nm-progress-fill.tone-violet { background-image: linear-gradient(100deg, #877aa8, #a79ac9, #877aa8); }
 .nm-progress.glow .nm-progress-fill { box-shadow: 0 0 12px rgba(200,169,106, 0.45); }
 .nm-progress-label {
@@ -64,7 +64,7 @@
 .nm-fluid {
   position: relative;
   width: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(230,226,214, 0.09);
   overflow: hidden;
@@ -75,15 +75,15 @@
   position: absolute;
   inset: 0 auto 0 0;
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: width var(--nm-dur-slow) var(--nm-ease-out);
   background-size: 200% 100%;
   animation: nm-flow 2.8s linear infinite;
 }
 .nm-fluid-fill.tone-cyan { background-image: linear-gradient(100deg, #a8894f, #cdb078, #a8894f); }
-.nm-fluid-fill.tone-green { background-image: linear-gradient(100deg, #2c9d5b, #46d27e, #2c9d5b); }
-.nm-fluid-fill.tone-orange { background-image: linear-gradient(100deg, #d97a1f, #ff9f43, #d97a1f); }
-.nm-fluid-fill.tone-red { background-image: linear-gradient(100deg, #cc3a47, #ff5563, #cc3a47); }
+.nm-fluid-fill.tone-green { background-image: linear-gradient(100deg, color-mix(in srgb, var(--green) 78%, black), var(--green), color-mix(in srgb, var(--green) 78%, black)); }
+.nm-fluid-fill.tone-orange { background-image: linear-gradient(100deg, color-mix(in srgb, var(--orange) 78%, black), var(--orange), color-mix(in srgb, var(--orange) 78%, black)); }
+.nm-fluid-fill.tone-red { background-image: linear-gradient(100deg, color-mix(in srgb, var(--red) 78%, black), var(--red), color-mix(in srgb, var(--red) 78%, black)); }
 .nm-fluid-fill.tone-violet { background-image: linear-gradient(100deg, #877aa8, #a79ac9, #877aa8); }
 .nm-fluid.reduced .nm-fluid-fill { animation: none; }
 .nm-fluid-label {
@@ -101,7 +101,7 @@
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.55);
@@ -121,17 +121,17 @@
 /* ---- StatusBorder -------------------------------------------------------- */
 .nm-status-border {
   position: relative;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: border-color var(--nm-dur-base) var(--nm-ease-out), box-shadow var(--nm-dur-base) var(--nm-ease-out);
 }
 .nm-status-border.status-strong {
-  border-color: rgba(70, 210, 126, 0.5);
-  box-shadow: 0 0 0 1px rgba(70, 210, 126, 0.2), 0 0 18px rgba(70, 210, 126, 0.14);
+  border-color: color-mix(in srgb, var(--green) 50%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 20%, transparent), 0 0 18px color-mix(in srgb, var(--green) 14%, transparent);
   animation: nm-strong-pulse 3.4s ease-in-out infinite;
 }
 .nm-status-border.status-missed {
-  border-color: rgba(255, 159, 67, 0.4);
+  border-color: color-mix(in srgb, var(--orange) 40%, transparent);
   border-style: dashed;
 }
 .nm-status-border.status-active {
@@ -140,12 +140,12 @@
 }
 .nm-status-border.status-idle { border-color: rgba(255, 255, 255, 0.08); }
 @keyframes nm-strong-pulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(70, 210, 126, 0.18), 0 0 14px rgba(70, 210, 126, 0.1); }
-  50% { box-shadow: 0 0 0 1px rgba(70, 210, 126, 0.28), 0 0 22px rgba(70, 210, 126, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 18%, transparent), 0 0 14px color-mix(in srgb, var(--green) 10%, transparent); }
+  50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 28%, transparent), 0 0 22px color-mix(in srgb, var(--green) 20%, transparent); }
 }
 
 /* ---- FocusGlow ----------------------------------------------------------- */
-.nm-focus-glow { border-radius: 16px; transition: box-shadow var(--nm-dur-base) var(--nm-ease-out); }
+.nm-focus-glow { border-radius: var(--radius-lg); transition: box-shadow var(--nm-dur-base) var(--nm-ease-out); }
 .nm-focus-glow.active {
   box-shadow: 0 0 0 1px rgba(200,169,106, 0.3), 0 0 22px rgba(200,169,106, 0.18);
   animation: nm-focus-breathe 3s ease-in-out infinite;
