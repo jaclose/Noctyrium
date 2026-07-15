@@ -6,7 +6,31 @@ ship, add proposed ideas here as they come up, and be honest about status.
 Statuses: **in-progress** (partially built, gaps known) · **next** (agreed, not started) ·
 **proposed** (idea, not committed) · **blocked** (needs something first).
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
+
+## Wave 6 — Academic Operating System
+
+Wave 6 ("From Tool → Companion") is defined and recorded in
+[docs/WAVE-6-PLAN.md](docs/WAVE-6-PLAN.md): Import Engine 2.0 (P0, binding
+spec in [docs/UNIVERSAL-QUESTION-IMPORT-ENGINE.md](docs/UNIVERSAL-QUESTION-IMPORT-ENGINE.md)),
+Course Tracker 2.0, Dashboard 2.0, Command Brief 2.0, Productivity OS, Journal
+OS, Daily Check-In, Reports 2.0, Daily Word, Identity, Help, Backup, and
+future-accounts architecture. Course Central (design-only, no live LMS
+connectors) is specified in
+[docs/COURSE-CENTRAL-ARCHITECTURE.md](docs/COURSE-CENTRAL-ARCHITECTURE.md).
+Planning is frozen by the
+**[Pre-Alpha Master Implementation Contract](docs/PRE-ALPHA-CONTRACT.md)**
+(2026-07-15): every session now implements, tests, or reviews one checkpoint.
+The Wave 6A implementation sequence (Steps 0–13, preconditions, acceptance
+gate) is binding in
+[docs/WAVE-6A-EXECUTION-PLAN.md](docs/WAVE-6A-EXECUTION-PLAN.md); the
+corpus review manifest awaiting Jafar's marking is
+[docs/CORPUS-CANDIDATES.md](docs/CORPUS-CANDIDATES.md). The final
+pre-Alpha planning consolidation — deferred-feature audit, knowledge graph,
+mastery engine, Journal Cinematic wireframe, Reports 2.0 wireframes,
+readiness boundaries, future accounts, Alpha checklist — is recorded in
+[docs/WAVE-6-CONSOLIDATION.md](docs/WAVE-6-CONSOLIDATION.md); the tables
+below remain the living status ledger for those items.
 
 ## Question Bank
 
@@ -14,7 +38,7 @@ Last updated: 2026-07-13
 | --- | --- | --- |
 | OCR for scanned PDFs / screenshots | blocked | Needs a local OCR path (tesseract.js evaluation) or secure server-side OCR. Scans currently store provenance only — the UI says so. |
 | Legacy Word `.doc` import | blocked | Mammoth handles modern DOCX only. Binary `.doc` needs a separate, security-reviewed conversion path. |
-| Original source-binary retention | proposed | The library stores extracted/page text, metadata, and SHA-256 checksums today, not PDF/DOCX bytes. Needs a storage-budget, export, privacy, and deletion design before shipping. |
+| Original source-binary retention | blocked (architecture only) | The library stores extracted/page text, metadata, and SHA-256 checksums today, not PDF/DOCX bytes. **Decision recorded 2026-07-14 (Jafar, Wave 6 finalization): do NOT implement retention yet — architecture only.** Approved architecture: user-selectable retention with extracted-text as the default; per-import "keep original file" opt-in; blobs in a **separate IndexedDB object store**, never in the workspace payload; portable JSON backups stay lightweight (originals excluded unless explicitly included); storage-quota warning required. FS-Access handles remain a Chromium-only later enhancement. Implementation waits for an explicit go-ahead; gates Wave 6C. |
 | Complex PDF layout recovery | in-progress | Digital text extraction is live and page-aware; columns, tables, unusual positioning, and damaged text layers can still require review. |
 | Per-question AI explanation generation for imported sets | next | One call per question is expensive; needs batching UX + progress. Digest-level analysis shipped instead. |
 | AI dedup of imported questions | next | Similarity check on import (normalized stem match shipped for cards, not yet questions). |
