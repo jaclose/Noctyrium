@@ -221,7 +221,7 @@ right edge (exists at baseline; belongs to a widget-frame-chrome pass / E8).
 (2) `productivity-tour-layout.spec.ts` occasional 4px scroll-restore timing
 flake on the untouched #productivity route.
 
-Committed as `<E3 sha>`.
+Committed as `0b7f7e0`.
 
 ## E2g — Icon Language & Optical Consistency (implemented 2026-07-15)
 
@@ -398,6 +398,19 @@ CSS-only diff to cause. **Verified pre-existing:** reproduced identically
 (01:08 UTC) with the E2f diff absent. Fix the date derivation in a separate
 change (E1's earlier fix made the *authoring* date derived; the remaining
 flake is the TODAY_KEY/store-write boundary). Daytime runs: 806/806.
+
+**FIXED 2026-07-16 (isolated commit, own change):** root cause was
+`JournalPage.tsx` stamping a *new* "today" entry's `date` with
+`new Date().toISOString()` (**UTC**), while day-keyed lookups
+(`DashboardPage` `entry.date.slice(0,10) === activeDayKey`, `performance.ts`)
+compare against the **local** day key — so near midnight the UTC date-prefix
+mismatched (entry shown on the wrong day / not found). Not just a test flake:
+a real near-midnight product bug. Fix = stamp the local day key at noon
+(`` `${day}T12:00:00` ``, matching how past-day entries were already stamped);
+`updatedAt` still carries the precise UTC instant. Proven timezone-robust —
+`JournalNotebook.test.tsx` now passes under TZ=UTC, UTC+14 (Pacific/Kiritimati,
+which provably fails the old code at 17:00 UTC), and UTC-11. Full suite
+806/806.
 
 **Proceed decision:** **E2g (Icon Language) — GO** — optical sizing, stroke,
 alignment — then E3 Dashboard mission-control, then the Q-wave.

@@ -290,8 +290,12 @@ function JournalWritingPage({
     const current = draftRef.current;
     if (!hasNotebookContent(current) && !entryIdRef.current) return;
     const timestamp = new Date().toISOString();
+    // Stamp the entry's `date` with the local day key (noon), never a raw UTC
+    // toISOString(): day-keyed lookups use `entry.date.slice(0,10)` against the
+    // local day key, so a UTC prefix mismatches near midnight (entry appears on
+    // the wrong day / not found). `updatedAt` keeps the precise instant.
     const payload: Omit<JournalEntry, "id"> & JournalNotebookEntryFields = {
-      date: entry?.date ?? (day === today ? timestamp : `${day}T12:00:00`),
+      date: entry?.date ?? `${day}T12:00:00`,
       today: current.today.trim(),
       tomorrow: current.tomorrow,
       blockers: current.blockers,
@@ -317,7 +321,7 @@ function JournalWritingPage({
     else store.addJournal({ ...payload, id });
     dirtyRef.current = false;
     setSaveState("saved");
-  }, [day, today, entry?.date]);
+  }, [day, entry?.date]);
 
   function setDraft(update: (current: JournalDraft) => JournalDraft) {
     setDraftState((current) => {
