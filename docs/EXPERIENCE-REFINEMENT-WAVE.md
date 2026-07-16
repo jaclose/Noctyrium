@@ -29,7 +29,7 @@ recorded as done.
 | E2c | Terminology standardization (canonical vocabulary adopted; import surfaces migrated) | **done 2026-07-15** (page-by-page sweep continues with E3+ touch-passes) |
 | E2d | Old-palette ghost removal | **done 2026-07-15** — zero legacy literals in product code |
 | E2e | Depth/elevation long-tail: canonical shadow vocabulary + floating consolidation | **done 2026-07-15** — every literal now classified & explained |
-| E2f | Typography scale & rhythm (identity foundation — do not interrupt) | **next** |
+| E2f | Typography scale & rhythm — size/weight/leading/tracking tokens + product-wide migration | **done 2026-07-15** — independent Fable review: ACCEPT (doc-only fixes applied); no rendered flattening in 21 screenshots |
 | E2g | Icon language: optical sizing, stroke, alignment, interactive usage | queued |
 | E3 | Dashboard mission control (Welcome hierarchy + Command Brief presentation + focused widgets + identity) | queued |
 | E4 | Command Brief presentation refinement (spacing, hierarchy, feedback) | queued |
@@ -85,6 +85,133 @@ affected e2e) green. Daily-progress contribution visibility ("+45m Focus,
    (hairline ticks, underline caps), `50%`/`30%` circles, `inherit`,
    `--shell-radius` (26px app shell), the dev-only `design-preview.css`
    sandbox, and one inline 10px color dot in `HabitTrackerPage.tsx`.
+
+## E2f — Typography Scale & Rhythm (done 2026-07-15)
+
+**Objective:** one type system — collapse the accumulated size/weight/leading/
+tracking sprawl into named scales so the product reads as one voice, without
+redesigning it. JD approved (via decision prompt) an **integer clean size scale
+(~11 steps)** and the **full type system** (all four metric axes) in one
+checkpoint. Baseline `a61c357`, clean tree, gates green pre-edit.
+
+**Inventory (baseline):** 43 distinct font-sizes across 806 declarations (clustered
+11/12/10.5/11.5/13/12.5/10px, long fractional tail); 10 font-weights (incl. odd
+50-steps 450/650/750/850/950); ~20 line-heights; ~20 letter-spacings (with
+`.08em`/`0.08em` notation drift). Font *families* were already tokenized;
+the four *metric* axes had **zero** scale tokens. `--text-*` are colors, not sizes.
+
+**Tokens added (theme.css `:root`, theme-independent), with the mapping documented
+inline:**
+
+- **Size** — `--fs-micro 9 · tiny 10 · xs 11 · sm 12 · base 13 · md 14 · lg 16 ·
+  xl 18 · 2xl 22 · 3xl 28 · display 36 · hero 44`. Half-pixels round to the denser
+  step (10.5→10, 11.5→11, 12.5→12, 13.5→13); 15→14 and 17→16 shift 1px.
+- **Weight** — `--fw-regular 500 · medium 600 · semibold 700 · bold 800 · heavy 900`
+  (odd 50-steps collapse to the base of each pair).
+- **Leading** — `--leading-none 1 · tight 1.2 · snug 1.35 · normal 1.5 · relaxed 1.6`
+  (nearest step; 1.4→snug, 1.45→normal).
+- **Tracking** — `--tracking-tighter −0.02 · tight −0.01 · normal 0 · wide 0.04 ·
+  wider 0.08 · caps 0.16em` (normalizes notation drift; nearest step).
+
+**Migration (scripted, explicit value→token map; unmapped values left untouched):**
+767 font-size, 347 font-weight, 195 line-height, 90 letter-spacing declarations
+migrated across 11 product CSS files (design-preview.css dev-only, excluded;
+theme.css holds only defs). The 8 `font:` shorthands were tokenized in-place
+(shorthand kept — `var()` resolves inside it and preserves reset semantics).
+
+**Rendered before/after** (specimen at the app's real font stack, both themes;
+`e2e-audit/type-{dark,light}.png`, not staged): at the 0.5px shifts (9.5/10.5/
+11.5/12.5/13.5) before and after are perceptually identical; the two 1px shifts
+(15→14, 17→16) stay fully legible and tidier; integer sizes rasterize slightly
+crisper than fractional ones. **Equal, trending better.** Page-level regression:
+full e2e suite green (real pages, both themes, all supported viewports — no reflow
+breakage, no overflow).
+
+**Remaining non-token declarations — the complete, categorized exception set
+(corrected 2026-07-15 after acceptance review: the earlier "6 exceptions" claim
+was materially incomplete — the migration regex only matched `font-size:<n>px`,
+so `clamp()`, `rem`, and `0` escaped both the migration and the first count).**
+
+- **Fluid display/section headings — `clamp()` (14 unique):** e.g. TopBar
+  `.tb-title` `clamp(23px,3vw,29px)`, Question Bank hero + `.quiz-player-body
+  .question-stem` `clamp(16px,1.8vw,19px)`, Journal serif headings (×3),
+  Daily Word tiles (×2), promise prompt, `pages.css` section heads (×4),
+  dashboard-widget hero number. Intentional responsive sizing the fixed-px
+  scale cannot express; endpoints sit near `--fs-2xl/3xl/display`. (The
+  `.axom-wordmark--hero` clamp is counted once, under brand lettering below.)
+  *Endpoint tokenization is an available future touch-pass but was skipped to
+  avoid shifting fluid ranges under review.*
+- **Brand lettering — `rem`/`clamp` (5):** `.axom-wordmark--sm/md/lg/hero`
+  and `.axom-brand-lockup__subtitle`. Deliberate self-contained brand-scaling
+  system (explicit material exception per the review charter). Untouched.
+- **Resets:** `font-size: 0` (`.journal-book-toolbar .gbtn`, icon-only),
+  `line-height: 0` (global), `letter-spacing: 0` (×4, explicit no-tracking
+  overrides). Self-documenting.
+- **Deliberate one-offs:** `font-size: 64px` (`.focus-clock`, above display
+  tier); `line-height: 0.94` (sub-1 leading on a display number);
+  `line-height: .92` (`.premed-evidence-score b`, display number — found by
+  the independent review; the implementer's census regex required a leading
+  digit); `letter-spacing: 0.5px` (`.pomo-time`, tabular timer digits — px
+  tracking, likewise missed by an em-only census); tracking
+  `0.22 / 0.26 / 0.28em` (uppercase hero/brand labels, beyond `caps`).
+
+*Fixed 2026-07-15: the 5 `dashboard-widget-frame__*` settings-panel `rem`
+font-sizes (`1rem`→`--fs-lg`, `.82rem`→`--fs-base`, `.72rem`→`--fs-xs`) were
+genuine migration stragglers (generic UI text, sibling props already tokenized,
+no app-wide rem system) and are now tokenized — not left as an "exception."*
+
+**Hierarchy note — `.question-stem` vs `.option-row` (Question Workspace):**
+baseline stem `14.5px` and the effective option `14px` (`loop.css` "bigger,
+calmer answer choices" rule overrides the older `13.5px`) both map to
+`--fs-md` (14px), so a sub-perceptual 0.5px difference goes to zero.
+**Decision: keep `14/14`.** It respects the deliberate "bigger calmer choices"
+intent (options stay 14) and the roles are distinguished by layout (stem is a
+positioned heading; options are bordered interactive rows), not by 0.5px.
+A deliberate stem-prominence bump is deferred to the Question Bank functional
+wave (Q2 reading tools), not forced as a redesign inside E2f.
+
+**Apple Test:** type now reads as an intentional ramp rather than 43 hand-picked
+values → PASS at the size layer. Weight/leading/tracking likewise consolidated.
+Vertical rhythm audited via the e2e viewport specs (no clipping/overflow).
+
+**500-Hour Rule:** integer sizes are calmer and crisper; no size grew louder;
+the change reduces sub-pixel fuzz on ~250 fractional declarations.
+
+**Gates:** typecheck ✓ · lint ✓ (no new warning) · vitest **806/806** ✓ · e2e
+**6/6** ✓ · build ✓ · verify:question-imports (100% exact, 0 false-ready) ✓ ·
+verify:daily-games-offline (`workspaceLocalStorageKeys: []`) ✓ · `git diff --check`
+✓. **Diff = 12 CSS files** (theme.css +38 for tokens; 11 migrated). No schema /
+storage / parser / backup / dependency / lockfile change.
+
+**Acceptance:** independent rendered review by a different model (Fable,
+per JD's protocol — the implementer does not self-accept a whole-product
+typographic change) returned **ACCEPT WITH FIXES, fixes documentation-only**.
+Evidence: 21 screenshots across Dashboard/QB/Reports/Productivity/Journal/quiz
+player at 1440×1000 dark+light, 390×844 dark, and a 200%-zoom-equivalent
+viewport — **no rendered flattening found**; both flagged risk points held
+(panel-title 14 vs panel-sub 11 plainly distinct; quiz stem renders at the
+`clamp(16px,1.8vw,19px)` rule, clearly above 14px options, so stem/option
+parity has no rendered manifestation). Token architecture judged sound
+(root-only, tier-named, no circular aliases; weight histogram reconciles
+exactly). Apple Test: PASS on all rendered pages (Productivity PASS-WITH-
+MINOR-POLISH for a pre-existing caps-microlabel density, not introduced by
+E2f). Fixes applied above: two additional one-offs the implementer's census
+regexes missed (`line-height: .92`, `letter-spacing: 0.5px`) and the clamp
+count corrected to 14 unique. (A first Fable run was killed by a session
+limit before returning a verdict; this is the completed re-run.)
+
+**Reviewer's out-of-scope observation (tracked, not E2f):**
+`JournalNotebook.test.tsx` failed 2/806 in the reviewer's ~21:00 local run
+(past UTC midnight) with store-level date assertions — assessed as a
+timezone-boundary flake in the test's date derivation, impossible for a
+CSS-only diff to cause. **Verified pre-existing:** reproduced identically
+(same 2 failures) at baseline `a61c357` in a scratch worktree at 21:08 AST
+(01:08 UTC) with the E2f diff absent. Fix the date derivation in a separate
+change (E1's earlier fix made the *authoring* date derived; the remaining
+flake is the TODAY_KEY/store-write boundary). Daytime runs: 806/806.
+
+**Proceed decision:** **E2g (Icon Language) — GO** — optical sizing, stroke,
+alignment — then E3 Dashboard mission-control, then the Q-wave.
 
 ## E2e — Depth / Elevation Long Tail (done 2026-07-15)
 

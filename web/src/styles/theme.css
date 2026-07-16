@@ -124,6 +124,44 @@
   --font-display: "Poppins", var(--font-ui);
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 
+  /* Typography scale & rhythm (Product Identity Wave E2f). Theme-independent.
+     Never write a literal font-size / weight / line-height / letter-spacing in
+     product CSS — use these tokens (dev-only design-preview.css is exempt).
+     Size — integer ramp; 43 literal sizes collapse here (half-pixels round to
+     the denser step, e.g. 10.5→10, 11.5→11, 12.5→12, 13.5→13). */
+  --fs-micro: 9px;    /* badges, micro-counts (absorbs 8–9) */
+  --fs-tiny: 10px;    /* dense meta, timestamps (9.5–10.5) */
+  --fs-xs: 11px;      /* labels, chips — largest cluster (10.8–11.5) */
+  --fs-sm: 12px;      /* secondary body, controls (11.7–12.5) */
+  --fs-base: 13px;    /* primary UI / body text (12.7–13.5) */
+  --fs-md: 14px;      /* emphasized body (14–15) */
+  --fs-lg: 16px;      /* section titles (15.5–17) */
+  --fs-xl: 18px;      /* card / panel headings (18–20) */
+  --fs-2xl: 22px;     /* page headings (21–24) */
+  --fs-3xl: 28px;     /* hero numbers (26–29) */
+  --fs-display: 36px; /* display / hero (32–38) */
+  --fs-hero: 44px;    /* rare oversized splash (40–44); 64px one-offs stay literal & documented */
+  /* Weight — 5 steps; odd 50-steps collapse to the base of each pair
+     (450→500, 650→600, 750→700, 850→800, 950→900). */
+  --fw-regular: 500;
+  --fw-medium: 600;
+  --fw-semibold: 700;
+  --fw-bold: 800;
+  --fw-heavy: 900;
+  /* Leading — rhythm ladder (nearest step; 1.4→snug, 1.45→normal). */
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+  /* Tracking — normalizes .08em/0.08em drift; nearest step. */
+  --tracking-tighter: -0.02em;
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+  --tracking-caps: 0.16em;
+
   /* Depth — canonical elevation system (Product Identity Wave E2b/E2e).
      Neutral depth only; gold/violet identity glow stays separate (--shadow-gold)
      and semantic status glow lives per-component. Role ladder (low → high):

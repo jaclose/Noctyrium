@@ -4,14 +4,14 @@
 @font-face {
   font-family: "Poppins";
   font-style: normal;
-  font-weight: 500;
+  font-weight: var(--fw-regular);
   font-display: swap;
   src: url("/fonts/poppins-500-latin.woff2") format("woff2");
 }
 @font-face {
   font-family: "Poppins";
   font-style: normal;
-  font-weight: 600;
+  font-weight: var(--fw-medium);
   font-display: swap;
   src: url("/fonts/poppins-600-latin.woff2") format("woff2");
 }
@@ -49,7 +49,7 @@ input, textarea, select { font-family: inherit; }
   width: 4.4565em;
   height: 1em;
   max-width: 100%;
-  line-height: 1;
+  line-height: var(--leading-none);
   white-space: nowrap;
   filter: drop-shadow(0 1px 6px rgba(214, 184, 112, 0.12));
 }
@@ -109,8 +109,8 @@ input, textarea, select { font-family: inherit; }
   color: var(--axom-text-muted);
   font-family: var(--font-ui);
   font-size: 0.66rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: var(--fw-regular);
+  line-height: var(--leading-tight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -118,7 +118,7 @@ input, textarea, select { font-family: inherit; }
 .axom-brand-lockup--hero { gap: 1.25rem; }
 .server-brand { flex: 1; min-width: 0; }
 .server-brand .axom-brand-lockup__copy { flex: 1; }
-.server-brand .axom-brand-lockup__subtitle { font-size: 9.5px; }
+.server-brand .axom-brand-lockup__subtitle { font-size: var(--fs-tiny); }
 
 @media (prefers-contrast: more) {
   .axom-mark--framed { border-color: var(--axom-border-strong); }
@@ -286,15 +286,15 @@ input, textarea, select { font-family: inherit; }
 /* Reusable text helpers */
 .h-section {
   font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-tight);
   color: var(--text);
 }
-.sub { color: var(--text-45); font-size: 12.5px; font-weight: 450; line-height: 1.5; }
+.sub { color: var(--text-45); font-size: var(--fs-sm); font-weight: var(--fw-regular); line-height: var(--leading-normal); }
 .muted { color: var(--text-60); }
 .dim { color: var(--text-45); }
-.mono { font-family: var(--font-mono); letter-spacing: -0.01em; }
+.mono { font-family: var(--font-mono); letter-spacing: var(--tracking-tight); }
 
 /* Page-level headings pick up the display face for architectural hierarchy. */
 h1, h2, h3, .panel-title, .stat-value { font-family: var(--font-display); }

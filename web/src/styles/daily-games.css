@@ -23,7 +23,7 @@
 .daily-word-header p {
   margin: 5px 0 0;
   color: var(--text-60);
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .daily-word-date {
@@ -36,12 +36,12 @@
 .daily-word-date b {
   font-family: var(--font-mono);
   color: var(--text-80);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .daily-word-date span {
   color: var(--text-45);
-  font-size: 10.5px;
+  font-size: var(--fs-tiny);
 }
 
 .daily-word-board-card {
@@ -54,7 +54,7 @@
 .daily-word-instructions {
   width: 100%;
   color: var(--text-60);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .daily-word-instructions summary {
@@ -63,16 +63,16 @@
   display: flex;
   align-items: center;
   color: var(--text-80);
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
   cursor: pointer;
 }
 
 .daily-word-instructions p {
   max-width: 560px;
   margin: 5px 0 0;
-  line-height: 1.55;
+  line-height: var(--leading-relaxed);
 }
-.daily-word-dictionary-note { color: var(--text-45); font-size: 10.5px; }
+.daily-word-dictionary-note { color: var(--text-45); font-size: var(--fs-tiny); }
 
 .daily-word-grid {
   display: grid;
@@ -99,7 +99,7 @@
   color: var(--text-95);
   font-family: var(--font-display);
   font-size: clamp(18px, 4vw, 22px);
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
   box-shadow: inset 0 1px 0 rgba(230, 226, 214, 0.035);
 }
 
@@ -136,8 +136,8 @@
 .daily-word-status {
   min-height: 18px;
   color: var(--text-70);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   text-align: center;
 }
 
@@ -166,7 +166,7 @@
   background: rgba(230, 226, 214, 0.065);
   color: var(--text-85);
   font-size: clamp(10px, 2.8vw, 12px);
-  font-weight: 800;
+  font-weight: var(--fw-bold);
   box-shadow: inset 0 1px 0 rgba(230, 226, 214, 0.055);
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
 }
@@ -219,13 +219,13 @@
   border-radius: var(--radius-sm);
   background: rgba(230, 226, 214, 0.035);
   color: var(--text-60);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .daily-word-countdown b { color: var(--text-85); }
 
 .daily-word-results h2 {
-  font-size: 19px;
+  font-size: var(--fs-xl);
 }
 
 .daily-word-stats {
@@ -246,13 +246,13 @@
 
 .daily-word-stats b {
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: var(--fs-2xl);
 }
 
 .daily-word-stats span {
   color: var(--text-45);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--fs-tiny);
+  font-weight: var(--fw-semibold);
 }
 
 .daily-word-distribution {
@@ -262,7 +262,7 @@
 
 .daily-word-distribution h3 {
   margin-bottom: 3px;
-  font-size: 13px;
+  font-size: var(--fs-base);
 }
 
 .daily-word-distribution-row {
@@ -272,7 +272,7 @@
   gap: 7px;
   color: var(--text-60);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-tiny);
 }
 
 .daily-word-distribution-row > div {
