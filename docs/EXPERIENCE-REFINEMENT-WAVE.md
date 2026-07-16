@@ -718,7 +718,7 @@ false-ready, no regression. Gates: typecheck 0 · lint 0 · **vitest 817/817**
 allACollapse false** · verify:daily-games-offline ✓ · diff-check ✓. Diff =
 `questionParse.ts` (+24/−7) + the new fixture test. **No Universal Import Engine
 (Wave 6A) work; localized repair to the shipped resolution path.** Committed as
-`<Q1 sha>`.
+`b94e6f1` (docs sha fixed post-commit).
 
 ## Deferred — Question Bank Functional Wave (Q1–Q3)
 
