@@ -5,7 +5,16 @@
    =========================================================================== */
 
 /* --- Command Brief --------------------------------------------------------- */
-.brief { width: 100%; }
+/* Command Brief is the dominant actionable surface (E3): it is now the ONE
+   gold-accented surface on the dashboard (welcome + edit control were
+   de-gilded), so the brain reads as primary through a restrained gold edge
+   and soft glow — identity, not extra size. Keeps the glass-card ::before
+   top-highlight intact. */
+.brief {
+  width: 100%;
+  border-color: var(--gold-line);
+  box-shadow: var(--shadow-card), 0 22px 48px -32px var(--gold-glow);
+}
 .brief-body {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);

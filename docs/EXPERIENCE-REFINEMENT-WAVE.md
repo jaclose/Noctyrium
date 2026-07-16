@@ -31,7 +31,7 @@ recorded as done.
 | E2e | Depth/elevation long-tail: canonical shadow vocabulary + floating consolidation | **done 2026-07-15** — every literal now classified & explained |
 | E2f | Typography scale & rhythm — size/weight/leading/tracking tokens + product-wide migration | **done 2026-07-15** — independent Fable review: ACCEPT (doc-only fixes applied); no rendered flattening in 21 screenshots |
 | E2g | Icon language: optical sizing, stroke, alignment, interactive usage | **done 2026-07-15** — 13 sizes → 5 ICON_SIZE tiers; Fable review: ACCEPT, all 563 rewrites verified |
-| E3 | Dashboard mission control (Welcome hierarchy + Command Brief presentation + focused widgets + identity) | queued |
+| E3 | Dashboard mission control — T1+T2 hierarchy refinement (Command Brief dominance) | **done 2026-07-16** — Fable review: ACCEPT as-is; T3→E8, T4 no-op |
 | E4 | Command Brief presentation refinement (spacing, hierarchy, feedback) | queued |
 | E5 | Question Bank noise reduction (dedupe controls, whitespace, grouping) | queued |
 | E6 | Course Tracker visual progression (connectedness, chronology, deps) | queued |
@@ -85,6 +85,143 @@ affected e2e) green. Daily-progress contribution visibility ("+45m Focus,
    (hairline ticks, underline caps), `50%`/`30%` circles, `inherit`,
    `--shell-radius` (26px app shell), the dev-only `design-preview.css`
    sandbox, and one inline 10px color dot in `HabitTrackerPage.tsx`.
+
+## E3 — Dashboard Mission Control (AUDIT — 2026-07-15, awaiting JD prioritization)
+
+Baseline `ef5d225`, clean tree. Directive: **refine, don't redesign — keep
+almost everything, improve hierarchy; presentation only** (no parser, storage,
+schema, widget-content, or Command Brief algorithm changes). The dashboard must
+answer in <5s: Where am I? · What matters? · What next? · How am I doing? ·
+What changed? Command Brief should *dominate — because everything else recedes,
+not because it's larger.*
+
+**Architecture (verified):** `DashboardPage.tsx` (1629 lines) renders four
+**fixed** elements then a configurable grid, top-to-bottom:
+1. `AlphaBuildBanner` — greeting (name) + **daily quote** + alpha build state.
+2. `CommandBrief` — the one evidence-backed next action.
+3. `StandupPrompt`.
+4. **"Build your dashboard" control card** — full titled GlassCard (kicker
+   "<track> workspace" + title + meta + Edit button).
+5. `.dashboard-widget-grid` — live widgets.
+Widget catalog = 24 entries, **8 are `storageOnly`** (legacy/merged, never
+rendered — kept only so old backups stay valid: suggested, schedule, termMap,
+latestStandup, productivityTrend, resourceFocus, boardBlueprint, aiActions).
+~16 live widgets. `renderDashboardWidget` returns **null** for `welcome` and
+`commandBrief`, so the grid does **not** duplicate the fixed hero elements
+(good — no double render). Presets: focused (default) / study-heavy /
+wellbeing-balanced / custom.
+
+**Hierarchy map (current → desired):** the Command Brief is the *2nd of 4
+stacked fixed cards* of similar visual weight. Desired layer order (JD's model):
+L1 Mission (greeting/where-am-I, light) · L2 Command Brief (dominant) ·
+L3 today's work · L4 progress · L5 utilities (dashboard editing) · quote =
+"everything else". Current order **inverts** this in two places (below).
+
+**Redundancy map:**
+- *Quote above the brain* — the daily quote sits in `AlphaBuildBanner` **above**
+  the Command Brief, so the eye hits an inspirational quote before "what do I do
+  next." Quote is L5 chrome occupying L1 space.
+- *Utility above the work* — the "Build your dashboard" control card is a full
+  titled card (kicker+title+meta) sitting **between** the Command Brief and the
+  actual work widgets. Dashboard configuration is L5; it occupies L2–L3 space
+  and competes directly under the brain.
+- *Daily-direction triplication* — `StandupPrompt` (fixed) + `winDay` "Daily
+  Check-In" widget + `todayScore` "Today's targets" widget all touch daily
+  intention/closeout. Candidate consolidation (careful — keep presentation-only).
+- *Welcome/quote fields* — the `welcome` widget defines date/state/quote fields
+  but renders null (fixed banner owns them); the Edit editor still lists
+  welcome/commandBrief as reorderable, a minor UX confusion.
+
+**Strengths to KEEP (already meet the brief):** empty states already *teach*
+("No practice questions yet · Import a source… AXOM will not invent an answer
+key"; "Shipped examples teach the interface but never count as your workload").
+Widget-purpose discipline is largely good (each widget answers one question;
+merged widgets already collapsed to storageOnly). Icon/type/depth now tokenized
+(E2a–E2g).
+
+**Gaps vs brief:** loading uses 9 spinner/`spin` sites vs 5 skeleton — brief
+prefers skeletons. Widget frames all carry equal chrome (border+titled header),
+so none recedes behind the Command Brief.
+
+**Proposed refinement set (presentation-only; tiered for JD to pick scope):**
+- **T1 — Fix the two layer inversions (highest value, lowest risk):**
+  (a) Demote the "Build your dashboard" control card to a quiet affordance — a
+  single ghost "Edit dashboard" button (drop the kicker/title/meta card chrome),
+  relocated to the end of the grid or a light inline control. (b) Demote the
+  daily quote — smaller/lighter, or move below the grid — so the Command Brief
+  is the first substantive thing after the greeting.
+- **T2 — Let the Command Brief dominate by quieting neighbors:** lighten
+  `AlphaBuildBanner` greeting weight; reduce widget-frame chrome (lighter
+  headers/borders) so the grid recedes. Requires rendered before/after both
+  themes; touches `DashboardWidgetFrame` styling (broader).
+- **T3 — Consolidate daily-direction redundancy** (StandupPrompt vs winDay) —
+  needs care to stay presentation-only; may defer to E8 (daily-loop continuity).
+- **T4 — Skeletons over spinners** on dashboard widget loads (small, additive).
+
+Recommended: **T1 now** (surgical, on-thesis, low risk), **T2 next** with
+rendered verification, T3 deferred to E8, T4 opportunistic. Each lands with the
+Fable rendered review before commit.
+
+**Implementation — T1 + T2 (JD scope: T1+T2+T4-localized, defer T3).**
+*Status: implemented + gates green + rendered before/after confirmed; awaiting
+independent Fable review before commit. Gates: typecheck 0 · lint 0 · vitest
+**806/806** (daytime run, UTC flake dormant) · e2e **6/6** (dashboard editor
+flow validated) · build ✓ · both verifiers ✓ · diff-check ✓. Diff = 3 CSS/TSX
+files + ledger. Rendered dark+light×desktop+mobile: welcome calm & de-gilded,
+Command Brief now the single gold-framed dominant surface, quote a quiet
+bottom footer (all 4 controls intact), Edit dashboard a quiet toggle that still
+opens the full editor. Screenshots in scratch `shots/dash-{before,after}-*`.*
+Rendered baseline `dash-before-*.png` (dark+light, 1440+390) captured and
+inspected first; it confirmed the core defect visually — the gold-tinted
+welcome banner (with the quote top-right) was the loudest surface, louder than
+the plain Command Brief below it. Changes (presentation-only; net **reduction**
+in gold — two gold surfaces removed, one added, so the Brief becomes the single
+identity surface):
+- *Welcome (T1):* `AlphaBuildBanner` GlassCard → plain calm header (`<div>`),
+  gold gradient + gold border removed, date de-gilded (gold→`--text-45`),
+  title weight `bold`→`semibold`. Identity/date/name/daily-state preserved.
+- *Quote (T1):* extracted the entire `.dashboard-quote` block into a new
+  `DailyQuote` component rendered **below the widget grid**; restyled as a quiet
+  footer (top hairline, muted italic, no left border). All quote functionality
+  preserved — next/favorite/hide/settings/attribution/a11y unchanged.
+- *Customization (T1):* the titled gold `.dashboard-control-card` → a quiet
+  right-aligned `.dashboard-edit-toolbar` ghost "Edit dashboard" toggle; the
+  `DashboardWidgetEditor` now opens in a plain `.dashboard-editor-panel`. All
+  editor functionality (presets/show-hide/order/size/fields/drag/keyboard/soft-
+  XL advisory/persistence) untouched. Removed dead CSS (`dashboard-control-*`,
+  `alpha-build-mark/meta`) and the now-unused `resolveTrack` import.
+- *Command Brief dominance (T2):* `.brief` given the identity gold the neighbors
+  lost — `border-color: var(--gold-line)` + a soft `--gold-glow` outer shadow;
+  restrained (no radial, keeps the glass-card `::before` top-highlight). No
+  Command Brief algorithm/ranking/evidence/readiness/state changes.
+- *T4 loading:* **no-op on the dashboard** — verified the dashboard renders
+  synchronously from the store; there are **no spinner/skeleton loading states**
+  on any dashboard widget to replace. Recorded, not forced.
+- *Empty states:* preserved verbatim (already teaching-style). Widget-frame
+  chrome left as-is pending rendered evidence it competes (T2 conservative).
+Files: `DashboardPage.tsx`, `styles/pages.css`, `styles/loop.css` (+ ledger).
+**Independent Fable review: ACCEPT, commit as-is.** Verified presentation-only
+line-by-line (GlassCard→div is not a semantic change; quote logic relocated
+verbatim; zero changes to widget data / renderWidget / saveLayout / Brief
+computation). Rendered 6 viewports × 2 themes: the Brief is now the single
+gold-framed dominant surface (74px bare welcome header → 397px gold-edged Brief
+directly below; quote at y≈1992 as a footer, `quoteDomAfterGrid: true`); no
+horizontal overflow anywhere; 390px does not collapse to equal cards; glass-card
+::before top-highlight intact; gold reads as a warm edge, not casino. All
+functionality preserved (4 quote controls with aria-labels, editor presets/
+reorder/keyboard, teaching empty states). a11y: no heading downgrade, Edit
+toggle aria-expanded tracks state. T4 no-op confirmed (zero dashboard
+spinners/skeletons). Gate totals in its run: typecheck 0 · lint 0 · vitest
+**806/806** · e2e 6/6 (productivity-tour 4px scroll flake passed on isolated
+rerun) · build ✓ · both verifiers ✓.
+
+**Pre-existing observations Fable surfaced (NOT E3, tracked):** (1) Daily
+Check-In widget — the frame's customize gear overlaps the "Open check-in" pill's
+right edge (exists at baseline; belongs to a widget-frame-chrome pass / E8).
+(2) `productivity-tour-layout.spec.ts` occasional 4px scroll-restore timing
+flake on the untouched #productivity route.
+
+Committed as `<E3 sha>`.
 
 ## E2g — Icon Language & Optical Consistency (implemented 2026-07-15)
 

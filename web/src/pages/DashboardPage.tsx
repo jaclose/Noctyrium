@@ -20,7 +20,6 @@ import { exportState } from "../lib/backup";
 import { gotoJournalDay, useUi } from "../lib/uiStore";
 import { useInView } from "../lib/useInView";
 import { DEFAULT_DASHBOARD_WIDGETS, DEFAULT_HIDDEN_DASHBOARD_WIDGETS } from "../lib/seed";
-import { resolveTrack } from "../lib/tracks";
 import { calculateReadiness } from "../lib/energy";
 import { pickFocusExam, buildExamCountdown, countdownHeadline, type PrepIntensity } from "../lib/examPlan";
 import { AnimatedProgressBar } from "../components/ui/motion";
@@ -67,7 +66,6 @@ export function DashboardPage() {
   const s = useStore();
   const [editDashboard, setEditDashboard] = useState(false);
   const [pendingExtraLargeLayout, setPendingExtraLargeLayout] = useState<DashboardLayoutPreferences | null>(null);
-  const track = resolveTrack(s.profile.educationTrack);
   const dailyProgress = useMemo(() => evaluateDailySuccess(s, s.activeDayKey, s.activeDayKey), [s]);
   const week = weeklySummary(s);
   const readiness = useMemo(() => calculateReadiness({
@@ -162,23 +160,26 @@ export function DashboardPage() {
 
       <StandupPrompt />
 
-      <GlassCard pad className="dashboard-control-card">
-        <div className="spread">
-          <div className="dashboard-control-copy">
-            <div className="dashboard-control-kicker">{track.short} workspace</div>
-            <div className="dashboard-control-title">Build your dashboard</div>
-            <div className="dashboard-control-meta"><span>Choose what deserves your attention. Hidden widgets keep their data.</span></div>
-          </div>
-          <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
-            <SlidersHorizontal size={ICON_SIZE.body} /> {editDashboard ? "Done editing" : "Edit dashboard"}
-          </GButton>
-        </div>
-        {editDashboard && <DashboardWidgetEditor layout={layout} onChange={saveLayout} />}
-      </GlassCard>
+      <div className="dashboard-edit-toolbar">
+        <GhostButton
+          className="dashboard-edit-toggle"
+          aria-expanded={editDashboard}
+          onClick={() => setEditDashboard((open) => !open)}
+        >
+          <SlidersHorizontal size={ICON_SIZE.body} /> {editDashboard ? "Done editing" : "Edit dashboard"}
+        </GhostButton>
+      </div>
+      {editDashboard && (
+        <GlassCard pad className="dashboard-editor-panel">
+          <DashboardWidgetEditor layout={layout} onChange={saveLayout} />
+        </GlassCard>
+      )}
 
       <section className="dashboard-widget-grid" aria-label="Dashboard widgets">
         {visibleWidgetIds.map(renderWidget)}
       </section>
+
+      <DailyQuote activeDayKey={s.activeDayKey} />
 
       {pendingExtraLargeLayout && (
         <Modal
@@ -215,14 +216,7 @@ function AlphaBuildBanner({
   const displayName = explicitDisplayName(profileName);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [quotePreferences, setQuotePreferences] = useState(readQuotePreferences);
-  const [quoteOffset, setQuoteOffset] = useState(0);
-  const [quoteSettingsOpen, setQuoteSettingsOpen] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const quote = useMemo(
-    () => selectQuoteForDay(AXOM_QUOTES, quotePreferences, activeDayKey, quoteOffset),
-    [activeDayKey, quoteOffset, quotePreferences],
-  );
   const dailyState = dailyDashboardMessage(activeDayKey);
   const date = new Date(`${activeDayKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: "long",
@@ -234,8 +228,6 @@ function AlphaBuildBanner({
     if (editingName) nameInputRef.current?.focus();
   }, [editingName]);
 
-  useEffect(() => { setQuoteOffset(0); }, [activeDayKey]);
-
   function saveName(event: FormEvent) {
     event.preventDefault();
     updateProfile({ name: nameDraft.trim().slice(0, 120) });
@@ -243,12 +235,8 @@ function AlphaBuildBanner({
     setNameDraft("");
   }
 
-  function saveQuotePreferences(next: typeof quotePreferences) {
-    setQuotePreferences(writeQuotePreferences(next));
-  }
-
   return (
-    <GlassCard pad className="alpha-build-banner">
+    <div className="alpha-build-banner">
       <div className="alpha-build-copy">
         <span>{date}</span>
         <div className="alpha-build-title" aria-live="polite">
@@ -283,6 +271,26 @@ function AlphaBuildBanner({
         )}
         <p>{dailyState}</p>
       </div>
+    </div>
+  );
+}
+
+function DailyQuote({ activeDayKey }: { activeDayKey: string }) {
+  const [quotePreferences, setQuotePreferences] = useState(readQuotePreferences);
+  const [quoteOffset, setQuoteOffset] = useState(0);
+  const [quoteSettingsOpen, setQuoteSettingsOpen] = useState(false);
+  const quote = useMemo(
+    () => selectQuoteForDay(AXOM_QUOTES, quotePreferences, activeDayKey, quoteOffset),
+    [activeDayKey, quoteOffset, quotePreferences],
+  );
+
+  useEffect(() => { setQuoteOffset(0); }, [activeDayKey]);
+
+  function saveQuotePreferences(next: typeof quotePreferences) {
+    setQuotePreferences(writeQuotePreferences(next));
+  }
+
+  return (
       <section className="dashboard-quote" aria-label="Daily quote">
         {quotePreferences.quoteVisible && quote ? (
           <>
@@ -329,7 +337,6 @@ function AlphaBuildBanner({
           </div>
         )}
       </section>
-    </GlassCard>
   );
 }
 
