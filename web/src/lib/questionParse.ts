@@ -569,22 +569,39 @@ export function parseQuestionText(raw: string): ParsedQuestionDraft {
       const textMatch = matchAnswerText(signalAnswerText, options);
       if (textMatch.ambiguous) {
         warnings.push(`Answer text "${signalAnswerText}" matches more than one option — left unset, needs review.`);
+        parserRuleIds.add("ambiguous.answer-text");
         structuredConflict = true;
         needsReview = true;
       } else if (textMatch.key) {
         parserRuleIds.add("answer.text-option-match");
         answerDetectionConfidence = Math.max(answerDetectionConfidence, 0.96);
         if (signalKey && signalKey !== textMatch.key) {
-          warnings.push(`Conflicting answer letter/text detected (${signalKey} vs ${textMatch.key}) — left unset, needs review.`);
+          // Case 4 (true contradiction): the explicit letter and an *exact*
+          // option-text match name different options. Preserve BOTH signals in
+          // the evidence (letter + matched option are in the warning + answer
+          // evidence) and never silently pick either — leave it unresolved.
+          warnings.push(`Conflicting answer letter/text detected (letter ${signalKey} vs text of option ${textMatch.key}) — left unset, needs review.`);
+          parserRuleIds.add("conflict.answer-letter-vs-text");
           structuredConflict = true;
           needsReview = true;
-        } else signalKey = textMatch.key;
+        } else {
+          // Case 2: explicit letter with an exact matching tail (adds a granular
+          // diagnostic on top of the text-match rule).
+          if (signalKey) parserRuleIds.add("answer.explicit-letter-exact");
+          signalKey = textMatch.key;
+        }
+      } else if (signalKey) {
+        // Case 3 (harmless drift): an explicit answer letter whose trailing
+        // text matches NO option is a paraphrase / singular / parenthetical,
+        // not a contradiction. PRESERVE the explicit letter as the
+        // source-selected candidate and route to inspection — never silently
+        // discard it. (A true contradiction is handled just above.)
+        warnings.push(`Answer letter "${signalKey}" was kept as the candidate, but its trailing text "${signalAnswerText}" did not exactly match option ${signalKey} — confirm the mapping.`);
+        parserRuleIds.add("answer.explicit-letter-text-drift");
+        needsReview = true;
       } else {
-        warnings.push(signalKey
-          ? `Answer letter "${signalKey}" is paired with text that did not match that option — left unset, needs review.`
-          : `Answer text "${signalAnswerText}" did not exactly match an option — review the mapping.`);
-        if (signalKey) structuredConflict = true;
-        signalKey = undefined;
+        warnings.push(`Answer text "${signalAnswerText}" did not exactly match an option — review the mapping.`);
+        parserRuleIds.add("answer.text-no-option-match");
         needsReview = true;
       }
     }

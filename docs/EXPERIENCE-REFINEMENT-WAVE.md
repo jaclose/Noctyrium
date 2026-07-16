@@ -672,6 +672,54 @@ Engine work · no OCR · no Journal Cinematic · no Knowledge Graph
 implementation · no Course Central adapters · no accounts · nothing
 committed without explicit instruction.
 
+## Q1 — Explicit-Answer Trust & Mapping Reliability (done 2026-07-16)
+
+First functional-wave checkpoint. Baseline `ec71b80`. **Root cause (reproduced
+through the real parser):** pasted text goes through `questionParse.ts`, NOT
+`questionImport.ts`/`resolveAnswerValue` (that's the CSV/JSON path). In the
+answer-signal loop, when an explicit answer letter's trailing text matched **no**
+option, the code set `structuredConflict = true` + `signalKey = undefined` —
+treating harmless drift ("Answer: A. Mast cell" vs option "Mast cells") as a
+*conflict* and **discarding the letter** → `correctKey` undefined → unresolved.
+The evidence showed A; the finalized field lost it.
+
+**Fix (candidate-preservation, not blind trust):** the no-option-match branch
+now splits — an explicit letter with a tail that matches no option is **harmless
+drift**: preserve the letter as the source-selected candidate (`correctKey=A`),
+set `needsReview=true`, add rule `answer.explicit-letter-text-drift`, and do
+**not** flag a conflict. A **true contradiction** — the tail *exactly* matching a
+*different* option — remains unresolved (`conflict.answer-letter-vs-text`,
+`correctKey` unset, both evidences preserved). Cases 1/2/5/6 unchanged.
+
+**No schema/data-model/UI change.** Existing fields carry the whole policy
+(`correctKey`/`needsReview`/`answerEvidence`/`warnings`/`parserRuleIds`). The
+review modal already inits its selector from `question.correctKey`, so the drift
+candidate A is **auto-preselected** for confirmation. Persist safety: MassImport
+sets `extraction.reviewed=true`, so `needsReview=true` is what keeps a drift
+candidate **non-runnable** (`questionMappingStatus` → "unresolved") until the
+user confirms — falseReady stays 0. Re-import uses `addQuestion` (new IDs), never
+overwriting a user-confirmed answer.
+
+**Diagnostics** (inspectable via `extraction.parserRuleIds`):
+`answer.explicit-letter-exact` · `answer.explicit-letter-text-drift` ·
+`conflict.answer-letter-vs-text` · `ambiguous.answer-text` ·
+`answer.text-no-option-match`.
+
+**Fixtures:** `src/lib/questionAnswerTrust.test.ts` (11 cases A–J: exact,
+singular/parenthetical/explanatory drift, cross-option conflict, letter-only,
+mixed-key sequence, unknown/garbage, ambiguous, + two persistence-safety cases).
+
+**Independent Fable review: ACCEPT as-is.** Ran its own 9/9 adversarial probe;
+confirmed `matchAnswerText` requires exact normalized equality (no fuzzy/substring
+misclassification), `needsReview` forces "unresolved" even with `reviewed=true`
+(no runnable-pool leak), persistence + user-confirm precedence safe, no
+false-ready, no regression. Gates: typecheck 0 · lint 0 · **vitest 817/817**
+(+11 Q1) · e2e 6/6 · build ✓ · verify:question-imports **100% exact, falseReady 0,
+allACollapse false** · verify:daily-games-offline ✓ · diff-check ✓. Diff =
+`questionParse.ts` (+24/−7) + the new fixture test. **No Universal Import Engine
+(Wave 6A) work; localized repair to the shipped resolution path.** Committed as
+`<Q1 sha>`.
+
 ## Deferred — Question Bank Functional Wave (Q1–Q3)
 
 Directed 2026-07-15 (JD), recorded during E2e as **backlog only**. These are
