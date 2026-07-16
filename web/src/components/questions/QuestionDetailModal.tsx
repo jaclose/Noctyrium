@@ -18,6 +18,7 @@ import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { QuestionProvenance, QuizFeedback } from "./QuizFeedback";
 import { sourceCandidates, type QuestionEvidenceKind, type SourceCandidate } from "../../lib/questionProvenance";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 
@@ -162,7 +163,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
       onClose={onClose}
       footer={
         <>
-          <GhostButton onClick={remove}><Trash2 size={13} /> Delete</GhostButton>
+          <GhostButton onClick={remove}><Trash2 size={ICON_SIZE.body} /> Delete</GhostButton>
           {!revealed
             ? <GButton variant="primary" onClick={submit} disabled={!picked && question.options.length > 0}>Check answer</GButton>
             : <GButton variant="primary" onClick={saveAttempt}>Save attempt</GButton>}
@@ -235,7 +236,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
               <span className="sub">This updates mapping metadata only. Existing attempts and practice status stay unchanged.</span>
             </div>
             <GhostButton onClick={() => setEditingMapping((value) => !value)}>
-              <PencilLine size={13} /> {editingMapping ? "Cancel" : "Review answer mapping"}
+              <PencilLine size={ICON_SIZE.body} /> {editingMapping ? "Cancel" : "Review answer mapping"}
             </GhostButton>
           </div>
           {editingMapping && (
@@ -309,7 +310,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
                 {ERROR_TYPES.map((t) => <option key={t} value={t}>{ERROR_TYPE_LABEL[t]}</option>)}
               </SelectField>
               <GhostButton onClick={makeRepairCard}>
-                <WandSparkles size={13} /> Create an error-repair card from this miss
+                <WandSparkles size={ICON_SIZE.body} /> Create an error-repair card from this miss
               </GhostButton>
             </>
           )}

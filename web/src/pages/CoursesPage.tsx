@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, SelectField } from "../components/ui/Modal";
 import type { Course } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export function CoursesPage() {
   const s = useStore();
@@ -26,10 +27,10 @@ export function CoursesPage() {
                   onClick={() => {
                     const name = prompt("Rename term", term.name);
                     if (name) s.renameTerm(term.id, name);
-                  }}><Pencil size={14} /></GhostButton>
+                  }}><Pencil size={ICON_SIZE.body} /></GhostButton>
                 <GhostButton className="danger" title="Delete term + its courses"
                   onClick={() => confirm(`Delete "${term.name}" and its ${courses.length} courses?`) && s.removeTerm(term.id)}>
-                  <Trash2 size={14} /></GhostButton>
+                  <Trash2 size={ICON_SIZE.body} /></GhostButton>
               </div>
             </div>
 
@@ -37,13 +38,13 @@ export function CoursesPage() {
               {courses.map((c) => (
                 <GlassCard key={c.id} pad hoverable className="course-card">
                   <div className="card-hover-tools">
-                    <GhostButton title="Edit" onClick={() => setEditing(c)}><Pencil size={14} /></GhostButton>
+                    <GhostButton title="Edit" onClick={() => setEditing(c)}><Pencil size={ICON_SIZE.body} /></GhostButton>
                     <GhostButton className="danger" title="Delete"
                       onClick={() => {
                         if (!confirm(`Delete ${c.code}? This removes the course shell. You can also clear its tracker rows in the next prompt.`)) return;
                         if (confirm(`Also delete tracker rows under ${term.name}/${c.code}?`)) s.removeTrackerScope(`${term.name}/${c.code}`);
                         s.removeCourse(c.id);
-                      }}><Trash2 size={14} /></GhostButton>
+                      }}><Trash2 size={ICON_SIZE.body} /></GhostButton>
                   </div>
                   <Tag>{term.name}</Tag>
                   <div className="cc-code">{c.code}</div>
@@ -51,13 +52,13 @@ export function CoursesPage() {
                   <div className="cc-files">{c.files} files · {c.modules.length} modules</div>
                   <div className="cc-actions">
                     {c.link
-                      ? <a className="gbtn sm" href={c.link} target="_blank" rel="noreferrer">Open <ExternalLink size={13} /></a>
+                      ? <a className="gbtn sm" href={c.link} target="_blank" rel="noreferrer">Open <ExternalLink size={ICON_SIZE.body} /></a>
                       : <GButton size="sm" onClick={() => setEditing(c)}>Open</GButton>}
                   </div>
                 </GlassCard>
               ))}
               <div className="add-tile" onClick={() => setEditing("new")}>
-                <Plus size={16} /> Add course
+                <Plus size={ICON_SIZE.emphasis} /> Add course
               </div>
             </div>
           </div>
@@ -65,7 +66,7 @@ export function CoursesPage() {
       })}
 
       <div className="add-tile" onClick={() => setNewTerm(true)}>
-        <Plus size={16} /> Add term
+        <Plus size={ICON_SIZE.emphasis} /> Add term
       </div>
 
       {/* Course Modules accordion */}
@@ -85,7 +86,7 @@ export function CoursesPage() {
             return (
               <div key={c.id}>
                 <button className="acc-row" onClick={() => setExpanded(open ? null : c.id)}>
-                  {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  {open ? <ChevronDown size={ICON_SIZE.emphasis} /> : <ChevronRight size={ICON_SIZE.emphasis} />}
                   <span className="acc-title">{c.code}</span>
                   <Tag tone="neutral">{c.modules.length}</Tag>
                 </button>
@@ -104,7 +105,7 @@ export function CoursesPage() {
                               s.renameTrackerScope(oldScope, `${courseTermName}/${c.code}/${nextName}`);
                             }
                           }}>
-                          <Pencil size={12} />
+                          <Pencil size={ICON_SIZE.microInline} />
                         </button>
                         <button className="chip-x" onClick={() => {
                           if (!confirm(`Delete module "${m.name}" from ${c.code}?`)) return;
@@ -112,12 +113,12 @@ export function CoursesPage() {
                             s.removeTrackerScope(`${courseTermName}/${c.code}/${m.name}`);
                           }
                           s.removeModule(c.id, m.id);
-                        }}><X size={12} /></button>
+                        }}><X size={ICON_SIZE.microInline} /></button>
                       </span>
                     ))}
                     <button className="chip" style={{ borderStyle: "dashed", color: "var(--cyan)" }}
                       onClick={() => { const n = prompt(`Add module to ${c.code}`); if (n) s.addModule(c.id, n); }}>
-                      <Plus size={12} /> Add module
+                      <Plus size={ICON_SIZE.microInline} /> Add module
                     </button>
                   </div>
                 )}

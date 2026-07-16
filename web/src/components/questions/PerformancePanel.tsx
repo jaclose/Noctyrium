@@ -12,6 +12,7 @@ import { coachWeakness, resolveActiveProvider } from "../../lib/ai";
 import { GlassCard, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { accuracyTone } from "../../lib/library";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 
@@ -62,7 +63,7 @@ export function PerformancePanel({ onRetakeMissed }: { onRetakeMissed: (ids: str
         title="Performance"
         sub="Session history, weakest categories, error behavior, and what's due for another shot."
         action={provider && incorrectIds.length >= 3
-          ? <GhostButton disabled={coaching} onClick={() => void runCoach()}><Sparkles size={13} /> {coaching ? "Analyzing…" : "Coach"}</GhostButton>
+          ? <GhostButton disabled={coaching} onClick={() => void runCoach()}><Sparkles size={ICON_SIZE.body} /> {coaching ? "Analyzing…" : "Coach"}</GhostButton>
           : undefined}
       />
       {sessions.length === 0 ? (

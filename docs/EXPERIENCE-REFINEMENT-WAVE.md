@@ -30,7 +30,7 @@ recorded as done.
 | E2d | Old-palette ghost removal | **done 2026-07-15** — zero legacy literals in product code |
 | E2e | Depth/elevation long-tail: canonical shadow vocabulary + floating consolidation | **done 2026-07-15** — every literal now classified & explained |
 | E2f | Typography scale & rhythm — size/weight/leading/tracking tokens + product-wide migration | **done 2026-07-15** — independent Fable review: ACCEPT (doc-only fixes applied); no rendered flattening in 21 screenshots |
-| E2g | Icon language: optical sizing, stroke, alignment, interactive usage | queued |
+| E2g | Icon language: optical sizing, stroke, alignment, interactive usage | **done 2026-07-15** — 13 sizes → 5 ICON_SIZE tiers; Fable review: ACCEPT, all 563 rewrites verified |
 | E3 | Dashboard mission control (Welcome hierarchy + Command Brief presentation + focused widgets + identity) | queued |
 | E4 | Command Brief presentation refinement (spacing, hierarchy, feedback) | queued |
 | E5 | Question Bank noise reduction (dedupe controls, whitespace, grouping) | queued |
@@ -85,6 +85,58 @@ affected e2e) green. Daily-progress contribution visibility ("+45m Focus,
    (hairline ticks, underline caps), `50%`/`30%` circles, `inherit`,
    `--shell-radius` (26px app shell), the dev-only `design-preview.css`
    sandbox, and one inline 10px color dot in `HabitTrackerPage.tsx`.
+
+## E2g — Icon Language & Optical Consistency (implemented 2026-07-15)
+
+**Objective:** one optical icon language. Baseline `5c2f8a9`, clean tree.
+
+**Inventory:** single icon family already (lucide-react 0.460, stroke icons)
+— no mixed libraries. **Zero explicit `strokeWidth` on any lucide icon**: the
+product was already uniform on lucide's default (2); E2g documents that as the
+standard rather than inventing per-size optical strokes. (The 6 `strokeWidth`
+occurrences in product TSX are raw-SVG progress rings — Ring.tsx, Pomodoro,
+CourseTracker — a separate drawing system, not icons; reviewer-verified.) The sprawl was in
+**size**: 13 distinct values across ~574 numeric `size=` props in 65 files
+(14×186, 15×118, 13×103, 17×37, 12×35, 16×33, 18×27, 11×16, 20×12, plus
+one-offs 22/24/26/30), with no central definition.
+
+**Decision (JD-approved):** 5 tiers aligned with the E2f type scale, enforced
+via a constants module (`web/src/lib/iconSize.ts`, `ICON_SIZE`):
+`microInline 12` (chips/meta, pairs --fs-tiny/xs) · `body 14` (buttons/rows,
+pairs --fs-sm/base/md) · `emphasis 16` (section heads, pairs --fs-lg) ·
+`control 20` (top-bar/folder controls) · `display 24` (empty states/heroes).
+Collapse map: 11/12→micro; 13/14/15→body; 16/17/18→emphasis; 20→control;
+22/24/26→display. All shifts ±1–2px — the E2f rendered evidence already
+established ±1px is sub-perceptual at these scales. **Rule: never pass a
+literal number to a lucide `size` prop — pick the tier.**
+
+**Migration:** scripted, 563 props across 62 files rewritten to
+`size={ICON_SIZE.*}` + auto-inserted imports. Adoption: body 402 · emphasis
+93 · microInline 51 · control 12 · display 5. **Exemptions:** brand marks
+(`AxomMark` 26/30 — own scaling system), dev-only `DesignPreviewPage.tsx`,
+tests. (The import-inserter initially landed inside 5 multi-line import
+statements — caught immediately by typecheck, repaired; lesson recorded.)
+
+**Alignment/interactive idioms (audited, kept):** per-context CSS
+(`svg { flex: 0 0 auto; color: … }`) — icons inherit color semantically and
+are shrink-protected; no baseline hacks found; no change needed.
+
+**Gates:** typecheck ✓ (0 errors) · lint ✓ · vitest 804/806 (the two failures
+are the **documented pre-existing** JournalNotebook UTC-boundary flake,
+verified at baseline; daytime = 806/806) · e2e **6/6** ✓ · build ✓ ·
+diff-check ✓. Diff = 62 TSX + 1 new lib file; no CSS, schema, storage,
+parser, backup, or dependency change.
+
+**Acceptance:** independent Fable review returned **ACCEPT, commit as-is** —
+it verified **all 563 replacements pairwise against baseline** (difflib
+opcodes per file, not sampled): 563/563 correct per the collapse map, tally
+reconciles tier-for-tier (402/93/51/12/5), only the 2 exempt AxomMark numeric
+sizes remain, no typo tiers, all 62 import insertions between complete
+statements, non-icon SVG (Ring/Pomodoro/tracker) untouched. Rendered
+Dashboard/Question Bank/Reports at 1440×1000 dark: same-role icons read at
+one size per view; no giant/vanished/clipped/overflowing icons. Gates in its
+run: typecheck 0 errors · lint clean · vitest 804/806 (the pre-accepted
+UTC-boundary flake signature) · e2e 6/6 · build ✓.
 
 ## E2f — Typography Scale & Rhythm (done 2026-07-15)
 

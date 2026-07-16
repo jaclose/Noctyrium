@@ -3,6 +3,7 @@ import { Trophy, Flame, Layers, Users, Crown, TrendingUp, TrendingDown, Minus, L
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
 import { useStore } from "../lib/store";
 import { studyStreak, dayTotals, lastNDays, isoDate } from "../lib/scoring";
+import { ICON_SIZE } from "../lib/iconSize";
 
 type BoardId = "streaks" | "anki" | "hours";
 
@@ -73,7 +74,7 @@ export function LeaderboardsPage() {
     <>
       <GlassCard pad>
         <div className="row gap12" style={{ alignItems: "center" }}>
-          <span className="folder-icon" style={{ color: "var(--orange)" }}><Trophy size={20} /></span>
+          <span className="folder-icon" style={{ color: "var(--orange)" }}><Trophy size={ICON_SIZE.control} /></span>
           <div className="grow">
             <div style={{ fontSize: 18, fontWeight: 800 }}>Leaderboards</div>
             <div className="sub">Opt-in, friendly accountability — never a grind contest.</div>
@@ -84,23 +85,23 @@ export function LeaderboardsPage() {
 
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><Lock size={15} /> Opt-in sync — not live yet</span>
+        <span className="uc-badge"><Lock size={ICON_SIZE.body} /> Opt-in sync — not live yet</span>
         <div className="uc-inner">
           <div className="lb-tabs">
             {BOARDS.map((b) => {
               const I = b.icon;
               return (
                 <button type="button" key={b.id} className={`filter-pill ${board === b.id ? "on" : ""}`} onClick={() => setBoard(b.id)}>
-                  <I size={13} /> {b.label}
+                  <I size={ICON_SIZE.body} /> {b.label}
                 </button>
               );
             })}
           </div>
 
           <div className="lb-stat-strip">
-            <div className="lb-stat"><Trophy size={15} /><div><b>#{myRank}</b><span>your rank</span></div></div>
-            <div className="lb-stat"><config.icon size={15} /><div><b>{myValue}</b><span>your {config.unit}</span></div></div>
-            <div className="lb-stat"><Users size={15} /><div><b>{ranked.length}</b><span>in cohort</span></div></div>
+            <div className="lb-stat"><Trophy size={ICON_SIZE.body} /><div><b>#{myRank}</b><span>your rank</span></div></div>
+            <div className="lb-stat"><config.icon size={ICON_SIZE.body} /><div><b>{myValue}</b><span>your {config.unit}</span></div></div>
+            <div className="lb-stat"><Users size={ICON_SIZE.body} /><div><b>{ranked.length}</b><span>in cohort</span></div></div>
           </div>
 
           <div className="lb-podium">
@@ -108,7 +109,7 @@ export function LeaderboardsPage() {
               const place = p.rank;
               return (
                 <div key={p.name} className={`lb-podium-col p${place} ${p.you ? "you" : ""}`}>
-                  {place === 1 && <Crown size={18} className="lb-crown" />}
+                  {place === 1 && <Crown size={ICON_SIZE.emphasis} className="lb-crown" />}
                   <span className="lb-avatar">{p.you ? "YOU" : initials(p.name)}</span>
                   <b className="truncate">{p.name}</b>
                   <span className="lb-podium-val">{p.value.toLocaleString()}</span>
@@ -126,7 +127,7 @@ export function LeaderboardsPage() {
                 <span className="lb-avatar sm">{r.you ? "YOU" : initials(r.name)}</span>
                 <span className="grow truncate">{r.name}{r.you && <Tag tone="cyan">You</Tag>}</span>
                 <span className="lb-delta">
-                  {r.delta > 0 ? <TrendingUp size={14} className="up" /> : r.delta < 0 ? <TrendingDown size={14} className="down" /> : <Minus size={14} className="flat" />}
+                  {r.delta > 0 ? <TrendingUp size={ICON_SIZE.body} className="up" /> : r.delta < 0 ? <TrendingDown size={ICON_SIZE.body} className="down" /> : <Minus size={ICON_SIZE.body} className="flat" />}
                 </span>
                 <b className="lb-value">{r.value.toLocaleString()}<small> {config.unit}</small></b>
               </div>
@@ -147,7 +148,7 @@ export function LeaderboardsPage() {
             const I = t.icon;
             return (
               <div className="int-row" key={t.title}>
-                <span className="folder-icon"><I size={18} /></span>
+                <span className="folder-icon"><I size={ICON_SIZE.emphasis} /></span>
                 <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
                 <Tag tone="neutral">Planned</Tag>
               </div>

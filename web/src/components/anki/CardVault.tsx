@@ -13,6 +13,7 @@ import {
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Modal, Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const CARD_TYPES = Object.keys(CARD_TYPE_LABEL) as AnkiCardType[];
 
@@ -59,8 +60,8 @@ export function CardVault() {
         sub={`${cards.length} cards · ${dueCards(cards).length} due · quality flags run on every save`}
         action={
           <div className="row">
-            <GhostButton onClick={exportTsv} disabled={!cards.length}><Download size={14} /> Export TSV</GhostButton>
-            <GButton size="sm" variant="primary" onClick={() => setCreating(true)}><Plus size={14} /> New card</GButton>
+            <GhostButton onClick={exportTsv} disabled={!cards.length}><Download size={ICON_SIZE.body} /> Export TSV</GhostButton>
+            <GButton size="sm" variant="primary" onClick={() => setCreating(true)}><Plus size={ICON_SIZE.body} /> New card</GButton>
           </div>
         }
       />
@@ -92,9 +93,9 @@ export function CardVault() {
                 aria-label={card.suspended ? "Unsuspend card" : "Suspend card"}
                 onClick={() => s.updateAnkiCard(card.id, { suspended: !card.suspended })}
               >
-                {card.suspended ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
+                {card.suspended ? <PlayCircle size={ICON_SIZE.body} /> : <PauseCircle size={ICON_SIZE.body} />}
               </GhostButton>
-              <GhostButton aria-label="Delete card" onClick={() => s.removeAnkiCard(card.id)}><Trash2 size={14} /></GhostButton>
+              <GhostButton aria-label="Delete card" onClick={() => s.removeAnkiCard(card.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
             </div>
           ))}
           {visible.length > 60 && <div className="sub">Showing 60 of {visible.length}.</div>}

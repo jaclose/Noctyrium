@@ -16,6 +16,7 @@ import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from ".
 import { Field, SelectField, TextAreaField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import { hashGenerationInput, saveAiGeneration } from "../../lib/aiGenerations";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const STYLES: Array<{ id: CardGenerationStyle; label: string }> = [
   { id: "concise", label: "Concise" },
@@ -134,7 +135,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
         <EmptyState
           title="No AI provider is active"
           hint={health?.detail ?? "Checking provider…"}
-          icon={<Sparkles size={18} />}
+          icon={<Sparkles size={ICON_SIZE.emphasis} />}
         />
       ) : (
         <div className="stack" style={{ gap: 12 }}>
@@ -151,7 +152,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
           </div>
           <div className="row">
             <GButton variant="primary" disabled={busy || !material.trim()} onClick={generate}>
-              {busy ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} />} {busy ? "Generating…" : "Generate drafts"}
+              {busy ? <RefreshCw size={ICON_SIZE.body} className="spin" /> : <Sparkles size={ICON_SIZE.body} />} {busy ? "Generating…" : "Generate drafts"}
             </GButton>
           </div>
         </div>
@@ -168,7 +169,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
           <div className="spread">
             <span className="field-label">Review {drafts.length} drafts — uncheck what you don't want</span>
             <GButton size="sm" variant="primary" disabled={!drafts.some((d) => d.accepted)} onClick={saveAccepted}>
-              <Check size={14} /> Save {drafts.filter((d) => d.accepted).length} to vault
+              <Check size={ICON_SIZE.body} /> Save {drafts.filter((d) => d.accepted).length} to vault
             </GButton>
           </div>
           {drafts.map((d, i) => (
@@ -186,7 +187,7 @@ export function AiCardGenerator({ onOpenAiSettings }: { onOpenAiSettings: () => 
                 )}
               </button>
               <Tag tone="purple">AI</Tag>
-              {d.accepted ? <Check size={15} /> : <X size={15} className="dim" />}
+              {d.accepted ? <Check size={ICON_SIZE.body} /> : <X size={ICON_SIZE.body} className="dim" />}
             </div>
           ))}
         </div>

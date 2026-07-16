@@ -6,6 +6,7 @@ import { Field, SelectField } from "../components/ui/Modal";
 import { exportActivityWorkbook } from "../lib/activityExport";
 import { prettyDate } from "../lib/scoring";
 import type { StudyLog } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export function ActivityHistoryPage() {
   const logs = useStore((s) => s.logs);
@@ -25,7 +26,7 @@ export function ActivityHistoryPage() {
     <div className="stack gap16">
       <GlassCard pad>
         <PanelHeader title="Activity History" sub="Every local study event with filters and spreadsheet export"
-          action={<GButton size="sm" variant="primary" onClick={() => exportActivityWorkbook(filtered)} disabled={!filtered.length}><Download size={14} /> Export .xlsx</GButton>} />
+          action={<GButton size="sm" variant="primary" onClick={() => exportActivityWorkbook(filtered)} disabled={!filtered.length}><Download size={ICON_SIZE.body} /> Export .xlsx</GButton>} />
         <div className="activity-history-filters">
           <SelectField label="Activity type" value={type} onChange={(e) => setType(e.target.value)}>
             {types.map((item) => <option key={item}>{item}</option>)}
@@ -44,7 +45,7 @@ export function ActivityHistoryPage() {
       <GlassCard pad>
         <PanelHeader title="Filtered ledger" sub="Newest first" action={<Tag tone={filtered.length ? "cyan" : "neutral"}>{filtered.length} event{filtered.length === 1 ? "" : "s"}</Tag>} />
         {!filtered.length ? (
-          <EmptyState icon={<History size={24} />} title="No activity matches" hint="Clear filters or log study time from Productivity." />
+          <EmptyState icon={<History size={ICON_SIZE.display} />} title="No activity matches" hint="Clear filters or log study time from Productivity." />
         ) : (
           <div className="activity-history-list">
             {filtered.slice().sort((a, b) => b.ts.localeCompare(a.ts)).map((log) => <ActivityRow key={log.id} log={log} />)}

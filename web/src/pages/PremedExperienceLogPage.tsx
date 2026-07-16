@@ -5,14 +5,15 @@ import { GlassCard, GButton, PanelHeader, Tag, EmptyState } from "../components/
 import { exportPremedExperienceWorkbook } from "../lib/premedExport";
 import { premedEvidenceStrength } from "../lib/premedScoring";
 import type { PremedExperienceEntry, PremedExperienceKind } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const TABS: Array<"Overview" | PremedExperienceKind> = ["Overview", "Clinical", "Service", "Research", "Shadowing", "Leadership"];
 const ICONS: Record<PremedExperienceKind, JSX.Element> = {
-  Clinical: <Stethoscope size={16} />,
-  Service: <Users size={16} />,
-  Research: <FlaskConical size={16} />,
-  Shadowing: <Eye size={16} />,
-  Leadership: <Trophy size={16} />,
+  Clinical: <Stethoscope size={ICON_SIZE.emphasis} />,
+  Service: <Users size={ICON_SIZE.emphasis} />,
+  Research: <FlaskConical size={ICON_SIZE.emphasis} />,
+  Shadowing: <Eye size={ICON_SIZE.emphasis} />,
+  Leadership: <Trophy size={ICON_SIZE.emphasis} />,
 };
 
 export function PremedExperienceLogPage() {
@@ -26,7 +27,7 @@ export function PremedExperienceLogPage() {
     <div className="stack gap16">
       <GlassCard pad>
         <PanelHeader title="Pre-Med Experience Log" sub="Clinical, service, research, shadowing, leadership, verification, reflections, and evidence"
-          action={<GButton size="sm" variant="primary" onClick={() => exportPremedExperienceWorkbook(entries)} disabled={!entries.length}><Download size={14} /> Export .xlsx</GButton>} />
+          action={<GButton size="sm" variant="primary" onClick={() => exportPremedExperienceWorkbook(entries)} disabled={!entries.length}><Download size={ICON_SIZE.body} /> Export .xlsx</GButton>} />
         <div className="filter-bar" style={{ marginTop: 12 }}>
           {TABS.map((item) => (
             <button key={item} type="button" className={`filter-pill ${tab === item ? "on" : ""}`} onClick={() => setTab(item)}>{item}</button>
@@ -103,7 +104,7 @@ function ExperienceRow({ entry }: { entry: PremedExperienceEntry }) {
         {!!entry.competencyTags?.length && <small>{entry.competencyTags.map((tag) => `#${tag}`).join(" ")}</small>}
       </span>
       <span className="premed-log-evidence">
-        {entry.verified && <Tag tone="green"><ShieldCheck size={11} /> Verified</Tag>}
+        {entry.verified && <Tag tone="green"><ShieldCheck size={ICON_SIZE.microInline} /> Verified</Tag>}
         {entry.evidenceLink && <a className="gbtn tiny" href={entry.evidenceLink} target="_blank" rel="noreferrer noopener">Evidence</a>}
         {entry.notes && <small>{entry.notes}</small>}
       </span>

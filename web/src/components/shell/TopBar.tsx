@@ -4,6 +4,7 @@ import { GButton } from "../ui/primitives";
 import { useStore } from "../../lib/store";
 import { useUi } from "../../lib/uiStore";
 import { ClockControl } from "./ClockControl";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function TopBar({
   title, subtitle, onMenu, menuButtonRef, drawerOpen, onRefresh, refreshing,
@@ -29,7 +30,7 @@ export function TopBar({
         aria-controls="app-sidebar"
         aria-expanded={drawerOpen}
       >
-        <Menu size={20} />
+        <Menu size={ICON_SIZE.control} />
       </button>
       <div className="topbar-heading">
         <div className="tb-title">{title}</div>
@@ -42,7 +43,7 @@ export function TopBar({
           onOpenPreferences={() => useUi.getState().requestSettings("personalization")}
         />
         <GButton className="topbar-refresh" onClick={onRefresh}>
-          <RotateCw size={15} className={refreshing ? "spin" : ""} />
+          <RotateCw size={ICON_SIZE.body} className={refreshing ? "spin" : ""} />
           <span>{refreshing ? "Refreshing" : "Refresh"}</span>
         </GButton>
       </div>

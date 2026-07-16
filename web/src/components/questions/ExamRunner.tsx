@@ -23,6 +23,7 @@ import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
 import { QuizFeedback } from "./QuizFeedback";
 import { accuracyTone } from "../../lib/library";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -364,7 +365,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         footer={
           <>
             <GhostButton onClick={saveAsBlock}>Save as block</GhostButton>
-            <GButton variant="primary" onClick={begin}><Play size={14} /> Start {mode} block</GButton>
+            <GButton variant="primary" onClick={begin}><Play size={ICON_SIZE.body} /> Start {mode} block</GButton>
           </>
         }>
         <div className="row" style={{ gap: 6 }} role="group" aria-label="Block mode">
@@ -482,7 +483,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                     {/* Import owns cleanup; display must preserve legitimate user edits. */}
                     {q.explanation && <span className="sub">{q.explanation.trim()}</span>}
                     <div className="row">
-                      <GhostButton onClick={() => makeRepairCard(q)}><WandSparkles size={13} /> Repair card</GhostButton>
+                      <GhostButton onClick={() => makeRepairCard(q)}><WandSparkles size={ICON_SIZE.body} /> Repair card</GhostButton>
                     </div>
                   </div>
                 </div>
@@ -510,9 +511,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         mode === "tutor"
           ? (
             <>
-              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={14} /> Previous</GhostButton>
+              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={ICON_SIZE.body} /> Previous</GhostButton>
               <GhostButton onClick={toggleFlag} aria-pressed={answer?.flagged ?? false}>
-                <Flag size={13} /> {answer?.flagged ? "Flagged" : "Mark review"}
+                <Flag size={ICON_SIZE.body} /> {answer?.flagged ? "Flagged" : "Mark review"}
               </GhostButton>
               {!revealed
                 ? <GButton variant="primary" disabled={!picked} onClick={submitTutor}>Check answer</GButton>
@@ -521,7 +522,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           )
           : (
             <>
-              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={14} /> Previous</GhostButton>
+              <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={ICON_SIZE.body} /> Previous</GhostButton>
               <GhostButton onClick={() => finishBlock()}>End block</GhostButton>
               <GButton variant="primary" disabled={!picked} onClick={submitExamAndNext}>
                 {index + 1 >= pool.length ? "Submit & finish" : "Submit & next"}
@@ -542,7 +543,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         {question.sourcePage && <Tag tone="neutral">p.{question.sourcePage}</Tag>}
         {question.bank && <span className="sub truncate" style={{ maxWidth: 200 }}>{question.bank}</span>}
         <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
-          <Flag size={13} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
+          <Flag size={ICON_SIZE.body} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
         </GhostButton>
       </div>
 
@@ -630,9 +631,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
             {provider && (
               <>
-                <GhostButton disabled={aiBusy} onClick={() => runAi("simple")}><Sparkles size={13} /> Explain simply</GhostButton>
-                {!isCorrect && picked && <GhostButton disabled={aiBusy} onClick={() => runAi("why-wrong")}><Sparkles size={13} /> Why was I wrong?</GhostButton>}
-                <GhostButton disabled={aiBusy} onClick={() => runAi("hook")}><Sparkles size={13} /> Memory hook</GhostButton>
+                <GhostButton disabled={aiBusy} onClick={() => runAi("simple")}><Sparkles size={ICON_SIZE.body} /> Explain simply</GhostButton>
+                {!isCorrect && picked && <GhostButton disabled={aiBusy} onClick={() => runAi("why-wrong")}><Sparkles size={ICON_SIZE.body} /> Why was I wrong?</GhostButton>}
+                <GhostButton disabled={aiBusy} onClick={() => runAi("hook")}><Sparkles size={ICON_SIZE.body} /> Memory hook</GhostButton>
               </>
             )}
           </div>

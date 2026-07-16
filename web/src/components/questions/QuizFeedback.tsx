@@ -1,6 +1,7 @@
 import { AlertTriangle, BookMarked, FileSearch, PencilLine, WandSparkles } from "lucide-react";
 import { questionMappingStatus, type QuestionRecord } from "../../lib/questions";
 import { GhostButton } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function QuizFeedback({
   question,
@@ -83,11 +84,11 @@ export function QuizFeedback({
       <div className="feedback-repair" aria-label="Repair this question">
         <span className="field-label">Repair</span>
         <div className="row wrap gap6">
-          {onRepairCard && <GhostButton onClick={onRepairCard}><WandSparkles size={13} /> Repair card</GhostButton>}
-          {onAddReview && <GhostButton onClick={onAddReview}><BookMarked size={13} /> Add to review</GhostButton>}
-          {onMarkExplanationWrong && <GhostButton onClick={onMarkExplanationWrong}><AlertTriangle size={13} /> Explanation wrong</GhostButton>}
-          {onMarkAnswerWrong && <GhostButton onClick={onMarkAnswerWrong}><AlertTriangle size={13} /> Answer wrong</GhostButton>}
-          {onEditMapping && <GhostButton onClick={onEditMapping}><PencilLine size={13} /> Edit mapping</GhostButton>}
+          {onRepairCard && <GhostButton onClick={onRepairCard}><WandSparkles size={ICON_SIZE.body} /> Repair card</GhostButton>}
+          {onAddReview && <GhostButton onClick={onAddReview}><BookMarked size={ICON_SIZE.body} /> Add to review</GhostButton>}
+          {onMarkExplanationWrong && <GhostButton onClick={onMarkExplanationWrong}><AlertTriangle size={ICON_SIZE.body} /> Explanation wrong</GhostButton>}
+          {onMarkAnswerWrong && <GhostButton onClick={onMarkAnswerWrong}><AlertTriangle size={ICON_SIZE.body} /> Answer wrong</GhostButton>}
+          {onEditMapping && <GhostButton onClick={onEditMapping}><PencilLine size={ICON_SIZE.body} /> Edit mapping</GhostButton>}
         </div>
       </div>
     </section>
@@ -129,7 +130,7 @@ export function QuestionProvenance({
     <section className="question-provenance" aria-labelledby={`question-provenance-${question.id}`}>
       <div className="row spread wrap gap6">
         <div className="stack" style={{ gap: 2 }}>
-          <b id={`question-provenance-${question.id}`}><FileSearch size={14} /> Source</b>
+          <b id={`question-provenance-${question.id}`}><FileSearch size={ICON_SIZE.body} /> Source</b>
           <span className="sub">{sourceTitle ?? question.citation ?? question.bank ?? "Imported source"}</span>
         </div>
         {onSourceLooksWrong && <GhostButton onClick={onSourceLooksWrong}>This source looks wrong</GhostButton>}

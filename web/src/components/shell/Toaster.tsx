@@ -1,6 +1,7 @@
 // Renders the global toast stack (bottom-right). Mounted once at the app root.
 import { CheckCircle2, Info, AlertTriangle, X, ArrowRight } from "lucide-react";
 import { useToasts } from "../../lib/toast";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const ICON = {
   success: CheckCircle2,
@@ -24,7 +25,7 @@ export function Toaster() {
             : [];
         return (
           <div className={`toast toast-${toast.tone}`} key={toast.id} role="status">
-            <span className="toast-icon"><Icon size={17} /></span>
+            <span className="toast-icon"><Icon size={ICON_SIZE.emphasis} /></span>
             <div className="toast-body">
               <b>{toast.title}</b>
               {toast.body && <span>{toast.body}</span>}
@@ -37,7 +38,7 @@ export function Toaster() {
                       key={`${action.label}-${index}`}
                       onClick={() => { action.onAction?.(); dismiss(toast.id); }}
                     >
-                      {action.label} <ArrowRight size={13} aria-hidden="true" />
+                      {action.label} <ArrowRight size={ICON_SIZE.body} aria-hidden="true" />
                     </a>
                   ) : (
                     <button
@@ -46,14 +47,14 @@ export function Toaster() {
                       key={`${action.label}-${index}`}
                       onClick={() => { action.onAction?.(); dismiss(toast.id); }}
                     >
-                      {action.label} <ArrowRight size={13} aria-hidden="true" />
+                      {action.label} <ArrowRight size={ICON_SIZE.body} aria-hidden="true" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
             <button type="button" className="toast-close" onClick={() => dismiss(toast.id)} aria-label={`Dismiss ${toast.title}`}>
-              <X size={14} aria-hidden="true" />
+              <X size={ICON_SIZE.body} aria-hidden="true" />
             </button>
           </div>
         );

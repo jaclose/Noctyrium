@@ -7,6 +7,7 @@ import type { BlueprintDefinition } from "../../lib/blueprints";
 import { blueprintResourcePayload, blueprintTrackerRows } from "../../lib/blueprints";
 import { normalizeResourceUrl } from "../../lib/resourceUtils";
 import { trackerItemKey } from "../../lib/pathUtils";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function BlueprintCommand({
   blueprints,
@@ -63,13 +64,13 @@ export function BlueprintCommand({
           return (
             <details className={`blueprint-accordion ${active ? "active" : ""}`} key={blueprint.id} open={active}>
               <summary>
-                <span className="blueprint-icon"><Brain size={17} /></span>
+                <span className="blueprint-icon"><Brain size={ICON_SIZE.emphasis} /></span>
                 <span className="grow">
                   <b>{blueprint.title}</b>
                   <small>{blueprint.summary}</small>
                 </span>
                 {active && <Tag tone="cyan">Active</Tag>}
-                <ChevronDown size={15} />
+                <ChevronDown size={ICON_SIZE.body} />
               </summary>
               <div className="blueprint-body">
                 <div className="blueprint-meaning">
@@ -79,23 +80,23 @@ export function BlueprintCommand({
                 <div className="row wrap gap8">
                   {blueprint.focusId && (
                     <GButton size="sm" variant={active ? "default" : "primary"} onClick={() => activate(blueprint)}>
-                      <CheckCircle2 size={14} /> {active ? "Subscribed" : "Subscribe / activate"}
+                      <CheckCircle2 size={ICON_SIZE.body} /> {active ? "Subscribed" : "Subscribe / activate"}
                     </GButton>
                   )}
                   <GButton size="sm" onClick={() => installTrackerRows(blueprint)}>
-                    <ListPlus size={14} /> Install rows ({installedRows}/{rows.length})
+                    <ListPlus size={ICON_SIZE.body} /> Install rows ({installedRows}/{rows.length})
                   </GButton>
                   <GButton size="sm" onClick={() => saveResources(blueprint)}>
-                    <Plus size={14} /> Save resources ({savedResources}/{blueprint.resources.length})
+                    <Plus size={ICON_SIZE.body} /> Save resources ({savedResources}/{blueprint.resources.length})
                   </GButton>
                   <a className="gbtn sm" href={blueprint.sourceUrl} target="_blank" rel="noreferrer noopener">
-                    Source <ExternalLink size={13} />
+                    Source <ExternalLink size={ICON_SIZE.body} />
                   </a>
                 </div>
                 <div className="blueprint-section-list">
                   {blueprint.sections.map((section) => (
                     <details className="blueprint-section" key={section.title}>
-                      <summary><b>{section.title}</b><span>{section.source}</span><ChevronDown size={14} /></summary>
+                      <summary><b>{section.title}</b><span>{section.source}</span><ChevronDown size={ICON_SIZE.body} /></summary>
                       <div className="blueprint-items">
                         {section.items.map((item) => (
                           <div className="blueprint-item" key={item.title}>

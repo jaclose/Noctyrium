@@ -15,6 +15,7 @@ import {
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
 import { Field, SelectField } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const MODES = Object.keys(MODE_META) as QuestionMode[];
 const NO_QUESTIONS: QuestionRecord[] = [];
@@ -106,7 +107,7 @@ export function BankBrowser({
         action={
           <div className="row" style={{ gap: 6 }}>
             <GhostButton onClick={toggleAll}>
-              {allVisibleSelected ? <SquareCheck size={14} /> : <Square size={14} />} {allVisibleSelected ? "Clear" : "Select shown"}
+              {allVisibleSelected ? <SquareCheck size={ICON_SIZE.body} /> : <Square size={ICON_SIZE.body} />} {allVisibleSelected ? "Clear" : "Select shown"}
             </GhostButton>
           </div>
         }
@@ -114,7 +115,7 @@ export function BankBrowser({
 
       <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <div className="row grow" style={{ gap: 6, minWidth: 220 }}>
-          <Search size={15} className="dim" />
+          <Search size={ICON_SIZE.body} className="dim" />
           <input className="field grow" placeholder="Search stems, options, topics, tags…" aria-label="Search question bank"
             value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
@@ -144,7 +145,7 @@ export function BankBrowser({
       {selected.size > 0 && (
         <div className="import-draft" style={{ marginBottom: 10 }}>
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <Tag tone="cyan"><Tags size={12} /> {selected.size} selected</Tag>
+            <Tag tone="cyan"><Tags size={ICON_SIZE.microInline} /> {selected.size} selected</Tag>
             <SelectField label="" value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
               <option value="">Set category…</option>
               {QUESTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -168,7 +169,7 @@ export function BankBrowser({
           {visible.map((q) => (
             <div key={q.id} className={`question-row ${selected.has(q.id) ? "selected" : ""}`}>
               <button className="qrow-check" aria-label={selected.has(q.id) ? "Deselect" : "Select"} onClick={() => toggle(q.id)}>
-                {selected.has(q.id) ? <SquareCheck size={15} /> : <Square size={15} className="dim" />}
+                {selected.has(q.id) ? <SquareCheck size={ICON_SIZE.body} /> : <Square size={ICON_SIZE.body} className="dim" />}
               </button>
               <button className="grow truncate qrow-open" onClick={() => onOpen(q)}>{q.stem}</button>
               {(() => {

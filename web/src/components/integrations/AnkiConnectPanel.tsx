@@ -11,6 +11,7 @@ import {
   ANKI_DIAGNOSTIC_TEMPLATE,
 } from "../../lib/ankiConnect";
 import type { AnkiDiagnosticStatus, AnkiDiagnosticStepId, AnkiSnapshot } from "../../lib/ankiConnect";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 type Status = "idle" | "connecting" | "connected" | "error";
 
@@ -112,7 +113,7 @@ export function AnkiConnectPanel() {
         sub="Connect the desktop Anki app through AnkiConnect. It is a local HTTP bridge, not a public HTTPS API."
         action={
           status === "connected"
-            ? <Tag tone="green"><CheckCircle2 size={12} /> Connected</Tag>
+            ? <Tag tone="green"><CheckCircle2 size={ICON_SIZE.microInline} /> Connected</Tag>
             : status === "error"
               ? <Tag tone="orange">Not connected</Tag>
               : <Tag tone="neutral">Available</Tag>
@@ -120,7 +121,7 @@ export function AnkiConnectPanel() {
       />
 
       <div className="anki-not-working-note">
-        <AlertTriangle size={15} />
+        <AlertTriangle size={ICON_SIZE.body} />
         <span>
           Anki sync is not considered working yet. This panel is now a local diagnostic path only until the connection is user-confirmed on your machine.
         </span>
@@ -142,20 +143,20 @@ export function AnkiConnectPanel() {
             placeholder={DEFAULT_ANKI_ENDPOINT} spellCheck={false} />
         </label>
         <GButton variant="primary" onClick={() => connect()} disabled={status === "connecting"}>
-          {status === "connecting" ? <><RefreshCw size={14} className="spin" /> Connecting…</> : <><Plug size={14} /> Connect</>}
+          {status === "connecting" ? <><RefreshCw size={ICON_SIZE.body} className="spin" /> Connecting…</> : <><Plug size={ICON_SIZE.body} /> Connect</>}
         </GButton>
       </div>
 
       <div className="anki-quiet-actions">
-        <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={13} /></a>
+        <a className="gbtn sm" href={endpoint} target="_blank" rel="noreferrer noopener">Open local check <ExternalLink size={ICON_SIZE.body} /></a>
         <details className="anki-advanced">
           <summary>Setup details</summary>
           <div className="anki-advanced-body">
             <div><b>Current origin</b><span className="mono">{origin}</span></div>
             <div className="row wrap gap6">
-              <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={13} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
-              <GButton size="sm" onClick={() => copyText(corsConfigSnippet, "config")}><Copy size={13} /> {copied === "config" ? "Copied" : "Copy config"}</GButton>
-              <GButton size="sm" onClick={() => copyText(localLaunchCommand, "local")}><Copy size={13} /> {copied === "local" ? "Copied" : "Copy local command"}</GButton>
+              <GButton size="sm" onClick={() => copyText(origin, "origin")}><Copy size={ICON_SIZE.body} /> {copied === "origin" ? "Copied" : "Copy origin"}</GButton>
+              <GButton size="sm" onClick={() => copyText(corsConfigSnippet, "config")}><Copy size={ICON_SIZE.body} /> {copied === "config" ? "Copied" : "Copy config"}</GButton>
+              <GButton size="sm" onClick={() => copyText(localLaunchCommand, "local")}><Copy size={ICON_SIZE.body} /> {copied === "local" ? "Copied" : "Copy local command"}</GButton>
             </div>
           </div>
         </details>
@@ -177,7 +178,7 @@ export function AnkiConnectPanel() {
 
       {status === "error" && error && (
         <div className="anki-setup compact">
-          <div className="anki-setup-head"><AlertTriangle size={15} /> <b>{failureKindLabel(error.kind)}</b></div>
+          <div className="anki-setup-head"><AlertTriangle size={ICON_SIZE.body} /> <b>{failureKindLabel(error.kind)}</b></div>
           <p className="sub">{error.message}</p>
           <div className="anki-next-steps">
             <span>1. Open Anki desktop and keep it running.</span>
@@ -197,15 +198,15 @@ export function AnkiConnectPanel() {
 
           <div className="anki-sync-row">
             <GButton variant={pending > 0 ? "primary" : "default"} onClick={() => doSync(snapshot.today)} disabled={pending <= 0}>
-              <Wand2 size={14} /> {pending > 0 ? `Sync ${pending} review${pending === 1 ? "" : "s"} to productivity` : "Productivity is in sync"}
+              <Wand2 size={ICON_SIZE.body} /> {pending > 0 ? `Sync ${pending} review${pending === 1 ? "" : "s"} to productivity` : "Productivity is in sync"}
             </GButton>
-            <GButton size="sm" onClick={refresh} disabled={busy}><RefreshCw size={14} className={busy ? "spin" : ""} /> Refresh</GButton>
+            <GButton size="sm" onClick={refresh} disabled={busy}><RefreshCw size={ICON_SIZE.body} className={busy ? "spin" : ""} /> Refresh</GButton>
             <label className="anki-autosync">
               <input type="checkbox" checked={autoSync} onChange={(e) => setAutoSyncState(e.target.checked)} />
               <span>Auto-sync on connect</span>
             </label>
           </div>
-          {syncNote && <div className="anki-sync-note"><CheckCircle2 size={13} /> {syncNote}</div>}
+          {syncNote && <div className="anki-sync-note"><CheckCircle2 size={ICON_SIZE.body} /> {syncNote}</div>}
 
           {reviewedRecent.length > 0 && (
             <div className="anki-byday">
@@ -226,7 +227,7 @@ export function AnkiConnectPanel() {
           <div className="anki-deck-list">
             {snapshot.decks.slice(0, 8).map((deck) => (
               <div className="anki-deck-row" key={deck.deck_id}>
-                <span className="anki-deck-mark"><Layers size={15} /></span>
+                <span className="anki-deck-mark"><Layers size={ICON_SIZE.body} /></span>
                 <div className="grow"><b>{deck.name}</b><span>{deck.total_in_deck} cards</span></div>
                 <span className="anki-deck-counts">
                   <em className="due">{deck.review_count}</em>

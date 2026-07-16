@@ -13,6 +13,7 @@ import {
 import type { BriefSignals } from "../../lib/commandBrief";
 import { Modal } from "../ui/Modal";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const BUCKETS: RecoveryBucket[] = ["non-negotiable", "high-yield", "deferrable", "drop-for-now"];
 const BUCKET_TONE: Record<RecoveryBucket, "red" | "green" | "neutral" | "purple"> = {
@@ -115,14 +116,14 @@ export function RecoveryPanel({
       footer={
         <>
           <GhostButton onClick={() => setShowCalculation((shown) => !shown)} aria-expanded={showCalculation}>
-            {showCalculation ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Show calculation
+            {showCalculation ? <ChevronUp size={ICON_SIZE.body} /> : <ChevronDown size={ICON_SIZE.body} />} Show calculation
           </GhostButton>
           {activePlan && <GhostButton onClick={restore}>Restore original plan</GhostButton>}
           <GhostButton onClick={keepPlan}>Keep plan</GhostButton>
           <GhostButton onClick={dismissToday}>Dismiss for today</GhostButton>
           {edited && <GhostButton onClick={reset}>Reset preview</GhostButton>}
           <GButton onClick={accept}>{edited ? "Use edited reduced plan" : "Reduce load"}</GButton>
-          <GButton variant="primary" onClick={startFirstStep}><Play size={14} /> Reduce load &amp; start 25 min</GButton>
+          <GButton variant="primary" onClick={startFirstStep}><Play size={ICON_SIZE.body} /> Reduce load &amp; start 25 min</GButton>
         </>
       }
     >

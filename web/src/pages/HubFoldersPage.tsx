@@ -6,6 +6,7 @@ import { GlassCard, GButton, GhostButton, EmptyState } from "../components/ui/pr
 import { Modal, Field, SelectField } from "../components/ui/Modal";
 import { Icon, ICON_NAMES } from "../lib/icons";
 import type { HubFolder } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export function HubFoldersPage() {
   const s = useStore();
@@ -30,7 +31,7 @@ export function HubFoldersPage() {
             <div className="panel-title">Hub Folders</div>
             <div className="panel-sub">High-level command layer for drives, repos, projects, study folders, and quick launch destinations</div>
           </div>
-          <GButton variant="primary" size="sm" onClick={() => setEditing("new")}><Plus size={15} /> Add folder</GButton>
+          <GButton variant="primary" size="sm" onClick={() => setEditing("new")}><Plus size={ICON_SIZE.body} /> Add folder</GButton>
         </div>
       </GlassCard>
 
@@ -40,15 +41,15 @@ export function HubFoldersPage() {
         {activeFolders.map((f, index) => (
           <GlassCard pad hoverable key={f.id} className="folder-card">
             <div className="card-hover-tools">
-              <GhostButton title="Move up" onClick={() => move(f, -1)} disabled={index === 0}><ArrowUp size={14} /></GhostButton>
-              <GhostButton title="Move down" onClick={() => move(f, 1)} disabled={index === activeFolders.length - 1}><ArrowDown size={14} /></GhostButton>
+              <GhostButton title="Move up" onClick={() => move(f, -1)} disabled={index === 0}><ArrowUp size={ICON_SIZE.body} /></GhostButton>
+              <GhostButton title="Move down" onClick={() => move(f, 1)} disabled={index === activeFolders.length - 1}><ArrowDown size={ICON_SIZE.body} /></GhostButton>
               <GhostButton title={f.favorite ? "Unfavorite" : "Favorite"} onClick={() => s.updateFolder(f.id, { favorite: !f.favorite })}>
-                <Star size={14} fill={f.favorite ? "currentColor" : "none"} />
+                <Star size={ICON_SIZE.body} fill={f.favorite ? "currentColor" : "none"} />
               </GhostButton>
-              <GhostButton onClick={() => setEditing(f)}><Pencil size={14} /></GhostButton>
-              <GhostButton title="Archive" onClick={() => s.updateFolder(f.id, { archived: true })}><Archive size={14} /></GhostButton>
+              <GhostButton onClick={() => setEditing(f)}><Pencil size={ICON_SIZE.body} /></GhostButton>
+              <GhostButton title="Archive" onClick={() => s.updateFolder(f.id, { archived: true })}><Archive size={ICON_SIZE.body} /></GhostButton>
             </div>
-            <span className="folder-icon" style={{ color: f.color || "var(--cyan)" }}><Icon name={f.icon} size={20} /></span>
+            <span className="folder-icon" style={{ color: f.color || "var(--cyan)" }}><Icon name={f.icon} size={ICON_SIZE.control} /></span>
             <div className="fc-name">{f.name}</div>
             {f.description && <div className="fc-desc">{f.description}</div>}
             {f.localPath && <div className="fc-path truncate">{f.localPath}</div>}
@@ -58,13 +59,13 @@ export function HubFoldersPage() {
             </div>
             {(f.link || f.localPath) && (
               <a className="gbtn sm" href={f.link || fileUrl(f.localPath)} target="_blank" rel="noreferrer" style={{ marginTop: "auto" }}>
-                Open <ExternalLink size={13} />
+                Open <ExternalLink size={ICON_SIZE.body} />
               </a>
             )}
           </GlassCard>
         ))}
         <div className="add-tile" onClick={() => setEditing("new")} style={{ minHeight: 132 }}>
-          <Plus size={16} /> Add folder
+          <Plus size={ICON_SIZE.emphasis} /> Add folder
         </div>
       </div>
 
@@ -79,10 +80,10 @@ export function HubFoldersPage() {
           <div className="stack gap8" style={{ marginTop: 10 }}>
             {archivedFolders.map((folder) => (
               <div className="dense-row" key={folder.id}>
-                <span className="folder-icon" style={{ color: folder.color || "var(--cyan)" }}><Icon name={folder.icon} size={17} /></span>
+                <span className="folder-icon" style={{ color: folder.color || "var(--cyan)" }}><Icon name={folder.icon} size={ICON_SIZE.emphasis} /></span>
                 <div className="grow"><b>{folder.name}</b><span className="sub">{folder.description || folder.link || folder.localPath || "Archived shortcut"}</span></div>
                 <GButton size="sm" onClick={() => s.updateFolder(folder.id, { archived: false })}>Restore</GButton>
-                <GhostButton className="danger" title="Remove permanently" onClick={() => confirm(`Remove “${folder.name}” from Hub Folders?`) && s.removeFolder(folder.id)}><Trash2 size={14} /></GhostButton>
+                <GhostButton className="danger" title="Remove permanently" onClick={() => confirm(`Remove “${folder.name}” from Hub Folders?`) && s.removeFolder(folder.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
               </div>
             ))}
           </div>

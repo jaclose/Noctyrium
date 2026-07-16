@@ -3,6 +3,7 @@ import {
   FlaskConical, FileText, HandHeart, Microscope, Mail, Award,
 } from "lucide-react";
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const TRACKS = [
   { icon: GraduationCap, title: "Medical School", body: "AMCAS/AACOMAS timeline, secondaries, interviews, decisions — the primary focus.", tone: "cyan" as const },
@@ -33,7 +34,7 @@ export function ApplicationCheckerPage() {
     <>
       <GlassCard pad>
         <div className="row gap12" style={{ alignItems: "center" }}>
-          <span className="folder-icon" style={{ color: "var(--cyan)" }}><ClipboardCheck size={20} /></span>
+          <span className="folder-icon" style={{ color: "var(--cyan)" }}><ClipboardCheck size={ICON_SIZE.control} /></span>
           <div className="grow">
             <div style={{ fontSize: 18, fontWeight: 800 }}>Application Checker</div>
             <div className="sub">Track applications end to end — built primarily for medical school and residency.</div>
@@ -45,7 +46,7 @@ export function ApplicationCheckerPage() {
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
         <span className="uc-tape t2">Alpha 2</span>
-        <span className="uc-badge"><ClipboardCheck size={15} /> Application tracking — coming soon</span>
+        <span className="uc-badge"><ClipboardCheck size={ICON_SIZE.body} /> Application tracking — coming soon</span>
         <div className="uc-inner">
           <PanelHeader title="Primary tracks" sub="Stage-by-stage checklists, deadlines, and status" />
           <div className="grid grid-2">
@@ -53,7 +54,7 @@ export function ApplicationCheckerPage() {
               const I = t.icon;
               return (
                 <div className="int-row" key={t.title}>
-                  <span className="folder-icon" style={{ color: `var(--${t.tone})` }}><I size={18} /></span>
+                  <span className="folder-icon" style={{ color: `var(--${t.tone})` }}><I size={ICON_SIZE.emphasis} /></span>
                   <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
                   <Tag tone={t.tone}>Planned</Tag>
                 </div>
@@ -65,7 +66,7 @@ export function ApplicationCheckerPage() {
 
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><GraduationCap size={15} /> More pathways — coming soon</span>
+        <span className="uc-badge"><GraduationCap size={ICON_SIZE.body} /> More pathways — coming soon</span>
         <div className="uc-inner">
           <PanelHeader title="Other pathways" sub="From graduate research down to adjacent health professions — pick the lane that fits" />
           <div className="grid grid-2">
@@ -73,7 +74,7 @@ export function ApplicationCheckerPage() {
               const I = t.icon;
               return (
                 <div className="int-row" key={t.title}>
-                  <span className="folder-icon"><I size={18} /></span>
+                  <span className="folder-icon"><I size={ICON_SIZE.emphasis} /></span>
                   <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
                   <Tag tone="neutral">Planned</Tag>
                 </div>
@@ -85,7 +86,7 @@ export function ApplicationCheckerPage() {
 
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><FileText size={15} /> Full applicant tracker — planned</span>
+        <span className="uc-badge"><FileText size={ICON_SIZE.body} /> Full applicant tracker — planned</span>
         <div className="uc-inner">
           <PanelHeader title="What this grows into" sub="A complete applicant dashboard — majors, experiences, and the application itself" />
           <div className="grid grid-2">
@@ -93,7 +94,7 @@ export function ApplicationCheckerPage() {
               const I = t.icon;
               return (
                 <div className="int-row" key={t.title}>
-                  <span className="folder-icon"><I size={18} /></span>
+                  <span className="folder-icon"><I size={ICON_SIZE.emphasis} /></span>
                   <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
                   <Tag tone="neutral">Planned</Tag>
                 </div>

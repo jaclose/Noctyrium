@@ -8,6 +8,7 @@ import {
   BookOpenCheck, ListTodo, BatteryMedium, Activity, Flame, Gamepad2,
   ChevronUp, ChevronDown,
 } from "lucide-react";
+import { ICON_SIZE } from "../lib/iconSize";
 import { useStore } from "../lib/store";
 import { dayTotals, productiveTotals, todayGrade, gradeLabel, gradeColor, prettyDate, lastNDays, isoDate } from "../lib/scoring";
 import { missedStandupDays, planForDay } from "../lib/journal";
@@ -169,7 +170,7 @@ export function DashboardPage() {
             <div className="dashboard-control-meta"><span>Choose what deserves your attention. Hidden widgets keep their data.</span></div>
           </div>
           <GButton size="sm" variant={editDashboard ? "primary" : "default"} onClick={() => setEditDashboard((open) => !open)}>
-            <SlidersHorizontal size={14} /> {editDashboard ? "Done editing" : "Edit dashboard"}
+            <SlidersHorizontal size={ICON_SIZE.body} /> {editDashboard ? "Done editing" : "Edit dashboard"}
           </GButton>
         </div>
         {editDashboard && <DashboardWidgetEditor layout={layout} onChange={saveLayout} />}
@@ -273,11 +274,11 @@ function AlphaBuildBanner({
               autoComplete="name"
               onChange={(event) => setNameDraft(event.target.value)}
             />
-            <GButton size="tiny" variant="primary" type="submit"><Check size={13} /> Save</GButton>
+            <GButton size="tiny" variant="primary" type="submit"><Check size={ICON_SIZE.body} /> Save</GButton>
             <GhostButton type="button" onClick={() => {
               setEditingName(false);
               setNameDraft("");
-            }}><X size={13} /> Cancel</GhostButton>
+            }}><X size={ICON_SIZE.body} /> Cancel</GhostButton>
           </form>
         )}
         <p>{dailyState}</p>
@@ -291,21 +292,21 @@ function AlphaBuildBanner({
               <small>{attributionLabel(quote.attributionStatus)}</small>
             </div>
             <div className="dashboard-quote-actions">
-              <GhostButton title="Next quote" aria-label="Next quote" onClick={() => setQuoteOffset((offset) => offset + 1)}><ArrowRight size={14} /></GhostButton>
+              <GhostButton title="Next quote" aria-label="Next quote" onClick={() => setQuoteOffset((offset) => offset + 1)}><ArrowRight size={ICON_SIZE.body} /></GhostButton>
               <GhostButton
                 title={quotePreferences.favoriteQuoteIds.includes(quote.id) ? "Remove favorite" : "Favorite quote"}
                 aria-label={quotePreferences.favoriteQuoteIds.includes(quote.id) ? "Remove favorite quote" : "Favorite quote"}
                 aria-pressed={quotePreferences.favoriteQuoteIds.includes(quote.id)}
                 onClick={() => saveQuotePreferences(toggleFavoriteQuote(quotePreferences, quote.id))}
-              ><Star size={14} /></GhostButton>
-              <GhostButton title="Hide this quote" aria-label="Hide this quote" onClick={() => saveQuotePreferences(hideQuote(quotePreferences, quote.id))}><EyeOff size={14} /></GhostButton>
+              ><Star size={ICON_SIZE.body} /></GhostButton>
+              <GhostButton title="Hide this quote" aria-label="Hide this quote" onClick={() => saveQuotePreferences(hideQuote(quotePreferences, quote.id))}><EyeOff size={ICON_SIZE.body} /></GhostButton>
               <GhostButton
                 title="Quote settings"
                 aria-label="Quote settings"
                 aria-expanded={quoteSettingsOpen}
                 aria-controls={quoteSettingsOpen ? "dashboard-quote-settings" : undefined}
                 onClick={() => setQuoteSettingsOpen((open) => !open)}
-              ><Settings2 size={14} /></GhostButton>
+              ><Settings2 size={ICON_SIZE.body} /></GhostButton>
             </div>
           </>
         ) : (
@@ -314,7 +315,7 @@ function AlphaBuildBanner({
             {quotePreferences.quoteVisible
               ? <GButton size="tiny" onClick={() => saveQuotePreferences({ ...quotePreferences, hiddenQuoteIds: [] })}>Restore quotes</GButton>
               : <GButton size="tiny" onClick={() => saveQuotePreferences({ ...quotePreferences, quoteVisible: true })}>Show quote</GButton>}
-            <GhostButton aria-label="Quote settings" aria-expanded={quoteSettingsOpen} aria-controls={quoteSettingsOpen ? "dashboard-quote-settings" : undefined} onClick={() => setQuoteSettingsOpen((open) => !open)}><Settings2 size={14} /></GhostButton>
+            <GhostButton aria-label="Quote settings" aria-expanded={quoteSettingsOpen} aria-controls={quoteSettingsOpen ? "dashboard-quote-settings" : undefined} onClick={() => setQuoteSettingsOpen((open) => !open)}><Settings2 size={ICON_SIZE.body} /></GhostButton>
           </div>
         )}
         {quoteSettingsOpen && (
@@ -323,7 +324,7 @@ function AlphaBuildBanner({
             <label><input type="checkbox" checked={quotePreferences.includeGuilt} onChange={(event) => saveQuotePreferences({ ...quotePreferences, includeGuilt: event.target.checked })} /> Include guilt/shame category</label>
             <span>{quotePreferences.favoriteQuoteIds.length} favorite{quotePreferences.favoriteQuoteIds.length === 1 ? "" : "s"} · {quotePreferences.hiddenQuoteIds.length} hidden</span>
             {quotePreferences.hiddenQuoteIds.length > 0 && (
-              <button type="button" onClick={() => saveQuotePreferences({ ...quotePreferences, hiddenQuoteIds: [] })}><RotateCcw size={12} /> Restore hidden quotes</button>
+              <button type="button" onClick={() => saveQuotePreferences({ ...quotePreferences, hiddenQuoteIds: [] })}><RotateCcw size={ICON_SIZE.microInline} /> Restore hidden quotes</button>
             )}
           </div>
         )}
@@ -479,7 +480,7 @@ function DashboardWidgetEditor({
         </div>
       </div>
 
-      <p className="dashboard-fixed-surfaces"><ShieldCheck size={14} /> Welcome and Command Brief stay at the top so orientation and the best next action are never lost.</p>
+      <p className="dashboard-fixed-surfaces"><ShieldCheck size={ICON_SIZE.body} /> Welcome and Command Brief stay at the top so orientation and the best next action are never lost.</p>
       <div className="sr-only" aria-live="polite">{announcement}</div>
 
       <div className="widget-editor-zones">
@@ -495,7 +496,7 @@ function DashboardWidgetEditor({
                 onDragOver={(event) => { event.preventDefault(); setOverId(id); }}
                 onDragEnd={() => { setDragId(null); setOverId(null); }}
                 onDrop={(event) => { event.preventDefault(); handleDrop(id); }}>
-                <GripVertical size={16} className="widget-grip" />
+                <GripVertical size={ICON_SIZE.emphasis} className="widget-grip" />
                 <WidgetPreview kind={id} />
                 <div className="grow">
                   <b>{meta.label}</b>
@@ -503,9 +504,9 @@ function DashboardWidgetEditor({
                   <small>{preferencesSizeLabel(layout.widgets[id]?.size ?? meta.defaultSize)} · {widgetDataStatus(id, s)}</small>
                 </div>
                 <div className="widget-row-actions">
-                  <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => move(id, -1)}><ChevronUp size={15} /></button>
-                  <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === visible.length - 1} onClick={() => move(id, 1)}><ChevronDown size={15} /></button>
-                  <button type="button" aria-label={`Remove ${meta.label}`} onClick={() => remove(id)}><X size={15} /></button>
+                  <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => move(id, -1)}><ChevronUp size={ICON_SIZE.body} /></button>
+                  <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === visible.length - 1} onClick={() => move(id, 1)}><ChevronDown size={ICON_SIZE.body} /></button>
+                  <button type="button" aria-label={`Remove ${meta.label}`} onClick={() => remove(id)}><X size={ICON_SIZE.body} /></button>
                 </div>
               </article>
             );
@@ -553,7 +554,7 @@ function WidgetCatalogSection({
         const visible = !layout.hiddenWidgetIds.includes(id);
         return (
           <article className={`widget-library-row off ${visible ? "already-on" : ""}`} key={id}>
-            <PlusCircle size={16} className="widget-grip" />
+            <PlusCircle size={ICON_SIZE.emphasis} className="widget-grip" />
             <WidgetPreview kind={id} />
             <div className="grow">
               <b>{meta.label}</b>
@@ -722,9 +723,9 @@ function QuestionBankWidget({
   return (
     <GlassCard pad className="dashboard-core-widget question-bank-widget">
       <PanelHeader title="Question Bank" sub="Only trusted mappings can enter a scored block"
-        action={<a className="gbtn sm primary" href="#questions"><BookOpenCheck size={14} /> Open</a>} />
+        action={<a className="gbtn sm primary" href="#questions"><BookOpenCheck size={ICON_SIZE.body} /> Open</a>} />
       {questions.length === 0 ? (
-        <div className="dashboard-widget-empty"><BookOpenCheck size={20} /><b>No practice questions yet</b><span>Import a source or save the document first. AXOM will not invent an answer key.</span></div>
+        <div className="dashboard-widget-empty"><BookOpenCheck size={ICON_SIZE.control} /><b>No practice questions yet</b><span>Import a source or save the document first. AXOM will not invent an answer key.</span></div>
       ) : (
         <>
           <div className="dashboard-widget-focal"><b>{mapping.ready}</b><span>ready to practice</span></div>
@@ -755,9 +756,9 @@ function CourseTrackerDashboardWidget({
   return (
     <GlassCard pad className="dashboard-core-widget course-tracker-widget">
       <PanelHeader title="Course Tracker" sub="Real course items, passes, and untouched work"
-        action={<a className="gbtn sm primary" href="#tracker"><ArrowRight size={14} /> Open</a>} />
+        action={<a className="gbtn sm primary" href="#tracker"><ArrowRight size={ICON_SIZE.body} /> Open</a>} />
       {rows.length === 0 ? (
-        <div className="dashboard-widget-empty"><BookText size={20} /><b>Add or import your first study item</b><span>Shipped examples teach the interface but never count as your workload.</span></div>
+        <div className="dashboard-widget-empty"><BookText size={ICON_SIZE.control} /><b>Add or import your first study item</b><span>Shipped examples teach the interface but never count as your workload.</span></div>
       ) : (
         <>
           {enabledFields.has("progress") && <div className="dashboard-widget-focal"><b>{progress}%</b><span>pass progress</span></div>}
@@ -788,14 +789,14 @@ function TasksDashboardWidget({
   return (
     <GlassCard pad className="dashboard-core-widget tasks-widget">
       <PanelHeader title="Tasks" sub="Due work without the setup examples"
-        action={<a className="gbtn sm primary" href="#tasks"><ListTodo size={14} /> Open</a>} />
+        action={<a className="gbtn sm primary" href="#tasks"><ListTodo size={ICON_SIZE.body} /> Open</a>} />
       <div className="dashboard-widget-focal"><b>{open.length}</b><span>open</span></div>
       <div className="dashboard-widget-metrics">
         {enabledFields.has("overdue") && <span><b>{overdue.length}</b> overdue</span>}
         {enabledFields.has("due") && <span><b>{open.filter((task) => task.due?.slice(0, 10) === today).length}</b> due today</span>}
         {enabledFields.has("completed") && <span><b>{completed}</b> completed</span>}
       </div>
-      {size !== "small" && open.slice(0, 3).map((task) => <div className="dashboard-widget-list-row" key={task.id}><Circle size={13} /><span>{task.title}</span>{task.due && <small>{task.due.slice(0, 10)}</small>}</div>)}
+      {size !== "small" && open.slice(0, 3).map((task) => <div className="dashboard-widget-list-row" key={task.id}><Circle size={ICON_SIZE.body} /><span>{task.title}</span>{task.due && <small>{task.due.slice(0, 10)}</small>}</div>)}
       {!open.length && <p className="dashboard-widget-note">No real open tasks. Add one only when it helps make the next action concrete.</p>}
     </GlassCard>
   );
@@ -819,7 +820,7 @@ function ReadinessDashboardWidget({
           {enabledFields.has("energy") && <p className="dashboard-widget-note">Reported energy: {readiness.selfReportedEnergy.label}</p>}
           {enabledFields.has("contributors") && readiness.contributions[0] && <p className="dashboard-widget-note">Strongest contributor: {readiness.contributions[0].label} ({readiness.contributions[0].appliedDelta > 0 ? "+" : ""}{readiness.contributions[0].appliedDelta})</p>}
         </>
-      ) : <div className="dashboard-widget-empty"><BatteryMedium size={20} /><b>No readiness signal yet</b><span>Log energy or a confirmed factor before AXOM interprets capacity.</span></div>}
+      ) : <div className="dashboard-widget-empty"><BatteryMedium size={ICON_SIZE.control} /><b>No readiness signal yet</b><span>Log energy or a confirmed factor before AXOM interprets capacity.</span></div>}
     </GlassCard>
   );
 }
@@ -839,10 +840,10 @@ function ActivityDashboardWidget({
   return (
     <GlassCard pad className="dashboard-core-widget activity-widget">
       <PanelHeader title="Activity" sub="What you recorded, not an inferred score"
-        action={<a className="gbtn sm primary" href="#productivity"><Activity size={14} /> Log</a>} />
+        action={<a className="gbtn sm primary" href="#productivity"><Activity size={ICON_SIZE.body} /> Log</a>} />
       {enabledFields.has("today") && <div className="dashboard-widget-focal"><b>{today.minutes}m</b><span>today · {today.cards} cards</span></div>}
       {enabledFields.has("weekly") && <div className="dashboard-widget-metrics"><span><b>{week.minutes}m</b> this week</span><span><b>{week.activeDays}</b> active days</span></div>}
-      {enabledFields.has("recent") && recent.map((log) => <div className="dashboard-widget-list-row" key={log.id}><Activity size={13} /><span>{log.type}</span><small>{log.minutes ? `${log.minutes}m` : `${log.quantity ?? 0} ${log.quantityLabel ?? "count"}`}</small></div>)}
+      {enabledFields.has("recent") && recent.map((log) => <div className="dashboard-widget-list-row" key={log.id}><Activity size={ICON_SIZE.body} /><span>{log.type}</span><small>{log.minutes ? `${log.minutes}m` : `${log.quantity ?? 0} ${log.quantityLabel ?? "count"}`}</small></div>)}
       {!recent.length && <p className="dashboard-widget-note">No activity logged today. One honest record is enough to create signal.</p>}
     </GlassCard>
   );
@@ -860,7 +861,7 @@ function JournalDashboardWidget({
   return (
     <GlassCard pad className="dashboard-core-widget journal-widget">
       <PanelHeader title="Journal" sub="A private, device-local record of the day"
-        action={<a className="gbtn sm primary" href="#journal"><BookText size={14} /> Open</a>} />
+        action={<a className="gbtn sm primary" href="#journal"><BookText size={ICON_SIZE.body} /> Open</a>} />
       {current ? (
         <>
           {enabledFields.has("latest") && <div className="dashboard-widget-journal-excerpt"><b>{current.date.slice(0, 10) === activeDayKey ? "Today" : prettyDate(current.date)}</b><p>{truncateText(current.today, 120)}</p></div>}
@@ -869,7 +870,7 @@ function JournalDashboardWidget({
             {enabledFields.has("unfinished") && <span><b>{current.tomorrow ? "1+" : "0"}</b> next-day loops</span>}
           </div>
         </>
-      ) : <div className="dashboard-widget-empty"><BookText size={20} /><b>Your notebook is ready</b><span>Write freely or close the loop with a short reflection.</span></div>}
+      ) : <div className="dashboard-widget-empty"><BookText size={ICON_SIZE.control} /><b>Your notebook is ready</b><span>Write freely or close the loop with a short reflection.</span></div>}
     </GlassCard>
   );
 }
@@ -893,7 +894,7 @@ function ConsistencyDashboardWidget({
             {enabledFields.has("eligibleDays") && <span><b>{summary.eligibleDays}</b> eligible days</span>}
           </div>
         </>
-      ) : <div className="dashboard-widget-empty"><Flame size={20} /><b>No eligible history yet</b><span>AXOM will not count dates before your targets started.</span></div>}
+      ) : <div className="dashboard-widget-empty"><Flame size={ICON_SIZE.control} /><b>No eligible history yet</b><span>AXOM will not count dates before your targets started.</span></div>}
     </GlassCard>
   );
 }
@@ -912,8 +913,8 @@ function DailyWordDashboardWidget({
   return (
     <GlassCard pad className="dashboard-core-widget daily-word-widget">
       <PanelHeader title="Daily Word" sub="Deterministic, local, and offline after first load"
-        action={<a className="gbtn sm primary" href="#daily-word"><Gamepad2 size={14} /> {enabled ? "Play" : "Enable"}</a>} />
-      {!enabled ? <div className="dashboard-widget-empty"><Gamepad2 size={20} /><b>Daily Games is optional</b><span>Open Daily Word to enable it explicitly. No puzzle data is deleted while hidden.</span></div> : (
+        action={<a className="gbtn sm primary" href="#daily-word"><Gamepad2 size={ICON_SIZE.body} /> {enabled ? "Play" : "Enable"}</a>} />
+      {!enabled ? <div className="dashboard-widget-empty"><Gamepad2 size={ICON_SIZE.control} /><b>Daily Games is optional</b><span>Open Daily Word to enable it explicitly. No puzzle data is deleted while hidden.</span></div> : (
         <>
           <div className="dashboard-widget-focal"><b>{today?.completed ? (today.won ? "Won" : "Complete") : today ? `${today.guesses.length}/6` : "Ready"}</b><span>today's puzzle</span></div>
           <div className="dashboard-widget-metrics">
@@ -1035,7 +1036,7 @@ function WeeklyWidget({
             <DetailMetric label="Top activity" value={selected.topActivity} />
             <DetailMetric label="Strongest action" value={selected.strongestAction} />
           </div>
-          <div className="weekly-correction"><ArrowRightCircle size={14} /> {selected.suggestedCorrection}</div>
+          <div className="weekly-correction"><ArrowRightCircle size={ICON_SIZE.body} /> {selected.suggestedCorrection}</div>
         </div>
       )}
     </GlassCard>
@@ -1055,35 +1056,35 @@ function LocalDataWidget({ state }: { state: ReturnType<typeof useStore.getState
   return (
     <GlassCard pad className="local-data-card" data-tour="data-safety-settings">
       <PanelHeader title="Local data & backup" sub="Your workspace stays on this device; exported backups are portable copies"
-        action={<GButton size="sm" onClick={() => exportState(state)}><Download size={14} /> Export backup</GButton>} />
+        action={<GButton size="sm" onClick={() => exportState(state)}><Download size={ICON_SIZE.body} /> Export backup</GButton>} />
       <div className="alpha-notice">
         <span className="alpha-pill">ALPHA</span>
         <span>Web redeployments keep this browser vault intact. Export backups before switching devices, browsers, or domains.</span>
       </div>
       <div className="local-data-grid">
         <div className="local-data-item">
-          <Database size={17} />
+          <Database size={ICON_SIZE.emphasis} />
           <div>
             <b>Local Vault</b>
             <span>IndexedDB with localStorage fallback. Seed updates will not overwrite your saved profile.</span>
           </div>
         </div>
         <div className="local-data-item">
-          <ShieldCheck size={17} />
+          <ShieldCheck size={ICON_SIZE.emphasis} />
           <div>
             <b>Private by default</b>
             <span>No account server is required. Data stays on the current browser/device unless exported.</span>
           </div>
         </div>
         <div className="local-data-item">
-          <PackageCheck size={17} />
+          <PackageCheck size={ICON_SIZE.emphasis} />
           <div>
           <b>Recovery and portable copies</b>
             <span>Settings → Backup shows automatic local recovery snapshots and exported backup controls.</span>
           </div>
         </div>
         <a className="local-data-item" href={HOSTED_ALPHA_URL} target="_blank" rel="noreferrer">
-          <ExternalLink size={17} />
+          <ExternalLink size={ICON_SIZE.emphasis} />
           <div>
             <b>Hosted Alpha</b>
             <span>Open the hosted preview. It uses its own browser-local workspace unless you import a portable backup.</span>
@@ -1103,7 +1104,7 @@ function PremedHoursWidget() {
   return (
     <GlassCard pad>
       <PanelHeader title="Pre-Med Hours" sub="Clinical, service, research, and verification evidence"
-        action={<a className="gbtn sm" href="#premed">Open <ArrowRight size={14} /></a>} />
+        action={<a className="gbtn sm" href="#premed">Open <ArrowRight size={ICON_SIZE.body} /></a>} />
       <div className="trend-widget">
         <div><b>{total}</b><span>total</span></div>
         <div><b>{clinical}</b><span>clinical/shadow</span></div>
@@ -1135,7 +1136,7 @@ function ExamCountdownWidget() {
       <PanelHeader
         title={`${c.meta.short} countdown`}
         sub={c.examDate ? `Exam ${prettyDate(`${c.examDate.slice(0, 10)}T12:00:00`)}` : "No exam date set yet"}
-        action={<a className="gbtn sm" href={`#${c.meta.route}`}><CalendarClock size={14} /> Open prep</a>}
+        action={<a className="gbtn sm" href={`#${c.meta.route}`}><CalendarClock size={ICON_SIZE.body} /> Open prep</a>}
       />
       <div className="exam-countdown-grid">
         <div className="exam-countdown-num">
@@ -1216,7 +1217,7 @@ function StandupPrompt() {
       <>
         <GlassCard pad className="standup-prompt-card due daily-closeout-card">
           <div className="standup-prompt-head">
-            <span className="standup-prompt-mark"><BookText size={18} /></span>
+            <span className="standup-prompt-mark"><BookText size={ICON_SIZE.emphasis} /></span>
             <div className="grow">
               <b>Close the loop on today?</b>
               <span>Review your intention, activity, targets, focus sessions, questions, tasks, and energy. A short closeout is optional.</span>
@@ -1254,7 +1255,7 @@ function StandupPrompt() {
     return (
       <GlassCard pad className="standup-prompt-card missed">
         <div className="standup-prompt-head">
-          <span className="standup-prompt-mark warn"><AlertTriangle size={18} /></span>
+          <span className="standup-prompt-mark warn"><AlertTriangle size={ICON_SIZE.emphasis} /></span>
           <div className="grow">
             <b>{missed.length} prior reflection{missed.length === 1 ? " is" : "s are"} still open</b>
             <span>Catch up only if it would help. Existing journal content is never overwritten.</span>
@@ -1265,7 +1266,7 @@ function StandupPrompt() {
             const plan = planForDay(s.dayPlans, key);
             return (
               <button key={key} type="button" className="standup-day-chip remediable" onClick={() => gotoJournalDay(key)}>
-                <CalendarClock size={13} />
+                <CalendarClock size={ICON_SIZE.body} />
                 <span>{prettyDate(`${key}T12:00:00`)}</span>
                 {plan && <em>“{plan.intention.length > 26 ? `${plan.intention.slice(0, 26)}…` : plan.intention}”</em>}
               </button>
@@ -1374,8 +1375,8 @@ function WinTheDay() {
     <GlassCard pad className="win-day" data-tour="intention">
       {showWrapPrompt && todayPlan && !todayPlan.outcome && (
         <div className="journal-wrap-popover">
-          <button className="ghost-btn" onClick={() => setShowWrapPrompt(false)} title="Dismiss"><X size={14} /></button>
-          <div className="journal-wrap-mark"><BookText size={18} /></div>
+          <button className="ghost-btn" onClick={() => setShowWrapPrompt(false)} title="Dismiss"><X size={ICON_SIZE.body} /></button>
+          <div className="journal-wrap-mark"><BookText size={ICON_SIZE.emphasis} /></div>
           <div>
             <b>Wrap up the day</b>
             <span>{wrapUpMessage(today)} Review “{todayPlan.intention}”, then turn it into a useful standup.</span>
@@ -1385,7 +1386,7 @@ function WinTheDay() {
       )}
       {pendingPast && (
         <div className="carry-over">
-          <ArrowRightCircle size={16} />
+          <ArrowRightCircle size={ICON_SIZE.emphasis} />
           <div className="grow">
             <b>You planned {prettyDate(`${pendingPast.dayKey}T12:00:00`)} but never closed it out.</b>
             <span>“{pendingPast.intention}” — did you get it done?</span>
@@ -1427,7 +1428,7 @@ function WinTheDay() {
               </div>
             </details>
             <div className="row wrap gap8 daily-checkin-actions">
-              <GButton variant="primary" onClick={save} disabled={!intention.trim()}><Sunrise size={15} /> Set today’s focus</GButton>
+              <GButton variant="primary" onClick={save} disabled={!intention.trim()}><Sunrise size={ICON_SIZE.body} /> Set today’s focus</GButton>
               <GButton onClick={useTargets}>Use my targets</GButton>
               <GhostButton onClick={skipCheckIn}>Skip for now</GhostButton>
             </div>
@@ -1442,14 +1443,14 @@ function WinTheDay() {
             </div>
             {todayPlan.outcome
               ? <Tag tone={OUTCOMES.find((o) => o.key === todayPlan.outcome)?.tone ?? "neutral"}>
-                  <Trophy size={12} /> {OUTCOMES.find((o) => o.key === todayPlan.outcome)?.label}
+                  <Trophy size={ICON_SIZE.microInline} /> {OUTCOMES.find((o) => o.key === todayPlan.outcome)?.label}
                 </Tag>
               : <button className="gbtn tiny" onClick={() => s.setDayPlan(today, "", [])}>Reset</button>}
           </div>
 
           {todayPlan.wins.length > 0 && (
             <div className="win-conditions">
-              {todayPlan.wins.map((w, i) => <span key={i} className="win-cond"><Check size={12} /> {w}</span>)}
+              {todayPlan.wins.map((w, i) => <span key={i} className="win-cond"><Check size={ICON_SIZE.microInline} /> {w}</span>)}
             </div>
           )}
 
@@ -1466,7 +1467,7 @@ function WinTheDay() {
               <div className="field-label" style={{ marginBottom: 6 }}>Check off as you go</div>
               {openTasks.map((t) => (
                 <button key={t.id} className="win-task" onClick={() => s.toggleTask(t.id)}>
-                  <Circle size={15} /> <span>{t.title}</span>
+                  <Circle size={ICON_SIZE.body} /> <span>{t.title}</span>
                   {t.scope && <Tag tone="neutral">{t.scope}</Tag>}
                 </button>
               ))}
@@ -1484,14 +1485,14 @@ function WinTheDay() {
           )}
           {!todayPlan.outcome && reviewDue && (
             <div className="journal-follow-nudge">
-              <BookText size={15} />
+              <BookText size={ICON_SIZE.body} />
               <span>It is past your journal follow-up time. Review today’s intention, then write the standup.</span>
               <a className="gbtn tiny" href="#journal">Open Journal</a>
             </div>
           )}
           {todayPlan.outcome && (
             <div className="row gap8" style={{ marginTop: 10 }}>
-              <GhostButton onClick={() => s.reviewDayPlan(today, undefined)} title="Re-open review"><ArrowRight size={14} /></GhostButton>
+              <GhostButton onClick={() => s.reviewDayPlan(today, undefined)} title="Re-open review"><ArrowRight size={ICON_SIZE.body} /></GhostButton>
               <span className="sub">Reviewed{todayPlan.reviewNote ? ` — “${todayPlan.reviewNote}”` : ""}. Want to log it as a standup? Open Journal.</span>
             </div>
           )}

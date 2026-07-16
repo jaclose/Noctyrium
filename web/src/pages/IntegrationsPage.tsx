@@ -4,6 +4,7 @@ import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
 import { Icon } from "../lib/icons";
 import { AnkiConnectPanel } from "../components/integrations/AnkiConnectPanel";
 import type { Integration } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const statusTone: Record<Integration["status"], "green" | "cyan" | "neutral"> = {
   connected: "green", available: "cyan", planned: "neutral",
@@ -35,7 +36,7 @@ export function IntegrationsPage() {
       <GlassCard pad className="under-construction">
         <span className="uc-tape t1">Under Construction</span>
         <span className="uc-tape t2">Coming Soon</span>
-        <span className="uc-badge"><Wrench size={15} /> More integrations are under construction</span>
+        <span className="uc-badge"><Wrench size={ICON_SIZE.body} /> More integrations are under construction</span>
         <div className="uc-inner">
           <PanelHeader title="Integrations center" sub="UNDER CONSTRUCTION — architecture and planning surface" />
           <div className="integration-roadmap-grid">
@@ -52,7 +53,7 @@ export function IntegrationsPage() {
           <div className="stack gap8" style={{ marginTop: 14 }}>
             {otherIntegrations.map((i) => (
               <div className="int-row" key={i.id}>
-                <span className="folder-icon"><Icon name={i.icon} size={18} /></span>
+                <span className="folder-icon"><Icon name={i.icon} size={ICON_SIZE.emphasis} /></span>
                 <div className="grow">
                   <div style={{ fontWeight: 700 }}>{i.name}</div>
                   <div className="sub">{i.description}</div>

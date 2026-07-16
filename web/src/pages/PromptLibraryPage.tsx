@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, TextAreaField } from "../components/ui/Modal";
 import type { Prompt } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export function PromptLibraryPage() {
   const s = useStore();
@@ -27,7 +28,7 @@ export function PromptLibraryPage() {
     <>
       <GlassCard pad>
         <PanelHeader title="Prompt Library" sub="Reusable AI prompts for study workflows"
-          action={<GButton variant="primary" size="sm" onClick={() => setEditing("new")}><Plus size={15} /> New prompt</GButton>} />
+          action={<GButton variant="primary" size="sm" onClick={() => setEditing("new")}><Plus size={ICON_SIZE.body} /> New prompt</GButton>} />
         <div className="filter-bar">
           {categories.map((c) => (
             <button key={c} className={`filter-pill ${filter === c ? "on" : ""}`} onClick={() => setFilter(c)}>{c}</button>
@@ -41,8 +42,8 @@ export function PromptLibraryPage() {
         {shown.map((p) => (
           <GlassCard pad key={p.id} className="prompt-card">
             <div className="card-hover-tools">
-              <GhostButton onClick={() => setEditing(p)}><Pencil size={14} /></GhostButton>
-              <GhostButton className="danger" onClick={() => s.removePrompt(p.id)}><Trash2 size={14} /></GhostButton>
+              <GhostButton onClick={() => setEditing(p)}><Pencil size={ICON_SIZE.body} /></GhostButton>
+              <GhostButton className="danger" onClick={() => s.removePrompt(p.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
             </div>
             <div className="row gap8"><Tag>{p.category}</Tag></div>
             <div className="pc-title">{p.title}</div>
@@ -50,7 +51,7 @@ export function PromptLibraryPage() {
             <div className="pc-foot">
               {p.tags.map((t) => <Tag key={t} tone="neutral">#{t}</Tag>)}
               <GButton className="right" size="sm" onClick={() => copy(p)}>
-                {copied === p.id ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                {copied === p.id ? <><Check size={ICON_SIZE.body} /> Copied</> : <><Copy size={ICON_SIZE.body} /> Copy</>}
               </GButton>
             </div>
           </GlassCard>

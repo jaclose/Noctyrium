@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import "../../styles/dashboard-widgets.css";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export type DashboardWidgetFrameSize = "small" | "medium" | "large" | "extra-large";
 
@@ -151,7 +152,7 @@ export function DashboardWidgetFrame({
           aria-controls={panelId}
           onClick={openSettings}
         >
-          <Settings2 aria-hidden="true" size={17} />
+          <Settings2 aria-hidden="true" size={ICON_SIZE.emphasis} />
         </button>
         <div className="dashboard-widget-frame__content">{children}</div>
       </div>

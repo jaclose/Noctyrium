@@ -10,6 +10,7 @@ import { findOrphans } from "../../lib/orphanRepair";
 import { STORAGE_KEYS } from "../../lib/brand";
 import { GhostButton, Tag } from "../ui/primitives";
 import { pushToast } from "../../lib/toast";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 async function probeIndexedDb(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -70,10 +71,10 @@ export function DataHealthPanel() {
     <div className="stack" style={{ gap: 12 }}>
       <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
         <Tag tone={idbOk === false ? "orange" : "green"}>
-          <Database size={12} /> {idbOk === null ? "Checking storage…" : idbOk ? "IndexedDB vault active" : "localStorage fallback"}
+          <Database size={ICON_SIZE.microInline} /> {idbOk === null ? "Checking storage…" : idbOk ? "IndexedDB vault active" : "localStorage fallback"}
         </Tag>
-        <Tag tone="neutral"><HardDrive size={12} /> Approx. storage used: {storageUsed}</Tag>
-        <Tag tone="green"><ShieldCheck size={12} /> Autosave active</Tag>
+        <Tag tone="neutral"><HardDrive size={ICON_SIZE.microInline} /> Approx. storage used: {storageUsed}</Tag>
+        <Tag tone="green"><ShieldCheck size={ICON_SIZE.microInline} /> Autosave active</Tag>
         <Tag tone={duplicateSources ? "orange" : "green"}>
           <FileFingerprintIcon /> {duplicateSources ? `${duplicateSources} duplicate source${duplicateSources === 1 ? "" : "s"}` : "Source checksums healthy"}
         </Tag>
@@ -98,7 +99,7 @@ export function DataHealthPanel() {
       <div className="sub">Last saved: AXOM writes changes automatically; this build does not retain a user-visible write timestamp.</div>
 
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-        <Wrench size={14} style={{ color: "var(--cyan)" }} />
+        <Wrench size={ICON_SIZE.body} style={{ color: "var(--cyan)" }} />
         <span className="sub">
           {orphans.totalIssues === 0
             ? "Question-bank links are healthy — no orphaned questions, sets, or documents."

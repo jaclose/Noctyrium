@@ -7,6 +7,7 @@ import { Play, Plus, Trash2, Boxes } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { buildQuizPool, type QuizBlock } from "../../lib/quiz";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function BlockBuilder({ onRunBlock, onNewBlock }: {
   onRunBlock: (block: QuizBlock) => void;
@@ -21,11 +22,11 @@ export function BlockBuilder({ onRunBlock, onNewBlock }: {
       <PanelHeader
         title="Block Builder"
         sub="Saved block definitions — filters stay live, so a 'missed only' block always pulls your current misses."
-        action={<GButton size="sm" variant="primary" onClick={onNewBlock}><Plus size={14} /> New block</GButton>}
+        action={<GButton size="sm" variant="primary" onClick={onNewBlock}><Plus size={ICON_SIZE.body} /> New block</GButton>}
       />
       {blocks.length === 0 ? (
         <EmptyState
-          icon={<Boxes size={18} />}
+          icon={<Boxes size={ICON_SIZE.emphasis} />}
           title="No saved blocks yet"
           hint='Set up a tutor or exam block and use "Save as block" — it becomes a one-click rerun here.'
         />
@@ -48,10 +49,10 @@ export function BlockBuilder({ onRunBlock, onNewBlock }: {
                   </div>
                   <Tag tone={available ? "green" : "orange"}>{available} match</Tag>
                   <GButton size="sm" variant="primary" disabled={!available} onClick={() => onRunBlock(block)}>
-                    <Play size={13} /> Run
+                    <Play size={ICON_SIZE.body} /> Run
                   </GButton>
                   <GhostButton aria-label={`Delete block ${block.title}`} onClick={() => s.removeQuizBlock(block.id)}>
-                    <Trash2 size={13} />
+                    <Trash2 size={ICON_SIZE.body} />
                   </GhostButton>
                 </div>
               </div>

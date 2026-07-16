@@ -5,6 +5,7 @@ import {
   type ThemePreference,
 } from "../../lib/theme";
 import { useThemePreference } from "../../lib/useThemePreference";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const OPTIONS: Array<{
   value: ThemePreference;
@@ -39,7 +40,7 @@ export function ThemeToggle() {
                 checked={preference === option.value}
                 onChange={() => setThemePreference(option.value)}
               />
-              <Icon size={16} aria-hidden="true" />
+              <Icon size={ICON_SIZE.emphasis} aria-hidden="true" />
               <span><b>{option.label}</b><small>{option.detail}</small></span>
             </label>
           );

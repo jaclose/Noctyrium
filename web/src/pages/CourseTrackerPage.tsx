@@ -28,6 +28,7 @@ import { extractPdfText, extractPlainText, type ExtractedText } from "../lib/ext
 import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../lib/announcements";
 import { pushToast } from "../lib/toast";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
@@ -211,7 +212,7 @@ export function CourseTrackerPage() {
       <div className="tracker-page-toolbar">
         <div><b>Course Tracker</b><span>Import structure, log passes, and keep the next useful move visible.</span></div>
         <GButton size="sm" onClick={() => setModuleHelpOpen((open) => !open)} aria-expanded={moduleHelpOpen} aria-controls={moduleHelpOpen ? "course-tracker-help" : undefined}>
-          <HelpCircle size={14} /> Help
+          <HelpCircle size={ICON_SIZE.body} /> Help
         </GButton>
       </div>
       {moduleHelpOpen && <CourseTrackerHelpEntry onClose={() => setModuleHelpOpen(false)} onStartTour={() => { setModuleHelpOpen(false); setModuleTourOpen(true); }} />}
@@ -219,7 +220,7 @@ export function CourseTrackerPage() {
         <aside className="tracker-utility-column" aria-label="Course Tracker utilities">
           <GlassCard pad data-tour="import" data-module-tour="tracker-structure">
             <PanelHeader title="Mastery tree" sub="Choose a course or module"
-              action={<GhostButton title="Add one item" onClick={() => setAdding(true)}><Plus size={16} /></GhostButton>} />
+              action={<GhostButton title="Add one item" onClick={() => setAdding(true)}><Plus size={ICON_SIZE.emphasis} /></GhostButton>} />
             <div className="tree">
               <div className={`tree-node ${scope === "" ? "on" : ""}`} onClick={() => setScope("")}>
                 <span style={{ width: 14 }} /><span>Everything</span><span className="tree-count">{s.tracker.length}</span>
@@ -233,17 +234,17 @@ export function CourseTrackerPage() {
             </div>
             <div className="tracker-immediate-actions" data-module-tour="tracker-import-add">
               <GButton size="sm" className="primary" onClick={() => setBulkOpen(true)}>
-                <ListPlus size={15} /> Import lectures or items
+                <ListPlus size={ICON_SIZE.body} /> Import lectures or items
               </GButton>
               <GButton size="sm" onClick={() => setModuleOpen(true)}>
-                <BookOpen size={15} /> Add course or module
+                <BookOpen size={ICON_SIZE.body} /> Add course or module
               </GButton>
             </div>
           </GlassCard>
 
           <GlassCard pad className="tracker-suggestions-card" data-module-tour="tracker-suggestions">
             <PanelHeader title="Suggested next moves" sub="Based on passes, yield, and unfinished work"
-              action={<GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={15} /></GhostButton>} />
+              action={<GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={ICON_SIZE.body} /></GhostButton>} />
             {!inBlueprintScope && (
               <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Suggestion scope">
                 <option value="">Everything</option>
@@ -303,8 +304,8 @@ export function CourseTrackerPage() {
           <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
             action={
               <div className="row gap6">
-                {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={14} /></GhostButton>}
-                {scope && <GhostButton className="danger" title="Delete selected tracker group" onClick={deleteCurrentScope}><Trash2 size={14} /></GhostButton>}
+                {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={ICON_SIZE.body} /></GhostButton>}
+                {scope && <GhostButton className="danger" title="Delete selected tracker group" onClick={deleteCurrentScope}><Trash2 size={ICON_SIZE.body} /></GhostButton>}
               </div>
             } />
           <details className="tracker-pass-help" data-module-tour="tracker-weak-items"><summary>How passes work</summary><TrackerGuide /></details>
@@ -339,7 +340,7 @@ function CourseTrackerHelpEntry({ onClose, onStartTour }: { onClose: () => void;
     <GlassCard pad className="tracker-help-entry" id="course-tracker-help">
       <div className="spread gap8">
         <div><b>Course Tracker help</b><span>A short guide to importing, organizing, passes, weak items, and suggestions.</span></div>
-        <GhostButton aria-label="Close Course Tracker help" onClick={onClose}><X size={15} /></GhostButton>
+        <GhostButton aria-label="Close Course Tracker help" onClick={onClose}><X size={ICON_SIZE.body} /></GhostButton>
       </div>
       <ol>
         <li>Import a list or add a course/module.</li>
@@ -348,7 +349,7 @@ function CourseTrackerHelpEntry({ onClose, onStartTour }: { onClose: () => void;
         <li>Use yield labels to mark weak or high-value work.</li>
         <li>Open a suggested move when you want a concrete next step.</li>
       </ol>
-      <GButton size="sm" variant="primary" onClick={onStartTour}><HelpCircle size={14} /> Start short tour</GButton>
+      <GButton size="sm" variant="primary" onClick={onStartTour}><HelpCircle size={ICON_SIZE.body} /> Start short tour</GButton>
     </GlassCard>
   );
 }
@@ -390,9 +391,9 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
           const label = prompt("Rename tracker item", item.label);
           if (label?.trim()) s.updateTrackerItem(item.id, { label: label.trim() });
         }}>
-        <Pencil size={14} />
+        <Pencil size={ICON_SIZE.body} />
       </GhostButton>
-      <GhostButton className="danger" onClick={() => s.removeTrackerItem(item.id)}><Trash2 size={14} /></GhostButton>
+      <GhostButton className="danger" onClick={() => s.removeTrackerItem(item.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
     </div>
   );
 }
@@ -446,7 +447,7 @@ function MasteryShard({ item }: { item: TrackerItem }) {
   return (
     <div className="mastery-shard" style={style}
       title={`${PASS_LABEL[stage]} · ${item.ankiPasses ? `Anki ${item.ankiPasses}/3` : "No Anki rounds yet"}`}>
-      <span className="shard-pass"><Eye size={13} /></span>
+      <span className="shard-pass"><Eye size={ICON_SIZE.body} /></span>
       <span className="shard-anki">A</span>
     </div>
   );
@@ -513,8 +514,8 @@ function BlueprintTree({
   if (installs.length === 0) {
     return (
       <div className="tracker-blueprint-spine empty" aria-label="Installed blueprints">
-        <div className="tracker-blueprint-spine-head"><Brain size={13} /> Blueprints & Exams</div>
-        <a className="tracker-blueprint-empty" href="#step">Install a blueprint to spin up a container here <ChevronRight size={13} /></a>
+        <div className="tracker-blueprint-spine-head"><Brain size={ICON_SIZE.body} /> Blueprints & Exams</div>
+        <a className="tracker-blueprint-empty" href="#step">Install a blueprint to spin up a container here <ChevronRight size={ICON_SIZE.body} /></a>
       </div>
     );
   }
@@ -522,7 +523,7 @@ function BlueprintTree({
   installs.forEach((install) => byLane.get(install.laneId)?.push(install));
   return (
     <div className="tracker-blueprint-spine" aria-label="Installed blueprints">
-      <div className="tracker-blueprint-spine-head"><Brain size={13} /> Blueprints & Exams</div>
+      <div className="tracker-blueprint-spine-head"><Brain size={ICON_SIZE.body} /> Blueprints & Exams</div>
       {BLUEPRINT_LANES.filter((lane) => byLane.has(lane.id)).map((lane) => {
         const laneInstalls = byLane.get(lane.id) ?? [];
         const laneKey = `bp-lane:${lane.id}`;
@@ -530,7 +531,7 @@ function BlueprintTree({
         return (
           <div key={lane.id} className="tracker-blueprint-group">
             <button type="button" className="tree-node bp-tree-node" onClick={() => onToggle(laneKey)}>
-              {laneOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {laneOpen ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
               <span>{lane.label}</span>
               <span className="tree-count">{laneInstalls.length}</span>
             </button>
@@ -575,7 +576,7 @@ function BlueprintInstallTree({
     <div className="bp-install-tree">
       <button type="button" className={`tree-node bp-tree-node ${active === scope ? "on" : ""}`}
         onClick={() => { onToggle(openKey); onSelect(scope); }}>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {open ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
         <span className="grow">{install.title}</span>
         <span className="tree-count">{overall}%</span>
       </button>
@@ -584,7 +585,7 @@ function BlueprintInstallTree({
           <a className="tree-node bp-tree-open" href={`#${routeForBlueprintLane(install.laneId)}`}>
             <span style={{ width: 14 }} />
             <span>Open workbench</span>
-            <ChevronRight size={13} />
+            <ChevronRight size={ICON_SIZE.body} />
           </a>
           {categories.map((category) => {
             const catScope = blueprintScope(install.id, category);
@@ -653,8 +654,8 @@ function BlueprintTrackerRow({ install, node }: { install: InstalledBlueprint; n
           <span>{node.category}{node.subCategory ? ` / ${node.subCategory}` : ""}</span>
         </div>
         <div className="row gap6">
-          <GhostButton title="Move up" onClick={() => move(-1)}><ChevronDown size={14} style={{ transform: "rotate(180deg)" }} /></GhostButton>
-          <GhostButton title="Move down" onClick={() => move(1)}><ChevronDown size={14} /></GhostButton>
+          <GhostButton title="Move up" onClick={() => move(-1)}><ChevronDown size={ICON_SIZE.body} style={{ transform: "rotate(180deg)" }} /></GhostButton>
+          <GhostButton title="Move down" onClick={() => move(1)}><ChevronDown size={ICON_SIZE.body} /></GhostButton>
         </div>
       </div>
       {node.detail && <div className="dr-note">{node.detail}</div>}
@@ -698,7 +699,7 @@ function BlueprintTrackerRow({ install, node }: { install: InstalledBlueprint; n
       <div className="bp-tracker-foot">
         <Tag tone={node.priority === "high" ? "orange" : node.priority === "low" ? "neutral" : "cyan"}>{node.priority} priority</Tag>
         <Tag tone={node.sourceType === "official" ? "green" : node.sourceType === "tool" ? "cyan" : "neutral"}>{node.sourceType ?? "internal"} source</Tag>
-        {node.sourceUrl && <a className="gbtn tiny" href={node.sourceUrl} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={12} /></a>}
+        {node.sourceUrl && <a className="gbtn tiny" href={node.sourceUrl} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={ICON_SIZE.microInline} /></a>}
         {node.sourceVersion && <span className="sub">{node.sourceVersion}</span>}
         {node.lastVerified && <span className="sub">source audited {node.lastVerified}</span>}
       </div>
@@ -968,7 +969,7 @@ function TreeNode({
       <div className={`tree-node depth${Math.min(depth, 2)} ${active === node.path ? "on" : ""}`}
         style={{ "--tree-indent": `${depth * 14}px` } as CSSProperties}
         onClick={() => { onSelect(node.path); if (hasKids) onToggle(node.path); }}>
-        {hasKids ? (open ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span style={{ width: 14 }} />}
+        {hasKids ? (open ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />) : <span style={{ width: 14 }} />}
         <span>{node.name}</span>
         <span className="tree-count">{node.count}</span>
       </div>
@@ -1099,7 +1100,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
       </>}>
       <p className="sub">Paste one item per line, or open a PDF, Markdown, TXT, or CSV file. AXOM extracts supported text locally and shows a preview before anything is added.</p>
       <div className="tracker-import-example">
-        <div className="spread gap8"><b>Copyable format</b><GButton size="tiny" onClick={copyExample}><Copy size={12} /> Copy example</GButton></div>
+        <div className="spread gap8"><b>Copyable format</b><GButton size="tiny" onClick={copyExample}><Copy size={ICON_SIZE.microInline} /> Copy example</GButton></div>
         <textarea ref={exampleRef} className="field" aria-label="Structured tracker import example" readOnly value={TRACKER_IMPORT_EXAMPLE} rows={4} />
         {exampleStatus && <span role="status">{exampleStatus}</span>}
       </div>
@@ -1145,7 +1146,7 @@ function BulkImportModal({ defaultPath, onClose }: { defaultPath: string; onClos
           Skip duplicates already in tracker
         </label>
         <GButton size="sm" onClick={() => fileRef.current?.click()}>
-          <Upload size={14} /> Open PDF, Markdown, TXT, or CSV
+          <Upload size={ICON_SIZE.body} /> Open PDF, Markdown, TXT, or CSV
         </GButton>
         <input ref={fileRef} type="file" accept=".pdf,.md,.markdown,.txt,.csv,application/pdf,text/markdown,text/plain,text/csv" hidden
           onChange={(e) => e.target.files?.[0] && void loadFile(e.target.files[0])} />

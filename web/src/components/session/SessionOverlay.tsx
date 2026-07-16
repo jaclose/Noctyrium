@@ -15,6 +15,7 @@ import {
 } from "../../lib/sessions";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { Modal, Field, TextAreaField } from "../ui/Modal";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const QUICK_LOGS = Object.keys(QUICK_LOG_LABEL) as SessionQuickLog[];
 
@@ -86,14 +87,14 @@ export function SessionOverlay() {
         </div>
         <GButton size="sm" iconOnly aria-label={running ? "Pause session" : "Resume session"}
           onClick={() => (running ? s.pauseSession(session.id) : s.resumeSession(session.id))}>
-          {running ? <Pause size={15} /> : <Play size={15} />}
+          {running ? <Pause size={ICON_SIZE.body} /> : <Play size={ICON_SIZE.body} />}
         </GButton>
         <GButton size="sm" iconOnly aria-label={focusMode ? "Exit focus mode" : "Focus mode"}
           onClick={() => setFocusMode((v) => !v)}>
-          {focusMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          {focusMode ? <Minimize2 size={ICON_SIZE.body} /> : <Maximize2 size={ICON_SIZE.body} />}
         </GButton>
         <GButton size="sm" variant="primary" onClick={() => setCapturing(true)}>
-          <Check size={15} /> Finish
+          <Check size={ICON_SIZE.body} /> Finish
         </GButton>
       </div>
     </div>

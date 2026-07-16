@@ -11,6 +11,7 @@ import { pickFocusExam, daysUntilExam } from "../lib/examPlan";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { Modal } from "../components/ui/Modal";
 import { pushToast } from "../lib/toast";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export function StudyMethodsPage() {
   const s = useStore();
@@ -73,7 +74,7 @@ export function StudyMethodsPage() {
           <GlassCard key={m.id} hoverable onClick={() => setOpen(m)}>
             <div className="stack" style={{ gap: 6 }}>
               <div className="row">
-                <BookOpenCheck size={15} style={{ color: "var(--cyan)" }} />
+                <BookOpenCheck size={ICON_SIZE.body} style={{ color: "var(--cyan)" }} />
                 <b>{m.name}</b>
                 <span className="dim right">~{m.timeEstimateMinutes}m</span>
               </div>
@@ -92,8 +93,8 @@ export function StudyMethodsPage() {
           onClose={() => setOpen(null)}
           footer={
             <>
-              <GhostButton onClick={() => addToPlan(open)}><Plus size={13} /> Add to today</GhostButton>
-              <GButton variant="primary" onClick={() => beginWith(open)}><Play size={13} /> Begin session with this</GButton>
+              <GhostButton onClick={() => addToPlan(open)}><Plus size={ICON_SIZE.body} /> Add to today</GhostButton>
+              <GButton variant="primary" onClick={() => beginWith(open)}><Play size={ICON_SIZE.body} /> Begin session with this</GButton>
             </>
           }
         >

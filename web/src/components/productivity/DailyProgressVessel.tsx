@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { DailySuccessResult } from "../../lib/dailySuccess";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function DailyProgressVessel({ result, compact = false }: { result: DailySuccessResult; compact?: boolean }) {
   const previous = useRef(result.progress);
@@ -89,7 +90,7 @@ export function DailyProgressVessel({ result, compact = false }: { result: Daily
         <div className="daily-progress-peek" aria-hidden={!peek && !open}>
           <span>Where progress came from</span>
           <b>{visible.length ? visible.slice(0, 3).map((item) => item.requirement.label).join(" · ") : "No targets scheduled"}</b>
-          {open ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
+          {open ? <ChevronUp size={ICON_SIZE.body} aria-hidden="true" /> : <ChevronDown size={ICON_SIZE.body} aria-hidden="true" />}
         </div>
       </div>
       {open && (

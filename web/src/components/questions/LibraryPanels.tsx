@@ -14,6 +14,7 @@ import { Modal } from "../ui/Modal";
 import { pushToast } from "../../lib/toast";
 import type { QuestionRecord } from "../../lib/questions";
 import { QuestionSetCard } from "./QuestionSetCard";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 const NO_DOCUMENTS: SourceDocument[] = [];
@@ -49,14 +50,14 @@ export function SourceLibrary({
       />
       {documents.length > 0 && (
         <div className="row" style={{ gap: 7, marginBottom: 12 }}>
-          <Search size={14} className="dim" />
+          <Search size={ICON_SIZE.body} className="dim" />
           <input className="field grow" value={query} onChange={(event) => setQuery(event.target.value)}
             aria-label="Search source documents" placeholder="Search source documents…" />
         </div>
       )}
       {documents.length === 0 ? (
         <EmptyState
-          icon={<FileText size={18} />}
+          icon={<FileText size={ICON_SIZE.emphasis} />}
           title="No documents yet"
           hint="Import a PDF, DOCX, or text file in the Import Center — choose 'library document' to keep it here even without questions."
         />
@@ -76,18 +77,18 @@ export function SourceLibrary({
                 {!doc.rawText && <Tag tone="orange">no text</Tag>}
                 {doc.rawText && (
                   <GhostButton title="Parse this saved document into reviewable question drafts" onClick={() => onParseFrom(doc)}>
-                    <ListPlus size={13} /> Parse into questions
+                    <ListPlus size={ICON_SIZE.body} /> Parse into questions
                   </GhostButton>
                 )}
                 {doc.rawText && provider && (
                   <GhostButton title="Generate questions grounded in this document" onClick={() => onGenerateFrom(doc)}>
-                    <Sparkles size={13} /> Generate
+                    <Sparkles size={ICON_SIZE.body} /> Generate
                   </GhostButton>
                 )}
                 <GhostButton aria-label={`Delete ${doc.title}`} onClick={() => {
                   if (confirm(`Remove "${doc.title}" from the library? Its questions stay in the bank, unlinked.`)) s.removeDocument(doc.id);
                 }}>
-                  <Trash2 size={13} />
+                  <Trash2 size={ICON_SIZE.body} />
                 </GhostButton>
               </div>
             </div>
@@ -180,14 +181,14 @@ export function QuestionSetList({
       />
       {!compact && sets.length > 0 && (
         <div className="row" style={{ gap: 7, marginBottom: 12 }}>
-          <Search size={14} className="dim" />
+          <Search size={ICON_SIZE.body} className="dim" />
           <input className="field grow" value={query} onChange={(event) => setQuery(event.target.value)}
             aria-label="Search question sets" placeholder="Search question sets…" />
         </div>
       )}
       {sets.length === 0 ? (
         <EmptyState
-          icon={<BookOpen size={18} />}
+          icon={<BookOpen size={ICON_SIZE.emphasis} />}
           title="No sets yet"
           hint="Import questions in the Import Center and save them as a question set — they'll appear here with mastery tracking."
         />
@@ -228,13 +229,13 @@ export function QuestionSetList({
                 {!compact && <div className="row wrap gap6">
                   {provider && !set.digest && (
                     <GhostButton disabled={enhancing === set.id} onClick={() => void enhance(set)}>
-                      <Sparkles size={13} /> {enhancing === set.id ? "Analyzing…" : "Build digest"}
+                      <Sparkles size={ICON_SIZE.body} /> {enhancing === set.id ? "Analyzing…" : "Build digest"}
                     </GhostButton>
                   )}
                   <GhostButton aria-label={`Delete ${set.title}`} onClick={() => {
                     if (confirm(`Remove the set "${set.title}"? Its questions stay in the bank, unlinked.`)) s.removeQuestionSet(set.id);
                   }}>
-                    <Trash2 size={13} /> Remove set
+                    <Trash2 size={ICON_SIZE.body} /> Remove set
                   </GhostButton>
                 </div>}
               </QuestionSetCard>

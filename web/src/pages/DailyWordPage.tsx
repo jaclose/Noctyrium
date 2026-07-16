@@ -16,6 +16,7 @@ import { useClockNow } from "../lib/clock";
 import { useStore } from "../lib/store";
 import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../lib/announcements";
 import "../styles/daily-games.css";
+import { ICON_SIZE } from "../lib/iconSize";
 
 interface WordData {
   answersForVersion: (version: string) => readonly string[] | undefined;
@@ -277,9 +278,9 @@ export function DailyWordPage() {
                   return (
                     <div className={`daily-word-tile ${evaluation ?? ""} ${letter.trim() ? "filled" : ""}`} role="gridcell" aria-label={label} key={columnIndex}>
                       <span>{letter.trim()}</span>
-                      {evaluation === "correct" && <Check size={12} aria-hidden="true" />}
-                      {evaluation === "present" && <CircleDot size={11} aria-hidden="true" />}
-                      {evaluation === "absent" && <Minus size={11} aria-hidden="true" />}
+                      {evaluation === "correct" && <Check size={ICON_SIZE.microInline} aria-hidden="true" />}
+                      {evaluation === "present" && <CircleDot size={ICON_SIZE.microInline} aria-hidden="true" />}
+                      {evaluation === "absent" && <Minus size={ICON_SIZE.microInline} aria-hidden="true" />}
                     </div>
                   );
                 })}
@@ -312,7 +313,7 @@ export function DailyWordPage() {
           ))}
           <div className="daily-word-keyboard-row actions">
             <button type="button" className="daily-word-key wide" disabled={puzzle.completed} onClick={submit}>Enter</button>
-            <button type="button" className="daily-word-key wide" aria-label="Backspace" disabled={puzzle.completed} onClick={backspace}><Delete size={17} aria-hidden="true" /> Backspace</button>
+            <button type="button" className="daily-word-key wide" aria-label="Backspace" disabled={puzzle.completed} onClick={backspace}><Delete size={ICON_SIZE.emphasis} aria-hidden="true" /> Backspace</button>
           </div>
         </div>
       </GlassCard>
@@ -324,10 +325,10 @@ export function DailyWordPage() {
               <h2>{puzzle.won ? "Puzzle solved" : "Puzzle complete"}</h2>
               <p className="sub">Answer: <b>{answer}</b>. The next puzzle appears after the calendar date changes in {puzzle.timezone}.</p>
             </div>
-            <GButton onClick={shareResult}><Copy size={15} /> Share result</GButton>
+            <GButton onClick={shareResult}><Copy size={ICON_SIZE.body} /> Share result</GButton>
           </div>
           <div className="daily-word-countdown" aria-label={`Time until the next Daily Word puzzle: ${nextPuzzleCountdown}`}>
-            <Clock3 size={15} aria-hidden="true" />
+            <Clock3 size={ICON_SIZE.body} aria-hidden="true" />
             <span>Next puzzle in <b>{nextPuzzleCountdown}</b></span>
           </div>
           <div className="daily-word-stats" aria-label="Daily Word statistics">
@@ -345,7 +346,7 @@ export function DailyWordPage() {
             ))}
           </div>
           {manualShare && <label className="stack gap6"><span className="field-label">Manual copy result</span><textarea ref={manualShareRef} className="field" readOnly value={manualShare} /></label>}
-          <div className="backup-note"><ShieldCheck size={15} /><span>Sharing contains only the date, score, and symbolic grid—never the answer, guesses, or personal data.</span></div>
+          <div className="backup-note"><ShieldCheck size={ICON_SIZE.body} /><span>Sharing contains only the date, score, and symbolic grid—never the answer, guesses, or personal data.</span></div>
         </GlassCard>
       )}
     </div>

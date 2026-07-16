@@ -27,6 +27,7 @@ import { pushToast } from "../../lib/toast";
 import { sha256Hex } from "../../lib/checksum";
 import { assignDraftProvenancePages } from "../../lib/questionProvenance";
 import { draftImportStatus, summarizeImportDrafts } from "../../lib/questionImportTrust";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export type ImportTab = "paste" | "file" | "ai";
 type SaveMode = "set" | "doc" | "both";
@@ -426,7 +427,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
                 disabled={saveMode === "doc" ? !pendingDoc : saveMode === "set" ? !includedCount : !pendingDoc || !includedCount}
                 onClick={() => void saveApproved()}
               >
-                <Save size={14} /> Save
+                <Save size={ICON_SIZE.body} /> Save
               </GButton>
             </div>
           </div>
@@ -578,7 +579,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
                   {d.aiGenerated && <Tag tone="purple">AI</Tag>}
                   {d.warnings.length > 0 && <Tag tone="orange">{d.warnings.length}⚠</Tag>}
                   <GhostButton aria-label="Toggle editor" onClick={() => updateDraft(i, { expanded: !d.expanded })}>
-                    {d.expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {d.expanded ? <ChevronUp size={ICON_SIZE.body} /> : <ChevronDown size={ICON_SIZE.body} />}
                   </GhostButton>
                 </div>
                 {d.expanded && (
@@ -597,7 +598,7 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
                         <input className="field grow" value={opt.text} aria-label={`Option ${opt.key}`}
                           onChange={(e) => updateDraft(i, { options: d.options.map((o, k) => (k === j ? { ...o, text: e.target.value } : o)) })} />
                         <GhostButton aria-label={`Remove option ${opt.key}`}
-                          onClick={() => updateDraft(i, { options: d.options.filter((_, k) => k !== j) })}><X size={13} /></GhostButton>
+                          onClick={() => updateDraft(i, { options: d.options.filter((_, k) => k !== j) })}><X size={ICON_SIZE.body} /></GhostButton>
                       </div>
                     ))}
                     <GhostButton onClick={() => updateDraft(i, { options: [...d.options, { key: String.fromCharCode(65 + d.options.length), text: "" }] })}>
@@ -635,12 +636,12 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
                       <div className="row wrap gap6">
                         {!d.correctKey && pendingDoc?.rawText && (
                           <GhostButton disabled={aiBusyDraft === i} onClick={() => void assistDraftMapping(i)}>
-                            <Sparkles size={13} /> {aiBusyDraft === i ? "Checking evidence…" : "Mapping assist"}
+                            <Sparkles size={ICON_SIZE.body} /> {aiBusyDraft === i ? "Checking evidence…" : "Mapping assist"}
                           </GhostButton>
                         )}
                         {d.explanation && (
                           <GhostButton disabled={aiBusyDraft === i} onClick={() => void cleanDraftWithAi(i)}>
-                            <Sparkles size={13} /> {aiBusyDraft === i ? "Cleaning…" : "Clean explanation with AI"}
+                            <Sparkles size={ICON_SIZE.body} /> {aiBusyDraft === i ? "Cleaning…" : "Clean explanation with AI"}
                           </GhostButton>
                         )}
                         <span className="sub">AI suggestions stay review-gated and never invent a key without quoted evidence.</span>
@@ -714,7 +715,7 @@ function PasteTab({ onParsed }: { onParsed: (drafts: ParsedQuestionDraft[], warn
       />
       <div className="row">
         <GButton variant="primary" disabled={!raw.trim()} onClick={parse}>
-          <ClipboardPaste size={14} /> Extract & inspect
+          <ClipboardPaste size={ICON_SIZE.body} /> Extract & inspect
         </GButton>
       </div>
     </div>
@@ -833,10 +834,10 @@ function FileTab({ busyFile, setBusyFile, onParsed }: {
         const file = event.dataTransfer.files?.[0];
         if (file && !busyFile) void handleFile(file);
       }}>
-        <FileUp size={22} />
+        <FileUp size={ICON_SIZE.display} />
         <div><b>Drop a question file here</b><span>or choose one from this device</span></div>
         <GButton variant="primary" disabled={busyFile !== null} onClick={() => fileInput.current?.click()}>
-          {busyFile ? <RefreshCw size={14} className="spin" /> : <FileUp size={14} />} {busyFile ? `Extracting ${busyFile}…` : "Choose file"}
+          {busyFile ? <RefreshCw size={ICON_SIZE.body} className="spin" /> : <FileUp size={ICON_SIZE.body} />} {busyFile ? `Extracting ${busyFile}…` : "Choose file"}
         </GButton>
       </div>
     </div>
@@ -921,7 +922,7 @@ function AiGenerateTab({ seedReference, onParsed }: {
       <EmptyState
         title="No AI provider is active"
         hint={health?.detail ?? "Turn on Local (Ollama) or Demo mode in Settings → AI. Generated questions always require your review before saving."}
-        icon={<Sparkles size={18} />}
+        icon={<Sparkles size={ICON_SIZE.emphasis} />}
       />
     );
   }
@@ -952,7 +953,7 @@ function AiGenerateTab({ seedReference, onParsed }: {
         value={reference} onChange={(e) => setReference(e.target.value)} />
       <div className="row">
         <GButton variant="primary" disabled={busy || !topic.trim()} onClick={generate}>
-          {busy ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} />} {busy ? "Generating…" : "Generate drafts"}
+          {busy ? <RefreshCw size={ICON_SIZE.body} className="spin" /> : <Sparkles size={ICON_SIZE.body} />} {busy ? "Generating…" : "Generate drafts"}
         </GButton>
         <span className="sub">Every draft lands in review — nothing saves without your approval.</span>
       </div>

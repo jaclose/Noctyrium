@@ -7,6 +7,7 @@ import type { DailySuccessRequirement, DailySuccessSchedule, DailySuccessSource,
 import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../../lib/announcements";
 import { pushToast } from "../../lib/toast";
 import { GButton, Tag } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const STANDARD: Array<{
   kind: DailySuccessSource["kind"];
@@ -237,7 +238,7 @@ export function DailyRequirementsEditor() {
 
   return (
     <details className="daily-requirements-editor" data-tour="requirements">
-      <summary><SlidersHorizontal size={14} aria-hidden="true" /> Choose targets <span>{shown.length}</span></summary>
+      <summary><SlidersHorizontal size={ICON_SIZE.body} aria-hidden="true" /> Choose targets <span>{shown.length}</span></summary>
       <div className="daily-requirements-body">
         <p>
           Only enabled, scheduled targets count. New targets start today—AXOM never creates past misses.
@@ -278,7 +279,7 @@ export function DailyRequirementsEditor() {
                           else store.checkHabit(linkedHabit.id, today, "done", requirement.target);
                         } else setManualValue(requirement, complete ? 0 : requirement.target);
                       }}>
-                        {complete ? <RotateCcw size={13} /> : <Check size={13} />} {complete ? "Undo" : "Mark complete"}
+                        {complete ? <RotateCcw size={ICON_SIZE.body} /> : <Check size={ICON_SIZE.body} />} {complete ? "Undo" : "Mark complete"}
                       </GButton>
                     ) : (
                       <label><span>Today’s value</span><input className="field" type="number" min="0" defaultValue={result?.current || ""} onBlur={(event) => {
@@ -335,7 +336,7 @@ export function DailyRequirementsEditor() {
               {requirement.schedule.kind === "times-per-week" && (
                 <label><span>Times</span><input className="field" type="number" min="1" max="7" value={requirement.schedule.times} onChange={(event) => update(requirement.id, { schedule: { kind: "times-per-week", times: Math.max(1, Math.min(7, Number(event.target.value) || 1)), weekStartsOn: 1 } })} /></label>
               )}
-              <button type="button" className="daily-requirement-remove" aria-label={`Remove ${requirement.label} target`} onClick={() => remove(requirement.id)}><Trash2 size={14} /></button>
+              <button type="button" className="daily-requirement-remove" aria-label={`Remove ${requirement.label} target`} onClick={() => remove(requirement.id)}><Trash2 size={ICON_SIZE.body} /></button>
               </div>
               <div className="daily-requirement-meta">
                 <span><b>Completion source:</b> {completionSourceDescription(requirement)}</span>
@@ -352,13 +353,13 @@ export function DailyRequirementsEditor() {
           <span>Add a standard signal</span>
           <div className="row wrap gap6">
             {STANDARD.filter((template) => !activeKinds.has(template.kind)).map((template) => (
-              <GButton size="sm" key={template.kind} onClick={() => addStandard(template)}><Plus size={13} /> {template.label}</GButton>
+              <GButton size="sm" key={template.kind} onClick={() => addStandard(template)}><Plus size={ICON_SIZE.body} /> {template.label}</GButton>
             ))}
           </div>
         </div>
 
         <details className="daily-custom-requirement">
-          <summary><CalendarDays size={14} /> Add a custom recurring requirement</summary>
+          <summary><CalendarDays size={ICON_SIZE.body} /> Add a custom recurring requirement</summary>
           <div className="daily-custom-grid">
             <label><span>Name</span><input className="field" placeholder="Gym, reading, prayer, steps…" value={customName} onChange={(event) => setCustomName(event.target.value)} /></label>
             <label><span>Target</span><input className="field" type="number" min="1" value={customTarget} onChange={(event) => setCustomTarget(event.target.value)} /></label>
@@ -375,7 +376,7 @@ export function DailyRequirementsEditor() {
             </select></label>
             {customCompletion === "activity" && <label className="daily-custom-alias"><span>Activity aliases</span><input className="field" placeholder="gym, workout, lifting" value={customAliases} onChange={(event) => setCustomAliases(event.target.value)} /></label>}
             {customSchedule.kind === "times-per-week" && <label><span>Times</span><input className="field" type="number" min="1" max="7" value={customSchedule.times} onChange={(event) => setCustomSchedule({ ...customSchedule, times: Math.max(1, Math.min(7, Number(event.target.value) || 1)) })} /></label>}
-            <GButton variant="primary" onClick={addCustom}><Plus size={14} /> Add target</GButton>
+            <GButton variant="primary" onClick={addCustom}><Plus size={ICON_SIZE.body} /> Add target</GButton>
           </div>
         </details>
       </div>

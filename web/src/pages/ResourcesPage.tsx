@@ -10,6 +10,7 @@ import {
   normalizeResourceUrl, resourceAudience, resourceGroup, resourceSortScore,
   resourceSourceType, usableResourceHref,
 } from "../lib/resourceUtils";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const CATEGORIES = ["Drives", "MCAT", "Pre-Med", "STEP 1", "STEP 2", "Shelf", "Clinical", ...RESOURCE_GROUPS];
 
@@ -50,12 +51,12 @@ export function ResourcesPage() {
         <PanelHeader title="Resources" sub="Saved hyperlinks — STEP 1 prep, references, decks, tools"
           action={
             <div className="row gap8">
-              <GButton size="sm" onClick={() => setBulk(true)}><ListPlus size={15} /> Import links</GButton>
-              <GButton size="sm" variant="primary" onClick={() => setEditing("new")}><Plus size={15} /> Add</GButton>
+              <GButton size="sm" onClick={() => setBulk(true)}><ListPlus size={ICON_SIZE.body} /> Import links</GButton>
+              <GButton size="sm" variant="primary" onClick={() => setEditing("new")}><Plus size={ICON_SIZE.body} /> Add</GButton>
             </div>} />
         <div className="resource-filter-row">
           <div className="search-wrap grow">
-            <Search size={15} />
+            <Search size={ICON_SIZE.body} />
             <input className="search-input" placeholder="Search resources…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <SelectField label="Source" value={source} onChange={(e) => setSource(e.target.value)}>
@@ -91,17 +92,17 @@ export function ResourcesPage() {
                 <button type="button" className={`filter-pill drive-sgu-toggle ${showSgu ? "on" : ""}`}
                   onClick={() => s.updateProfile({ showSguResources: !showSgu })}
                   title={showSgu ? "Hide SGU-specific drives" : "Show SGU-specific drives"}>
-                  {showSgu ? <HardDrive size={13} /> : <EyeOff size={13} />} SGU drives {showSgu ? "on" : "off"}
+                  {showSgu ? <HardDrive size={ICON_SIZE.body} /> : <EyeOff size={ICON_SIZE.body} />} SGU drives {showSgu ? "on" : "off"}
                 </button>
-                <GButton size="sm" onClick={() => setAddDrive(true)}><Plus size={15} /> Add drive</GButton>
+                <GButton size="sm" onClick={() => setAddDrive(true)}><Plus size={ICON_SIZE.body} /> Add drive</GButton>
               </div>} />
           {hiddenSguCount > 0 && !showSgu && (
             <div className="drives-hidden-note">
-              <EyeOff size={14} /> {hiddenSguCount} SGU-specific drive{hiddenSguCount === 1 ? "" : "s"} hidden for your program — toggle them on any time.
+              <EyeOff size={ICON_SIZE.body} /> {hiddenSguCount} SGU-specific drive{hiddenSguCount === 1 ? "" : "s"} hidden for your program — toggle them on any time.
             </div>
           )}
           {drives.length === 0 ? (
-            <EmptyState icon={<HardDrive size={24} />} title="No drives yet"
+            <EmptyState icon={<HardDrive size={ICON_SIZE.display} />} title="No drives yet"
               hint="Paste an SGU shared-drive / Google Drive link — it stays here permanently." />
           ) : (
             <div className="grid grid-courses">
@@ -110,7 +111,7 @@ export function ResourcesPage() {
                 const group = resourceGroup(r);
                 const main = (
                   <>
-                    <span className="folder-icon"><HardDrive size={18} /></span>
+                    <span className="folder-icon"><HardDrive size={ICON_SIZE.emphasis} /></span>
                     <div className="grow">
                       <div className="fc-name truncate">{r.title}</div>
                       <div className="fc-desc truncate">{href ? `${resourceSourceType(r.url)} · ${hostOfResource(href)}` : "Missing or invalid drive link"}</div>
@@ -131,8 +132,8 @@ export function ResourcesPage() {
                     <div className="drive-foot">
                       <Tag tone="purple">{group}</Tag>
                       <div className="right row gap6">
-                        <GhostButton title="Edit / rate" onClick={() => setEditing(r)}><Pencil size={13} /></GhostButton>
-                        <GhostButton className="danger" title="Remove drive" onClick={() => confirmRemoveResource(r) && s.removeResource(r.id)}><Trash2 size={13} /></GhostButton>
+                        <GhostButton title="Edit / rate" onClick={() => setEditing(r)}><Pencil size={ICON_SIZE.body} /></GhostButton>
+                        <GhostButton className="danger" title="Remove drive" onClick={() => confirmRemoveResource(r) && s.removeResource(r.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
                       </div>
                     </div>
                   </div>
@@ -144,7 +145,7 @@ export function ResourcesPage() {
       )}
 
       {shown.length === 0 && cat !== "Drives" && (
-        <GlassCard pad><EmptyState icon={<LinkIcon size={26} />} title="No resources" hint="Add a link or import a batch to start your library." /></GlassCard>
+        <GlassCard pad><EmptyState icon={<LinkIcon size={ICON_SIZE.display} />} title="No resources" hint="Add a link or import a batch to start your library." /></GlassCard>
       )}
 
       <div className="grid grid-courses">
@@ -153,8 +154,8 @@ export function ResourcesPage() {
           return (
           <GlassCard pad hoverable key={r.id} className="folder-card">
             <div className="card-hover-tools">
-              <GhostButton onClick={() => setEditing(r)}><Pencil size={14} /></GhostButton>
-              <GhostButton className="danger" onClick={() => confirmRemoveResource(r) && s.removeResource(r.id)}><Trash2 size={14} /></GhostButton>
+              <GhostButton onClick={() => setEditing(r)}><Pencil size={ICON_SIZE.body} /></GhostButton>
+              <GhostButton className="danger" onClick={() => confirmRemoveResource(r) && s.removeResource(r.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
             </div>
             {typeof r.rating === "number" && (
               <span className={`drive-rating resource-rating r${r.rating >= 10 ? "10" : r.rating >= 8 ? "8" : "low"}`}
@@ -165,7 +166,7 @@ export function ResourcesPage() {
             <div className="row gap8" style={{ alignItems: "flex-start" }}>
               <span className="folder-icon"><Favicon url={r.url} /></span>
               <button className={`star ${r.favorite ? "on" : ""}`} onClick={() => s.toggleResourceFavorite(r.id)} title="Favorite">
-                <Star size={15} fill={r.favorite ? "currentColor" : "none"} />
+                <Star size={ICON_SIZE.body} fill={r.favorite ? "currentColor" : "none"} />
               </button>
             </div>
             <div className="fc-name">{r.title}</div>
@@ -178,7 +179,7 @@ export function ResourcesPage() {
             </div>
             {href
               ? <a className="gbtn sm" href={href} target="_blank" rel="noreferrer" style={{ marginTop: "auto" }}>
-                  Open <ExternalLink size={13} />
+                  Open <ExternalLink size={ICON_SIZE.body} />
                 </a>
               : <button className="gbtn sm resource-missing" onClick={() => setEditing(r)} style={{ marginTop: "auto" }}>
                   Add working link
@@ -197,7 +198,7 @@ export function ResourcesPage() {
 function Favicon({ url }: { url: string }) {
   const [failed, setFailed] = useState(false);
   const host = hostOfResource(url);
-  if (!host || failed || !/\./.test(host)) return <LinkIcon size={18} />;
+  if (!host || failed || !/\./.test(host)) return <LinkIcon size={ICON_SIZE.emphasis} />;
   return (
     <img className="favicon" src={`https://www.google.com/s2/favicons?domain=${host}&sz=64`}
       alt="" width={18} height={18} loading="lazy" onError={() => setFailed(true)} />

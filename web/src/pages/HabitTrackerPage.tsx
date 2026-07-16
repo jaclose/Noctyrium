@@ -12,6 +12,7 @@ import {
 } from "../lib/habits";
 import { addLocalDays } from "../lib/dailyRollover";
 import type { Habit, HabitCheckStatus, HabitType } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const CHECK_OPTIONS: HabitCheckStatus[] = ["done", "partial", "skipped", "missed"];
 
@@ -30,7 +31,7 @@ export function HabitTrackerPage() {
           hint="Enable the Habit Tracker in Settings → Personalization → Early Features. Your data stays local."
         />
         <GButton variant="primary" onClick={() => updateProfile({ experimentalFlags: { habits: true } })}>
-          <FlaskConical size={15} /> Enable Habit Tracker
+          <FlaskConical size={ICON_SIZE.body} /> Enable Habit Tracker
         </GButton>
       </GlassCard>
     );
@@ -91,7 +92,7 @@ function HabitCreate() {
         <select className="field" value={type} onChange={(e) => setType(e.target.value as HabitType)} style={{ width: 190 }} aria-label="Habit type">
           {HABIT_TYPES.map((t) => <option key={t} value={t}>{HABIT_TYPE_META[t].label}</option>)}
         </select>
-        <GButton variant="primary" onClick={add}><Plus size={15} /> Add</GButton>
+        <GButton variant="primary" onClick={add}><Plus size={ICON_SIZE.body} /> Add</GButton>
       </div>
       <div className="sub" style={{ marginTop: 10 }}>{HABIT_TYPE_META[type].hint}</div>
     </GlassCard>
@@ -140,11 +141,11 @@ function HabitRow({ habit }: { habit: Habit }) {
         </div>
         <div className="row gap8" style={{ alignItems: "center" }}>
           <StreakEmber count={streak} />
-          <GhostButton onClick={() => setEditing((v) => !v)} title="Settings"><Settings2 size={14} /></GhostButton>
+          <GhostButton onClick={() => setEditing((v) => !v)} title="Settings"><Settings2 size={ICON_SIZE.body} /></GhostButton>
           <GhostButton onClick={() => updateHabit(habit.id, { archived: !habit.archived })} title={habit.archived ? "Restore" : "Archive"}>
-            {habit.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+            {habit.archived ? <ArchiveRestore size={ICON_SIZE.body} /> : <Archive size={ICON_SIZE.body} />}
           </GhostButton>
-          <GhostButton className="danger" onClick={() => removeHabit(habit.id)} title="Delete"><Trash2 size={14} /></GhostButton>
+          <GhostButton className="danger" onClick={() => removeHabit(habit.id)} title="Delete"><Trash2 size={ICON_SIZE.body} /></GhostButton>
         </div>
       </div>
 

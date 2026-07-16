@@ -2,6 +2,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
   type ChangeEvent, type KeyboardEvent,
 } from "react";
+import { ICON_SIZE } from "../lib/iconSize";
 import {
   ArrowLeft, ArrowRight, BookOpen, CalendarClock, Check, CheckCircle2, ChevronRight,
   Download, ImagePlus, ListChecks, Lock, Palette, Pencil, Plus, Save, Sparkles, Trash2,
@@ -100,8 +101,8 @@ export function JournalPage() {
           <p>Write freely, close open loops, and keep the record on this device.</p>
         </div>
         <div className="journal-header-actions">
-          <GButton size="sm" onClick={() => setCustomizing(true)}><Palette size={15} /> Customize</GButton>
-          {open && <GButton size="sm" onClick={closeNotebook}><BookOpen size={15} /> Library</GButton>}
+          <GButton size="sm" onClick={() => setCustomizing(true)}><Palette size={ICON_SIZE.body} /> Customize</GButton>
+          {open && <GButton size="sm" onClick={closeNotebook}><BookOpen size={ICON_SIZE.body} /> Library</GButton>}
         </div>
       </header>
 
@@ -170,7 +171,7 @@ function NotebookLibrary({
         </button>
         <div className="journal-library-primary">
           <GButton variant="primary" onClick={() => onOpenDay(today)}>
-            <BookOpen size={17} /> Open today’s page
+            <BookOpen size={ICON_SIZE.emphasis} /> Open today’s page
           </GButton>
           <span>{entries.length ? `${entries.length} local page${entries.length === 1 ? "" : "s"}` : "Your first page is ready"}</span>
         </div>
@@ -180,7 +181,7 @@ function NotebookLibrary({
         <PanelHeader title="Recent pages" sub="Stored locally in your AXOM workspace" />
         {entries.length === 0 ? (
           <div className="journal-calm-empty">
-            <BookOpen size={22} />
+            <BookOpen size={ICON_SIZE.display} />
             <b>No pages yet</b>
             <span>Open today’s page. AXOM saves as you write.</span>
           </div>
@@ -194,7 +195,7 @@ function NotebookLibrary({
                 <div className="journal-page-list-row" key={entry.id}>
                   <button type="button" onClick={() => onOpenDay(key)}>
                     <span><b>{key === today ? "Today" : prettyDate(`${key}T12:00:00`)}</b><small>{preview}</small></span>
-                    <ChevronRight size={16} aria-hidden="true" />
+                    <ChevronRight size={ICON_SIZE.emphasis} aria-hidden="true" />
                   </button>
                   <GhostButton
                     className="danger"
@@ -202,7 +203,7 @@ function NotebookLibrary({
                     onClick={() => {
                       if (window.confirm("Delete this journal page? This cannot be undone.")) s.removeJournal(entry.id);
                     }}
-                  ><Trash2 size={14} /></GhostButton>
+                  ><Trash2 size={ICON_SIZE.body} /></GhostButton>
                 </div>
               );
             })}
@@ -210,12 +211,12 @@ function NotebookLibrary({
         )}
         {missed.length > 0 && (
           <details className="journal-catchup-disclosure">
-            <summary><CalendarClock size={15} /> {missed.length} optional catch-up page{missed.length === 1 ? "" : "s"}</summary>
+            <summary><CalendarClock size={ICON_SIZE.body} /> {missed.length} optional catch-up page{missed.length === 1 ? "" : "s"}</summary>
             <p>These days had local activity but no journal page. Catch-up is optional.</p>
             <div className="journal-catchup-days">
               {missed.map((key) => (
                 <button key={key} type="button" onClick={() => onOpenDay(key, true)}>
-                  {prettyDate(`${key}T12:00:00`)} <Plus size={13} />
+                  {prettyDate(`${key}T12:00:00`)} <Plus size={ICON_SIZE.body} />
                 </button>
               ))}
             </div>
@@ -403,14 +404,14 @@ function JournalWritingPage({
     >
       <div className="journal-book-toolbar">
         <GButton size="sm" onClick={() => turnPage("previous")} aria-label="Previous journal page">
-          <ArrowLeft size={15} /> Previous
+          <ArrowLeft size={ICON_SIZE.body} /> Previous
         </GButton>
         <div className="journal-page-position" aria-live="polite">
           <b>{day === today ? "Today" : prettyDate(`${day}T12:00:00`)}</b>
           <span>{saveState === "saving" ? "Saving locally…" : saveState === "saved" ? "Saved locally" : "Ready to write"}</span>
         </div>
         <GButton size="sm" onClick={() => turnPage("next")} disabled={day >= today} aria-label="Next journal page">
-          Next <ArrowRight size={15} />
+          Next <ArrowRight size={ICON_SIZE.body} />
         </GButton>
       </div>
 
@@ -425,7 +426,7 @@ function JournalWritingPage({
           {plan && <PreviousIntention plan={plan} />}
 
           <div className="journal-prompt-strip" aria-label="Reflection prompts">
-            <Sparkles size={14} aria-hidden="true" />
+            <Sparkles size={ICON_SIZE.body} aria-hidden="true" />
             <span>{prompts[0]}</span>
           </div>
 
@@ -447,12 +448,12 @@ function JournalWritingPage({
 
           <div className="journal-win-loss-grid">
             <label>
-              <span><Trophy size={14} /> One win</span>
+              <span><Trophy size={ICON_SIZE.body} /> One win</span>
               <input value={draft.wins[0] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, wins: [event.target.value] }))}
                 placeholder="Something worth keeping" />
             </label>
             <label>
-              <span><ListChecks size={14} /> One unfinished loop</span>
+              <span><ListChecks size={ICON_SIZE.body} /> One unfinished loop</span>
               <input value={draft.losses[0] ?? ""} onChange={(event) => setDraft((current) => ({ ...current, losses: [event.target.value] }))}
                 placeholder="Something to carry forward" />
             </label>
@@ -466,7 +467,7 @@ function JournalWritingPage({
 
           {draft.dayAtAGlance.includedText && (
             <section className="journal-included-glance" aria-labelledby="included-glance-title">
-              <div><Check size={14} /><h3 id="included-glance-title">Day at a glance</h3></div>
+              <div><Check size={ICON_SIZE.body} /><h3 id="included-glance-title">Day at a glance</h3></div>
               <pre>{draft.dayAtAGlance.includedText}</pre>
             </section>
           )}
@@ -475,7 +476,7 @@ function JournalWritingPage({
             <div className="journal-section-head">
               <div><h3 id="journal-attachments-title">Images</h3><span>Optional · stored in this local workspace</span></div>
               <GButton size="sm" onClick={() => fileInputRef.current?.click()} disabled={addingImage}>
-                <ImagePlus size={15} /> {addingImage ? "Adding…" : "Add image"}
+                <ImagePlus size={ICON_SIZE.body} /> {addingImage ? "Adding…" : "Add image"}
               </GButton>
               <input ref={fileInputRef} className="journal-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={addAttachment} aria-label="Choose a journal image" />
@@ -490,11 +491,11 @@ function JournalWritingPage({
                     <figcaption>
                       <span><b>{attachment.name}</b><small>{formatBytes(attachment.size)}</small></span>
                       <span className="journal-attachment-actions">
-                        <GhostButton aria-label={`Export ${attachment.name}`} onClick={() => exportAttachment(attachment)}><Download size={14} /></GhostButton>
+                        <GhostButton aria-label={`Export ${attachment.name}`} onClick={() => exportAttachment(attachment)}><Download size={ICON_SIZE.body} /></GhostButton>
                         <GhostButton className="danger" aria-label={`Remove ${attachment.name}`} onClick={() => setDraft((current) => ({
                           ...current,
                           attachments: withoutJournalAttachment(current.attachments, attachment.id),
-                        }))}><Trash2 size={14} /></GhostButton>
+                        }))}><Trash2 size={ICON_SIZE.body} /></GhostButton>
                       </span>
                     </figcaption>
                   </figure>
@@ -513,13 +514,13 @@ function JournalWritingPage({
                 <option value="">Not set</option><option>Low</option><option>Medium</option><option>High</option>
               </select>
             </label>
-            <GButton size="sm" onClick={exportPage}><Download size={15} /> Export page</GButton>
-            {remediationMode && <GButton size="sm" onClick={onClose}><X size={15} /> Cancel</GButton>}
-            <GButton size="sm" onClick={() => persist()}><Save size={15} /> Save</GButton>
+            <GButton size="sm" onClick={exportPage}><Download size={ICON_SIZE.body} /> Export page</GButton>
+            {remediationMode && <GButton size="sm" onClick={onClose}><X size={ICON_SIZE.body} /> Cancel</GButton>}
+            <GButton size="sm" onClick={() => persist()}><Save size={ICON_SIZE.body} /> Save</GButton>
             <GButton variant="primary" size="sm" onClick={() => {
               setDraft((current) => ({ ...current, notebookStatus: "complete" }));
               window.setTimeout(() => persist("complete"), 0);
-            }}><CheckCircle2 size={15} /> Done for today</GButton>
+            }}><CheckCircle2 size={ICON_SIZE.body} /> Done for today</GButton>
           </div>
         </article>
 
@@ -537,12 +538,12 @@ function JournalWritingPage({
                     <span><i className={item.hasEvidence ? "has-evidence" : ""} aria-hidden="true" /><b>{item.label}</b></span>
                     <div>
                       <GhostButton aria-label={`Correct ${item.label}`} aria-expanded={editingGlance === item.key}
-                        onClick={() => setEditingGlance((current) => current === item.key ? null : item.key)}><Pencil size={13} /></GhostButton>
+                        onClick={() => setEditingGlance((current) => current === item.key ? null : item.key)}><Pencil size={ICON_SIZE.body} /></GhostButton>
                       <GhostButton aria-label={`${hidden ? "Show" : "Hide"} ${item.label}`} onClick={() => setDraft((current) => {
                         const hiddenSections = new Set(current.dayAtAGlance.hiddenSections ?? []);
                         if (hidden) hiddenSections.delete(item.key); else hiddenSections.add(item.key);
                         return { ...current, dayAtAGlance: { ...current.dayAtAGlance, hiddenSections: [...hiddenSections] } };
-                      })}>{hidden ? <Plus size={13} /> : <X size={13} />}</GhostButton>
+                      })}>{hidden ? <Plus size={ICON_SIZE.body} /> : <X size={ICON_SIZE.body} />}</GhostButton>
                     </div>
                   </div>
                   <p>{correction.trim() || item.value}</p>
@@ -567,7 +568,7 @@ function JournalWritingPage({
               ...current,
               dayAtAGlance: { ...current.dayAtAGlance, includedText, includedAt: new Date().toISOString() },
             }));
-          }}><Plus size={15} /> Include in journal</GButton>
+          }}><Plus size={ICON_SIZE.body} /> Include in journal</GButton>
           <span className="journal-glance-footnote">Hidden sections stay out of the included summary. Your original records are never changed.</span>
         </aside>
       </div>
@@ -614,10 +615,10 @@ function NotebookCustomization({
 function PreviousIntention({ plan }: { plan: DayPlan }) {
   return (
     <div className="standup-prev-intention journal-intention-card">
-      <div className="spi-head"><Lock size={11} /> Intention set {prettyDate(`${plan.dayKey}T12:00:00`)} · source record unchanged</div>
+      <div className="spi-head"><Lock size={ICON_SIZE.microInline} /> Intention set {prettyDate(`${plan.dayKey}T12:00:00`)} · source record unchanged</div>
       <p>“{plan.intention}”</p>
       {plan.wins.length > 0 && <div className="spi-wins">{plan.wins.map((win, index) => <span key={index}>{win}</span>)}</div>}
-      {plan.outcome && <Tag tone={outcomeTone[plan.outcome]}><Trophy size={11} /> Marked {plan.outcome}</Tag>}
+      {plan.outcome && <Tag tone={outcomeTone[plan.outcome]}><Trophy size={ICON_SIZE.microInline} /> Marked {plan.outcome}</Tag>}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { AlertTriangle, BarChart3, Edit3, Play, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import type { QuestionSet, QuestionSetMetrics } from "../../lib/library";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function QuestionSetCard({
   set,
@@ -30,8 +31,8 @@ export function QuestionSetCard({
   const mappingIssueCount = metrics.mapping?.issueCount ?? metrics.needsReview;
   const partial = metrics.completed > 0 && metrics.remaining > 0;
   const primaryAction = mappingIssueCount > 0 && onReviewIssues
-    ? { label: "Review issues", icon: <AlertTriangle size={13} />, onClick: onReviewIssues }
-    : { label: partial ? "Continue" : "Start", icon: <Play size={13} />, onClick: onStart };
+    ? { label: "Review issues", icon: <AlertTriangle size={ICON_SIZE.body} />, onClick: onReviewIssues }
+    : { label: partial ? "Continue" : "Start", icon: <Play size={ICON_SIZE.body} />, onClick: onStart };
 
   return (
     <article className={`qset-card glass-liquid ${compact ? "compact" : ""}`}>
@@ -80,11 +81,11 @@ export function QuestionSetCard({
         <GButton size="sm" variant="primary" onClick={primaryAction.onClick}>{primaryAction.icon} {primaryAction.label}</GButton>
         {!compact && onReviewMisses && (
           <GhostButton disabled={metrics.missedQuestionIds.length === 0} onClick={onReviewMisses}>
-            <RotateCcw size={13} /> Review misses
+            <RotateCcw size={ICON_SIZE.body} /> Review misses
           </GhostButton>
         )}
-        {!compact && onEdit && <GhostButton onClick={onEdit}><Edit3 size={13} /> Edit</GhostButton>}
-        {!compact && onInsights && <GhostButton onClick={onInsights}><BarChart3 size={13} /> Insights</GhostButton>}
+        {!compact && onEdit && <GhostButton onClick={onEdit}><Edit3 size={ICON_SIZE.body} /> Edit</GhostButton>}
+        {!compact && onInsights && <GhostButton onClick={onInsights}><BarChart3 size={ICON_SIZE.body} /> Insights</GhostButton>}
       </div>
     </article>
   );

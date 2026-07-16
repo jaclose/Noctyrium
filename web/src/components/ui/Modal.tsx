@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { GhostButton } from "./primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function Modal({
   title, onClose, children, footer, className = "", bodyClassName = "",
@@ -67,7 +68,7 @@ export function Modal({
         onMouseDown={(e) => e.stopPropagation()}>
         <div className="spread">
           <h3 id={titleId}>{title}</h3>
-          <GhostButton onClick={onClose} aria-label="Close"><X size={18} /></GhostButton>
+          <GhostButton onClick={onClose} aria-label="Close"><X size={ICON_SIZE.emphasis} /></GhostButton>
         </div>
         <div className={`modal-body ${bodyClassName}`}>{children}</div>
         {footer && <div className="modal-actions">{footer}</div>}

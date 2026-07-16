@@ -28,6 +28,7 @@ import {
   saveSyncMeta,
 } from "../../services/storageService";
 import type { CloudBackup, CloudSnapshot, SyncMeta } from "../../types/sync";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 type BusyState = "idle" | "login" | "pin" | "save" | "load" | "backup" | "restore" | "auto";
 
@@ -392,20 +393,20 @@ export function AccountSyncPanel() {
       </div>
 
       <div className="account-status-row">
-        <span><HardDrive size={14} /> Local autosave on</span>
-        <span><Fingerprint size={14} /> Profile ID: {store.profile.userId}</span>
-        <span><Cloud size={14} /> {backendStatus}</span>
+        <span><HardDrive size={ICON_SIZE.body} /> Local autosave on</span>
+        <span><Fingerprint size={ICON_SIZE.body} /> Profile ID: {store.profile.userId}</span>
+        <span><Cloud size={ICON_SIZE.body} /> {backendStatus}</span>
       </div>
 
       <div className="account-roadmap under-construction">
         <span className="uc-tape t1">Under Construction</span>
         <span className="uc-tape t2">Account Vault</span>
-        <span className="uc-badge"><KeyRound size={15} /> Backend account flow in progress</span>
+        <span className="uc-badge"><KeyRound size={ICON_SIZE.body} /> Backend account flow in progress</span>
         <div className="uc-inner account-roadmap-inner">
-          <div><UserPlus size={17} /><b>Create account</b><span>Name, email, or passkey creates the account shell.</span></div>
-          <div><Sparkles size={17} /><b>Initialize profile</b><span>Your name, targets, promise, and preferences become the account profile.</span></div>
-          <div><HardDrive size={17} /><b>Preserve local vault</b><span>The current browser data becomes the first recoverable snapshot.</span></div>
-          <div><CloudDownload size={17} /><b>Restore anywhere</b><span>A new device can load the saved AXOM state after confirmation.</span></div>
+          <div><UserPlus size={ICON_SIZE.emphasis} /><b>Create account</b><span>Name, email, or passkey creates the account shell.</span></div>
+          <div><Sparkles size={ICON_SIZE.emphasis} /><b>Initialize profile</b><span>Your name, targets, promise, and preferences become the account profile.</span></div>
+          <div><HardDrive size={ICON_SIZE.emphasis} /><b>Preserve local vault</b><span>The current browser data becomes the first recoverable snapshot.</span></div>
+          <div><CloudDownload size={ICON_SIZE.emphasis} /><b>Restore anywhere</b><span>A new device can load the saved AXOM state after confirmation.</span></div>
         </div>
       </div>
 
@@ -431,10 +432,10 @@ export function AccountSyncPanel() {
 
         <div className="account-primary-actions">
           <GButton variant="primary" onClick={handleInitializeProfile} disabled={!accountName.trim()}>
-            <CheckCircle2 size={15} /> Initialize local profile
+            <CheckCircle2 size={ICON_SIZE.body} /> Initialize local profile
           </GButton>
           <GButton onClick={handleLogin} disabled={isBusy || !accountName.trim()}>
-            <Database size={15} /> {meta.user ? "Refresh account link" : "Try alpha account link"}
+            <Database size={ICON_SIZE.body} /> {meta.user ? "Refresh account link" : "Try alpha account link"}
           </GButton>
         </div>
       </section>
@@ -442,7 +443,7 @@ export function AccountSyncPanel() {
       <section className="account-card">
         <div className="account-section-head">
           <div>
-            <div className="sync-title"><KeyRound size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Username + PIN account</div>
+            <div className="sync-title"><KeyRound size={ICON_SIZE.body} style={{ verticalAlign: -2, marginRight: 6 }} /> Username + PIN account</div>
             <div className="sub">Six digits preferred. Four digits remain accepted only as a legacy/minimum fallback.</div>
           </div>
           <span className={`sync-pill ${meta.session ? "on" : ""}`}>{meta.session ? "Session active" : "Alpha auth"}</span>
@@ -461,17 +462,17 @@ export function AccountSyncPanel() {
         </div>
         <div className="row wrap gap8" style={{ marginTop: 10 }}>
           <GButton size="sm" variant="primary" onClick={handleCreatePinAccount} disabled={isBusy || !accountName.trim() || pin.length < 4}>
-            <UserPlus size={14} /> Create PIN account
+            <UserPlus size={ICON_SIZE.body} /> Create PIN account
           </GButton>
           <GButton size="sm" onClick={handlePinLogin} disabled={isBusy || !accountName.trim() || pin.length < 4}>
-            <KeyRound size={14} /> Log in with PIN
+            <KeyRound size={ICON_SIZE.body} /> Log in with PIN
           </GButton>
           <GButton size="sm" onClick={handlePinLogout} disabled={isBusy || !meta.session}>
-            <LogOut size={14} /> Log out session
+            <LogOut size={ICON_SIZE.body} /> Log out session
           </GButton>
         </div>
         <div className="sync-warning compact">
-          <ShieldAlert size={15} />
+          <ShieldAlert size={ICON_SIZE.body} />
           <span>PINs are hashed server-side with lockout/backoff, but this is not final medical-grade authentication. Recovery, passkeys, OAuth, and email verification are future work.</span>
         </div>
         {meta.session && (
@@ -498,13 +499,13 @@ export function AccountSyncPanel() {
 
         <div className="row wrap gap8">
           <GButton size="sm" onClick={handleSave} disabled={isBusy || !accountName.trim()}>
-            <CloudUpload size={14} /> Save this browser
+            <CloudUpload size={ICON_SIZE.body} /> Save this browser
           </GButton>
           <GButton size="sm" onClick={handleLoad} disabled={isBusy || !accountName.trim()}>
-            <CloudDownload size={14} /> Load cloud copy
+            <CloudDownload size={ICON_SIZE.body} /> Load cloud copy
           </GButton>
           <GButton size="sm" onClick={() => refreshBackups().catch((error) => setStatus(error instanceof Error ? error.message : "Could not refresh backups."))} disabled={isBusy || !meta.user}>
-            <RefreshCw size={14} className={busy === "auto" ? "spin" : ""} /> Refresh cloud status
+            <RefreshCw size={ICON_SIZE.body} className={busy === "auto" ? "spin" : ""} /> Refresh cloud status
           </GButton>
         </div>
       </section>
@@ -538,7 +539,7 @@ export function AccountSyncPanel() {
       </section>
 
       <div className="sync-warning">
-        <ShieldAlert size={15} />
+        <ShieldAlert size={ICON_SIZE.body} />
         <span>This account vault is not production authentication yet. Treat it as a design preview until email magic links, OAuth, or passkeys are wired in.</span>
       </div>
     </div>

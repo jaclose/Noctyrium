@@ -7,6 +7,7 @@ import {
   readTourStep,
   writeTourStep,
 } from "../../lib/onboardingProgress";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export interface TourStep {
   route: string;
@@ -238,19 +239,19 @@ export function GuidedTour({
         tabIndex={-1}
       >
         <div className="tour-tip-head">
-          <span className="tour-step-badge"><Sparkles size={12} aria-hidden="true" /> {index + 1} / {steps.length}</span>
+          <span className="tour-step-badge"><Sparkles size={ICON_SIZE.microInline} aria-hidden="true" /> {index + 1} / {steps.length}</span>
           <button type="button" className="tour-skip" onClick={() => exitTour("skip")} aria-label={skipLabel}>
-            Skip <X size={13} aria-hidden="true" />
+            Skip <X size={ICON_SIZE.body} aria-hidden="true" />
           </button>
         </div>
         <div className="tour-tip-title" id={titleId}>{step.title}</div>
         <div className="tour-tip-body" id={bodyId}>{step.body}</div>
         <div className="tour-tip-actions">
           {index > 0
-            ? <button type="button" className="gbtn sm" onClick={back}><ArrowLeft size={14} /> Back</button>
+            ? <button type="button" className="gbtn sm" onClick={back}><ArrowLeft size={ICON_SIZE.body} /> Back</button>
             : <span aria-hidden="true" />}
           <button type="button" className="gbtn sm primary" onClick={next}>
-            {index === steps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} />
+            {index === steps.length - 1 ? "Finish" : "Next"} <ArrowRight size={ICON_SIZE.body} />
           </button>
         </div>
         <div

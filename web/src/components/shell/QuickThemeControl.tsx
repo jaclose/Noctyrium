@@ -2,6 +2,7 @@ import { Monitor, Moon, Sun, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { setThemePreference, type ThemePreference } from "../../lib/theme";
 import { useThemePreference } from "../../lib/useThemePreference";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const THEME_OPTIONS: Array<{
   value: ThemePreference;
@@ -63,7 +64,7 @@ export function QuickThemeControl() {
         title={`Theme: ${current.label}`}
         onClick={() => open ? close(true) : setOpen(true)}
       >
-        <CurrentIcon size={17} aria-hidden="true" />
+        <CurrentIcon size={ICON_SIZE.emphasis} aria-hidden="true" />
       </button>
 
       {open && (
@@ -74,7 +75,7 @@ export function QuickThemeControl() {
               <div className="quick-theme-current">Current: {current.label}</div>
             </div>
             <button type="button" className="quick-theme-close" onClick={() => close(true)} aria-label="Close appearance menu">
-              <X size={15} aria-hidden="true" />
+              <X size={ICON_SIZE.body} aria-hidden="true" />
             </button>
           </div>
           <fieldset className="quick-theme-options">
@@ -95,7 +96,7 @@ export function QuickThemeControl() {
                       close(true);
                     }}
                   />
-                  <Icon size={15} aria-hidden="true" />
+                  <Icon size={ICON_SIZE.body} aria-hidden="true" />
                   <span><b>{option.label}</b><small>{option.detail}</small></span>
                 </label>
               );

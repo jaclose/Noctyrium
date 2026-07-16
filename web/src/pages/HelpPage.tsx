@@ -11,6 +11,7 @@ import { clearTourProgress } from "../lib/onboardingProgress";
 import { DAILY_WORD_PUBLIC_METADATA } from "../data/dailyWordMetadata";
 import { buildFeedbackMailto, type FeedbackKind } from "../lib/feedback";
 import { SCHEMA_VERSION } from "../lib/seed";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const FEEDBACK_EMAIL = "jafardabbagh@gmail.com";
 
@@ -146,7 +147,7 @@ export function HelpPage() {
       <GlassCard pad className="help-card">
         <PanelHeader title="Help" sub="A guided tour, a written field guide, the Anki import flow, and a direct line for feedback"
           action={<GButton size="sm" variant="primary" onClick={() => { clearTourProgress(); s.updateProfile({ tourDone: false }); location.hash = "dashboard"; }}>
-            <PlayCircle size={15} /> Replay guided tour
+            <PlayCircle size={ICON_SIZE.body} /> Replay guided tour
           </GButton>} />
         <div className="sub" style={{ marginTop: 2 }}>The optional seven-step tour can be skipped at any time. Replaying it never changes your data.</div>
       </GlassCard>
@@ -162,15 +163,15 @@ export function HelpPage() {
             return (
               <div className="feature-guide-card" key={guide.name}>
                 <div className="feature-guide-top">
-                  <span className="guide-tile-icon"><I size={18} /></span>
+                  <span className="guide-tile-icon"><I size={ICON_SIZE.emphasis} /></span>
                   <span className={`feature-status ${statusClass(guide.status)}`}>{guide.status}</span>
                 </div>
                 <b>{guide.name}</b>
                 <span>{guide.preview}</span>
                 <div className="feature-guide-meta">
                   <small>{guide.lives}</small>
-                  <button type="button" onClick={() => setActiveGuide(guide)}><Eye size={13} /> Preview</button>
-                  <a href={`#${guide.route}`}>Open <ArrowRight size={13} /></a>
+                  <button type="button" onClick={() => setActiveGuide(guide)}><Eye size={ICON_SIZE.body} /> Preview</button>
+                  <a href={`#${guide.route}`}>Open <ArrowRight size={ICON_SIZE.body} /></a>
                 </div>
               </div>
             );
@@ -180,7 +181,7 @@ export function HelpPage() {
 
       {activeGuide && (
         <Modal title={activeGuide.name} onClose={() => setActiveGuide(null)}
-          footer={<a className="gbtn primary" href={`#${activeGuide.route}`} onClick={() => setActiveGuide(null)}>Open feature <ArrowRight size={14} /></a>}>
+          footer={<a className="gbtn primary" href={`#${activeGuide.route}`} onClick={() => setActiveGuide(null)}>Open feature <ArrowRight size={ICON_SIZE.body} /></a>}>
           <div className="feature-preview-modal">
             <span className={`feature-status ${statusClass(activeGuide.status)}`}>{activeGuide.status}</span>
             <div><b>Where it lives</b><span>{activeGuide.lives}</span></div>
@@ -193,7 +194,7 @@ export function HelpPage() {
 
       <GlassCard pad>
         <PanelHeader title="Community and Feedback" sub="Bug reports, feature requests, and beta discussion without a noisy floating widget"
-          action={<a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener"><MessageCircle size={14} /> AXOM Discord Channel</a>} />
+          action={<a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener"><MessageCircle size={ICON_SIZE.body} /> AXOM Discord Channel</a>} />
         <div className="sub" style={{ marginTop: 6 }}>
           Use the Discord for quick community feedback. Use the form below for structured bug reports with app version and browser details.
         </div>
@@ -201,7 +202,7 @@ export function HelpPage() {
 
       <GlassCard pad>
         <PanelHeader title="Importing AXOM cards into Anki" sub="Eight steps, from your generated CSV to graded reviews"
-          action={<a className="gbtn sm" href="https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp?usp=sharing" target="_blank" rel="noreferrer noopener"><Layers size={14} /> JD Anki Builds</a>} />
+          action={<a className="gbtn sm" href="https://drive.google.com/drive/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp?usp=sharing" target="_blank" rel="noreferrer noopener"><Layers size={ICON_SIZE.body} /> JD Anki Builds</a>} />
         <details className="help-compact-details">
           <summary>Show Anki import screenshots</summary>
           <div className="anki-guide-steps compact">
@@ -218,7 +219,7 @@ export function HelpPage() {
 
       <GlassCard pad>
         <PanelHeader title="Optimized Anki settings (no FSRS)" sub="Based on the included Anki settings PDF — tuned for high-volume med-school review"
-          action={<a className="gbtn sm" href="./anki-guide/my-anki-settings.pdf" target="_blank" rel="noreferrer noopener"><FileText size={14} /> Open settings PDF</a>} />
+          action={<a className="gbtn sm" href="./anki-guide/my-anki-settings.pdf" target="_blank" rel="noreferrer noopener"><FileText size={ICON_SIZE.body} /> Open settings PDF</a>} />
         <div className="settings-grid">
           {ANKI_SETTINGS.map(([k, v]) => (
             <div className="setting-row" key={k}><span>{k}</span><b>{v}</b></div>
@@ -234,7 +235,7 @@ export function HelpPage() {
             <a key={a.id} className="addon-tile" href={`https://ankiweb.net/shared/info/${a.id}`} target="_blank" rel="noreferrer noopener">
               <div className="grow"><b>{a.name}</b><span>{a.note}</span></div>
               <span className="addon-code mono">{a.id}</span>
-              <ExternalLink size={13} />
+              <ExternalLink size={ICON_SIZE.body} />
             </a>
           ))}
         </div>
@@ -304,10 +305,10 @@ export function FeedbackForm() {
           href={canDraft ? draftHref : undefined}
           aria-disabled={!canDraft}
           onClick={(event) => { if (!canDraft) event.preventDefault(); }}
-        ><Mail size={14} /> Open email draft</a>
+        ><Mail size={ICON_SIZE.body} /> Open email draft</a>
         <span className="sub">No journal, questions, answers, activity history, goals, workspace ID, or backup data is attached.</span>
       </div>
-      <div className="feedback-fallback"><Sparkles size={14} /> AXOM support is not an emergency service.</div>
+      <div className="feedback-fallback"><Sparkles size={ICON_SIZE.body} /> AXOM support is not an emergency service.</div>
     </GlassCard>
   );
 }

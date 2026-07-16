@@ -14,6 +14,7 @@ import {
   type LocalWorkspaceBackupInspection,
 } from "../../lib/storageRecovery";
 import { GButton, Tag } from "../ui/primitives";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 type ActionResult = void | boolean | StorageMigrationResult;
 
@@ -134,7 +135,7 @@ export function RecoveryStatusCard({
             AXOM warned because it could not finish a storage update during startup.
           </div>
         </div>
-        <Tag tone="orange"><AlertTriangle size={12} /> Needs attention</Tag>
+        <Tag tone="orange"><AlertTriangle size={ICON_SIZE.microInline} /> Needs attention</Tag>
       </div>
 
       <p className="sub" style={{ margin: 0 }}>
@@ -161,14 +162,14 @@ export function RecoveryStatusCard({
           onClick={() => runAction("export", onExport, "Export started. Keep the downloaded file somewhere safe.")}
           disabled={busy !== null}
         >
-          <Download size={14} /> {busy === "export" ? "Exporting…" : "Export current workspace"}
+          <Download size={ICON_SIZE.body} /> {busy === "export" ? "Exporting…" : "Export current workspace"}
         </GButton>
         <GButton
           size="sm"
           onClick={() => runAction("portable", onChoosePortableRestore, "Choose an AXOM backup file to continue.")}
           disabled={busy !== null}
         >
-          <Upload size={14} /> Choose backup file
+          <Upload size={ICON_SIZE.body} /> Choose backup file
         </GButton>
         {onRestoreAutomatic && activeMarker.backupKey && (
           <GButton
@@ -180,12 +181,12 @@ export function RecoveryStatusCard({
             )}
             disabled={busy !== null || verification.status !== "verified"}
           >
-            {verification.status === "verified" ? <RotateCcw size={14} /> : <ShieldCheck size={14} />}
+            {verification.status === "verified" ? <RotateCcw size={ICON_SIZE.body} /> : <ShieldCheck size={ICON_SIZE.body} />}
             {busy === "restore" ? "Restoring…" : "Restore safety snapshot"}
           </GButton>
         )}
         <GButton size="sm" variant="primary" onClick={retryStartup} disabled={busy !== null}>
-          <RefreshCw size={14} className={busy === "retry" ? "spin" : ""} />
+          <RefreshCw size={ICON_SIZE.body} className={busy === "retry" ? "spin" : ""} />
           {busy === "retry" ? "Retrying…" : "Retry startup"}
         </GButton>
       </div>

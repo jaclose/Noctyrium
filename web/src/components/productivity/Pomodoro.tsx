@@ -8,6 +8,7 @@ import { useStore } from "../../lib/store";
 import { usePomodoro, POMODORO_PRESETS, PRIMARY_POMODORO_PRESET_IDS, clampPomodoroCustomDurations, effectivePreset, formatClock, getBreakDurationMinutes } from "../../lib/pomodoro";
 import { effectivePomodoroPreferences } from "../../lib/pomodoroPreferences";
 import type { PomodoroSavedPreset } from "../../lib/types";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function Pomodoro({ compact = false }: { compact?: boolean }) {
   const pomo = usePomodoro();
@@ -129,7 +130,7 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
         sub={compact ? (pomo.targetLabel ?? "Focus sprints that auto-log minutes") : "Focus sprints that auto-log their minutes to today when finished"}
         action={
           <span className={`pomo-phase-pill ${pomo.phase}`}>
-            {isFocus ? <Flame size={13} /> : <Coffee size={13} />} {isFocus ? "Focus" : "Break"}
+            {isFocus ? <Flame size={ICON_SIZE.body} /> : <Coffee size={ICON_SIZE.body} />} {isFocus ? "Focus" : "Break"}
           </span>
         }
       />
@@ -180,7 +181,7 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
                     <button type="button" onClick={() => applySavedPreset(saved)} disabled={pomo.running} title={`${saved.focus} min focus · ${saved.break} min break`}>
                       <b>{saved.label}</b><small>{saved.focus} / {saved.break}{saved.useCount ? ` · ${saved.useCount} uses` : ""}</small>
                     </button>
-                    <button type="button" aria-label={`Delete ${saved.label} preset`} onClick={() => deleteSaved(saved.id)}><Trash2 size={12} /></button>
+                    <button type="button" aria-label={`Delete ${saved.label} preset`} onClick={() => deleteSaved(saved.id)}><Trash2 size={ICON_SIZE.microInline} /></button>
                   </div>
                 ))}
               </div>
@@ -196,7 +197,7 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
                     <button type="button" onClick={() => applySavedPreset(saved)} disabled={pomo.running} title={`${saved.focus} min focus · ${saved.break} min break`}>
                       <b>{saved.label}</b><small>{saved.focus} / {saved.break}{saved.useCount ? ` · ${saved.useCount} uses` : ""}</small>
                     </button>
-                    <button type="button" aria-label={`Delete ${saved.label} preset`} onClick={() => deleteSaved(saved.id)}><Trash2 size={12} /></button>
+                    <button type="button" aria-label={`Delete ${saved.label} preset`} onClick={() => deleteSaved(saved.id)}><Trash2 size={ICON_SIZE.microInline} /></button>
                   </div>
                 ))}
               </div>
@@ -243,7 +244,7 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
               )}
               <div className="row wrap gap8 pomo-custom-actions">
                 <GButton onClick={() => runDraft()}>Run once</GButton>
-                <GButton variant="primary" onClick={() => saveDraft()}><Save size={14} /> Save preset</GButton>
+                <GButton variant="primary" onClick={() => saveDraft()}><Save size={ICON_SIZE.body} /> Save preset</GButton>
               </div>
             </div>
           )}
@@ -269,19 +270,19 @@ export function Pomodoro({ compact = false }: { compact?: boolean }) {
 
           <div className="pomo-actions">
             <GButton variant="primary" onClick={pomo.toggle}>
-              {pomo.running ? <><Pause size={15} /> Pause</> : <><Play size={15} /> Start</>}
+              {pomo.running ? <><Pause size={ICON_SIZE.body} /> Pause</> : <><Play size={ICON_SIZE.body} /> Start</>}
             </GButton>
             <GButton size="sm" onClick={pomo.skip} title="Skip to the next phase and log elapsed focus minutes">
-              <SkipForward size={14} /> Skip
+              <SkipForward size={ICON_SIZE.body} /> Skip
             </GButton>
             <GButton size="sm" onClick={pomo.reset} title="Reset and log elapsed focus minutes">
-              <RotateCcw size={14} /> Reset
+              <RotateCcw size={ICON_SIZE.body} /> Reset
             </GButton>
           </div>
 
           <div className="pomo-meta">
-            <span className="pomo-stat"><Timer size={13} /> {pomo.sessionsToday} sprint{pomo.sessionsToday === 1 ? "" : "s"} today</span>
-            <span className="pomo-stat"><Flame size={13} /> {pomo.loggedMinutesToday}m logged</span>
+            <span className="pomo-stat"><Timer size={ICON_SIZE.body} /> {pomo.sessionsToday} sprint{pomo.sessionsToday === 1 ? "" : "s"} today</span>
+            <span className="pomo-stat"><Flame size={ICON_SIZE.body} /> {pomo.loggedMinutesToday}m logged</span>
             <label className="pomo-toggle" title="Add finished focus minutes to today's study log">
               <input type="checkbox" checked={pomo.autoLog} onChange={(event) => pomo.setAutoLog(event.target.checked)} />
               <span>Auto-log</span>

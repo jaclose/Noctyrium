@@ -16,6 +16,7 @@ import {
 } from "../../lib/blueprintCatalog";
 import { routeForBlueprintLane } from "../../lib/blueprintRoutes";
 import type { BlueprintLaneId, BlueprintMode, BlueprintNodeStatus, BlueprintNodeType, BlueprintSource, InstalledBlueprint, InstalledBlueprintNode, SourceType } from "../../lib/types";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const DEPTH_KEY = "noctyrium-blueprint-depth";
 const laneKey = (mode: BlueprintMode) => `noctyrium-blueprint-lane-${mode}`;
@@ -90,7 +91,7 @@ export function BlueprintWorkbench({ mode, initialLane }: { mode: BlueprintMode;
             <div className="bp-mode-kicker">{mode === "usmle" ? "USMLE Pathway" : "Pre-Health Pathway"}</div>
             <div className="bp-mode-title">Blueprint Prep</div>
           </div>
-          <Tag tone="cyan"><Layers size={12} /> {installs.length} installed</Tag>
+          <Tag tone="cyan"><Layers size={ICON_SIZE.microInline} /> {installs.length} installed</Tag>
         </div>
         <div className="bp-lanebar">
           {lanes.map((lane) => (
@@ -135,14 +136,14 @@ function LaneCatalog({
               const stats = installStats(install);
               return (
                 <div className="bp-installed-row" key={install.id}>
-                  <span className="bp-installed-mark"><Brain size={16} /></span>
+                  <span className="bp-installed-mark"><Brain size={ICON_SIZE.emphasis} /></span>
                   <button type="button" className="grow bp-installed-open" onClick={() => onOpen(install.id)}>
                     <b>{install.title}</b>
                     <span>{stats.mastered}/{stats.total} mastered · {stats.pct}% overall</span>
                   </button>
                   <div className="bp-mini-track"><span style={{ width: `${stats.pct}%` }} /></div>
-                  <GhostButton title="Open" onClick={() => onOpen(install.id)}><ArrowRight size={15} /></GhostButton>
-                  <GhostButton className="danger" title="Remove container" onClick={() => remove(install.id)}><Trash2 size={14} /></GhostButton>
+                  <GhostButton title="Open" onClick={() => onOpen(install.id)}><ArrowRight size={ICON_SIZE.body} /></GhostButton>
+                  <GhostButton className="danger" title="Remove container" onClick={() => remove(install.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
                 </div>
               );
             })}
@@ -160,7 +161,7 @@ function LaneCatalog({
             return (
               <div className="bp-catalog-card" key={id}>
                 <div className="bp-catalog-top">
-                  <span className="bp-catalog-mark"><Brain size={17} /></span>
+                  <span className="bp-catalog-mark"><Brain size={ICON_SIZE.emphasis} /></span>
                   <SourceBadge source={bp.source} />
                 </div>
                 <b>{bp.title}</b>
@@ -172,10 +173,10 @@ function LaneCatalog({
                 <div className="bp-catalog-actions">
                   {installed.length > 0
                     ? <>
-                        <GButton size="sm" onClick={() => onOpen(installed[0].id)}><ArrowRight size={13} /> Open</GButton>
-                        <GButton size="sm" onClick={() => onInstall(id)}><Copy size={13} /> Duplicate</GButton>
+                        <GButton size="sm" onClick={() => onOpen(installed[0].id)}><ArrowRight size={ICON_SIZE.body} /> Open</GButton>
+                        <GButton size="sm" onClick={() => onInstall(id)}><Copy size={ICON_SIZE.body} /> Duplicate</GButton>
                       </>
-                    : <GButton size="sm" variant="primary" onClick={() => onInstall(id)}><Plus size={13} /> Install blueprint</GButton>}
+                    : <GButton size="sm" variant="primary" onClick={() => onInstall(id)}><Plus size={ICON_SIZE.body} /> Install blueprint</GButton>}
                 </div>
               </div>
             );
@@ -198,8 +199,8 @@ function DuplicateDialog({ blueprintId, onClose, onOpened }: { blueprintId: stri
         “{bp?.title}” is already installed as a container. Open the existing one, or create a versioned duplicate to track a fresh run.
       </p>
       <div className="stack gap8">
-        <GButton variant="primary" onClick={() => existing && onOpened(existing.id)}><ArrowRight size={14} /> Open existing blueprint</GButton>
-        <GButton onClick={() => { const id = installBlueprint(blueprintId, { duplicate: true }); if (id) onOpened(id); }}><Copy size={14} /> Create a versioned duplicate</GButton>
+        <GButton variant="primary" onClick={() => existing && onOpened(existing.id)}><ArrowRight size={ICON_SIZE.body} /> Open existing blueprint</GButton>
+        <GButton onClick={() => { const id = installBlueprint(blueprintId, { duplicate: true }); if (id) onOpened(id); }}><Copy size={ICON_SIZE.body} /> Create a versioned duplicate</GButton>
       </div>
     </Modal>
   );
@@ -243,7 +244,7 @@ function ContainerView({ install, onClose }: { install: InstalledBlueprint; onCl
   return (
     <GlassCard pad className="bp-container-card">
       <div className="bp-container-head">
-        <GhostButton onClick={onClose} title="Back to catalog"><ChevronRight size={16} style={{ transform: "rotate(180deg)" }} /></GhostButton>
+        <GhostButton onClick={onClose} title="Back to catalog"><ChevronRight size={ICON_SIZE.emphasis} style={{ transform: "rotate(180deg)" }} /></GhostButton>
         <div className="grow">
           <div className="bp-container-title">{install.title}</div>
           <div className="bp-container-sub">
@@ -259,14 +260,14 @@ function ContainerView({ install, onClose }: { install: InstalledBlueprint; onCl
 
       {needsUpdate && (
         <div className="bp-update-note">
-          <ShieldCheck size={14} /> <span>A newer catalog version is available. Updating preserves your progress.</span>
+          <ShieldCheck size={ICON_SIZE.body} /> <span>A newer catalog version is available. Updating preserves your progress.</span>
           <GButton size="sm" onClick={() => reconcile(install.id)}>Update</GButton>
         </div>
       )}
 
       <div className="bp-toolbar">
         <div className="search-wrap bp-search">
-          <Search size={15} />
+          <Search size={ICON_SIZE.body} />
           <input className="search-input" placeholder="Search objectives, categories, tags…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <select className="field bp-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as BlueprintNodeStatus | "all")} aria-label="Status filter">
@@ -319,7 +320,7 @@ function CategoryBlock({
     return (
       <div className={`bp-macro-block ${macroOpen ? "open" : ""}`}>
         <button type="button" className="bp-macro-cat" onClick={() => onOpenNode(macroOpen ? null : catId)}>
-          <span className="bp-cat-icon"><Target size={15} /></span>
+          <span className="bp-cat-icon"><Target size={ICON_SIZE.body} /></span>
           <span className="grow">
             <b>{name}</b>
             <small>{nodes.length} nodes · {mastered} mastered{nextNode ? ` · next: ${nextNode.objective}` : ""}</small>
@@ -337,7 +338,7 @@ function CategoryBlock({
                     <b>{node.objective}</b>
                     <small>{STATUS_LABEL[node.status]} · {node.mastery}% · {node.priority} priority</small>
                   </span>
-                  <ChevronRight size={13} />
+                  <ChevronRight size={ICON_SIZE.body} />
                 </button>
                 {openNodeId === node.id && <NodeDetail node={node} installId={installId} />}
               </div>
@@ -352,8 +353,8 @@ function CategoryBlock({
   return (
     <div className={`bp-cat ${isOpen ? "open" : ""}`}>
       <button type="button" className="bp-cat-head" onClick={() => setOpen((o) => !o)}>
-        {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-        <span className="bp-cat-icon"><Target size={15} /></span>
+        {isOpen ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
+        <span className="bp-cat-icon"><Target size={ICON_SIZE.body} /></span>
         <b className="grow">{name}</b>
         <span className="bp-cat-count">{mastered}/{nodes.length}</span>
         <span className="bp-cat-mastery">{mastery}%</span>
@@ -386,7 +387,7 @@ function NodeRow({ node, installId, open, onToggle }: { node: InstalledBlueprint
           </span>
         </span>
         <span className="bp-node-status">{STATUS_LABEL[node.status]}</span>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {open ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
       </button>
       {open && <NodeDetail node={node} installId={installId} />}
     </div>
@@ -415,7 +416,7 @@ function NodeDetail({ node, installId }: { node: InstalledBlueprintNode; install
       </div>
 
       <div className="bp-detail-row">
-        <span className="bp-detail-label"><Gauge size={13} /> Mastery</span>
+        <span className="bp-detail-label"><Gauge size={ICON_SIZE.body} /> Mastery</span>
         <div className="bp-mastery-pills">
           {[0, 25, 50, 75, 100].map((m) => (
             <button key={m} type="button" className={`bp-mastery-pill ${node.mastery === m ? "on" : ""}`} onClick={() => patch({ mastery: m })}>{m}</button>
@@ -425,10 +426,10 @@ function NodeDetail({ node, installId }: { node: InstalledBlueprintNode; install
       </div>
 
       <div className="bp-link-grid">
-        <LinkStepper icon={<ListChecks size={13} />} label="Questions" value={node.linkedQuestions} onStep={(d) => link("linkedQuestions", d)} />
-        <LinkStepper icon={<Layers size={13} />} label="Anki" value={node.linkedAnki} onStep={(d) => link("linkedAnki", d)} />
-        <LinkStepper icon={<FlaskConical size={13} />} label="Error log" value={node.linkedErrorLog} onStep={(d) => link("linkedErrorLog", d)} />
-        <LinkStepper icon={<ClipboardCheck size={13} />} label="Assessments" value={node.linkedAssessments} onStep={(d) => link("linkedAssessments", d)} />
+        <LinkStepper icon={<ListChecks size={ICON_SIZE.body} />} label="Questions" value={node.linkedQuestions} onStep={(d) => link("linkedQuestions", d)} />
+        <LinkStepper icon={<Layers size={ICON_SIZE.body} />} label="Anki" value={node.linkedAnki} onStep={(d) => link("linkedAnki", d)} />
+        <LinkStepper icon={<FlaskConical size={ICON_SIZE.body} />} label="Error log" value={node.linkedErrorLog} onStep={(d) => link("linkedErrorLog", d)} />
+        <LinkStepper icon={<ClipboardCheck size={ICON_SIZE.body} />} label="Assessments" value={node.linkedAssessments} onStep={(d) => link("linkedAssessments", d)} />
       </div>
 
       <div className="bp-detail-grid">
@@ -448,10 +449,10 @@ function NodeDetail({ node, installId }: { node: InstalledBlueprintNode; install
 
       <div className="bp-node-foot">
         {node.sourceUrl
-          ? <a className="bp-node-source" href={node.sourceUrl} target="_blank" rel="noreferrer noopener"><ShieldCheck size={12} /> {sourceStatusText(node)} <ExternalLink size={11} /></a>
-          : <span className="bp-node-source dim"><ShieldCheck size={12} /> {sourceStatusText(node)}</span>}
+          ? <a className="bp-node-source" href={node.sourceUrl} target="_blank" rel="noreferrer noopener"><ShieldCheck size={ICON_SIZE.microInline} /> {sourceStatusText(node)} <ExternalLink size={ICON_SIZE.microInline} /></a>
+          : <span className="bp-node-source dim"><ShieldCheck size={ICON_SIZE.microInline} /> {sourceStatusText(node)}</span>}
         {node.resourceLinks.map((r) => (
-          <a key={r.url} className={`bp-node-source kind-${r.kind}`} href={r.url} target="_blank" rel="noreferrer noopener">{r.label} <ExternalLink size={11} /></a>
+          <a key={r.url} className={`bp-node-source kind-${r.kind}`} href={r.url} target="_blank" rel="noreferrer noopener">{r.label} <ExternalLink size={ICON_SIZE.microInline} /></a>
         ))}
         {node.sourceVersion && <span className="bp-node-verified">{node.sourceVersion}</span>}
         {node.lastVerified && <span className="bp-node-verified">audited {node.lastVerified}</span>}
@@ -483,7 +484,7 @@ function SourceBadge({ source, inline }: { source: BlueprintSource; inline?: boo
         ? "needs review"
         : "unverified";
   const body = <>
-    {type === "official" ? <ShieldCheck size={11} /> : type === "tool" ? <FlaskConical size={11} /> : <Trophy size={11} />}
+    {type === "official" ? <ShieldCheck size={ICON_SIZE.microInline} /> : type === "tool" ? <FlaskConical size={ICON_SIZE.microInline} /> : <Trophy size={ICON_SIZE.microInline} />}
     {type === "official" ? "Official" : type === "tool" ? "Tool" : "Internal"}
     {` · ${label}`}
   </>;

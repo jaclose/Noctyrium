@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
 import { AxomMark, AxomWordmark } from "../components/ui/BrandMark";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const WEBSITE_URL = "https://www.jafardabbagh.com/";
 
@@ -50,7 +51,7 @@ export function AboutPage() {
       <GlassCard pad className="about-hero-card">
         <div className="about-hero">
           <div>
-            <Tag tone="cyan"><Sparkles size={12} /> Pre-Beta</Tag>
+            <Tag tone="cyan"><Sparkles size={ICON_SIZE.microInline} /> Pre-Beta</Tag>
             <h2 className="row" style={{ gap: 12 }}><AxomMark size={26} /> <AxomWordmark /></h2>
             <p>
               A local-first academic workspace for question practice, course tracking, study logs, planning,
@@ -64,9 +65,9 @@ export function AboutPage() {
             </p>
           </div>
           <div className="about-principles">
-            <span><ShieldCheck size={15} /> Local-first</span>
-            <span><Brain size={15} /> Blueprint-driven</span>
-            <span><LineChart size={15} /> Evidence-based</span>
+            <span><ShieldCheck size={ICON_SIZE.body} /> Local-first</span>
+            <span><Brain size={ICON_SIZE.body} /> Blueprint-driven</span>
+            <span><LineChart size={ICON_SIZE.body} /> Evidence-based</span>
           </div>
         </div>
       </GlassCard>
@@ -92,7 +93,7 @@ function StatusColumn({ status, features }: { status: FeatureStatus; features: F
   return (
     <section className={`about-status-col status-${status}`}>
       <div className="about-status-head">
-        <span className="about-status-mark"><Icon size={16} /></span>
+        <span className="about-status-mark"><Icon size={ICON_SIZE.emphasis} /></span>
         <div>
           <b>{meta.label}</b>
           <small>{meta.sub}</small>
@@ -134,7 +135,7 @@ function WebsitePreview() {
     <GlassCard pad className="website-preview-card">
       <PanelHeader title="Live site" sub="Preview refreshes every 30 minutes"
         action={<a className="gbtn sm" href={WEBSITE_URL} target="_blank" rel="noreferrer noopener">
-          Open site <ExternalLink size={13} />
+          Open site <ExternalLink size={ICON_SIZE.body} />
         </a>} />
       <div className="website-frame-shell">
         <iframe key={refreshKey} title="Live site preview" src={WEBSITE_URL} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />

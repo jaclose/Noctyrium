@@ -16,6 +16,7 @@ import { gotoJournalDay } from "../lib/uiStore";
 import { evaluateDailySuccess } from "../lib/dailySuccess";
 import { frequentActivityShortcuts, recentActivityShortcuts, type ActivityShortcut } from "../lib/activityShortcuts";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
+import { ICON_SIZE } from "../lib/iconSize";
 
 export const PRODUCTIVITY_TOUR_STEPS: readonly ModuleTourStep[] = [
   { target: "productivity-log", title: "Log activity", body: "Name what mattered, then add time, quantity, or a note only when it helps. One Log button records the activity." },
@@ -111,11 +112,11 @@ export function ProductivityPage() {
           sub={isActive ? "Record study, questions, exercise, reading, or anything else that mattered." : `Viewing ${prettyDate(`${viewKey}T12:00:00`)}`}
           action={isActive ? (
             <div className="row wrap gap6">
-              <GButton size="sm" onClick={() => setPickedDay(yesterdayKey)}><History size={14} /> Yesterday</GButton>
-              <GButton size="sm" onClick={() => gotoJournalDay(yesterdayKey)}><BookOpen size={14} /> Catch-up</GButton>
-              <GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={14} /> Help</GButton>
+              <GButton size="sm" onClick={() => setPickedDay(yesterdayKey)}><History size={ICON_SIZE.body} /> Yesterday</GButton>
+              <GButton size="sm" onClick={() => gotoJournalDay(yesterdayKey)}><BookOpen size={ICON_SIZE.body} /> Catch-up</GButton>
+              <GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={ICON_SIZE.body} /> Help</GButton>
             </div>
-          ) : <div className="row wrap gap6"><GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton><GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={14} /> Help</GButton></div>} />
+          ) : <div className="row wrap gap6"><GButton size="sm" onClick={() => setPickedDay(null)}>Back to today</GButton><GButton size="sm" onClick={() => setModuleTourOpen(true)} aria-label="Open Productivity help tour"><HelpCircle size={ICON_SIZE.body} /> Help</GButton></div>} />
         <DailyProgressVessel result={dailyProgress} />
 
         {isActive ? (
@@ -136,7 +137,7 @@ export function ProductivityPage() {
                 </div></div>
               </div>
               <label className="fast-field fast-activity-note"><span>Note (optional)</span><input className="field" aria-label="Note (optional)" placeholder="Add context if it will help later" value={manualNote} onChange={(event) => setManualNote(event.target.value)} /></label>
-              <GButton variant="primary" onClick={logManual} disabled={!manualType.trim()}><Plus size={14} /> Log</GButton>
+              <GButton variant="primary" onClick={logManual} disabled={!manualType.trim()}><Plus size={ICON_SIZE.body} /> Log</GButton>
             </div>
             <details className="activity-category-disclosure">
               <summary>Category and contribution (optional)</summary>
@@ -162,13 +163,13 @@ export function ProductivityPage() {
           </>
         ) : (
           <div className="historical-log-lock">
-            <History size={18} aria-hidden="true" />
+            <History size={ICON_SIZE.emphasis} aria-hidden="true" />
             <span><b>History is read-only.</b><small>Return to today before logging so an old view cannot change the current day.</small></span>
           </div>
         )}
         <div className="console-totals" aria-label="Viewed day totals">
-          <span><Clock size={13} /> {totals.minutes} study minutes</span>
-          {totals.cards > 0 && <span><Layers size={13} /> {totals.cards} cards</span>}
+          <span><Clock size={ICON_SIZE.body} /> {totals.minutes} study minutes</span>
+          {totals.cards > 0 && <span><Layers size={ICON_SIZE.body} /> {totals.cards} cards</span>}
           {productive.minutes !== totals.minutes && <span>{productive.minutes} total productive minutes</span>}
         </div>
       </GlassCard>
@@ -178,10 +179,10 @@ export function ProductivityPage() {
           <PanelHeader title="Weekly activity" sub="Calendar-aligned 7-day view of minutes and optional quantities"
             action={<Tag tone={weekly.activeDays ? scoreTone(weekly.grade) : "neutral"}>{weekly.activeDays}/{weekly.days.length} active</Tag>} />
           <div className="period-metrics">
-            <Metric icon={<Clock size={15} />} label="Study time" value={`${Math.round(weekly.minutes / 60)}h ${weekly.minutes % 60}m`} note={`${weekly.avgMinutes}m / active day`} />
-            <Metric icon={<Layers size={15} />} label="Cards" value={`${weekly.cards}`} note={`${weekly.avgCards} / active day`} />
-            <Metric icon={<TrendingUp size={15} />} label="Consistency" value={`${weekly.consistency}%`} note={`${weekly.strongDays.length} strong day${weekly.strongDays.length === 1 ? "" : "s"}`} />
-            <Metric icon={<Target size={15} />} label="Activity review" value={`${weekly.needsWorkDays.length}`} note="quiet or low-volume calendar days" />
+            <Metric icon={<Clock size={ICON_SIZE.body} />} label="Study time" value={`${Math.round(weekly.minutes / 60)}h ${weekly.minutes % 60}m`} note={`${weekly.avgMinutes}m / active day`} />
+            <Metric icon={<Layers size={ICON_SIZE.body} />} label="Cards" value={`${weekly.cards}`} note={`${weekly.avgCards} / active day`} />
+            <Metric icon={<TrendingUp size={ICON_SIZE.body} />} label="Consistency" value={`${weekly.consistency}%`} note={`${weekly.strongDays.length} strong day${weekly.strongDays.length === 1 ? "" : "s"}`} />
+            <Metric icon={<Target size={ICON_SIZE.body} />} label="Activity review" value={`${weekly.needsWorkDays.length}`} note="quiet or low-volume calendar days" />
           </div>
           <div className={`productivity-strip reveal-bars ${strip.inView ? "in-view" : ""}`} ref={strip.ref}>
             {weekly.days.map((d) => <DayPillar key={d.key} day={d} onPick={() => setPickedDay(d.key)} />)}
@@ -193,8 +194,8 @@ export function ProductivityPage() {
           <PanelHeader title="Monthly activity calendar" sub={`${monthly.label} · each cell follows the real calendar day`}
             action={<Tag tone={monthly.activeDays ? scoreTone(monthly.grade) : "neutral"}>{monthly.activeDays}/${monthly.days.length} active</Tag>} />
           <div className="month-summary">
-            <Metric icon={<Activity size={15} />} label="Month result" value={`${Math.round(monthly.minutes / 60)}h`} note={`${monthly.cards} cards`} />
-            <Metric icon={<CalendarDays size={15} />} label="Best day" value={monthly.bestDay ? shortDate(monthly.bestDay.key) : "None"} note={monthly.bestDay ? `${monthly.bestDay.minutes}m · ${monthly.bestDay.cards} cards` : "log a session"} />
+            <Metric icon={<Activity size={ICON_SIZE.body} />} label="Month result" value={`${Math.round(monthly.minutes / 60)}h`} note={`${monthly.cards} cards`} />
+            <Metric icon={<CalendarDays size={ICON_SIZE.body} />} label="Best day" value={monthly.bestDay ? shortDate(monthly.bestDay.key) : "None"} note={monthly.bestDay ? `${monthly.bestDay.minutes}m · ${monthly.bestDay.cards} cards` : "log a session"} />
           </div>
           <div className="calendar-month">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => <span className="cal-head" key={d}>{d}</span>)}
@@ -275,7 +276,7 @@ function ShortcutGroup({
               <b>{item.label}</b>
               <small>{shortcutDetail(item)}{title === "Frequent" ? ` · ${item.uses} uses` : ""}</small>
             </button>
-            <button type="button" aria-label={`Hide ${item.label} shortcut`} onClick={() => onHide(item.signature)}><X size={12} /></button>
+            <button type="button" aria-label={`Hide ${item.label} shortcut`} onClick={() => onHide(item.signature)}><X size={ICON_SIZE.microInline} /></button>
           </div>
         ))}
       </div>
@@ -510,7 +511,7 @@ function ActivityLog({ logs, activeDayKey }: { logs: StudyLog[]; activeDayKey: s
         } />
       {logs.length === 0 ? (
         <div className="activity-empty">
-          <History size={20} />
+          <History size={ICON_SIZE.control} />
           <div>
             <b>No activity yet</b>
             <span>Log any named activity above and each entry will appear here as a timeline.</span>
@@ -583,14 +584,14 @@ function describeLog(log: StudyLog): { text: string; tone: string; icon: ReactNo
   if (log.minutes) parts.push(`${log.minutes > 0 ? "+" : ""}${log.minutes}m`);
   const detail = parts.length ? ` · ${parts.join(" · ")}` : "";
   const correction = log.minutes < 0 || log.cards < 0;
-  let icon: ReactNode = <Clock size={13} />;
+  let icon: ReactNode = <Clock size={ICON_SIZE.body} />;
   let tone = "neutral";
-  if (correction) { icon = <Minus size={13} />; tone = "red"; }
-  else if (lower.includes("anki") || lower.includes("card")) { icon = <Layers size={13} />; tone = "green"; }
-  else if (lower.includes("pomodoro")) { icon = <Timer size={13} />; tone = "purple"; }
-  else if (log.quantityKind === "questions") { icon = <Target size={13} />; tone = "cyan"; }
-  else if (lower.includes("lecture")) { icon = <BookOpen size={13} />; tone = "cyan"; }
-  else if (lower.includes("deep")) { icon = <Zap size={13} />; tone = "orange"; }
+  if (correction) { icon = <Minus size={ICON_SIZE.body} />; tone = "red"; }
+  else if (lower.includes("anki") || lower.includes("card")) { icon = <Layers size={ICON_SIZE.body} />; tone = "green"; }
+  else if (lower.includes("pomodoro")) { icon = <Timer size={ICON_SIZE.body} />; tone = "purple"; }
+  else if (log.quantityKind === "questions") { icon = <Target size={ICON_SIZE.body} />; tone = "cyan"; }
+  else if (lower.includes("lecture")) { icon = <BookOpen size={ICON_SIZE.body} />; tone = "cyan"; }
+  else if (lower.includes("deep")) { icon = <Zap size={ICON_SIZE.body} />; tone = "orange"; }
   return { text: `${correction ? "Corrected" : "Logged"} ${type}${detail}`, tone, icon };
 }
 

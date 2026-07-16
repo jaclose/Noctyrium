@@ -1,6 +1,7 @@
 import { RotateCcw } from "lucide-react";
 import { GButton } from "../ui/primitives";
 import type { CloudBackup } from "../../types/sync";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export function CloudBackupPanel({
   backups,
@@ -33,7 +34,7 @@ export function CloudBackupPanel({
                 </div>
               </div>
               <GButton size="tiny" onClick={() => onRestore(backup.id)} disabled={busy}>
-                <RotateCcw size={13} /> Restore
+                <RotateCcw size={ICON_SIZE.body} /> Restore
               </GButton>
             </div>
           ))}

@@ -10,6 +10,7 @@ import { dayKey } from "../../lib/scoring";
 import { exportPremedExperienceWorkbook } from "../../lib/premedExport";
 import { premedEvidenceStrength, PREMED_KINDS } from "../../lib/premedScoring";
 import type { PremedExperienceKind } from "../../lib/types";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 // Ballpark hour benchmarks for a competitive MD/DO applicant (guidance, not gospel).
 const HOUR_BENCHMARKS: Record<PremedExperienceKind, { recommended: number; competitive: number }> = {
@@ -65,7 +66,7 @@ export function PremedExperiencePanel() {
           <div className="row gap6">
             <Tag tone={verifiedHours >= 50 ? "green" : verifiedHours > 0 ? "cyan" : "neutral"}>{verifiedHours} verified hours</Tag>
             <a className="gbtn sm" href="#premed-log">View log</a>
-            <GButton size="sm" onClick={() => exportPremedExperienceWorkbook(entries)} disabled={!entries.length}><Download size={13} /> Export</GButton>
+            <GButton size="sm" onClick={() => exportPremedExperienceWorkbook(entries)} disabled={!entries.length}><Download size={ICON_SIZE.body} /> Export</GButton>
           </div>
         } />
       <div className="premed-hours-layout">

@@ -3,6 +3,7 @@ import {
   Bell, Clock3, Database, Download, FileJson, Gamepad2, ImagePlus, Palette, RotateCcw, ShieldCheck,
   Sparkles, Trash2, Upload, UserCircle2, Check, ScrollText, MessageCircle, Settings2,
 } from "lucide-react";
+import { ICON_SIZE } from "../../lib/iconSize";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
@@ -171,7 +172,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               onClick={() => setTab(id)}
               onKeyDown={(event) => onTabKeyDown(event, id)}
             >
-              <Icon size={13} style={{ marginRight: 6, verticalAlign: -2 }} /> {label}
+              <Icon size={ICON_SIZE.body} style={{ marginRight: 6, verticalAlign: -2 }} /> {label}
             </button>
           );
         })}
@@ -196,7 +197,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" onClick={() => avatarRef.current?.click()}>
-                <ImagePlus size={15} /> Change avatar
+                <ImagePlus size={ICON_SIZE.body} /> Change avatar
               </GButton>
             </div>
             <input ref={avatarRef} type="file" accept="image/*" hidden
@@ -232,15 +233,15 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
           <div className="backup-actions-panel promise-settings-card" style={{ marginTop: 14 }}>
             <div>
-              <div className="sync-title"><ScrollText size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Your promise</div>
+              <div className="sync-title"><ScrollText size={ICON_SIZE.body} style={{ verticalAlign: -2, marginRight: 6 }} /> Your promise</div>
               <div className="sub">{promise?.signedName
                 ? `Signed by ${promise.signedName} on ${prettyDate(promise.signedAt)}.`
                 : "You haven't signed your promise yet."}</div>
             </div>
             <div className="row wrap gap8">
-              {promise?.signedName && <GButton size="sm" onClick={() => setViewingPromise(true)}><ScrollText size={15} /> View signed promise</GButton>}
+              {promise?.signedName && <GButton size="sm" onClick={() => setViewingPromise(true)}><ScrollText size={ICON_SIZE.body} /> View signed promise</GButton>}
               <GButton size="sm" onClick={() => setResigning(true)}>
-                <ScrollText size={15} /> {promise?.signedName ? "Re-sign promise" : "Sign your promise"}
+                <ScrollText size={ICON_SIZE.body} /> {promise?.signedName ? "Re-sign promise" : "Sign your promise"}
               </GButton>
             </div>
           </div>
@@ -257,7 +258,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                 Changes save locally as you work.
               </div>
             </div>
-            <Tag tone="green"><ShieldCheck size={12} /> On this device</Tag>
+            <Tag tone="green"><ShieldCheck size={ICON_SIZE.microInline} /> On this device</Tag>
           </div>
           <DataHealthPanel />
         </section>
@@ -291,13 +292,13 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" variant="primary" onClick={exportBackup}>
-                <Download size={15} /> Export backup
+                <Download size={ICON_SIZE.body} /> Export backup
               </GButton>
               <GButton size="sm" onClick={() => fileRef.current?.click()}>
-                <Upload size={15} /> Import / restore
+                <Upload size={ICON_SIZE.body} /> Import / restore
               </GButton>
               <GButton size="sm" onClick={() => mergeRef.current?.click()}>
-                <Upload size={15} /> Merge backup
+                <Upload size={ICON_SIZE.body} /> Merge backup
               </GButton>
               <input ref={fileRef} type="file" accept="application/json,.json" hidden
                 onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0], "replace")} />
@@ -305,7 +306,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                 onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0], "merge")} />
             </div>
             <div className="backup-note">
-              <ShieldCheck size={15} />
+              <ShieldCheck size={ICON_SIZE.body} />
               <span>Replace asks for confirmation. Merge combines records by ID; newer records win and nothing is deleted.</span>
             </div>
           </div>
@@ -367,7 +368,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
               <div className="sub">Ask questions or report a rough edge. This does not sync or upload your workspace.</div>
             </div>
             <a className="gbtn sm primary" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-              <MessageCircle size={15} /> AXOM Discord Channel
+              <MessageCircle size={ICON_SIZE.body} /> AXOM Discord Channel
             </a>
           </div>
 
@@ -383,7 +384,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
                   setMsg("Reset to starter data.");
                 }
               }}>
-              <RotateCcw size={15} /> Reset to starter data
+              <RotateCcw size={ICON_SIZE.body} /> Reset to starter data
             </GButton>
           </div>
           {msg && <div className="backup-status" role="status">{msg}</div>}
@@ -444,7 +445,7 @@ function DailyUtilitiesSettings() {
       <div className="stack" style={{ gap: 12, marginTop: 10 }}>
         <div className="settings-utility-row">
           <div>
-            <div className="sync-title"><Gamepad2 size={14} /> Daily Games</div>
+            <div className="sync-title"><Gamepad2 size={ICON_SIZE.body} /> Daily Games</div>
             <div className="sub">Optional Daily Word and Doctordle WIP folder. Disabling it hides navigation and preserves history.</div>
           </div>
           <label className="settings-inline-toggle">
@@ -461,7 +462,7 @@ function DailyUtilitiesSettings() {
 
         <div className="settings-utility-row">
           <div>
-            <div className="sync-title"><Clock3 size={14} /> Clock</div>
+            <div className="sync-title"><Clock3 size={ICON_SIZE.body} /> Clock</div>
             <div className="sub">Compact TopBar time with an optional analog popover. Only preferences persist; current time never does.</div>
           </div>
           <label className="settings-inline-toggle">
@@ -606,7 +607,7 @@ function DailyUtilitiesSettings() {
             <div><div className="sync-title">Daily Word history</div><div className="sub">{puzzleCount} local puzzle record{puzzleCount === 1 ? "" : "s"}. This reset does not affect courses, tasks, or other AXOM data.</div></div>
             <GButton size="sm" variant="danger" onClick={() => {
               if (confirm("Reset Daily Word history and statistics on this device? No other AXOM data will change.")) resetDailyWordPuzzles();
-            }}><Trash2 size={14} /> Reset Daily Word</GButton>
+            }}><Trash2 size={ICON_SIZE.body} /> Reset Daily Word</GButton>
           </div>
         )}
       </div>
@@ -662,7 +663,7 @@ function DevicePreferencePanel() {
   return (
     <div className="backup-actions-panel">
       <div>
-        <div className="sync-title"><Bell size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> Device preferences</div>
+        <div className="sync-title"><Bell size={ICON_SIZE.body} style={{ verticalAlign: -2, marginRight: 6 }} /> Device preferences</div>
         <div className="sub">Reduced motion: <b>{reducedMotion ? "On" : "Off"}</b> (follows this device). Focus-timer notifications: <b>{permission}</b>.</div>
       </div>
       {permission === "default" && <GButton size="sm" onClick={requestNotifications}>Enable focus-timer notifications</GButton>}
@@ -777,7 +778,7 @@ function PersonalizationPanel() {
           </div>
         </div>
         <GButton size="sm" variant="primary" onClick={requestOnboardingRerun}>
-          <Sparkles size={15} /> Run setup again
+          <Sparkles size={ICON_SIZE.body} /> Run setup again
         </GButton>
       </div>
 
@@ -819,7 +820,7 @@ function PersonalizationPanel() {
 
       <div className="backup-actions-panel">
         <div>
-          <div className="sync-title"><HardDrive size={14} style={{ verticalAlign: -2, marginRight: 6 }} /> SGU shared drives</div>
+          <div className="sync-title"><HardDrive size={ICON_SIZE.body} style={{ verticalAlign: -2, marginRight: 6 }} /> SGU shared drives</div>
           <div className="sub">Show SGU-specific drives on the Resources page. Your personal drive and universal board packs always stay.</div>
         </div>
         <button type="button" className={`onboarding-switch ${showSgu ? "on" : ""}`}
@@ -834,7 +835,7 @@ function PersonalizationPanel() {
           <div className="sync-title">Starter structure</div>
           <div className="sub">{track.progress.summary}</div>
         </div>
-        <GButton size="sm" onClick={loadStarter}><Sparkles size={15} /> Load {track.short} structure</GButton>
+        <GButton size="sm" onClick={loadStarter}><Sparkles size={ICON_SIZE.body} /> Load {track.short} structure</GButton>
       </div>
 
       <div className="focus-settings-grid">
@@ -844,7 +845,7 @@ function PersonalizationPanel() {
           return (
             <div key={option.id} className={`focus-setting-row ${primary ? "primary" : ""}`}>
               <button type="button" className={`focus-check ${subscribed ? "on" : ""}`} onClick={() => toggleFocus(option.id)} title="Toggle subscription">
-                {subscribed && <Check size={12} />}
+                {subscribed && <Check size={ICON_SIZE.microInline} />}
               </button>
               <div className="grow">
                 <b>{option.label}</b>

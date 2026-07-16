@@ -1,6 +1,7 @@
 import { Gamepad2, ShieldCheck } from "lucide-react";
 import { useStore } from "../lib/store";
 import { GlassCard, GButton, Tag } from "../components/ui/primitives";
+import { ICON_SIZE } from "../lib/iconSize";
 
 /**
  * Eager, tiny route gate. The lazy game engine and bundled word lists are not
@@ -13,7 +14,7 @@ export function OptionalDailyGamesPage() {
   return (
     <GlassCard pad className="optional-module-page">
       <div className="stack" style={{ gap: 12 }}>
-        <Tag tone="neutral"><Gamepad2 size={12} /> Optional module</Tag>
+        <Tag tone="neutral"><Gamepad2 size={ICON_SIZE.microInline} /> Optional module</Tag>
         <div>
           <h1>Daily Games is currently disabled</h1>
           <p className="sub">
@@ -23,7 +24,7 @@ export function OptionalDailyGamesPage() {
           </p>
         </div>
         <div className="backup-note">
-          <ShieldCheck size={15} />
+          <ShieldCheck size={ICON_SIZE.body} />
           <span>Disabling the module later hides its navigation without deleting completed puzzles or statistics.</span>
         </div>
         <div>

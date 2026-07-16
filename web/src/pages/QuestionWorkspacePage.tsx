@@ -31,6 +31,7 @@ import { AxomBrandLockup } from "../components/ui/BrandMark";
 import { coachWeakness, resolveActiveProvider } from "../lib/ai";
 import { pushToast } from "../lib/toast";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 const NO_SETS: QuestionSet[] = [];
@@ -298,24 +299,24 @@ export function QuestionWorkspacePage() {
               {isFirstUse ? (
                 <>
                   <button className="qb-cta primary" onClick={() => openImport("file")}>
-                    <FileInput size={16} /> Import Questions
+                    <FileInput size={ICON_SIZE.emphasis} /> Import Questions
                   </button>
                   <button className="qb-cta ghost" onClick={() => openImport("paste")}>
-                    <Files size={15} /> Paste text
+                    <Files size={ICON_SIZE.body} /> Paste text
                   </button>
                 </>
               ) : (
                 <>
                   <button className="qb-cta primary" onClick={launchRecommended}>
-                    <Play size={16} /> {lastSession ? "Continue last session" : runnable ? "Start practice" : "Import questions"}
+                    <Play size={ICON_SIZE.emphasis} /> {lastSession ? "Continue last session" : runnable ? "Start practice" : "Import questions"}
                   </button>
                   <button className="qb-cta ghost" onClick={() => openImport("file")}>
-                    <FileInput size={15} /> Import
+                    <FileInput size={ICON_SIZE.body} /> Import
                   </button>
                 </>
               )}
               <button className="qb-cta ghost" onClick={() => setModuleTourOpen(true)} aria-label="Open Question Bank help tour">
-                <HelpCircle size={15} /> Help
+                <HelpCircle size={ICON_SIZE.body} /> Help
               </button>
             </div>
           </div>
@@ -385,7 +386,7 @@ export function QuestionWorkspacePage() {
 
           {mapping.issueCount > 0 && (
             <section className="qb-mapping-alert" aria-labelledby="mapping-review-title" aria-live="polite" data-module-tour="qb-mappings">
-              <div className="qb-mapping-icon" aria-hidden="true"><AlertTriangle size={18} /></div>
+              <div className="qb-mapping-icon" aria-hidden="true"><AlertTriangle size={ICON_SIZE.emphasis} /></div>
               <div className="grow">
                 <h2 id="mapping-review-title">{mapping.issueCount} question{mapping.issueCount === 1 ? "" : "s"} need review</h2>
                 <p>
@@ -410,13 +411,13 @@ export function QuestionWorkspacePage() {
                       ? "Choose a short block and keep your current mastery signal fresh."
                       : "Every import enters the same review-gated workflow."}</p>
             </div>
-            <button className="filter-pill on qb-begin-button" onClick={launchRecommended}><Play size={14} /> Begin</button>
+            <button className="filter-pill on qb-begin-button" onClick={launchRecommended}><Play size={ICON_SIZE.body} /> Begin</button>
           </section>
 
           <section aria-label="Question Bank performance" className="qb-stats">
             {stats.map((stat) => (
               <div key={stat.label} className="qb-stat glass-liquid">
-                <span className="qb-stat-icon"><stat.icon size={15} /></span>
+                <span className="qb-stat-icon"><stat.icon size={ICON_SIZE.body} /></span>
                 <span className="qb-stat-value">{stat.value}</span>
                 <span className="qb-stat-label">{stat.label}</span>
                 <span className="qb-stat-note">{stat.note}</span>
@@ -426,16 +427,16 @@ export function QuestionWorkspacePage() {
 
           <div className="qb-loop-grid" aria-label="Today's AXOM study loop">
             <button className="qb-loop-card" disabled={!due.length} onClick={() => setRunner({ mode: "tutor", retakeIds: due.slice(0, 20).map((q) => q.id) })}>
-              <ListFilter size={17} /><b>Review due</b><span>{due.length ? `${due.length} ready now` : "Nothing due"}</span>
+              <ListFilter size={ICON_SIZE.emphasis} /><b>Review due</b><span>{due.length ? `${due.length} ready now` : "Nothing due"}</span>
             </button>
             <button className="qb-loop-card" disabled={!incorrect.length} onClick={() => setRunner({ mode: "tutor", retakeIds: incorrect.slice(0, 20).map((q) => q.id) })}>
-              <RotateCcw size={17} /><b>Retry incorrects</b><span>{incorrect.length ? `${incorrect.length} misses to repair` : "No current misses"}</span>
+              <RotateCcw size={ICON_SIZE.emphasis} /><b>Retry incorrects</b><span>{incorrect.length ? `${incorrect.length} misses to repair` : "No current misses"}</span>
             </button>
             <button className="qb-loop-card" disabled={!weak[0]} onClick={() => weak[0] && setRunner({ mode: "tutor", presetFilters: { status: "all", count: 15, categories: [weak[0].topic] } })}>
-              <Microscope size={17} /><b>Weak-topic block</b><span>{weak[0]?.topic ?? "Needs more attempts"}</span>
+              <Microscope size={ICON_SIZE.emphasis} /><b>Weak-topic block</b><span>{weak[0]?.topic ?? "Needs more attempts"}</span>
             </button>
             <button className="qb-loop-card" onClick={() => openImport("file")}>
-              <FileInput size={17} /><b>Import questions</b><span>Review uncertainty, not every line</span>
+              <FileInput size={ICON_SIZE.emphasis} /><b>Import questions</b><span>Review uncertainty, not every line</span>
             </button>
           </div>
 
@@ -450,7 +451,7 @@ export function QuestionWorkspacePage() {
                 <div><b>{recentImprovement === undefined ? "Needs more attempts" : `${recentImprovement >= 0 ? "+" : ""}${recentImprovement} points`}</b><div className="sub">Recent improvement</div></div>
                 {provider && incorrect.length > 0 && (
                   <button className="filter-pill" disabled={coachBusy} onClick={() => void runWeaknessCoach()}>
-                    <Sparkles size={12} /> {coachBusy ? "Analyzing misses…" : "Ask weakness coach"}
+                    <Sparkles size={ICON_SIZE.microInline} /> {coachBusy ? "Analyzing misses…" : "Ask weakness coach"}
                   </button>
                 )}
               </div>

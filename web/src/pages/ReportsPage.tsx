@@ -21,6 +21,7 @@ import {
 } from "../lib/reports";
 import { evaluateDailySuccess } from "../lib/dailySuccess";
 import { ReportInsightCard, type ReportCardInsight } from "../components/reports/ReportInsightCard";
+import { ICON_SIZE } from "../lib/iconSize";
 
 const RANGES = [14, 30] as const;
 const STAGES: PassStage[] = ["untouched", "red", "young", "mature", "mastered"];
@@ -212,24 +213,24 @@ export function ReportsPage() {
                   <button type="button" key={r} className={`filter-pill ${range === r ? "on" : ""}`} onClick={() => setRange(r)}>{r}d</button>
                 ))}
               </div>
-              <GButton size="sm" onClick={() => exportState(s)}><Download size={14} /> Export</GButton>
+              <GButton size="sm" onClick={() => exportState(s)}><Download size={ICON_SIZE.body} /> Export</GButton>
             </div>} />
       </GlassCard>
 
       <section className="report-section" aria-labelledby="report-current-title">
         <div className="report-section-heading"><div><span>Current state</span><h2 id="report-current-title">Today</h2></div><p>The signals that can help you decide what to do next.</p></div>
         <div className="grid grid-stats report-card-grid">
-          <ReportInsightCard icon={<Target size={17} />} metric={todayMetric} />
-          <ReportInsightCard icon={<BatteryCharging size={17} />} metric={readinessMetric} />
-          <ReportInsightCard icon={<ListChecks size={17} />} metric={openTaskMetric} />
+          <ReportInsightCard icon={<Target size={ICON_SIZE.emphasis} />} metric={todayMetric} />
+          <ReportInsightCard icon={<BatteryCharging size={ICON_SIZE.emphasis} />} metric={readinessMetric} />
+          <ReportInsightCard icon={<ListChecks size={ICON_SIZE.emphasis} />} metric={openTaskMetric} />
         </div>
       </section>
 
       <section className="report-section" aria-labelledby="report-trend-title">
         <div className="report-section-heading"><div><span>Pattern over time</span><h2 id="report-trend-title">Trend</h2></div><p>Only scheduled, tracked dates enter requirement comparisons.</p></div>
         <div className="grid grid-stats report-card-grid report-card-grid-two">
-          <ReportInsightCard icon={<CalendarCheck size={17} />} metric={reportSummary.metrics.consistency} insight={trendInsight} />
-          <ReportInsightCard icon={<Flame size={17} />} metric={reportSummary.metrics.streak} insight={trendInsight} />
+          <ReportInsightCard icon={<CalendarCheck size={ICON_SIZE.emphasis} />} metric={reportSummary.metrics.consistency} insight={trendInsight} />
+          <ReportInsightCard icon={<Flame size={ICON_SIZE.emphasis} />} metric={reportSummary.metrics.streak} insight={trendInsight} />
         </div>
         <GlassCard pad className="report-week-card">
           <PanelHeader title="Weekly trend" sub="Your latest seven eligible study days"
@@ -285,9 +286,9 @@ export function ReportsPage() {
       <section className="report-section" aria-labelledby="report-system-title">
         <div className="report-section-heading"><div><span>Learning system</span><h2 id="report-system-title">Study system</h2></div><p>Course progress, question practice, and the work you record.</p></div>
         <div className="grid grid-stats report-card-grid">
-          <ReportInsightCard icon={<Layers size={17} />} metric={reportSummary.metrics["tracker-mastery"]} />
-          <ReportInsightCard icon={<Activity size={17} />} metric={questionMetric} />
-          <ReportInsightCard icon={<Gauge size={17} />} metric={activityMetric} />
+          <ReportInsightCard icon={<Layers size={ICON_SIZE.emphasis} />} metric={reportSummary.metrics["tracker-mastery"]} />
+          <ReportInsightCard icon={<Activity size={ICON_SIZE.emphasis} />} metric={questionMetric} />
+          <ReportInsightCard icon={<Gauge size={ICON_SIZE.emphasis} />} metric={activityMetric} />
         </div>
       </section>
 
@@ -300,13 +301,13 @@ export function ReportsPage() {
           action={<Tag tone={!readinessEvidenceIds.length ? "neutral" : performancePreliminary ? "orange" : "green"}>{!readinessEvidenceIds.length ? "No input" : performancePreliminary ? "Preliminary" : "Enough signal"}</Tag>} />
         {!readinessEvidenceIds.length && (
           <div className="report-prelim neutral">
-            <BatteryCharging size={15} />
+            <BatteryCharging size={ICON_SIZE.body} />
             <span>No readiness input yet. AXOM will not present its default baseline as if it were a real observation.</span>
           </div>
         )}
         {performancePreliminary && (
           <div className="report-prelim">
-            <AlertTriangle size={15} />
+            <AlertTriangle size={ICON_SIZE.body} />
             <span>Here are preliminary statistics. AXOM needs about 5 days of use before the energy/performance rating becomes meaningfully personalized.</span>
           </div>
         )}

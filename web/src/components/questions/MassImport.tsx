@@ -25,6 +25,7 @@ import { sha256Hex } from "../../lib/checksum";
 import { assignDraftProvenancePages } from "../../lib/questionProvenance";
 import type { ImportSeed } from "./ImportPanel";
 import { draftImportStatus } from "../../lib/questionImportTrust";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "no-text" | "error" | "saved";
 
@@ -293,16 +294,16 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
               className="visually-hidden-input"
               onChange={(e) => { if (e.target.files?.length) enqueue(e.target.files); e.target.value = ""; }}
             />
-            <GhostButton onClick={() => fileInput.current?.click()}><FileUp size={14} /> Add files</GhostButton>
+            <GhostButton onClick={() => fileInput.current?.click()}><FileUp size={ICON_SIZE.body} /> Add files</GhostButton>
             <GButton size="sm" variant="primary" disabled={!anyQueued || processing} onClick={() => void processAll()}>
-              {processing ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />} {processing ? "Importing…" : "Import files"}
+              {processing ? <RefreshCw size={ICON_SIZE.body} className="spin" /> : <RefreshCw size={ICON_SIZE.body} />} {processing ? "Importing…" : "Import files"}
             </GButton>
           </div>
         }
       />
 
       {queue.length === 0 ? (
-        <EmptyState icon={<FileUp size={18} />} title="No files queued" hint="Add several PDFs or documents at once — each is parsed and summarized before you save." />
+        <EmptyState icon={<FileUp size={ICON_SIZE.emphasis} />} title="No files queued" hint="Add several PDFs or documents at once — each is parsed and summarized before you save." />
       ) : (
         <div className="stack" style={{ gap: 10 }}>
           <div className="spread" style={{ flexWrap: "wrap", gap: 8 }}>
@@ -311,7 +312,7 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
               <span className="sub">AI-enhance each saved set (digest + pitfalls){provider ? "" : " — needs a provider"}</span>
             </label>
             <GButton size="sm" variant="primary" disabled={!cleanCount} onClick={saveClean}>
-              <Save size={14} /> Batch-save {cleanCount} clean file{cleanCount === 1 ? "" : "s"}
+              <Save size={ICON_SIZE.body} /> Batch-save {cleanCount} clean file{cleanCount === 1 ? "" : "s"}
             </GButton>
           </div>
 
@@ -345,11 +346,11 @@ export function MassImport({ onInspect }: { onInspect: (payload: ImportSeed & { 
                         warnings: file.warnings,
                         source: file.source,
                       })}>
-                      <Eye size={13} /> Inspect
+                      <Eye size={ICON_SIZE.body} /> Inspect
                     </GhostButton>
                   )}
                   <GhostButton aria-label={`Remove ${file.fileName}`} onClick={() => { fileMap.delete(file.id); setQueue((q) => q.filter((f) => f.id !== file.id)); }}>
-                    <Trash2 size={13} />
+                    <Trash2 size={ICON_SIZE.body} />
                   </GhostButton>
                 </div>
                 {file.warnings.length > 0 && (file.status === "needs-review" || file.status === "no-text") && (
@@ -386,10 +387,10 @@ function assignSourcePages(drafts: ParsedQuestionDraft[], pages: string[]) {
 }
 
 function StatusIcon({ status }: { status: FileStatus }) {
-  if (status === "saved" || status === "ready") return <CheckCircle2 size={16} style={{ color: "var(--grade-green)" }} />;
-  if (status === "needs-review" || status === "no-text" || status === "error") return <AlertTriangle size={16} style={{ color: "var(--grade-orange)" }} />;
-  if (status === "extracting" || status === "parsing") return <RefreshCw size={16} className="spin" />;
-  return <FileUp size={16} className="dim" />;
+  if (status === "saved" || status === "ready") return <CheckCircle2 size={ICON_SIZE.emphasis} style={{ color: "var(--grade-green)" }} />;
+  if (status === "needs-review" || status === "no-text" || status === "error") return <AlertTriangle size={ICON_SIZE.emphasis} style={{ color: "var(--grade-orange)" }} />;
+  if (status === "extracting" || status === "parsing") return <RefreshCw size={ICON_SIZE.emphasis} className="spin" />;
+  return <FileUp size={ICON_SIZE.emphasis} className="dim" />;
 }
 
 function StatusTag({ status }: { status: FileStatus }) {

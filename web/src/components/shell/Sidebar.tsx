@@ -21,6 +21,7 @@ import { AxomBrandLockup } from "../ui/BrandMark";
 import type { SettingsTab } from "./SettingsModal";
 import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../../lib/announcements";
 import { QuickThemeControl } from "./QuickThemeControl";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const MOBILE_SIDEBAR_QUERY = "(max-width: 880px)";
 const PREP_FOLDER_TOGGLE_ID = "sidebar-academic-prep-toggle";
@@ -126,8 +127,8 @@ export function Sidebar({
         <button type="button" className={`nav-item manage ${isHidden ? "off" : ""}`}
           aria-label={accessibleLabel} aria-pressed={!isHidden}
           onClick={() => toggleHidden(id)} disabled={locked} title={locked ? "Always shown" : isHidden ? "Show" : "Hide"}>
-          <span className={`nav-check ${!isHidden ? "on" : ""}`}>{!isHidden && <Check size={11} />}</span>
-          <I size={16} /><span className="nav-item-label">{item.label}</span>{statusBadge}
+          <span className={`nav-check ${!isHidden ? "on" : ""}`}>{!isHidden && <Check size={ICON_SIZE.microInline} />}</span>
+          <I size={ICON_SIZE.emphasis} /><span className="nav-item-label">{item.label}</span>{statusBadge}
         </button>
       );
     }
@@ -137,7 +138,7 @@ export function Sidebar({
         aria-label={accessibleLabel}
         aria-current={active === id ? "page" : undefined}
         onClick={() => { onSelect(id); onClose(); }}>
-        <I size={17} /><span className="nav-item-label">{item.label}</span>{statusBadge}
+        <I size={ICON_SIZE.emphasis} /><span className="nav-item-label">{item.label}</span>{statusBadge}
       </button>
     );
   }
@@ -177,7 +178,7 @@ export function Sidebar({
             subtitle={profile.versionLabel}
             markFramed
           />
-          <ChevronDown size={16} className="server-caret" />
+          <ChevronDown size={ICON_SIZE.emphasis} className="server-caret" />
         </button>
 
         <div className="nav-manage-zone" data-tour="control-surface-menu">
@@ -188,7 +189,7 @@ export function Sidebar({
             aria-pressed={manage}
             title={manage ? "Done customizing" : "Subscribe or unsubscribe sections"}
           >
-            {manage ? <Check size={15} /> : <SlidersHorizontal size={15} />}
+            {manage ? <Check size={ICON_SIZE.body} /> : <SlidersHorizontal size={ICON_SIZE.body} />}
             <span>{manage ? "Done" : "Customize"}</span>
           </button>
           <div className="nav-manage-hint">
@@ -209,8 +210,8 @@ export function Sidebar({
                 aria-controls={PREP_FOLDER_ITEMS_ID}
                 aria-expanded={prepOpen}
                 onClick={() => updateProfile({ prepCollapsed: !profile.prepCollapsed })}>
-                {prepOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <GraduationCap size={15} /><span>Academic Prep</span>
+                {prepOpen ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
+                <GraduationCap size={ICON_SIZE.body} /><span>Academic Prep</span>
                 {!prepOpen && <span className="nav-folder-count">{prepItems.length}</span>}
               </button>
               <div
@@ -234,8 +235,8 @@ export function Sidebar({
                 aria-controls={TOOLS_FOLDER_ITEMS_ID}
                 aria-expanded={toolsOpen}
                 onClick={() => updateProfile({ toolsCollapsed: !profile.toolsCollapsed })}>
-                {toolsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <Wrench size={15} /><span>Tools</span>
+                {toolsOpen ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
+                <Wrench size={ICON_SIZE.body} /><span>Tools</span>
                 {!toolsOpen && <span className="nav-folder-count">{toolItems.length}</span>}
               </button>
               <div
@@ -264,8 +265,8 @@ export function Sidebar({
               })}
               title={dailyGamesOn ? "Disable Daily Games (history is preserved)" : "Enable Daily Games"}
             >
-              <span className={`nav-check ${dailyGamesOn ? "on" : ""}`}>{dailyGamesOn && <Check size={11} />}</span>
-              <DailyGamesIcon size={16} />
+              <span className={`nav-check ${dailyGamesOn ? "on" : ""}`}>{dailyGamesOn && <Check size={ICON_SIZE.microInline} />}</span>
+              <DailyGamesIcon size={ICON_SIZE.emphasis} />
               <span className="nav-item-label">{DAILY_GAMES_FOLDER.label}</span>
               <span className="nav-status nav-status--wip" aria-hidden="true">OPTIONAL</span>
             </button>
@@ -281,8 +282,8 @@ export function Sidebar({
                 aria-expanded={dailyGamesOpen}
                 onClick={() => updateProfile({ dailyGamesCollapsed: !profile.dailyGamesCollapsed })}
               >
-                {dailyGamesOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <DailyGamesIcon size={15} /><span>{DAILY_GAMES_FOLDER.label}</span>
+                {dailyGamesOpen ? <ChevronDown size={ICON_SIZE.body} /> : <ChevronRight size={ICON_SIZE.body} />}
+                <DailyGamesIcon size={ICON_SIZE.body} /><span>{DAILY_GAMES_FOLDER.label}</span>
                 {!dailyGamesOpen && <span className="nav-folder-count">{dailyGameItems.length}</span>}
               </button>
               <div
@@ -304,17 +305,17 @@ export function Sidebar({
           {about && AboutIcon && (
             <button type="button" className={`nav-item footer-action ${active === "about" ? "on" : ""}`}
               onClick={() => { onSelect("about"); onClose(); }}>
-              <AboutIcon size={17} /><span>About</span>
+              <AboutIcon size={ICON_SIZE.emphasis} /><span>About</span>
             </button>
           )}
           {help && HelpIcon && (
             <button type="button" className={`nav-item footer-action ${active === "help" ? "on" : ""}`}
               onClick={() => { onSelect("help"); onClose(); }}>
-              <HelpIcon size={17} /><span>Help</span>
+              <HelpIcon size={ICON_SIZE.emphasis} /><span>Help</span>
             </button>
           )}
           <a className="nav-item footer-action" href="https://discord.gg/sTNuHa6qR" target="_blank" rel="noreferrer noopener">
-            <MessageCircle size={17} /><span>AXOM Discord Channel</span>
+            <MessageCircle size={ICON_SIZE.emphasis} /><span>AXOM Discord Channel</span>
           </a>
           <div className="user-panel">
             <button type="button" className="user-id" onClick={() => onOpenSettings("profile")} title="Profile & settings">
@@ -332,10 +333,10 @@ export function Sidebar({
             <div className="user-actions">
               <QuickThemeControl />
               <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("data")} title="Local data and backups" data-tour="data-safety-settings">
-                <UserCircle2 size={17} />
+                <UserCircle2 size={ICON_SIZE.emphasis} />
               </button>
               <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("profile")} title="Settings">
-                <Settings size={17} />
+                <Settings size={ICON_SIZE.emphasis} />
               </button>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import { CardVault } from "../components/anki/CardVault";
 import { CardReviewMode } from "../components/anki/CardReviewMode";
 import { AiCardGenerator } from "../components/anki/AiCardGenerator";
+import { ICON_SIZE } from "../lib/iconSize";
 
 type CardStyle = "cloze" | "qa" | "image";
 type NoteType = "Basic" | "Basic and reversed" | "Cloze" | "Custom";
@@ -40,7 +41,7 @@ export function AnkiLabPage() {
     <>
       <GlassCard pad>
         <div className="row gap12" style={{ alignItems: "center" }}>
-          <span className="folder-icon" style={{ color: "var(--purple)" }}><Wand2 size={20} /></span>
+          <span className="folder-icon" style={{ color: "var(--purple)" }}><Wand2 size={ICON_SIZE.control} /></span>
           <div className="grow">
             <div style={{ fontSize: 18, fontWeight: 800 }}>Anki Lab</div>
             <div className="sub">Persistent card vault, in-app spaced review, reviewed AI generation, and the classic prompt studio.</div>
@@ -185,7 +186,7 @@ function PromptStudio() {
               <Field label="Custom fields" placeholder="Front,Back,Tags" value={customFields} onChange={(e) => setCustomFields(e.target.value)} />
             </div>
             <GButton variant="primary" onClick={generateLocalCards} disabled={!content.trim()}>
-              <Sparkles size={14} /> Generate local draft cards
+              <Sparkles size={ICON_SIZE.body} /> Generate local draft cards
             </GButton>
           </div>
         </GlassCard>
@@ -194,9 +195,9 @@ function PromptStudio() {
           <PanelHeader title="2 · Generated AI prompt" sub="Paste into Claude/ChatGPT — tuned for Anki import"
             action={
               <div className="row gap6">
-                <GButton size="sm" onClick={copyPrompt}>{copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</GButton>
-                <GButton size="sm" onClick={savePrompt} title="Save to Prompt Library">{saved ? <Check size={14} /> : <Save size={14} />}</GButton>
-                <GButton size="sm" onClick={downloadTxt} title="Download .txt"><Download size={14} /></GButton>
+                <GButton size="sm" onClick={copyPrompt}>{copied ? <><Check size={ICON_SIZE.body} /> Copied</> : <><Copy size={ICON_SIZE.body} /> Copy</>}</GButton>
+                <GButton size="sm" onClick={savePrompt} title="Save to Prompt Library">{saved ? <Check size={ICON_SIZE.body} /> : <Save size={ICON_SIZE.body} />}</GButton>
+                <GButton size="sm" onClick={downloadTxt} title="Download .txt"><Download size={ICON_SIZE.body} /></GButton>
               </div>} />
           <pre className="code-block">{prompt}</pre>
         </GlassCard>
@@ -240,9 +241,9 @@ function PromptStudio() {
         <PanelHeader title="4 · Export to Anki" sub="Paste AI output or export the local draft cards"
           action={
             <div className="row gap6">
-              <GButton size="sm" variant="primary" disabled={!aiOut.trim() && !localCards.length} onClick={() => exportTsv()}><Download size={14} /> Review TSV</GButton>
-              <GButton size="sm" disabled={!clozeCount} onClick={() => exportCsv("Cloze")}><Download size={14} /> Cloze CSV</GButton>
-              <GButton size="sm" disabled={!basicCount} onClick={() => exportCsv("Basic")}><Download size={14} /> Basic CSV</GButton>
+              <GButton size="sm" variant="primary" disabled={!aiOut.trim() && !localCards.length} onClick={() => exportTsv()}><Download size={ICON_SIZE.body} /> Review TSV</GButton>
+              <GButton size="sm" disabled={!clozeCount} onClick={() => exportCsv("Cloze")}><Download size={ICON_SIZE.body} /> Cloze CSV</GButton>
+              <GButton size="sm" disabled={!basicCount} onClick={() => exportCsv("Basic")}><Download size={ICON_SIZE.body} /> Basic CSV</GButton>
             </div>} />
         <TextAreaField label="Paste the cards the AI returned (Front : Back, or cloze text, one per line)"
           rows={6} placeholder={"What neurotransmitter is most implicated in depression? : Serotonin\n{{c1::Serotonin}} is the main monoamine targeted by SSRIs."}
@@ -257,7 +258,7 @@ function PromptStudio() {
       <GlassCard pad>
         <PanelHeader title="5 · Your own card style & note types"
           sub="Load the AXOM / MADCOW glass card style, or build a custom note type"
-          action={<a className="gbtn sm" href="https://drive.google.com/drive/u/0/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp" target="_blank" rel="noreferrer noopener"><FolderDown size={14} /> Get the Anki style</a>} />
+          action={<a className="gbtn sm" href="https://drive.google.com/drive/u/0/folders/19_3nrTD66v_oCIKlruFVidirdCAIe8yp" target="_blank" rel="noreferrer noopener"><FolderDown size={ICON_SIZE.body} /> Get the Anki style</a>} />
         <div className="anki-guide">
           <div className="anki-guide-col">
             <div className="anki-guide-h">Install the styled deck</div>
@@ -286,12 +287,12 @@ function PromptStudio() {
 
       <GlassCard pad>
         <div className="sugg">
-          <Sparkles size={16} style={{ color: "var(--cyan)" }} />
+          <Sparkles size={ICON_SIZE.emphasis} style={{ color: "var(--cyan)" }} />
           <div className="grow">
             <div className="sugg-title">Planned: one-click generation</div>
             <div className="sugg-reason">Connect an AI key and drop a slide PDF to generate + auto-export decks. For now the prompt flow keeps it free, private, and offline.</div>
           </div>
-          <Tag tone="neutral"><Layers size={12} /> roadmap</Tag>
+          <Tag tone="neutral"><Layers size={ICON_SIZE.microInline} /> roadmap</Tag>
         </div>
       </GlassCard>
     </>

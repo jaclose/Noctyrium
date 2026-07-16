@@ -6,6 +6,7 @@ import { prettyDate } from "../lib/scoring";
 import { pushToast } from "../lib/toast";
 import { suggestTemplateForDraft, FREQUENCY_LABEL, type TaskFrequency } from "../lib/taskAutofill";
 import type { Course, Task, TaskTemplate } from "../lib/types";
+import { ICON_SIZE } from "../lib/iconSize";
 
 type TaskView = "open" | "archive" | "all";
 
@@ -76,14 +77,14 @@ export function TasksPage() {
           <input className="field" type="date" value={due} onChange={(e) => setDue(e.target.value)} style={{ width: 160 }} />
           <input className="field" placeholder={inferTaskScope(title, s.courses) || "Scope (auto)"} value={scope}
             onChange={(e) => setScope(e.target.value)} style={{ width: 190 }} />
-          <GButton variant="primary" onClick={add}><Plus size={15} /> Add</GButton>
+          <GButton variant="primary" onClick={add}><Plus size={ICON_SIZE.body} /> Add</GButton>
         </div>
         {inferredScope && <div className="sub" style={{ marginTop: 10 }}>Will file under <span className="mono">{inferredScope}</span>.</div>}
 
         {suggestion && (
           <div className="autofill-suggest" role="status">
             <div className="autofill-suggest-copy">
-              <Repeat size={15} />
+              <Repeat size={ICON_SIZE.body} />
               <span>You've entered a similar task {suggestion.count} times. Save as a recurring template?</span>
             </div>
             <div className="autofill-suggest-actions">
@@ -105,18 +106,18 @@ export function TasksPage() {
 
         {templates.length > 0 && (
           <div className="task-templates">
-            <div className="task-templates-head"><Sparkles size={13} /> Reusable templates</div>
+            <div className="task-templates-head"><Sparkles size={ICON_SIZE.body} /> Reusable templates</div>
             <div className="row wrap gap8">
               {templates.map((tpl) => (
                 <span key={tpl.id} className="task-template-chip">
                   <button type="button" className="task-template-add"
                     title={`Add “${tpl.title}”${tpl.scope ? ` · ${tpl.scope}` : ""}`}
                     onClick={() => s.addTask(tpl.title, undefined, tpl.scope)}>
-                    <Plus size={12} /> {tpl.title}
+                    <Plus size={ICON_SIZE.microInline} /> {tpl.title}
                     <em>{FREQUENCY_LABEL[tpl.frequency]}</em>
                   </button>
                   <button type="button" className="task-template-del" aria-label={`Remove template ${tpl.title}`} onClick={() => removeTemplate(tpl.id)}>
-                    <X size={11} />
+                    <X size={ICON_SIZE.microInline} />
                   </button>
                 </span>
               ))}
@@ -148,17 +149,17 @@ function TaskRow({ task }: { task: Task }) {
   return (
     <div className={`task-row ${task.done ? "done" : ""}`}>
       <button className={`check ${task.done ? "on" : ""}`} onClick={() => s.toggleTask(task.id)} aria-label={task.done ? "Reopen" : "Complete"}>
-        <Check size={14} />
+        <Check size={ICON_SIZE.body} />
       </button>
       <div className="grow">
         <div className="tk-title">{task.title}</div>
         <div className="row wrap gap8" style={{ marginTop: 4 }}>
-          {task.due && <div className="tk-due"><Calendar size={11} /> Due {prettyDate(task.due)}</div>}
+          {task.due && <div className="tk-due"><Calendar size={ICON_SIZE.microInline} /> Due {prettyDate(task.due)}</div>}
           {task.scope && <Tag tone="neutral">{task.scope}</Tag>}
-          {task.done && <Tag tone="green"><Archive size={11} /> archived</Tag>}
+          {task.done && <Tag tone="green"><Archive size={ICON_SIZE.microInline} /> archived</Tag>}
         </div>
       </div>
-      <GhostButton className="danger" onClick={() => s.removeTask(task.id)}><Trash2 size={14} /></GhostButton>
+      <GhostButton className="danger" onClick={() => s.removeTask(task.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
     </div>
   );
 }

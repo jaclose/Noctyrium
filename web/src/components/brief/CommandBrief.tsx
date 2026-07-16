@@ -23,6 +23,7 @@ import { RecoveryPanel } from "./RecoveryPanel";
 import { explainLowEnergy, type ReadinessResult } from "../../lib/energy";
 import { gotoJournalDay } from "../../lib/uiStore";
 import { evaluateDailySuccess } from "../../lib/dailySuccess";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const MODE_TONE: Record<BriefMode, "cyan" | "green" | "purple" | "orange" | "red" | "neutral"> = {
   maintain: "green",
@@ -151,11 +152,11 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
         <div className="row" style={{ gap: 8 }}>
           {recovery?.triggered && !recoveryDismissedToday && (
             <GButton size="sm" onClick={() => setShowRecovery(true)}>
-              <LifeBuoy size={14} /> Recovery plan
+              <LifeBuoy size={ICON_SIZE.body} /> Recovery plan
             </GButton>
           )}
           <GButton size="sm" variant={todayCloseout ? "default" : "primary"} onClick={() => setShowCloseout(true)}>
-            <ClipboardCheck size={14} /> {todayCloseout ? "Closeout ✓" : "Daily closeout"}
+            <ClipboardCheck size={ICON_SIZE.body} /> {todayCloseout ? "Closeout ✓" : "Daily closeout"}
           </GButton>
         </div>
       </div>
@@ -189,7 +190,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
             <GButton size="sm" onClick={() => setEnergyPreviewDismissed(true)}>Restore original plan</GButton>
             <GButton size="sm" onClick={() => gotoJournalDay(s.activeDayKey)}>Update energy</GButton>
             <GhostButton aria-expanded={showEnergyCalculation} onClick={() => setShowEnergyCalculation((shown) => !shown)}>
-              {showEnergyCalculation ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Show calculation
+              {showEnergyCalculation ? <ChevronUp size={ICON_SIZE.microInline} /> : <ChevronDown size={ICON_SIZE.microInline} />} Show calculation
             </GhostButton>
           </div>
         </section>
@@ -242,7 +243,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
               <span className="sub">A session is already running below — finish or park it first.</span>
             ) : (
               <GButton variant="primary" onClick={() => begin("move")}>
-                <Play size={15} /> Begin Session
+                <Play size={ICON_SIZE.body} /> Begin Session
               </GButton>
             )}
           </div>
@@ -250,7 +251,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
 
         <div className="brief-side">
           <div className="brief-mvw">
-            <div className="brief-kicker"><Zap size={12} style={{ marginRight: 4 }} />Alternate small win</div>
+            <div className="brief-kicker"><Zap size={ICON_SIZE.microInline} style={{ marginRight: 4 }} />Alternate small win</div>
             <div className="brief-mvw-title">{brief.minimumViableWin.title}</div>
             <div className="sub">{brief.minimumViableWin.reason}</div>
             {!liveSession && (
@@ -262,7 +263,7 @@ export function CommandBrief({ readiness }: { readiness?: ReadinessResult }) {
 
           <div className="brief-changes">
             <button className="brief-kicker as-button" onClick={() => setShowChanges((v) => !v)}>
-              Since yesterday {showChanges ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              Since yesterday {showChanges ? <ChevronUp size={ICON_SIZE.microInline} /> : <ChevronDown size={ICON_SIZE.microInline} />}
             </button>
             {showChanges && (
               <ul className="brief-change-list">
@@ -382,8 +383,8 @@ function StarterChecklistRow({ item }: { item: StarterChecklistItem }) {
   return (
     <li className={item.ready ? "ready" : "needed"}>
       {item.ready
-        ? <CheckCircle2 size={16} aria-hidden="true" />
-        : <Circle size={16} aria-hidden="true" />}
+        ? <CheckCircle2 size={ICON_SIZE.emphasis} aria-hidden="true" />
+        : <Circle size={ICON_SIZE.emphasis} aria-hidden="true" />}
       <div>
         <div className="spread gap8">
           <b>{item.title}</b>
@@ -398,7 +399,7 @@ function StarterChecklistRow({ item }: { item: StarterChecklistItem }) {
           aria-describedby={descriptionId}
           onClick={queueFocus}
         >
-          {item.label}<ArrowRight size={13} aria-hidden="true" />
+          {item.label}<ArrowRight size={ICON_SIZE.body} aria-hidden="true" />
         </a>
       )}
     </li>

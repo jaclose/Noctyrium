@@ -15,6 +15,7 @@ import {
   type TimeZonePreference,
 } from "../../lib/clock";
 import { useReducedMotion } from "../../lib/motion";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 export interface ClockControlProps {
   clockPreferences?: ClockPreferences;
@@ -107,7 +108,7 @@ function LiveClockControl({
         aria-controls={open ? panelId : undefined}
         onClick={() => open ? closeClock(true) : setOpen(true)}
       >
-        <Clock3 size={16} aria-hidden="true" />
+        <Clock3 size={ICON_SIZE.emphasis} aria-hidden="true" />
         {preferences.showDigital && <time dateTime={now.toISOString()}>{time}</time>}
         {preferences.showDate && <span className="clock-trigger-date" aria-hidden="true">{date}</span>}
         {preferences.showTimezoneLabel && <span className="clock-trigger-zone" aria-hidden="true">{timeZone}</span>}
@@ -126,7 +127,7 @@ function LiveClockControl({
               <div className="clock-popover-zone">{timeZone}</div>
             </div>
             <button ref={closeRef} type="button" className="clock-icon-button" onClick={() => closeClock(true)} aria-label="Close clock">
-              <X size={16} aria-hidden="true" />
+              <X size={ICON_SIZE.emphasis} aria-hidden="true" />
             </button>
           </div>
 
@@ -150,7 +151,7 @@ function LiveClockControl({
               onOpenPreferences();
             }}
           >
-            <Settings2 size={15} aria-hidden="true" /> Clock preferences
+            <Settings2 size={ICON_SIZE.body} aria-hidden="true" /> Clock preferences
           </button>
         </div>
       )}

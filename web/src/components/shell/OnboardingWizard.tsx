@@ -34,6 +34,7 @@ import { AxomMark, AxomWordmark } from "../ui/BrandMark";
 import { Field, SelectField } from "../ui/Modal";
 import { GButton, GhostButton } from "../ui/primitives";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const STEP_TITLES = ["Identity", "Core setup", "Workspace", "Data safety"] as const;
 
@@ -290,7 +291,7 @@ export function OnboardingWizard({
                 className={`onboarding-step-dot ${index === draft.step ? "on" : ""} ${index < draft.step ? "done" : ""}`}
                 aria-current={index === draft.step ? "step" : undefined}
               >
-                <span aria-hidden="true">{index < draft.step ? <Check size={11} /> : index + 1}</span>
+                <span aria-hidden="true">{index < draft.step ? <Check size={ICON_SIZE.microInline} /> : index + 1}</span>
                 <small>{title}</small>
               </li>
             ))}
@@ -343,7 +344,7 @@ export function OnboardingWizard({
               </SelectField>
             </details>
             <div className="onboarding-track-note onboarding-preview-card">
-              <ShieldCheck size={15} aria-hidden="true" />
+              <ShieldCheck size={ICON_SIZE.body} aria-hidden="true" />
               <span>
                 <b><AxomWordmark /> will prepare:</b> {track.short} course structure, {stagePreviewLabel(draft.stageId, draft.customStage, stageChoices)} defaults, and {WORKFLOWS.find((workflow) => workflow.id === draft.destination)?.title.toLocaleLowerCase()} as your starting destination.
               </span>
@@ -368,7 +369,7 @@ export function OnboardingWizard({
                       <input type="radio" name="onboarding-workflow" value={workflow.id}
                         checked={draft.destination === workflow.id}
                         onChange={() => updateDraft({ destination: workflow.id })} />
-                      <Icon size={18} aria-hidden="true" />
+                      <Icon size={ICON_SIZE.emphasis} aria-hidden="true" />
                       <span><b>{workflow.title}</b><small>{workflow.detail}</small></span>
                     </label>
                   );
@@ -430,7 +431,7 @@ export function OnboardingWizard({
                     <input type="radio" name="onboarding-widgets" value={id}
                       checked={draft.widgetPreset === id}
                       onChange={() => updateDraft({ widgetPreset: id })} />
-                    <LayoutDashboard size={18} aria-hidden="true" />
+                    <LayoutDashboard size={ICON_SIZE.emphasis} aria-hidden="true" />
                     <span><b>{title}</b><small>{detail}</small></span>
                   </label>
                 ))}
@@ -438,7 +439,7 @@ export function OnboardingWizard({
             </fieldset>
             <div className="onboarding-notification-row">
               <div>
-                <b><Bell size={15} aria-hidden="true" /> Focus-timer notifications</b>
+                <b><Bell size={ICON_SIZE.body} aria-hidden="true" /> Focus-timer notifications</b>
                 <span>{notificationCopy(notificationStatus)}</span>
               </div>
               {notificationStatus === "default" && (
@@ -457,9 +458,9 @@ export function OnboardingWizard({
               Think of saving AXOM like keeping a game save: your current work stays here, and a portable save file gives you a copy to keep.
             </p>
             <div className="onboarding-safety-grid">
-              <div><Database size={18} aria-hidden="true" /><span><b>Current workspace</b><small>AXOM saves your work on this device.</small></span></div>
-              <div><HardDrive size={18} aria-hidden="true" /><span><b>Recovery saves</b><small>AXOM creates local safety saves before important updates.</small></span></div>
-              <div><Download size={18} aria-hidden="true" /><span><b>Portable save file</b><small>Export a file you can keep and import later.</small></span></div>
+              <div><Database size={ICON_SIZE.emphasis} aria-hidden="true" /><span><b>Current workspace</b><small>AXOM saves your work on this device.</small></span></div>
+              <div><HardDrive size={ICON_SIZE.emphasis} aria-hidden="true" /><span><b>Recovery saves</b><small>AXOM creates local safety saves before important updates.</small></span></div>
+              <div><Download size={ICON_SIZE.emphasis} aria-hidden="true" /><span><b>Portable save file</b><small>Export a file you can keep and import later.</small></span></div>
             </div>
             <details className="onboarding-disclosure">
               <summary>How saving works</summary>
@@ -482,11 +483,11 @@ export function OnboardingWizard({
               <div><span>Portable save</span><b>Optional</b></div>
             </div>
             <div className="onboarding-actions">
-              <GhostButton onClick={() => move(2)}><ArrowLeft size={15} /> Back</GhostButton>
+              <GhostButton onClick={() => move(2)}><ArrowLeft size={ICON_SIZE.body} /> Back</GhostButton>
               <div className="row wrap gap8 onboarding-finish-actions">
-                <GButton onClick={() => finish(true)}><Download size={15} /> Finish and create save file</GButton>
+                <GButton onClick={() => finish(true)}><Download size={ICON_SIZE.body} /> Finish and create save file</GButton>
                 <GButton variant="primary" onClick={() => finish(false)}>
-                  Finish setup <ArrowRight size={15} />
+                  Finish setup <ArrowRight size={ICON_SIZE.body} />
                 </GButton>
               </div>
             </div>
@@ -516,8 +517,8 @@ function stagePreviewLabel(
 function StepActions({ onBack, onNext }: { onBack?: () => void; onNext: () => void }) {
   return (
     <div className="onboarding-actions">
-      {onBack ? <GhostButton onClick={onBack}><ArrowLeft size={15} /> Back</GhostButton> : <span />}
-      <GButton variant="primary" onClick={onNext}>Continue <ArrowRight size={15} /></GButton>
+      {onBack ? <GhostButton onClick={onBack}><ArrowLeft size={ICON_SIZE.body} /> Back</GhostButton> : <span />}
+      <GButton variant="primary" onClick={onNext}>Continue <ArrowRight size={ICON_SIZE.body} /></GButton>
     </div>
   );
 }

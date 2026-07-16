@@ -13,12 +13,13 @@ import {
 import type { AiAvailability, AiMode } from "../../lib/ai";
 import { GButton, GhostButton, Tag } from "../ui/primitives";
 import { Field, SelectField } from "../ui/Modal";
+import { ICON_SIZE } from "../../lib/iconSize";
 
 const MODES: Array<{ id: AiMode; label: string; icon: ReactNode; note: string }> = [
-  { id: "off", label: "Off", icon: <Power size={14} />, note: "The app is fully usable without AI." },
-  { id: "local", label: "Local (Ollama)", icon: <Cpu size={14} />, note: "Free, private, on-device. No API key." },
-  { id: "cloud", label: "Cloud (BYOK)", icon: <Cloud size={14} />, note: "Coming later via a secure proxy — keys never live in this app." },
-  { id: "mock", label: "Demo", icon: <FlaskConical size={14} />, note: "Canned outputs for exploring the flows. Clearly labeled." },
+  { id: "off", label: "Off", icon: <Power size={ICON_SIZE.body} />, note: "The app is fully usable without AI." },
+  { id: "local", label: "Local (Ollama)", icon: <Cpu size={ICON_SIZE.body} />, note: "Free, private, on-device. No API key." },
+  { id: "cloud", label: "Cloud (BYOK)", icon: <Cloud size={ICON_SIZE.body} />, note: "Coming later via a secure proxy — keys never live in this app." },
+  { id: "mock", label: "Demo", icon: <FlaskConical size={ICON_SIZE.body} />, note: "Canned outputs for exploring the flows. Clearly labeled." },
 ];
 
 export function AiSettingsPanel() {
@@ -51,7 +52,7 @@ export function AiSettingsPanel() {
   return (
     <div className="stack" style={{ gap: 14 }}>
       <div className="row" style={{ gap: 8 }}>
-        <ShieldCheck size={15} style={{ color: "var(--cyan)" }} />
+        <ShieldCheck size={ICON_SIZE.body} style={{ color: "var(--cyan)" }} />
         <span className="sub">
           Local-first by design: with Local mode, your study data never leaves this machine. Cloud AI stays optional, and API keys are never stored in the browser.
         </span>
@@ -77,7 +78,7 @@ export function AiSettingsPanel() {
                 onChange={(e) => update({ localEndpoint: e.target.value })} />
             </div>
             <GButton size="sm" onClick={() => runProbe()} disabled={probing} style={{ marginTop: 20 }}>
-              {probing ? <RefreshCw size={13} className="spin" /> : <RefreshCw size={13} />} Detect
+              {probing ? <RefreshCw size={ICON_SIZE.body} className="spin" /> : <RefreshCw size={ICON_SIZE.body} />} Detect
             </GButton>
           </div>
           {probe && (
