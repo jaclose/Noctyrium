@@ -5,6 +5,7 @@
 // and the faculty style analyzer (Phase 6 §13). Pure + testable.
 // ===========================================================================
 import type { ID } from "./types";
+import { normalizeQuestionAnnotations, type QuestionTextAnnotation } from "./questionAnnotations";
 
 export type QuestionStatus =
   | "unseen"
@@ -179,6 +180,8 @@ export interface QuestionRecord {
   tags: string[];
   errorType?: QuestionErrorType;
   notes?: string;
+  /** Learner-owned overlays; imported source text remains immutable. */
+  annotations?: QuestionTextAnnotation[];
   attempts: QuestionAttempt[];
   attemptedAt?: string;
   reviewDueAt?: string;
@@ -464,6 +467,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       tags: Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === "string" && !!t.trim()).map((t) => t.trim()) : [],
       errorType,
       notes: cleanString(input.notes),
+      annotations: normalizeQuestionAnnotations(input.annotations),
       attempts: Array.isArray(input.attempts) ? (input.attempts as QuestionAttempt[]) : [],
       attemptedAt: typeof input.attemptedAt === "string" ? input.attemptedAt : undefined,
       reviewDueAt: typeof input.reviewDueAt === "string" ? input.reviewDueAt : undefined,

@@ -19,6 +19,10 @@ import { pushToast } from "../../lib/toast";
 import { QuestionProvenance, QuizFeedback } from "./QuizFeedback";
 import { sourceCandidates, type QuestionEvidenceKind, type SourceCandidate } from "../../lib/questionProvenance";
 import { ICON_SIZE } from "../../lib/iconSize";
+import { createTextAnnotation, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
+import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
+import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
+import { QuestionNotesPanel } from "./QuestionNotesPanel";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 
@@ -36,6 +40,12 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   const [sourceReviewOpen, setSourceReviewOpen] = useState(false);
   const [sourceKind, setSourceKind] = useState<QuestionEvidenceKind>("question");
   const [startedAt] = useState(() => Date.now());
+  const [annotations, setAnnotations] = useState(() => question.annotations ?? []);
+  const [annotationTone, setAnnotationTone] = useState<QuestionAnnotationTone>("yellow");
+  const [annotationSelection, setAnnotationSelection] = useState<{
+    target: QuestionAnnotationTarget;
+    range: QuestionTextSelection;
+  } | null>(null);
 
   // Track answer changes so "Changed Answer" mode has real data.
   useEffect(() => {
@@ -61,6 +71,26 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     anchorPage: sourceAnchorPage,
     anchorNeedle: question.stem,
   }) : [];
+
+  function saveAnnotation() {
+    if (!annotationSelection) return;
+    const sourceText = annotationSelection.target === "stem" ? question.stem : question.explanation ?? "";
+    const now = new Date().toISOString();
+    const annotation = createTextAnnotation({
+      id: `annotation-${crypto.randomUUID()}`,
+      target: annotationSelection.target,
+      sourceText,
+      startOffset: annotationSelection.range.startOffset,
+      endOffset: annotationSelection.range.endOffset,
+      tone: annotationTone,
+      now,
+    });
+    const next = [...annotations, annotation];
+    setAnnotations(next);
+    s.updateQuestion(question.id, { annotations: next });
+    setAnnotationSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }
 
   function submit() {
     if (!picked && question.options.length > 0) return;
@@ -185,7 +215,25 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
         </button>
       </div>
 
-      <div className="question-stem">{question.stem}</div>
+      <QuestionAnnotationToolbar
+        selectedTone={annotationTone}
+        hasSelection={Boolean(annotationSelection)}
+        onTone={setAnnotationTone}
+        onHighlight={saveAnnotation}
+        onClear={() => {
+          setAnnotations([]);
+          s.updateQuestion(question.id, { annotations: [] });
+          setAnnotationSelection(null);
+        }}
+      />
+
+      <AnnotatedQuestionText
+        text={question.stem}
+        annotations={annotations.filter((annotation) => annotation.target === "stem")}
+        className="question-stem"
+        label="Question stem"
+        onSelection={(range) => setAnnotationSelection(range ? { target: "stem", range } : null)}
+      />
 
       <QuestionProvenance
         question={question}
@@ -288,6 +336,16 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
             onMarkExplanationWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
             onMarkAnswerWrong={() => s.updateQuestion(question.id, { needsReview: true, status: "needs-review" })}
             showProvenance={false}
+            explanationContent={question.explanation ? (
+              <AnnotatedQuestionText
+                text={question.explanation.trim()}
+                annotations={annotations.filter((annotation) => annotation.target === "explanation")}
+                className="question-explanation-text"
+                label="Question explanation"
+                inline
+                onSelection={(range) => setAnnotationSelection(range ? { target: "explanation", range } : null)}
+              />
+            ) : undefined}
           />
           <div className="stack gap6">
             <span className="field-label">Confidence</span>
@@ -316,6 +374,11 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
           )}
           <TextAreaField label="Note (optional)" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
           {changed && <div className="sub">You changed your answer from {firstPick} to {picked} — recorded.</div>}
+          <QuestionNotesPanel
+            questionId={question.id}
+            value={question.notes}
+            onSave={(notes) => s.updateQuestion(question.id, { notes: notes.trim() || undefined })}
+          />
         </>
       )}
     </Modal>

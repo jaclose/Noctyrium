@@ -178,6 +178,58 @@ describe("portable backup safety", () => {
     });
   });
 
+  it("round-trips question notes and annotation metadata", () => {
+    const state = makeSeed();
+    state.questions = [{
+      id: "q-annotation", source: "manual", stem: "Highlight this text", options: [],
+      status: "unseen", tags: [], attempts: [], notes: "Private learner note",
+      annotations: [{
+        id: "ann-1", target: "stem", startOffset: 10, endOffset: 14,
+        exactText: "this", prefix: "Highlight ", suffix: " text", tone: "yellow",
+        createdAt: "2026-07-16T10:00:00.000Z", updatedAt: "2026-07-16T10:00:00.000Z",
+        sourceTextHash: "fnv1a-test", status: "active",
+      }],
+      createdAt: "2026-07-16T10:00:00.000Z", updatedAt: "2026-07-16T10:00:00.000Z",
+    }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(restored.questions[0].notes).toBe("Private learner note");
+    expect(restored.questions[0].annotations).toEqual(state.questions[0].annotations);
+  });
+
+  it("merges annotation ids without duplication and keeps the later update", () => {
+    const current = makeSeed();
+    const base = {
+      id: "q1", source: "manual" as const, stem: "Stem", options: [], status: "unseen" as const,
+      tags: [], attempts: [], createdAt: "2026-07-16T09:00:00.000Z", updatedAt: "2026-07-16T12:00:00.000Z",
+    };
+    const annotation = {
+      id: "ann-1", target: "stem" as const, startOffset: 0, endOffset: 4, exactText: "Stem",
+      prefix: "", suffix: "", tone: "yellow" as const, createdAt: "2026-07-16T09:00:00.000Z",
+      updatedAt: "2026-07-16T10:00:00.000Z", sourceTextHash: "fnv1a-test", status: "active" as const,
+    };
+    current.questions = [{ ...base, annotations: [annotation] }];
+    const imported = makeSeed();
+    imported.questions = [{
+      ...base,
+      updatedAt: "2026-07-16T11:00:00.000Z",
+      annotations: [{ ...annotation, tone: "cyan", updatedAt: "2026-07-16T11:00:00.000Z" }],
+    }];
+    const merged = mergeStates(current, imported);
+    expect(merged.questions[0].annotations).toHaveLength(1);
+    expect(merged.questions[0].annotations?.[0]).toMatchObject({ id: "ann-1", tone: "cyan" });
+  });
+
+  it("loads a legacy schema-v32 question without annotations unchanged", () => {
+    const state = makeSeed();
+    state.questions = [{
+      id: "legacy", source: "manual", stem: "Legacy", options: [], status: "unseen",
+      tags: [], attempts: [], createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
+    }];
+    const restored = parseImport(JSON.stringify({ ...toPortableState(state), schemaVersion: 32 }));
+    expect(restored.questions[0].annotations).toBeUndefined();
+    expect(restored.questions[0].stem).toBe("Legacy");
+  });
+
   it("parses an exported payload without dropping question-bank collections", () => {
     const state = makeSeed();
     state.documents = [{

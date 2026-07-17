@@ -10,6 +10,7 @@ import {
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
+import { normalizeQuestionAnnotations } from "./questionAnnotations";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { isAcademicStageId, resolveTrack } from "./tracks";
 import { normalizeDailySuccessConfig } from "./dailySuccess";
@@ -160,10 +161,19 @@ function mergeQuestionsById(
       ...older,
       ...newer,
       attempts: mergeQuestionAttempts(older.attempts, newer.attempts),
+      annotations: mergeQuestionAnnotations(older.annotations, newer.annotations),
     });
   }
   const unkeyed = [...current, ...imported].filter((record) => !String(record.id ?? ""));
   return [...byId.values(), ...unkeyed];
+}
+
+function mergeQuestionAnnotations(left: unknown, right: unknown) {
+  const annotations = normalizeQuestionAnnotations([
+    ...(Array.isArray(left) ? left : []),
+    ...(Array.isArray(right) ? right : []),
+  ]);
+  return annotations;
 }
 
 function mergeQuestionAttempts(left: unknown, right: unknown): Array<Record<string, unknown>> {
@@ -337,6 +347,7 @@ export function parseImport(text: string): NoctyriumState {
 function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
   if (!isRecord(value)) return value;
   const question = { ...value };
+  question.annotations = normalizeQuestionAnnotations(question.annotations);
   if (fromVersion < 31) {
     question.taxonomy = normalizeQuestionTaxonomy(question.taxonomy, question) ?? {};
   }

@@ -881,3 +881,125 @@ A") and measured (never claimed) acceptance targets still govern.
   → device check → instructions acknowledged → waiting for proctor → begin).
   **Reproduce the workflow concept only — no Examplify branding, assets, or
   proprietary interface.**
+
+### Q2b — Persistent Question Annotation Foundation (binding contract)
+
+**Ownership and compatibility.** Annotations are learner-owned overlays on a
+question, never edits to imported source text or provenance. `QuestionRecord`
+retains its existing optional `notes` field as the canonical question-level
+plain-text note and gains an optional `annotations` array. Both remain inside
+the existing question record, so legacy schema-v32 workspaces load unchanged,
+workspace persistence stays in IndexedDB, and portable JSON backup continues to
+include the metadata without a schema bump. Device-preference localStorage must
+never contain annotation or note content.
+
+**Canonical text annotation.** Each annotation records `id`, `target`
+(`stem`, `explanation`, or `option`), `optionKey` only for option targets,
+`startOffset`, `endOffset`, `exactText`, bounded `prefix` and `suffix` context,
+a semantic `tone` token (not a raw color), `createdAt`, `updatedAt`,
+`sourceTextHash`, and `status` (`active` or `needs-repair`). An optional
+`note` may be linked to the annotation. IDs and timestamps are supplied by the
+caller so tests and merge behavior are deterministic.
+
+**Anchoring and reconciliation.**
+
+1. When the stored source hash matches, accept offsets only if the exact stored
+   text still occupies that range.
+2. Otherwise find occurrences of `exactText` and require prefix/suffix context
+   to identify exactly one candidate.
+3. Never select a nearest occurrence or silently move to an ambiguous match.
+   Zero or multiple valid matches become `needs-repair`; the original excerpt,
+   offsets, context, and note remain intact for manual re-anchoring or deletion.
+
+Source corrections and parser reruns therefore preserve learner content. A
+source revision containing the same text reuses the anchor; a small shift can
+re-anchor through exact text plus context; ambiguity is surfaced.
+
+**Notes and autosave.** Q2b-1 uses plain text only. The question-level note is
+edited separately from per-attempt notes, saves on an explicit debounced
+autosave boundary, exposes `Saving`/`Saved` status through a polite live region,
+and preserves timestamps through the enclosing question update. No rich-text,
+AI interpretation, or medical-content transformation is permitted.
+
+**Backup and merge.** Replace restore preserves normalized notes and annotation
+metadata. Merge unions annotations by `id`; identical IDs never duplicate and
+the later `updatedAt` wins while attempts retain their existing fingerprint
+merge. Older backups with no annotation fields remain valid. Q2b-1 contains no
+binary payload. Q2b-2 must make attachment inclusion explicit and warn on
+missing/corrupt blobs without deleting metadata.
+
+**Attachment lifecycle (Q2b-2, not Q2b-1).** Binary images live in a separate
+IndexedDB object store, never base64 in the workspace. Metadata records
+`id`, `questionId`, optional `annotationId`, filename, MIME type, byte size,
+checksum, optional dimensions, alt text/decorative intent, and `createdAt`.
+Allowed MIME types, size/quota limits, object-URL revocation, question/
+annotation deletion cleanup, orphan scans, and explicit portable-backup
+inclusion are mandatory. Creating that store is the point at which an
+IndexedDB/schema migration must be reviewed.
+
+**Deletion and repair.** Deleting an annotation removes only its metadata in
+Q2b-1. Deleting a question removes its embedded annotation metadata naturally.
+Once attachments exist, both operations enqueue or perform deterministic blob
+cleanup; unreachable blobs must be detectable and removable without touching
+reachable content. Repair never discards the original annotation.
+
+**Accessibility and responsive acceptance.** Highlight meaning is exposed by
+text/semantics as well as tone. Highlight controls have names and pressed
+states; keyboard text selection can open the toolbar; popovers restore focus;
+note autosave status is polite; image notes later require alt text or deliberate
+decorative marking. The surfaces must reflow at 390px and 200%-equivalent zoom,
+remain usable in dark/light themes, and introduce no motion dependency.
+
+**Checkpoint sequence.**
+
+- **Q2b-0:** this architecture, canonical types, normalization and reconciliation
+  contract.
+- **Q2b-1:** persistent stem/explanation highlights plus plain question notes;
+  reload, correction, backup/merge, keyboard, and mobile proof.
+- **Q2b-2:** image attachment/blob store, quota UI, explicit backup inclusion,
+  and orphan cleanup.
+- **Q2b-3:** normalized user-tag ownership, case-insensitive dedupe, bulk
+  add/remove, keyboard filters, and deterministic set creation.
+- **Q2b-4:** integrated attachment backup/restore/merge and lifecycle fault
+  recovery.
+- **Q2b-5:** final player/detail-modal annotation UX and complete responsive
+  acceptance pass.
+
+**Q2b-1 acceptance.** Stem and explanation highlights survive reload, attempts,
+and answer-mapping corrections; exact-text/context reconciliation handles small
+source shifts and refuses ambiguity; deletion stays deleted; notes autosave and
+restore; portable replace and merge preserve metadata without duplicate IDs;
+legacy v32 data loads; no annotation data enters preference localStorage; and
+keyboard/mobile/high-contrast semantics are verified. Parser/trust policy,
+attachments, OCR, AI annotations, cloud/accounts, Course Central, Tutor Mode
+redesign, exam simulation, dependencies, backup format, and schema version are
+explicitly excluded.
+
+**Q2b-1 final integration & rendered acceptance (2026-07-17, Opus).** The
+checkpoint was left uncommitted pending the rendered browser journey, which is
+now complete. Source-integrity audit (against actual files, not the diff
+viewer) confirmed the flagged risks are clean: exactly **one** `QuizCalculator`
+mount, **one** stem render (`AnnotatedQuestionText`), **one** explanation render
+(`QuizFeedback` uses `explanationContent ?? explanation`), no malformed
+ternaries, and `localAnnotations`/`pool` kept in sync on annotation writes.
+Rendered journey (real DOM text-selection, tutor block): two non-overlapping
+stem highlights (yellow + cyan) + one explanation highlight (purple) each render
+as a single semantic `<mark tabindex=0 aria-label>` with an underline cue and
+**unaltered source text**; tones are distinct/legible in dark, light (live
+switch), and 390px mobile (no horizontal overflow); marks are keyboard-focusable
+with a visible ring; A–E answer shortcuts still work; advancing focuses the new
+stem. **5th defect found + fixed during this pass:** a question note was saved to
+the store but not the in-run `pool` snapshot (unlike annotations), so it vanished
+when navigating away and back within a block — ExamRunner's notes `onSave` now
+also updates the pool; verified live (note survives Next→Previous). Anchoring
+degrades to `needs-repair` (never nearest-guessed) for ambiguous/removed source,
+verified by a reconcile probe. **Independent Fable rendered review: ACCEPT,
+commit as-is** — one INFO/LOW non-blocking note: overlapping an existing
+highlight persists a stored-but-unrendered annotation (render-time skip keeps it
+safe/uncorrupted); an optional overlap guard in `saveAnnotation` is a Q2b
+carry-forward. Gates: typecheck 0 · lint 0 · **vitest 835/835** · e2e 6/6 ·
+build ✓ · verify:question-imports (100% exact, falseReady 0, allACollapse false)
+· verify:daily-games-offline (`workspaceLocalStorageKeys: []`) ·
+verify:daily-games-bundle (isolated) · diff-check clean · schema **v32**. The
+unrelated WebdriverIO harness in the tree (package.json/lock, wdio.conf.ts,
+test/, artifacts/, .nvmrc, root tsconfig.json) was **excluded** from the commit.

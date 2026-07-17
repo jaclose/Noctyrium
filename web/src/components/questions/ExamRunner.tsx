@@ -26,6 +26,10 @@ import { pushToast } from "../../lib/toast";
 import { QuizFeedback } from "./QuizFeedback";
 import { accuracyTone } from "../../lib/library";
 import { ICON_SIZE } from "../../lib/iconSize";
+import { createTextAnnotation, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
+import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
+import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
+import { QuestionNotesPanel } from "./QuestionNotesPanel";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -93,6 +97,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const [startedAt, setStartedAt] = useState<string>(() => new Date().toISOString());
   const [shownAt, setShownAt] = useState(() => Date.now());
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [annotationTone, setAnnotationTone] = useState<QuestionAnnotationTone>("yellow");
+  const [annotationSelection, setAnnotationSelection] = useState<{
+    target: QuestionAnnotationTarget;
+    range: QuestionTextSelection;
+  } | null>(null);
+  const [localAnnotations, setLocalAnnotations] = useState(() => pool[index]?.annotations ?? []);
   const [session, setSession] = useState<QuizSession | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -188,12 +198,14 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   // reduced-motion by construction.
   useEffect(() => {
     setStruck(new Set());
+    setLocalAnnotations(question?.annotations ?? []);
+    setAnnotationSelection(null);
     if (stage !== "running") return;
     const stem = stemRef.current;
     const body = stem?.closest<HTMLElement>(".modal-body");
     if (body) body.scrollTop = 0;
     stem?.focus({ preventScroll: true });
-  }, [index, stage]);
+  }, [index, stage, question?.id, question?.annotations]);
 
   function currentFilters(): QuizFilters {
     return {
@@ -556,6 +568,38 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const answer = answers.get(question.id);
   const correctKey = trustedCorrectKey(question);
   const isCorrect = revealed && correctKey && picked === correctKey;
+  const annotations = localAnnotations;
+  const stemAnnotations = annotations.filter((annotation) => annotation.target === "stem");
+  const explanationAnnotations = annotations.filter((annotation) => annotation.target === "explanation");
+
+  function saveAnnotation() {
+    if (!annotationSelection) return;
+    const sourceText = annotationSelection.target === "stem" ? question.stem : question.explanation ?? "";
+    const now = new Date().toISOString();
+    const annotation = createTextAnnotation({
+      id: `annotation-${crypto.randomUUID()}`,
+      target: annotationSelection.target,
+      sourceText,
+      startOffset: annotationSelection.range.startOffset,
+      endOffset: annotationSelection.range.endOffset,
+      tone: annotationTone,
+      now,
+    });
+    const next = [...annotations, annotation];
+    setLocalAnnotations(next);
+    setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: next } : item));
+    s.updateQuestion(question.id, { annotations: next });
+    setAnnotationSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }
+
+  function clearAnnotations() {
+    if (!annotations.length) return;
+    setLocalAnnotations([]);
+    setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: [] } : item));
+    s.updateQuestion(question.id, { annotations: [] });
+    setAnnotationSelection(null);
+  }
 
   return (
     <Modal
@@ -620,8 +664,23 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
 
       {calcOpen && <QuizCalculator onClose={closeCalculator} />}
 
+      <QuestionAnnotationToolbar
+        selectedTone={annotationTone}
+        hasSelection={Boolean(annotationSelection)}
+        onTone={setAnnotationTone}
+        onHighlight={saveAnnotation}
+        onClear={clearAnnotations}
+      />
+
       <div className="quiz-reading" style={{ "--quiz-reading-scale": readingScale } as CSSProperties}>
-        <div className="question-stem" ref={stemRef} tabIndex={-1}>{question.stem}</div>
+        <AnnotatedQuestionText
+          text={question.stem}
+          annotations={stemAnnotations}
+          className="question-stem"
+          label="Question stem"
+          focusRef={stemRef}
+          onSelection={(range) => setAnnotationSelection(range ? { target: "stem", range } : null)}
+        />
 
         <div className="stack gap6">
           {question.options.map((opt) => {
@@ -663,6 +722,16 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
             onMarkExplanationWrong={() => flagExtractionIssue("explanation")}
             onMarkAnswerWrong={() => flagExtractionIssue("answer")}
             onEditMapping={() => setEditingMapping((value) => !value)}
+            explanationContent={question.explanation ? (
+              <AnnotatedQuestionText
+                text={question.explanation.trim()}
+                annotations={explanationAnnotations}
+                className="question-explanation-text"
+                label="Question explanation"
+                inline
+                onSelection={(range) => setAnnotationSelection(range ? { target: "explanation", range } : null)}
+              />
+            ) : undefined}
           />
           {editingMapping && (
             <SelectField label="Repair correct-answer mapping" value={question.correctKey ?? ""}
@@ -752,6 +821,18 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
               <b>{provider?.info.label}:</b> {aiText}
             </div>
           )}
+          <QuestionNotesPanel
+            questionId={question.id}
+            value={question.notes}
+            onSave={(notesValue) => {
+              const trimmed = notesValue.trim() || undefined;
+              // Keep the in-run pool in sync (like annotations) so a note
+              // survives navigating away and back within the same block —
+              // not just in the persisted store.
+              setPool((current) => current.map((item) => item.id === question.id ? { ...item, notes: trimmed } : item));
+              s.updateQuestion(question.id, { notes: trimmed });
+            }}
+          />
         </>
       )}
     </Modal>

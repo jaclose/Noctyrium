@@ -60,6 +60,7 @@ import {
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, withCorrectAnswerText, type QuestionAttempt, type QuestionRecord } from "./questions";
+import { reconcileQuestionAnnotationSources } from "./questionAnnotations";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
 import { repairOrphans } from "./orphanRepair";
@@ -943,7 +944,7 @@ export const useStore = create<Store>()(
       updateQuestion: (id, patch) =>
         set((s) => ({
           questions: (s.questions ?? []).map((q) => (q.id === id
-            ? withCorrectAnswerText({ ...q, ...patch, updatedAt: now() })
+            ? reconcileQuestionAnnotationSources(withCorrectAnswerText({ ...q, ...patch, updatedAt: now() }))
             : q)),
         })),
       removeQuestion: (id) => set((s) => ({

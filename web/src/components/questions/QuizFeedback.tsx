@@ -2,6 +2,7 @@ import { AlertTriangle, BookMarked, FileSearch, PencilLine, WandSparkles } from 
 import { questionMappingStatus, type QuestionRecord } from "../../lib/questions";
 import { GhostButton } from "../ui/primitives";
 import { ICON_SIZE } from "../../lib/iconSize";
+import type { ReactNode } from "react";
 
 export function QuizFeedback({
   question,
@@ -14,6 +15,7 @@ export function QuizFeedback({
   onSourceLooksWrong,
   sourceTitle,
   showProvenance = true,
+  explanationContent,
 }: {
   question: QuestionRecord;
   pickedKey?: string;
@@ -25,6 +27,7 @@ export function QuizFeedback({
   onSourceLooksWrong?: () => void;
   sourceTitle?: string;
   showProvenance?: boolean;
+  explanationContent?: ReactNode;
 }) {
   const trusted = questionMappingStatus(question) === "ready";
   const correct = trusted ? question.options.find((option) => option.key === question.correctKey) : undefined;
@@ -62,7 +65,7 @@ export function QuizFeedback({
       {explanation && (
         <div className="feedback-explanation">
           <span className="field-label">Explanation</span>
-          <p>{explanation}</p>
+          <p>{explanationContent ?? explanation}</p>
         </div>
       )}
 

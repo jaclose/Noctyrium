@@ -6,6 +6,7 @@ import type { QuestionSet } from "../../lib/library";
 import type { QuestionRecord } from "../../lib/questions";
 import type { QuizBlock } from "../../lib/quiz";
 import { ExamRunner } from "./ExamRunner";
+import { createTextAnnotation } from "../../lib/questionAnnotations";
 
 const mocked = vi.hoisted(() => ({
   store: {} as Record<string, unknown>,
@@ -187,5 +188,29 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     expect(screen.getByRole("heading", { name: "Block results" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Retake .* missed/ })).toBeNull();
     expect(screen.getByText(/correct unresolved/)).toBeTruthy();
+  });
+
+  it("keeps persisted highlights visible when navigating away and back", async () => {
+    const startOffset = question.stem.indexOf("option");
+    const annotated = {
+      ...question,
+      annotations: [createTextAnnotation({
+        id: "ann-nav", target: "stem", sourceText: question.stem, startOffset,
+        endOffset: startOffset + "option".length, tone: "yellow",
+        now: "2026-07-16T12:00:00.000Z",
+      })],
+    };
+    const second = { ...question, id: "question-2", stem: "Which second option is correct?" };
+    setStore();
+    mocked.store = { ...mocked.store, questions: [annotated, second] };
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[annotated.id, second.id]} onClose={() => {}} />);
+
+    expect(screen.getByLabelText("Highlighted text: option")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "B. Beta" }));
+    await user.click(screen.getByRole("button", { name: "Check answer" }));
+    await user.click(screen.getByRole("button", { name: "Next question" }));
+    await user.click(screen.getByRole("button", { name: "Previous" }));
+    expect(screen.getByLabelText("Highlighted text: option")).toBeTruthy();
   });
 });
