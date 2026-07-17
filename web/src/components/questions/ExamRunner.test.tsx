@@ -190,7 +190,7 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     expect(screen.getByText(/correct unresolved/)).toBeTruthy();
   });
 
-  it("keeps persisted highlights visible when navigating away and back", async () => {
+  it("keeps one persisted highlight through rapid next/previous navigation", async () => {
     const startOffset = question.stem.indexOf("option");
     const annotated = {
       ...question,
@@ -211,6 +211,8 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     await user.click(screen.getByRole("button", { name: "Check answer" }));
     await user.click(screen.getByRole("button", { name: "Next question" }));
     await user.click(screen.getByRole("button", { name: "Previous" }));
-    expect(screen.getByLabelText("Highlighted text: option")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Next question" }));
+    await user.click(screen.getByRole("button", { name: "Previous" }));
+    expect(screen.getAllByLabelText("Highlighted text: option")).toHaveLength(1);
   });
 });

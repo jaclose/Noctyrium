@@ -19,6 +19,11 @@ export interface QuestionTextAnnotation {
   note?: string;
 }
 
+export type AnnotationCreationResult =
+  | { status: "created"; annotation: QuestionTextAnnotation }
+  | { status: "overlap"; existingAnnotationId: string; reason: string }
+  | { status: "ignored"; reason: "collapsed" | "whitespace" | "duplicate-id" };
+
 const CONTEXT_LENGTH = 24;
 const TONES = new Set<QuestionAnnotationTone>(["yellow", "cyan", "purple"]);
 const TARGETS = new Set<QuestionAnnotationTarget>(["stem", "explanation", "option"]);
@@ -68,6 +73,62 @@ export function createTextAnnotation(input: {
     status: "active",
     note: input.note?.trim() || undefined,
   };
+}
+
+function sameAnnotationTarget(
+  annotation: Pick<QuestionTextAnnotation, "target" | "optionKey">,
+  target: QuestionAnnotationTarget,
+  optionKey?: string,
+): boolean {
+  if (annotation.target !== target) return false;
+  if (target !== "option") return true;
+  return annotation.optionKey === optionKey?.trim().toUpperCase();
+}
+
+export function createTextAnnotationWithIntegrity(input: {
+  id: string;
+  target: QuestionAnnotationTarget;
+  optionKey?: string;
+  sourceText: string;
+  startOffset: number;
+  endOffset: number;
+  tone: QuestionAnnotationTone;
+  now: string;
+  note?: string;
+  existingAnnotations: readonly QuestionTextAnnotation[];
+}): AnnotationCreationResult {
+  if (input.endOffset <= input.startOffset) {
+    return { status: "ignored", reason: "collapsed" };
+  }
+  if (!input.sourceText.slice(input.startOffset, input.endOffset).trim()) {
+    return { status: "ignored", reason: "whitespace" };
+  }
+  if (input.existingAnnotations.some((annotation) => annotation.id === input.id)) {
+    return { status: "ignored", reason: "duplicate-id" };
+  }
+  const optionKey = input.target === "option" ? input.optionKey?.trim().toUpperCase() : undefined;
+  const overlap = input.existingAnnotations
+    .filter((annotation) => sameAnnotationTarget(annotation, input.target, optionKey))
+    .map((annotation) => reconcileTextAnnotation(annotation, input.sourceText))
+    .find((annotation) => (
+      input.startOffset < annotation.endOffset
+      && input.endOffset > annotation.startOffset
+    ));
+  if (overlap) {
+    return {
+      status: "overlap",
+      existingAnnotationId: overlap.id,
+      reason: "Highlight overlaps an existing highlight.",
+    };
+  }
+  return { status: "created", annotation: createTextAnnotation(input) };
+}
+
+export function removeTextAnnotationById(
+  annotations: readonly QuestionTextAnnotation[],
+  annotationId: string,
+): QuestionTextAnnotation[] {
+  return annotations.filter((annotation) => annotation.id !== annotationId);
 }
 
 export function reconcileTextAnnotation(
@@ -161,5 +222,29 @@ export function reconcileQuestionAnnotationSources<T extends {
         : question.options.find((option) => option.key === annotation.optionKey)?.text ?? "";
     return reconcileTextAnnotation(annotation, sourceText);
   });
-  return { ...question, annotations };
+  const priority = [...annotations].sort((left, right) => (
+    Number(left.status === "needs-repair") - Number(right.status === "needs-repair")
+    || left.startOffset - right.startOffset
+    || left.endOffset - right.endOffset
+    || left.createdAt.localeCompare(right.createdAt)
+    || left.id.localeCompare(right.id)
+  ));
+  const accepted: QuestionTextAnnotation[] = [];
+  const statusById = new Map<string, QuestionAnnotationStatus>();
+  for (const annotation of priority) {
+    const overlap = accepted.some((existing) => (
+      sameAnnotationTarget(existing, annotation.target, annotation.optionKey)
+      && annotation.startOffset < existing.endOffset
+      && annotation.endOffset > existing.startOffset
+    ));
+    statusById.set(annotation.id, overlap ? "needs-repair" : annotation.status);
+    accepted.push(annotation);
+  }
+  return {
+    ...question,
+    annotations: annotations.map((annotation) => ({
+      ...annotation,
+      status: statusById.get(annotation.id) ?? annotation.status,
+    })),
+  };
 }

@@ -13,12 +13,14 @@ export function QuestionAnnotationToolbar({
   onTone,
   onHighlight,
   onClear,
+  statusMessage,
 }: {
   selectedTone: QuestionAnnotationTone;
   hasSelection: boolean;
   onTone: (tone: QuestionAnnotationTone) => void;
   onHighlight: () => void;
   onClear: () => void;
+  statusMessage?: string;
 }) {
   return (
     <div className="question-annotation-toolbar row wrap gap6" role="toolbar" aria-label="Question annotation tools">
@@ -36,6 +38,7 @@ export function QuestionAnnotationToolbar({
       <GhostButton disabled={!hasSelection} onClick={onHighlight}>Highlight selection</GhostButton>
       <GhostButton onClick={onClear}>Clear highlights</GhostButton>
       <span className="sub">Select stem or explanation text, then highlight.</span>
+      {statusMessage && <span className="sub" role="status" aria-live="polite">{statusMessage}</span>}
     </div>
   );
 }

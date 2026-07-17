@@ -17,6 +17,7 @@ export function AnnotatedQuestionText({
   label,
   focusRef,
   onSelection,
+  onDelete,
   inline = false,
 }: {
   text: string;
@@ -25,6 +26,7 @@ export function AnnotatedQuestionText({
   label: string;
   focusRef?: MutableRefObject<HTMLDivElement | null>;
   onSelection?: (selection: QuestionTextSelection | null) => void;
+  onDelete?: (annotationId: string) => void;
   inline?: boolean;
 }) {
   const localRef = useRef<HTMLDivElement | null>(null);
@@ -53,7 +55,9 @@ export function AnnotatedQuestionText({
     before.setEnd(range.startContainer, range.startOffset);
     const startOffset = before.toString().length;
     const endOffset = startOffset + range.toString().length;
-    onSelection(endOffset > startOffset ? { startOffset, endOffset } : null);
+    onSelection(endOffset > startOffset && range.toString().trim()
+      ? { startOffset, endOffset }
+      : null);
   }
 
   const segments: ReactNode[] = [];
@@ -67,7 +71,15 @@ export function AnnotatedQuestionText({
         className={`question-highlight tone-${annotation.tone}`}
         tabIndex={0}
         aria-label={`Highlighted text: ${annotation.exactText}`}
+        aria-keyshortcuts="Delete Backspace"
         data-annotation-id={annotation.id}
+        onKeyDown={(event) => {
+          if (onDelete && (event.key === "Delete" || event.key === "Backspace")) {
+            event.preventDefault();
+            onDelete(annotation.id);
+            window.setTimeout(() => localRef.current?.focus(), 0);
+          }
+        }}
       >
         {text.slice(annotation.startOffset, annotation.endOffset)}
       </mark>,
@@ -82,7 +94,7 @@ export function AnnotatedQuestionText({
       if (focusRef) focusRef.current = node as HTMLDivElement | null;
     },
     className,
-    tabIndex: focusRef ? -1 : onSelection ? 0 : undefined,
+    tabIndex: focusRef ? -1 : onSelection || onDelete ? 0 : undefined,
     "aria-label": label,
     onMouseUp: captureSelection,
     onKeyUp: captureSelection,

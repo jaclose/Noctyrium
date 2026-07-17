@@ -5,7 +5,11 @@
 // and the faculty style analyzer (Phase 6 §13). Pure + testable.
 // ===========================================================================
 import type { ID } from "./types";
-import { normalizeQuestionAnnotations, type QuestionTextAnnotation } from "./questionAnnotations";
+import {
+  normalizeQuestionAnnotations,
+  reconcileQuestionAnnotationSources,
+  type QuestionTextAnnotation,
+} from "./questionAnnotations";
 
 export type QuestionStatus =
   | "unseen"
@@ -418,7 +422,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
   return {
     ok: true,
     errors: [],
-    value: {
+    value: reconcileQuestionAnnotationSources({
       id: typeof input.id === "string" && input.id ? input.id : crypto.randomUUID(),
       source,
       sourceFile: isRecord(input.sourceFile) && typeof input.sourceFile.name === "string"
@@ -511,7 +515,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       citation: cleanString(input.citation),
       createdAt: typeof input.createdAt === "string" ? input.createdAt : iso,
       updatedAt: iso,
-    },
+    }),
   };
 }
 

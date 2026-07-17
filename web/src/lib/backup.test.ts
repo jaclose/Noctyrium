@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mergeStates, parseImport, toPortableState } from "./backup";
 import { makeSeed } from "./seed";
+import { createTextAnnotation } from "./questionAnnotations";
 
 describe("portable backup safety", () => {
   it("round-trips notebook metadata, autosaved writing, and bounded local attachments on schema v32", () => {
@@ -193,7 +194,13 @@ describe("portable backup safety", () => {
     }];
     const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
     expect(restored.questions[0].notes).toBe("Private learner note");
-    expect(restored.questions[0].annotations).toEqual(state.questions[0].annotations);
+    expect(restored.questions[0].annotations).toEqual([
+      expect.objectContaining({
+        ...state.questions[0].annotations?.[0],
+        sourceTextHash: expect.stringMatching(/^fnv1a-/),
+        status: "active",
+      }),
+    ]);
   });
 
   it("merges annotation ids without duplication and keeps the later update", () => {
@@ -217,6 +224,38 @@ describe("portable backup safety", () => {
     const merged = mergeStates(current, imported);
     expect(merged.questions[0].annotations).toHaveLength(1);
     expect(merged.questions[0].annotations?.[0]).toMatchObject({ id: "ann-1", tone: "cyan" });
+  });
+
+  it("surfaces different-id overlaps as repair-needed after portable restore and merge", () => {
+    const stem = "0123456789abcdefghij";
+    const base = {
+      id: "q-overlap", source: "manual" as const, stem, options: [], status: "unseen" as const,
+      tags: [], attempts: [], createdAt: "2026-07-16T09:00:00.000Z", updatedAt: "2026-07-16T12:00:00.000Z",
+    };
+    const first = createTextAnnotation({
+      id: "first", target: "stem", sourceText: stem, startOffset: 0, endOffset: 10,
+      tone: "yellow", now: "2026-07-16T10:00:00.000Z",
+    });
+    const second = createTextAnnotation({
+      id: "second", target: "stem", sourceText: stem, startOffset: 5, endOffset: 15,
+      tone: "cyan", now: "2026-07-16T11:00:00.000Z",
+    });
+    const portableState = makeSeed();
+    portableState.questions = [{ ...base, annotations: [second, first] }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(portableState) }));
+    expect(restored.questions[0].annotations).toEqual([
+      expect.objectContaining({ id: "second", status: "needs-repair" }),
+      expect.objectContaining({ id: "first", status: "active" }),
+    ]);
+
+    const current = makeSeed();
+    current.questions = [{ ...base, annotations: [first] }];
+    const imported = makeSeed();
+    imported.questions = [{ ...base, updatedAt: "2026-07-16T13:00:00.000Z", annotations: [second] }];
+    const merged = mergeStates(current, imported);
+    expect(merged.questions[0].annotations).toHaveLength(2);
+    expect(merged.questions[0].annotations?.find((annotation) => annotation.id === "first")?.status).toBe("active");
+    expect(merged.questions[0].annotations?.find((annotation) => annotation.id === "second")?.status).toBe("needs-repair");
   });
 
   it("loads a legacy schema-v32 question without annotations unchanged", () => {

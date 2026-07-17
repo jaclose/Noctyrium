@@ -4,7 +4,7 @@
 // miss into an error-repair card in one tap (the Capture → Review link in the
 // daily loop).
 // ===========================================================================
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PencilLine, Trash2, WandSparkles } from "lucide-react";
 import { useStore } from "../../lib/store";
 import {
@@ -19,7 +19,7 @@ import { pushToast } from "../../lib/toast";
 import { QuestionProvenance, QuizFeedback } from "./QuizFeedback";
 import { sourceCandidates, type QuestionEvidenceKind, type SourceCandidate } from "../../lib/questionProvenance";
 import { ICON_SIZE } from "../../lib/iconSize";
-import { createTextAnnotation, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
+import { createTextAnnotationWithIntegrity, removeTextAnnotationById, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
 import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
 import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
 import { QuestionNotesPanel } from "./QuestionNotesPanel";
@@ -41,6 +41,8 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   const [sourceKind, setSourceKind] = useState<QuestionEvidenceKind>("question");
   const [startedAt] = useState(() => Date.now());
   const [annotations, setAnnotations] = useState(() => question.annotations ?? []);
+  const annotationsRef = useRef(annotations);
+  const [annotationStatus, setAnnotationStatus] = useState<string>();
   const [annotationTone, setAnnotationTone] = useState<QuestionAnnotationTone>("yellow");
   const [annotationSelection, setAnnotationSelection] = useState<{
     target: QuestionAnnotationTarget;
@@ -76,7 +78,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
     if (!annotationSelection) return;
     const sourceText = annotationSelection.target === "stem" ? question.stem : question.explanation ?? "";
     const now = new Date().toISOString();
-    const annotation = createTextAnnotation({
+    const result = createTextAnnotationWithIntegrity({
       id: `annotation-${crypto.randomUUID()}`,
       target: annotationSelection.target,
       sourceText,
@@ -84,17 +86,33 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
       endOffset: annotationSelection.range.endOffset,
       tone: annotationTone,
       now,
+      existingAnnotations: annotationsRef.current,
     });
-    const next = [...annotations, annotation];
+    if (result.status !== "created") {
+      setAnnotationStatus(result.status === "overlap" ? result.reason : undefined);
+      return;
+    }
+    const next = [...annotationsRef.current, result.annotation];
+    annotationsRef.current = next;
     setAnnotations(next);
     s.updateQuestion(question.id, { annotations: next });
     setAnnotationSelection(null);
+    setAnnotationStatus("Highlight saved.");
     window.getSelection()?.removeAllRanges();
   }
 
   function submit() {
     if (!picked && question.options.length > 0) return;
     setRevealed(true);
+  }
+
+  function deleteAnnotation(annotationId: string) {
+    const next = removeTextAnnotationById(annotationsRef.current, annotationId);
+    if (next.length === annotationsRef.current.length) return;
+    annotationsRef.current = next;
+    setAnnotations(next);
+    s.updateQuestion(question.id, { annotations: next });
+    setAnnotationStatus("Highlight deleted.");
   }
 
   function saveAttempt() {
@@ -221,10 +239,13 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
         onTone={setAnnotationTone}
         onHighlight={saveAnnotation}
         onClear={() => {
+          annotationsRef.current = [];
           setAnnotations([]);
           s.updateQuestion(question.id, { annotations: [] });
           setAnnotationSelection(null);
+          setAnnotationStatus("Highlights cleared.");
         }}
+        statusMessage={annotationStatus}
       />
 
       <AnnotatedQuestionText
@@ -232,6 +253,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
         annotations={annotations.filter((annotation) => annotation.target === "stem")}
         className="question-stem"
         label="Question stem"
+        onDelete={deleteAnnotation}
         onSelection={(range) => setAnnotationSelection(range ? { target: "stem", range } : null)}
       />
 
@@ -342,6 +364,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
                 annotations={annotations.filter((annotation) => annotation.target === "explanation")}
                 className="question-explanation-text"
                 label="Question explanation"
+                onDelete={deleteAnnotation}
                 inline
                 onSelection={(range) => setAnnotationSelection(range ? { target: "explanation", range } : null)}
               />

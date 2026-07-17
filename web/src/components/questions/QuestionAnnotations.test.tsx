@@ -42,6 +42,20 @@ describe("question annotation UI", () => {
     expect(screen.getByRole("button", { name: "Highlight selection" })).toHaveProperty("disabled", true);
   });
 
+  it("announces an overlap rejection through the toolbar live status", () => {
+    render(
+      <QuestionAnnotationToolbar
+        selectedTone="yellow"
+        hasSelection
+        onTone={() => {}}
+        onHighlight={() => {}}
+        onClear={() => {}}
+        statusMessage="Highlight overlaps an existing highlight."
+      />,
+    );
+    expect(screen.getByRole("status").textContent).toBe("Highlight overlaps an existing highlight.");
+  });
+
   it("autosaves a question note and announces completion", async () => {
     vi.useFakeTimers();
     const save = vi.fn();
@@ -81,5 +95,34 @@ describe("question annotation UI", () => {
     );
     expect(screen.getByRole("status").textContent).toContain("1 highlight need repair: chosen text");
     expect(screen.getByLabelText("Question stem").getAttribute("tabindex")).toBe("0");
+  });
+
+  it("deletes only the focused highlight with the Delete key and restores surface focus", async () => {
+    const text = "first second";
+    const first = createTextAnnotation({
+      id: "first", target: "stem", sourceText: text, startOffset: 0,
+      endOffset: 5, tone: "yellow", now: "2026-07-16T12:00:00.000Z",
+    });
+    const second = createTextAnnotation({
+      id: "second", target: "stem", sourceText: text, startOffset: 6,
+      endOffset: 12, tone: "cyan", now: "2026-07-16T12:00:00.000Z",
+    });
+    const remove = vi.fn();
+    const view = render(
+      <AnnotatedQuestionText
+        text={text}
+        annotations={[first, second]}
+        label="Question stem"
+        onDelete={remove}
+      />,
+    );
+    const firstMark = screen.getByLabelText("Highlighted text: first");
+    firstMark.focus();
+    fireEvent.keyDown(firstMark, { key: "Delete" });
+    expect(remove).toHaveBeenCalledOnce();
+    expect(remove).toHaveBeenCalledWith("first");
+    expect(screen.getByLabelText("Highlighted text: second")).toBeTruthy();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(document.activeElement).toBe(view.getByLabelText("Question stem"));
   });
 });

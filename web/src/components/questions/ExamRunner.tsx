@@ -26,7 +26,7 @@ import { pushToast } from "../../lib/toast";
 import { QuizFeedback } from "./QuizFeedback";
 import { accuracyTone } from "../../lib/library";
 import { ICON_SIZE } from "../../lib/iconSize";
-import { createTextAnnotation, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
+import { createTextAnnotationWithIntegrity, removeTextAnnotationById, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
 import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
 import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
 import { QuestionNotesPanel } from "./QuestionNotesPanel";
@@ -103,6 +103,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     range: QuestionTextSelection;
   } | null>(null);
   const [localAnnotations, setLocalAnnotations] = useState(() => pool[index]?.annotations ?? []);
+  const localAnnotationsRef = useRef(localAnnotations);
+  const [annotationStatus, setAnnotationStatus] = useState<string>();
   const [session, setSession] = useState<QuizSession | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -199,7 +201,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   useEffect(() => {
     setStruck(new Set());
     setLocalAnnotations(question?.annotations ?? []);
+    localAnnotationsRef.current = question?.annotations ?? [];
     setAnnotationSelection(null);
+    setAnnotationStatus(undefined);
     if (stage !== "running") return;
     const stem = stemRef.current;
     const body = stem?.closest<HTMLElement>(".modal-body");
@@ -576,7 +580,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     if (!annotationSelection) return;
     const sourceText = annotationSelection.target === "stem" ? question.stem : question.explanation ?? "";
     const now = new Date().toISOString();
-    const annotation = createTextAnnotation({
+    const result = createTextAnnotationWithIntegrity({
       id: `annotation-${crypto.randomUUID()}`,
       target: annotationSelection.target,
       sourceText,
@@ -584,21 +588,40 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       endOffset: annotationSelection.range.endOffset,
       tone: annotationTone,
       now,
+      existingAnnotations: localAnnotationsRef.current,
     });
-    const next = [...annotations, annotation];
+    if (result.status !== "created") {
+      setAnnotationStatus(result.status === "overlap" ? result.reason : undefined);
+      return;
+    }
+    const next = [...localAnnotationsRef.current, result.annotation];
+    localAnnotationsRef.current = next;
     setLocalAnnotations(next);
     setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: next } : item));
     s.updateQuestion(question.id, { annotations: next });
     setAnnotationSelection(null);
+    setAnnotationStatus("Highlight saved.");
     window.getSelection()?.removeAllRanges();
   }
 
   function clearAnnotations() {
     if (!annotations.length) return;
+    localAnnotationsRef.current = [];
     setLocalAnnotations([]);
     setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: [] } : item));
     s.updateQuestion(question.id, { annotations: [] });
     setAnnotationSelection(null);
+    setAnnotationStatus("Highlights cleared.");
+  }
+
+  function deleteAnnotation(annotationId: string) {
+    const next = removeTextAnnotationById(localAnnotationsRef.current, annotationId);
+    if (next.length === localAnnotationsRef.current.length) return;
+    localAnnotationsRef.current = next;
+    setLocalAnnotations(next);
+    setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: next } : item));
+    s.updateQuestion(question.id, { annotations: next });
+    setAnnotationStatus("Highlight deleted.");
   }
 
   return (
@@ -670,6 +693,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         onTone={setAnnotationTone}
         onHighlight={saveAnnotation}
         onClear={clearAnnotations}
+        statusMessage={annotationStatus}
       />
 
       <div className="quiz-reading" style={{ "--quiz-reading-scale": readingScale } as CSSProperties}>
@@ -678,6 +702,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           annotations={stemAnnotations}
           className="question-stem"
           label="Question stem"
+          onDelete={deleteAnnotation}
           focusRef={stemRef}
           onSelection={(range) => setAnnotationSelection(range ? { target: "stem", range } : null)}
         />
@@ -728,6 +753,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                 annotations={explanationAnnotations}
                 className="question-explanation-text"
                 label="Question explanation"
+                onDelete={deleteAnnotation}
                 inline
                 onSelection={(range) => setAnnotationSelection(range ? { target: "explanation", range } : null)}
               />

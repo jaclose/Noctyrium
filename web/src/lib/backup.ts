@@ -10,7 +10,7 @@ import {
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
-import { normalizeQuestionAnnotations } from "./questionAnnotations";
+import { normalizeQuestionAnnotations, reconcileQuestionAnnotationSources } from "./questionAnnotations";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { isAcademicStageId, resolveTrack } from "./tracks";
 import { normalizeDailySuccessConfig } from "./dailySuccess";
@@ -165,7 +165,28 @@ function mergeQuestionsById(
     });
   }
   const unkeyed = [...current, ...imported].filter((record) => !String(record.id ?? ""));
-  return [...byId.values(), ...unkeyed];
+  return [...byId.values(), ...unkeyed].map(reconcileAnnotationRecord);
+}
+
+function reconcileAnnotationRecord(record: Record<string, unknown>): Record<string, unknown> {
+  const annotations = normalizeQuestionAnnotations(record.annotations);
+  if (!annotations?.length || typeof record.stem !== "string") {
+    return { ...record, annotations };
+  }
+  const options = Array.isArray(record.options)
+    ? record.options.flatMap((option) => (
+      isRecord(option) && typeof option.key === "string" && typeof option.text === "string"
+        ? [{ key: option.key, text: option.text }]
+        : []
+    ))
+    : [];
+  return reconcileQuestionAnnotationSources({
+    ...record,
+    stem: record.stem,
+    explanation: typeof record.explanation === "string" ? record.explanation : undefined,
+    options,
+    annotations,
+  });
 }
 
 function mergeQuestionAnnotations(left: unknown, right: unknown) {
@@ -378,7 +399,7 @@ function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
       };
     }
   }
-  return question;
+  return reconcileAnnotationRecord(question);
 }
 
 function normalizeDashboardWidgetOrder(value: unknown): NonNullable<NoctyriumState["profile"]["dashboardWidgetOrder"]> {
