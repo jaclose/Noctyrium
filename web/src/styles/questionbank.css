@@ -315,7 +315,18 @@
 .answer-row.your-answer.wrong strong { color: var(--red); }
 .feedback-explanation, .learning-objective { padding: 14px 15px; border-radius: var(--radius-md); border: 1px solid rgba(230,226,214,.08); background: rgba(230,226,214,.025); }
 .feedback-explanation p, .learning-objective p { margin: 7px 0 0; color: var(--text-80); font-size: var(--fs-base); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+/* Cleaner explanation reading (Q2a): a comfortable measure keeps long
+   explanations from running edge to edge. */
+.feedback-explanation p, .learning-objective p { max-width: 68ch; }
 .learning-objective { border-left: 2px solid var(--gold); }
+/* Post-submit rationale emphasis (Q2a): correct + your-wrong-pick lead;
+   remaining distractors collapse. */
+.choice-rationales .rationale-lead { padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: rgba(230,226,214,.025); }
+.choice-rationales .rationale-lead b { display: block; margin-bottom: 3px; font-size: var(--fs-sm); }
+.choice-rationales .rationale-lead p { margin: 0; color: var(--text-80); font-size: var(--fs-base); line-height: var(--leading-relaxed); max-width: 68ch; white-space: pre-wrap; }
+.choice-rationales .rationale-others summary { cursor: pointer; color: var(--text-60); font-size: var(--fs-sm); font-weight: var(--fw-semibold); min-height: 30px; display: flex; align-items: center; }
+.choice-rationales .rationale-others[open] summary { margin-bottom: 6px; }
+.choice-rationales .rationale-others .sub { max-width: 68ch; }
 .learning-objective > span { color: var(--gold); font-size: var(--fs-tiny); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: var(--tracking-wider); }
 .source-evidence { border: 1px solid rgba(230,226,214,.08); border-radius: var(--radius-md); background: rgba(0,0,0,.18); }
 .source-evidence summary { display: flex; align-items: center; gap: 8px; padding: 11px 13px; cursor: pointer; color: var(--text-60); font-size: var(--fs-sm); font-weight: var(--fw-medium); }

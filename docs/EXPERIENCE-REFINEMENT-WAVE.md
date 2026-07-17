@@ -720,6 +720,79 @@ allACollapse false** · verify:daily-games-offline ✓ · diff-check ✓. Diff =
 (Wave 6A) work; localized repair to the shipped resolution path.** Committed as
 `b94e6f1` (docs sha fixed post-commit).
 
+## Q2a — Question Reading Experience: Interaction Layer (2026-07-16)
+
+Second functional-wave checkpoint. Baseline `26707a8`. JD split Q2 at the schema
+fault line: **Q2a = player interaction (no schema)**, **Q2b = persistent
+annotation layer (additive v32 fields + a separate IndexedDB blob store)** — Q2b
+deferred to its own checkpoint. Presentation/interaction only; no schema, store,
+persistence, or parser change.
+
+**Delivered (ExamRunner + QuizCalculator + CSS):**
+- **Strikeout / eliminate** — per-choice toggle (aria-labelled, aria-pressed) +
+  **Shift+letter** keyboard; **Reset** clears all; struck = line-through +
+  reduced opacity but legible; **coexists with correct/wrong coloring after
+  reveal** (history not erased); never selects the option; session-transient
+  (clears on advance).
+- **Scroll-to-top + focus on advance** — `.modal-body` scrollTop=0 (instant →
+  reduced-motion-safe) and focus moves to `.question-stem` (tabIndex=-1) so AT
+  announces the new question.
+- **Reading font-size** — `− A +` multiplies stem + choices via
+  `--quiz-reading-scale`; persisted to a **device-only** localStorage key
+  (`axom.quiz.reading-scale.v1`, `STORAGE_KEYS.quizReadingScale`), never the
+  workspace payload (verifier: `workspaceLocalStorageKeys: []`); clamped 0.9–1.4.
+- **Calculator** — keyboard-accessible floating panel (`QuizCalculator.tsx`),
+  session-scoped, no history persistence; eval gated by a strict arithmetic
+  allowlist before `Function()`.
+- **Post-submit rationale emphasis** — leads with "Why <correct> is correct",
+  then "Why your choice (X) is wrong" (only on a wrong pick), remaining
+  distractors collapse under `<details>`.
+- **Cleaner explanation reading** — 68ch measure on explanation/rationale
+  paragraphs.
+- Preserved unseen/seen + attempt recording (untouched).
+
+Option-row markup changed from a single `<button.option-row>` to
+`<div.option-row>` = `<button.option-pick aria-label="X. text">` +
+`<button.option-strike>`; the option's accessible name is unchanged, so the
+quiz e2e still resolves it.
+
+**Independent Fable review: ACCEPT WITH FIXES** — one minor finding (F1): the
+reading control scaled the choices but not the stem, because
+`questionbank.css .quiz-player-body .question-stem` (clamp) out-specified the
+scale rule. **Fixed** by raising specificity to
+`.quiz-player-body .quiz-reading .question-stem`. Fable verified everything else
+on rendered + code evidence: strikeout never selects / survives reveal /
+coexists with correctness / resets; scroll+focus lands on the stem, instant;
+scale persists to the device key only with no workspace leak, bounds respected;
+calculator keyboard-accessible + eval-safe (allowlist blocks injection);
+rationale emphasis correct for wrong/correct/empty; no regression; no 390px
+overflow. Gates in its run: typecheck 0 · lint 0 · vitest **817/817** · e2e 6/6 ·
+build ✓ · verify:question-imports (100%/0/false) ✓ · verify:daily-games-offline
+(`[]`) ✓.
+
+**Final owner re-gate (2026-07-16):** typecheck 0 · lint 0 · Vitest **107 files,
+817/817** · Playwright **6/6** · production build ✓ · question-import acceptance
+**21 questions / 100% answer accuracy / 100% explanation association / falseReady
+0 / allACollapse false / lostQuestions 0** · daily-games offline ✓ with
+`workspaceLocalStorageKeys: []` · bundle isolation ✓ · diff-check ✓. One first
+E2E run had an unrelated 2px Productivity tour scroll-restoration timing flake;
+the complete rerun and final post-repair run both passed 6/6.
+
+Disposable Q2a browser proof passed **24/24** assertions at 900px dark and
+390×844 light: pointer + Shift elimination never selected, reset cleared only
+eliminations, strike survived reveal with correct/wrong classes, stem and option
+fonts both increased **14px → 16.8px**, 0.9/1.4 bounds disabled correctly, reload
+preserved only `axom.quiz.reading-scale.v1`, and the workspace contained no scale.
+Calculator focus/arithmetic (`12 + 7 × 3 = 33`, `50% = 0.5`), controlled error,
+Escape close/focus restoration, rationale ordering/collapse/empty behavior,
+next-question scrollTop 0 + stem focus, and mobile overflow all passed. The owner
+added the smallest accessibility repair discovered by that proof: calculator
+close now restores focus to its trigger after React unmounts the panel.
+
+**Status:** Q2a is **implemented, Fable-accepted, F1-fixed, fully re-gated, and
+ready to commit.** Diff: `ExamRunner.tsx`, `brand.ts`, `loop.css`,
+`questionbank.css` + new `QuizCalculator.tsx`.
+
 ## Deferred — Question Bank Functional Wave (Q1–Q3)
 
 Directed 2026-07-15 (JD), recorded during E2e as **backlog only**. These are

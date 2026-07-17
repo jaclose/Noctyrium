@@ -4,9 +4,11 @@
 // flagging, end-of-block review). Results persist as QuizSession records and
 // every answer is recorded on the question for spaced retry.
 // ===========================================================================
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, Flag, Play, WandSparkles, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { ChevronLeft, Flag, Play, WandSparkles, Sparkles, Calculator, Minus, Plus, RotateCcw } from "lucide-react";
 import { useStore } from "../../lib/store";
+import { STORAGE_KEYS } from "../../lib/brand";
+import { QuizCalculator } from "./QuizCalculator";
 import {
   buildQuizPool, missedQuestionIds, scoreSession,
   type QuizAnswer, type QuizFilters, type QuizMode, type QuizSession,
@@ -32,6 +34,17 @@ type Stage = "setup" | "running" | "results";
 
 function trustedCorrectKey(question: QuestionRecord): string | undefined {
   return questionMappingStatus(question) === "ready" ? question.correctKey : undefined;
+}
+
+// Device-only reading preference for the quiz player (Q2a). A UI preference,
+// never workspace content — persisted like theme.
+const READING_SCALE_MIN = 0.9;
+const READING_SCALE_MAX = 1.4;
+function readReadingScale(): number {
+  try {
+    const value = Number(localStorage.getItem(STORAGE_KEYS.quizReadingScale));
+    return Number.isFinite(value) && value >= READING_SCALE_MIN && value <= READING_SCALE_MAX ? value : 1;
+  } catch { return 1; }
 }
 
 export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, presetTimed = false, blockId, onClose }: {
@@ -86,6 +99,34 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const [editingMapping, setEditingMapping] = useState(false);
   const recordedTutorAttempts = useRef(new Set<string>());
 
+  // --- Q2a player toolkit: strikeout (session-transient per question), reading
+  // scale (persisted device pref), calculator, and scroll-to-top on advance.
+  const [struck, setStruck] = useState<Set<string>>(() => new Set());
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [readingScale, setReadingScale] = useState(() => readReadingScale());
+  const stemRef = useRef<HTMLDivElement>(null);
+
+  function toggleStrike(key: string) {
+    setStruck((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  function adjustReadingScale(direction: 1 | -1) {
+    setReadingScale((value) => {
+      const next = Math.min(READING_SCALE_MAX, Math.max(READING_SCALE_MIN, Math.round((value + direction * 0.1) * 10) / 10));
+      try { localStorage.setItem(STORAGE_KEYS.quizReadingScale, String(next)); } catch { /* device pref only */ }
+      return next;
+    });
+  }
+  function closeCalculator() {
+    setCalcOpen(false);
+    window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>('button[aria-label="Calculator"]')?.focus();
+    }, 0);
+  }
+
   const timeLimitSeconds = timed ? Math.round(pool.length * minutesPerQ * 60) : undefined;
   const question = pool[index];
   const provider = useMemo(() => resolveActiveProvider(), []);
@@ -115,7 +156,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         toggleFlag();
         e.preventDefault();
       } else if (/^[A-E]$/.test(letter) && question!.options.some((o) => o.key === letter)) {
-        if (!(mode === "tutor" && revealed)) setPicked(letter);
+        // Shift+letter eliminates/restores a choice; plain letter picks it.
+        if (e.shiftKey) toggleStrike(letter);
+        else if (!(mode === "tutor" && revealed)) setPicked(letter);
         e.preventDefault();
       } else if (e.key === "Enter") {
         if (mode === "tutor") { if (!revealed && picked) submitTutor(); else if (revealed) nextQuestion(); }
@@ -138,6 +181,19 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, question?.id, revealed, picked, mode, errorType, confidence]);
+
+  // On advancing to a new question, clear this question's eliminations and reset
+  // the reading surface to the top of the stem, moving focus there so assistive
+  // tech announces the new question. Instant (no smooth scroll) respects
+  // reduced-motion by construction.
+  useEffect(() => {
+    setStruck(new Set());
+    if (stage !== "running") return;
+    const stem = stemRef.current;
+    const body = stem?.closest<HTMLElement>(".modal-body");
+    if (body) body.scrollTop = 0;
+    stem?.focus({ preventScroll: true });
+  }, [index, stage]);
 
   function currentFilters(): QuizFilters {
     return {
@@ -542,31 +598,59 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         {question.examType && <Tag tone="neutral">{EXAM_TYPE_LABEL[question.examType]}</Tag>}
         {question.sourcePage && <Tag tone="neutral">p.{question.sourcePage}</Tag>}
         {question.bank && <span className="sub truncate" style={{ maxWidth: 200 }}>{question.bank}</span>}
-        <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
-          <Flag size={ICON_SIZE.body} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
-        </GhostButton>
+        <div className="quiz-tools" role="group" aria-label="Reading tools">
+          {struck.size > 0 && (
+            <GhostButton className="quiz-tool" onClick={() => setStruck(new Set())} aria-label="Reset eliminations">
+              <RotateCcw size={ICON_SIZE.microInline} /> Reset
+            </GhostButton>
+          )}
+          <div className="quiz-reading-control" role="group" aria-label="Reading size">
+            <GhostButton className="icon-only" aria-label="Decrease reading size" disabled={readingScale <= READING_SCALE_MIN} onClick={() => adjustReadingScale(-1)}><Minus size={ICON_SIZE.microInline} /></GhostButton>
+            <span className="quiz-reading-value" aria-hidden="true">A</span>
+            <GhostButton className="icon-only" aria-label="Increase reading size" disabled={readingScale >= READING_SCALE_MAX} onClick={() => adjustReadingScale(1)}><Plus size={ICON_SIZE.microInline} /></GhostButton>
+          </div>
+          <GhostButton className="icon-only" aria-label="Calculator" aria-pressed={calcOpen} onClick={() => setCalcOpen((value) => !value)}>
+            <Calculator size={ICON_SIZE.body} />
+          </GhostButton>
+          <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
+            <Flag size={ICON_SIZE.body} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
+          </GhostButton>
+        </div>
       </div>
 
-      <div className="question-stem">{question.stem}</div>
+      {calcOpen && <QuizCalculator onClose={closeCalculator} />}
 
-      <div className="stack gap6">
-        {question.options.map((opt) => {
-          const isPicked = picked === opt.key;
-          const showCorrect = revealed && correctKey === opt.key;
-          const showWrong = revealed && isPicked && Boolean(correctKey) && correctKey !== opt.key;
-          return (
-            <button type="button" key={opt.key}
-              className={`option-row ${isPicked ? "picked" : ""} ${showCorrect ? "correct" : ""} ${showWrong ? "wrong" : ""}`}
-              aria-label={`${opt.key}. ${opt.text}`}
-              aria-pressed={isPicked}
-              disabled={revealed}
-              onClick={() => setPicked(opt.key)}>
-              <span className="mono option-key">{opt.key}</span>
-              <span>{opt.text}</span>
-              <span className="option-hint">{opt.key}</span>
-            </button>
-          );
-        })}
+      <div className="quiz-reading" style={{ "--quiz-reading-scale": readingScale } as CSSProperties}>
+        <div className="question-stem" ref={stemRef} tabIndex={-1}>{question.stem}</div>
+
+        <div className="stack gap6">
+          {question.options.map((opt) => {
+            const isPicked = picked === opt.key;
+            const showCorrect = revealed && correctKey === opt.key;
+            const showWrong = revealed && isPicked && Boolean(correctKey) && correctKey !== opt.key;
+            const isStruck = struck.has(opt.key);
+            return (
+              <div key={opt.key}
+                className={`option-row ${isPicked ? "picked" : ""} ${showCorrect ? "correct" : ""} ${showWrong ? "wrong" : ""} ${isStruck ? "struck" : ""}`}>
+                <button type="button" className="option-pick"
+                  aria-label={`${opt.key}. ${opt.text}`}
+                  aria-pressed={isPicked}
+                  disabled={revealed}
+                  onClick={() => setPicked(opt.key)}>
+                  <span className="mono option-key">{opt.key}</span>
+                  <span className="option-text">{opt.text}</span>
+                </button>
+                <button type="button" className="option-strike"
+                  aria-label={`${isStruck ? "Restore" : "Eliminate"} option ${opt.key}`}
+                  aria-pressed={isStruck}
+                  disabled={revealed}
+                  onClick={() => toggleStrike(opt.key)}>
+                  <Minus size={ICON_SIZE.body} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {mode === "tutor" && revealed && (
@@ -599,16 +683,41 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
               {question.options.map((option) => <option key={option.key} value={option.key}>{option.key}. {option.text}</option>)}
             </SelectField>
           )}
-          {question.choiceRationales && Object.keys(question.choiceRationales).length > 0 && (
-            <div className="stack gap6">
-              <span className="field-label">Why each choice</span>
-              {Object.entries(question.choiceRationales).map(([key, why]) => (
-                <div key={key} className={`sub ${key === correctKey ? "grade-green" : ""}`}>
-                  <b>{key}:</b> {why}
-                </div>
-              ))}
-            </div>
-          )}
+          {question.choiceRationales && Object.keys(question.choiceRationales).length > 0 && (() => {
+            const rationales = question.choiceRationales!;
+            const correctWhy = correctKey ? rationales[correctKey] : undefined;
+            const pickedWhy = picked && picked !== correctKey ? rationales[picked] : undefined;
+            const others = Object.entries(rationales).filter(([key]) => key !== correctKey && key !== picked);
+            return (
+              <div className="stack gap6 choice-rationales">
+                {/* Lead with what the learner most needs: why the correct answer
+                    is right, then why their own pick was wrong; the remaining
+                    distractors collapse so they never bury the key point. */}
+                {correctWhy && (
+                  <div className="rationale-lead">
+                    <b className="grade-green">Why {correctKey} is correct</b>
+                    <p>{correctWhy}</p>
+                  </div>
+                )}
+                {pickedWhy && (
+                  <div className="rationale-lead">
+                    <b className="grade-red">Why your choice ({picked}) is wrong</b>
+                    <p>{pickedWhy}</p>
+                  </div>
+                )}
+                {others.length > 0 && (
+                  <details className="rationale-others">
+                    <summary>Why the other choices are wrong</summary>
+                    <div className="stack gap6">
+                      {others.map(([key, why]) => (
+                        <div key={key} className="sub"><b>{key}:</b> {why}</div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })()}
           {!isCorrect && correctKey && (
             <>
               <SelectField label="Why did this go wrong?" value={errorType}

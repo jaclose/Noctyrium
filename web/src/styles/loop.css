@@ -334,24 +334,56 @@
   background: rgba(255, 255, 255, 0.03);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
+/* Option row (Q2a): a container holding the pick button + an eliminate toggle,
+   so a choice can be struck out without selecting it. */
 .option-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
   width: 100%;
-  padding: 10px 14px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+.option-pick {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
   color: inherit;
   text-align: left;
   font-size: var(--fs-base);
   cursor: pointer;
 }
-.option-row:disabled { cursor: default; }
+.option-pick:disabled { cursor: default; }
+.option-row:not(.struck) .option-pick:not(:disabled):hover { background: rgba(255, 255, 255, 0.04); }
+.option-strike {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 0 10px;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: none;
+  color: var(--text-45);
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease;
+}
+.option-strike:not(:disabled):hover { color: var(--text-80); background: rgba(255, 255, 255, 0.04); }
+.option-strike[aria-pressed="true"] { color: var(--orange); }
 .option-row.picked { border-color: var(--gold-line); background: var(--gold-soft); }
 .option-row.correct { border-color: var(--green); background: rgba(127, 184, 148, 0.12); }
 .option-row.wrong { border-color: var(--red); background: rgba(217, 122, 114, 0.11); }
+/* Eliminated: reduced emphasis + strike, but never illegible; correctness
+   styling still coexists (green/red border) so history is not erased. */
+.option-row.struck .option-text { text-decoration: line-through; opacity: 0.62; }
+.option-row.struck .option-key { opacity: 0.5; }
 
 /* --- Question import review ---------------------------------------------------- */
 .import-draft {
@@ -452,8 +484,54 @@
   background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07);
 }
 /* Bigger, calmer answer choices for the rehauled quiz */
-.option-row { padding: 12px 16px; font-size: var(--fs-md); line-height: var(--leading-normal); }
-.option-row:not(:disabled):hover { border-color: rgba(230, 226, 214, 0.28); background: rgba(255, 255, 255, 0.04); }
+.option-pick { padding: 12px 16px; font-size: var(--fs-md); line-height: var(--leading-normal); }
+.option-row:not(.struck):has(.option-pick:not(:disabled):hover) { border-color: rgba(230, 226, 214, 0.28); }
+
+/* --- Q2a player toolkit: reading scale, eliminate reset, calculator ------------ */
+.quiz-tools { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.quiz-reading-control { display: inline-flex; align-items: center; gap: 2px; }
+.quiz-reading-value { font-weight: var(--fw-bold); color: var(--text-60); padding: 0 2px; }
+/* Reading font-scale: one device preference multiplies the stem + choices. */
+.quiz-reading { --quiz-reading-scale: 1; }
+.quiz-player-body .quiz-reading .question-stem { font-size: calc(var(--fs-md) * var(--quiz-reading-scale)); }
+.quiz-reading .option-pick { font-size: calc(var(--fs-md) * var(--quiz-reading-scale)); }
+.quiz-calculator {
+  align-self: flex-end;
+  width: min(240px, 100%);
+  margin: 4px 0 8px auto;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-card-border);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-floating);
+}
+.quiz-calc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.quiz-calc-display {
+  min-height: 46px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.24);
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.quiz-calc-expr { font-size: var(--fs-lg); overflow-wrap: anywhere; }
+.quiz-calc-result { font-size: var(--fs-sm); color: var(--text-60); }
+.quiz-calc-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.quiz-calc-key {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+.quiz-calc-key:hover { background: rgba(255, 255, 255, 0.07); }
+.quiz-calc-key.op { color: var(--cyan); }
+.quiz-calc-key.span2 { grid-column: span 2; }
+.quiz-calc-key.primary { background: var(--gold-soft); border-color: var(--gold-line); color: var(--text); }
 
 /* --- Study methods ------------------------------------------------------------ */
 .method-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: var(--fs-base); line-height: var(--leading-normal); }

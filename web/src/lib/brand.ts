@@ -46,6 +46,8 @@ export const STORAGE_KEYS = {
   dismissedAnnouncements: "axom.announcements.dismissed.v1",
   /** Bounded quote ids and display toggles only; never workspace or profile content. */
   quotePreferences: "axom.quotes.preferences.v1",
+  /** Device-only quiz reading preference (font-scale step); never workspace content. */
+  quizReadingScale: "axom.quiz.reading-scale.v1",
   /** Small device-only reminder ledger; contains date keys only, never journal content. */
   missedStandupReminder: "noctyrium-missed-standup-alert",
   /** Daily check-in/closeout delivery state: date, status, and snooze timestamps only. */
