@@ -828,6 +828,21 @@ A") and measured (never claimed) acceptance targets still govern.
   / AI-generated at the field level.
 - **Next-question scroll/focus repair** (small fix, outsized effect — see Q2).
 
+**Q1 structured-import trust unification (2026-07-17).** CSV and JSON now use
+the same evidence policy as pasted text through a structured deterministic
+resolution result: `resolved`, review-gated `candidate`, `conflict`, or
+`unresolved`. An explicit valid letter with harmless trailing-text drift keeps
+its candidate key and records `answer.explicit-letter-text-drift`; it is not
+runnable until deliberate confirmation. If the tail exactly matches another
+option, `conflict.answer-letter-vs-text` preserves the explicit and conflicting
+keys while leaving `correctKey` unset. Ambiguous text, garbage, and invalid
+letters remain unresolved and never default to A. CSV/JSON diagnostics retain
+the source evidence, confidence, warning, and rule ID; the Import Center
+preselects permitted candidates and provides a one-action confirmation control.
+User confirmation adds `answer.user-reviewed-mapping`, clears the review gate,
+and remains higher priority than parser output. No AI, schema, storage,
+annotation, attachment, or dependency behavior changes in this checkpoint.
+
 ### Q2 — Quiz Toolkit & Annotation Layer
 
 - **Post-answer feedback:** preserve selected + correct appearance; expandable

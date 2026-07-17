@@ -1,6 +1,6 @@
 import type { QuestionOption } from "./questions";
 
-export type QuestionImportFixtureFormat = "pdf" | "paste" | "text" | "markdown";
+export type QuestionImportFixtureFormat = "pdf" | "paste" | "text" | "markdown" | "csv" | "json";
 
 export interface QuestionImportExpectation {
   number: number;
@@ -254,5 +254,52 @@ export const QUESTION_IMPORT_ACCEPTANCE_FIXTURES: QuestionImportAcceptanceFixtur
       { number: 2 },
     ],
   },
+  {
+    id: "csv-structured-explicit-answer-trust",
+    format: "csv",
+    description: "Structured CSV preserves mixed explicit keys and review-gates harmless drift",
+    pages: [[
+      "question,a,b,c,d,e,answer",
+      '"CSV one?","a1","b1","c1","d1","e1","B"',
+      '"CSV two?","a2","b2","c2","d2","e2","D"',
+      '"CSV three?","a3","b3","c3","d3","e3","A"',
+      '"CSV four?","a4","b4","c4","d4","e4","C"',
+      '"CSV five?","a5","b5","c5","d5","e5","E"',
+      '"CSV drift?","Mast cells","CD4+ T lymphocytes","B lymphocytes","Eosinophils","Neutrophils","A. Mast cell"',
+    ].join("\n")],
+    expected: [
+      { number: 1, answer: "B" },
+      { number: 2, answer: "D" },
+      { number: 3, answer: "A" },
+      { number: 4, answer: "C" },
+      { number: 5, answer: "E" },
+      { number: 6, answer: "A" },
+    ],
+  },
+  {
+    id: "json-structured-conflict-and-unknown",
+    format: "json",
+    description: "Structured JSON preserves contradiction evidence without creating a runnable key",
+    pages: [JSON.stringify([
+      {
+        stem: "JSON conflict?",
+        options: [
+          { key: "A", text: "Mast cells" },
+          { key: "B", text: "CD4+ T lymphocytes" },
+          { key: "C", text: "B lymphocytes" },
+        ],
+        answer: "A. B lymphocytes",
+      },
+      {
+        stem: "JSON unknown?",
+        options: [
+          { key: "A", text: "Alpha" },
+          { key: "B", text: "Beta" },
+          { key: "C", text: "Gamma" },
+        ],
+        answer: "garbage",
+      },
+    ])],
+    expected: [{ number: 1 }, { number: 2 }],
+  },
 ];
-

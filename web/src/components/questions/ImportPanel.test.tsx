@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SourceDocument } from "../../lib/library";
 import type { ParsedQuestionDraft } from "../../lib/questionParse";
-import { ImportPanel, parseStoredDocument } from "./ImportPanel";
+import { ImportPanel, parseStoredDocument, preserveUserReviewedMappings } from "./ImportPanel";
+import { importFromCsv, importFromJson } from "../../lib/questionImport";
 
 const mocked = vi.hoisted(() => ({
   addDocument: vi.fn(),
@@ -117,6 +118,66 @@ describe("source-document-first import", () => {
     }));
   });
 
+  it("preselects a structured drift candidate, shows evidence, and keeps it review-gated until confirmation", async () => {
+    const user = userEvent.setup();
+    const [candidate] = importFromCsv([
+      "question,a,b,c,answer",
+      '"Which cell releases histamine?","Mast cells","CD4+ T lymphocytes","B lymphocytes","A. Mast cell"',
+    ].join("\n")).drafts;
+    render(<ImportPanel seed={{
+      drafts: [candidate],
+      rawText: "Structured CSV source",
+      title: "Structured drift",
+      fileName: "drift.csv",
+      fileType: "csv",
+    }} />);
+
+    expect(screen.getByText("needs review")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Which cell releases histamine/ }));
+    expect((screen.getByLabelText("Correct answer") as HTMLSelectElement).value).toBe("A");
+    expect(document.body.textContent).toContain("Answer evidence: A. Mast cell");
+    expect(screen.getByText(/Explicit answer letter A was preserved/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Confirm mapped answer A" }));
+    await user.click(screen.getByRole("button", { name: /^Save$/ }));
+    expect(mocked.addQuestion).toHaveBeenCalledWith(expect.objectContaining({
+      correctKey: "A",
+      needsReview: undefined,
+      extraction: expect.objectContaining({
+        reviewed: true,
+        parserRuleIds: expect.arrayContaining([
+          "answer.explicit-letter-text-drift",
+          "answer.user-reviewed-mapping",
+        ]),
+      }),
+    }));
+  });
+
+  it("shows both sides of a JSON letter/text conflict without preselecting an answer", async () => {
+    const user = userEvent.setup();
+    const [conflict] = importFromJson(JSON.stringify([{
+      stem: "Which cell?",
+      options: [
+        { key: "A", text: "Mast cells" },
+        { key: "B", text: "CD4+ T lymphocytes" },
+        { key: "C", text: "B lymphocytes" },
+      ],
+      answer: "A. B lymphocytes",
+    }])).drafts;
+    render(<ImportPanel seed={{
+      drafts: [conflict],
+      rawText: "Structured JSON source",
+      title: "Structured conflict",
+      fileName: "conflict.json",
+      fileType: "json",
+    }} />);
+
+    await user.click(screen.getByRole("button", { name: /Which cell/ }));
+    expect((screen.getByLabelText("Correct answer") as HTMLSelectElement).value).toBe("");
+    expect(document.body.textContent).toContain("letter A vs text of option C");
+    expect(document.body.textContent).toContain("Answer evidence: A. B lymphocytes");
+  });
+
   it("saves a no-question source as library-only without creating fake records", async () => {
     const user = userEvent.setup();
     render(<ImportPanel seed={{
@@ -175,6 +236,88 @@ describe("source-document-first import", () => {
       libraryOnly: true,
     };
     expect(parseStoredDocument(document).drafts.map((question) => question.correctKey)).toEqual(["B", "A"]);
+  });
+
+  it("keeps a user-confirmed mapping above conflicting re-import output", () => {
+    const reparsed = importFromJson(JSON.stringify([{
+      stem: "Reparsed question",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }, { key: "C", text: "Gamma" }],
+      answer: "A",
+    }])).drafts;
+    const preserved = preserveUserReviewedMappings(reparsed, [{
+      id: "existing", source: "imported", sourceDocumentId: "doc-1", questionNumber: 1,
+      stem: "Original question", options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }, { key: "C", text: "Gamma" }],
+      correctKey: "B", correctAnswerText: "Beta", status: "unseen", tags: [], attempts: [],
+      extraction: {
+        confidence: "high", reviewed: true,
+        parserRuleIds: ["answer.user-reviewed-mapping"],
+      },
+      createdAt: "2026-07-17T00:00:00.000Z", updatedAt: "2026-07-17T00:00:00.000Z",
+    }], "doc-1");
+    expect(preserved[0]).toMatchObject({
+      correctKey: "B",
+      correctAnswerText: "Beta",
+    });
+    expect(preserved[0].needsReview).toBeFalsy();
+    expect(preserved[0].parserRuleIds).toContain("answer.user-reviewed-mapping");
+    expect(preserved[0].warnings.join(" ")).toContain("Preserved user-confirmed answer B");
+  });
+
+  it("does not clear a non-answer review gate while preserving a user-confirmed mapping", () => {
+    const reparsed = importFromJson(JSON.stringify([{
+      stem: "Structurally incomplete question",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      answer: "A",
+    }])).drafts;
+    expect(reparsed[0]).toMatchObject({
+      questionDetectionConfidence: 0.6,
+      needsReview: true,
+    });
+    const preserved = preserveUserReviewedMappings(reparsed, [{
+      id: "existing-low-confidence", source: "imported", sourceDocumentId: "doc-low-confidence", questionNumber: 1,
+      stem: "Original question", options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      correctKey: "B", correctAnswerText: "Beta", status: "unseen", tags: [], attempts: [],
+      extraction: {
+        confidence: "high", reviewed: true,
+        parserRuleIds: ["answer.user-reviewed-mapping"],
+      },
+      createdAt: "2026-07-17T00:00:00.000Z", updatedAt: "2026-07-17T00:00:00.000Z",
+    }], "doc-low-confidence");
+    expect(preserved[0]).toMatchObject({
+      correctKey: "B",
+      questionDetectionConfidence: 0.6,
+      needsReview: true,
+    });
+  });
+
+  it("keeps duplicate-question-number review active while preserving a confirmed answer", () => {
+    const reparsed = importFromJson(JSON.stringify([{
+      stem: "Duplicate-number question",
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }, { key: "C", text: "Gamma" }],
+      answer: "B trailing drift",
+    }])).drafts.map((question) => ({
+      ...question,
+      needsReview: true,
+      parserRuleIds: [
+        ...(question.parserRuleIds ?? []),
+        "conflict.duplicate-question-number",
+      ],
+    }));
+    const preserved = preserveUserReviewedMappings(reparsed, [{
+      id: "existing-duplicate-number", source: "imported", sourceDocumentId: "doc-duplicate-number", questionNumber: 1,
+      stem: "Original question", options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }, { key: "C", text: "Gamma" }],
+      correctKey: "B", correctAnswerText: "Beta", status: "unseen", tags: [], attempts: [],
+      extraction: {
+        confidence: "high", reviewed: true,
+        parserRuleIds: ["answer.user-reviewed-mapping"],
+      },
+      createdAt: "2026-07-17T00:00:00.000Z", updatedAt: "2026-07-17T00:00:00.000Z",
+    }], "doc-duplicate-number");
+    expect(preserved[0]).toMatchObject({
+      correctKey: "B",
+      needsReview: true,
+      parserRuleIds: expect.arrayContaining(["conflict.duplicate-question-number"]),
+    });
   });
 
   it("reuses the saved document ID when parsed questions are saved later", async () => {

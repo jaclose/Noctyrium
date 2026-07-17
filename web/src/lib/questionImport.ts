@@ -17,6 +17,44 @@ export interface ImportResult {
   format: ImportFormat;
 }
 
+export type AnswerResolution =
+  | {
+      status: "resolved";
+      candidateKey: string;
+      confidence: "high";
+      needsReview: false;
+      ruleId: string;
+      evidence: string;
+    }
+  | {
+      status: "candidate";
+      candidateKey: string;
+      confidence: "medium" | "low";
+      needsReview: true;
+      ruleId: string;
+      evidence: string;
+      warning: string;
+    }
+  | {
+      status: "conflict";
+      candidateKey?: undefined;
+      confidence: "low";
+      needsReview: true;
+      ruleId: string;
+      evidence: string;
+      conflictingKey?: string;
+      warning: string;
+    }
+  | {
+      status: "unresolved";
+      candidateKey?: undefined;
+      confidence: "low";
+      needsReview: true;
+      ruleId: string;
+      evidence?: string;
+      warning?: string;
+    };
+
 export function detectImportFormat(fileName: string, mimeType: string): ImportFormat {
   const name = fileName.toLowerCase();
   if (name.endsWith(".csv")) return "csv";
@@ -113,13 +151,13 @@ export function importFromCsv(text: string): ImportResult {
       .map(({ index, key }) => ({ key, text: (cells[index] ?? "").trim() }))
       .filter((o) => o.text);
     const answerValue = answerCol >= 0 ? (cells[answerCol] ?? "").trim() : undefined;
-    const correctKey = resolveAnswerValue(answerValue, options);
-    const rowWarnings: string[] = [];
-    if (answerValue && !correctKey) rowWarnings.push("Answer cell didn't match an option letter or option text.");
+    const answerResolution = resolveStructuredAnswer(answerValue, options);
+    const rowWarnings: string[] = "warning" in answerResolution && answerResolution.warning ? [answerResolution.warning] : [];
     drafts.push(withStructuredDiagnostics({
+      questionNumber: r,
       stem,
       options,
-      correctKey,
+      correctKey: answerResolution.candidateKey,
       answerEvidence: answerValue,
       answerEvidenceSnippet: answerValue,
       explanation: explanationCol >= 0 ? (cells[explanationCol] ?? "").trim() || undefined : undefined,
@@ -129,7 +167,7 @@ export function importFromCsv(text: string): ImportResult {
       sourceLabel: sourceCol >= 0 ? (cells[sourceCol] ?? "").trim() || undefined : undefined,
       confidence: "medium",
       warnings: rowWarnings,
-    }));
+    }, answerResolution));
   }
   return { drafts, warnings, format: "csv" };
 }
@@ -171,13 +209,13 @@ export function importFromJson(text: string): ImportResult {
       })
       .filter((o): o is QuestionOption => o !== null && !!o.text);
     const answerValue = str(item.correctKey) ?? str(item.answer);
-    const correctKey = resolveAnswerValue(answerValue, options);
-    const rowWarnings: string[] = [];
-    if (answerValue && !correctKey) rowWarnings.push(`Answer "${answerValue}" has no matching option — left unset.`);
+    const answerResolution = resolveStructuredAnswer(answerValue, options);
+    const rowWarnings: string[] = "warning" in answerResolution && answerResolution.warning ? [answerResolution.warning] : [];
     drafts.push(withStructuredDiagnostics({
+      questionNumber: i + 1,
       stem,
       options,
-      correctKey,
+      correctKey: answerResolution.candidateKey,
       answerEvidence: answerValue,
       answerEvidenceSnippet: answerValue,
       explanation: str(item.explanation),
@@ -188,7 +226,7 @@ export function importFromJson(text: string): ImportResult {
       tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === "string" && !!t.trim()) : undefined,
       confidence: "medium",
       warnings: rowWarnings,
-    }));
+    }, answerResolution));
   });
   return { drafts, warnings, format: "json" };
 }
@@ -203,43 +241,104 @@ function comparable(value: string): string {
     .trim();
 }
 
-/** Shared letter / "B. text" / full-answer-text resolution for CSV + JSON. */
-export function resolveAnswerValue(value: string | undefined, options: QuestionOption[]): string | undefined {
-  if (!value?.trim()) return undefined;
-  const raw = value.trim().replace(/^\(\s*([A-Ha-h])\s*\)$/, "($1)");
+/** Deterministic answer evidence resolution shared by structured CSV + JSON. */
+export function resolveStructuredAnswer(value: string | undefined, options: QuestionOption[]): AnswerResolution {
+  const evidence = value?.trim();
+  if (!evidence) return {
+    status: "unresolved", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "answer.structured-missing",
+  };
+  const raw = evidence.replace(/^(?:the\s+)?(?:correct\s+)?answer\s*(?:is)?\s*[:\-–]?\s*/i, "").trim();
+  const keyOnly = raw.match(/^\(\s*([A-Ha-h])\s*\)$|^([A-Ha-h])$/);
+  if (keyOnly) return resolveExplicitStructuredAnswer(keyOnly[1] ?? keyOnly[2], "", evidence, options);
 
-  // A punctuated leading letter is explicit evidence, so validate it before
-  // stripping the label for full-text matching. "A. Mast cells" must not be
-  // silently remapped to option C merely because C's text is "Mast cells".
+  // Punctuation is explicit letter evidence and must be adjudicated before
+  // considering full-text remapping.
   const labeled = raw.match(/^\(?\s*([A-Ha-h])\s*\)?\s*[).:\-–—]\s*(.*)$/);
-  if (labeled) {
-    const key = labeled[1].toUpperCase();
-    const matchingOptions = options.filter((candidate) => candidate.key === key);
-    if (matchingOptions.length !== 1) return undefined;
-    const tail = labeled[2].trim();
-    if (!tail) return key;
-    if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) return key;
-    return comparable(tail) === comparable(matchingOptions[0].text) ? key : undefined;
-  }
+  if (labeled) return resolveExplicitStructuredAnswer(labeled[1], labeled[2], evidence, options);
 
-  // Full-text equality wins before letter parsing so an option such as
-  // "B lymphocytes" is not misread as answer letter B.
+  // Full-text equality precedes unpunctuated letter parsing so option text such
+  // as "B lymphocytes" is not mistaken for key B plus a tail.
   const fullTextMatches = options.filter((option) => comparable(option.text) === comparable(raw));
   if (fullTextMatches.length === 1
-    && options.filter((option) => option.key === fullTextMatches[0].key).length === 1) return fullTextMatches[0].key;
-  const letter = raw.match(/^\(?([A-Ha-h])\)?(?:\s+|$)(.*)$/);
-  if (letter) {
-    const key = letter[1].toUpperCase();
-    const matchingOptions = options.filter((candidate) => candidate.key === key);
-    if (matchingOptions.length !== 1) return undefined;
-    const option = matchingOptions[0];
-    const tail = letter[2].trim();
-    return !tail || comparable(tail) === comparable(option.text) ? key : undefined;
+    && options.filter((option) => option.key === fullTextMatches[0].key).length === 1) {
+    return {
+      status: "resolved", candidateKey: fullTextMatches[0].key, confidence: "high",
+      needsReview: false, ruleId: "answer.structured-unique-text", evidence,
+    };
   }
-  return undefined;
+  if (fullTextMatches.length > 1) return {
+    status: "unresolved", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "answer.structured-ambiguous-text", evidence,
+    warning: `Answer text matches multiple options (${fullTextMatches.map((option) => option.key).join(", ")}) — left unset for review.`,
+  };
+
+  const letterWithTail = raw.match(/^\(?([A-Ha-h])\)?\s+(.+)$/);
+  if (letterWithTail) return resolveExplicitStructuredAnswer(letterWithTail[1], letterWithTail[2], evidence, options);
+  if (/^[A-Za-z]$/.test(raw)) return {
+    status: "unresolved", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "answer.structured-invalid-key", evidence,
+    warning: `Explicit answer key "${raw.toUpperCase()}" doesn't match an option exactly once — left unset for review.`,
+  };
+  return {
+    status: "unresolved", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "answer.structured-unresolved", evidence,
+    warning: `Answer "${evidence}" has no unique matching option — left unset for review.`,
+  };
 }
 
-function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDraft {
+function resolveExplicitStructuredAnswer(
+  rawKey: string,
+  rawTail: string,
+  evidence: string,
+  options: QuestionOption[],
+): AnswerResolution {
+  const key = rawKey.toUpperCase();
+  const matchingOptions = options.filter((option) => option.key === key);
+  if (matchingOptions.length !== 1) return {
+    status: "unresolved", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "answer.structured-invalid-key", evidence,
+    warning: `Explicit answer key "${key}" doesn't match an option exactly once — left unset for review.`,
+  };
+  const tail = rawTail.trim();
+  if (!tail) return {
+    status: "resolved", candidateKey: key, confidence: "high", needsReview: false,
+    ruleId: "answer.structured-explicit-letter", evidence,
+  };
+  if (/^(?:because|since|as\b|due\s+to\b)/i.test(tail)) return {
+    status: "resolved", candidateKey: key, confidence: "high", needsReview: false,
+    ruleId: "answer.structured-explicit-letter-rationale", evidence,
+  };
+  const ownText = comparable(matchingOptions[0].text);
+  const tailText = comparable(tail);
+  if (tailText === ownText) return {
+    status: "resolved", candidateKey: key, confidence: "high", needsReview: false,
+    ruleId: "answer.structured-explicit-letter-exact", evidence,
+  };
+  const conflicting = options.filter((option) => option.key !== key && comparable(option.text) === tailText);
+  if (conflicting.length === 1) return {
+    status: "conflict", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "conflict.answer-letter-vs-text", evidence, conflictingKey: conflicting[0].key,
+    warning: `Conflicting answer letter/text detected (letter ${key} vs text of option ${conflicting[0].key}) — left unset for review.`,
+  };
+  if (conflicting.length > 1) return {
+    status: "conflict", candidateKey: undefined, confidence: "low", needsReview: true,
+    ruleId: "conflict.answer-letter-vs-text", evidence,
+    warning: `Conflicting answer letter/text detected (letter ${key} vs text shared by options ${conflicting.map((option) => option.key).join(", ")}) — left unset for review.`,
+  };
+  return {
+    status: "candidate", candidateKey: key, confidence: "medium", needsReview: true,
+    ruleId: "answer.explicit-letter-text-drift", evidence,
+    warning: `Explicit answer letter ${key} was preserved, but its trailing text does not exactly match an option — confirm before practice.`,
+  };
+}
+
+/** Compatibility helper for callers that need only the preserved candidate. */
+export function resolveAnswerValue(value: string | undefined, options: QuestionOption[]): string | undefined {
+  return resolveStructuredAnswer(value, options).candidateKey;
+}
+
+function withStructuredDiagnostics(draft: ParsedQuestionDraft, resolution: AnswerResolution): ParsedQuestionDraft {
   const optionKeys = draft.options.map((option) => option.key);
   const duplicateKeys = new Set(optionKeys).size !== optionKeys.length;
   const expectedKeys = optionKeys.map((_, index) => String.fromCharCode(65 + index));
@@ -254,11 +353,14 @@ function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDr
   const explanationCleanup = sanitizeExplanationCandidate(draft.explanation, diagnosticDraft);
   const explanation = explanationCleanup.cleanedText || undefined;
   const questionDetectionConfidence = draft.stem && draft.options.length >= 3 ? 0.96 : draft.stem ? 0.6 : 0.1;
-  const answerDetectionConfidence = correctKey ? 0.98 : duplicateKeys ? 0.05 : 0;
+  const answerDetectionConfidence = duplicateKeys ? 0.05
+    : resolution.status === "resolved" ? 0.98
+      : resolution.status === "candidate" ? 0.65
+        : resolution.status === "conflict" ? 0.05 : 0;
   const explanationDetectionConfidence = explanation ? 0.94 : 0;
   const overallImportConfidence = Math.max(0, Math.min(1,
     questionDetectionConfidence * 0.4 + answerDetectionConfidence * 0.4 + explanationDetectionConfidence * 0.2));
-  const needsReview = !correctKey || questionDetectionConfidence < 0.75 || structuralWarnings.length > 0;
+  const needsReview = resolution.needsReview || !correctKey || questionDetectionConfidence < 0.75 || structuralWarnings.length > 0;
   return {
     ...draft,
     correctKey,
@@ -277,6 +379,7 @@ function withStructuredDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDr
       ...(duplicateKeys ? ["conflict.duplicate-option-key"] : []),
       ...(nonSequentialKeys ? ["options.nonsequential"] : []),
       ...(explanation ? ["explanation.structured-field"] : []),
+      resolution.ruleId,
     ],
     sourceSnippet: [draft.stem, ...draft.options.map((option) => `${option.key}. ${option.text}`)].join("\n").slice(0, 800),
     questionSourceSnippet: draft.questionSourceSnippet

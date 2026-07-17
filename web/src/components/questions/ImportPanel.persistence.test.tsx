@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseQuestionBlocks } from "../../lib/questionParse";
 import { useStore } from "../../lib/store";
 import { ImportPanel } from "./ImportPanel";
+import { importFromCsv } from "../../lib/questionImport";
+import { questionMappingStatus } from "../../lib/questions";
+import { parseImport, toPortableState } from "../../lib/backup";
 
 vi.mock("../../lib/toast", () => ({ pushToast: vi.fn() }));
 vi.mock("../../lib/ai", () => ({
@@ -82,5 +85,51 @@ describe("Import Center persistence invariant", () => {
     ]));
     expect(saved?.extraction?.explanationSourceSnippet).toContain("Explanation:");
     expect(saved?.extraction?.explanationDetectionConfidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("persists a structured drift candidate as non-runnable until the user confirms it", async () => {
+    const user = userEvent.setup();
+    const rawText = [
+      "question,a,b,c,answer",
+      '"Which cell releases histamine?","Mast cells","CD4+ T lymphocytes","B lymphocytes","A. Mast cell"',
+    ].join("\n");
+    const drafts = importFromCsv(rawText).drafts;
+    render(<ImportPanel seed={{ drafts, rawText, title: "Structured trust", fileName: "trust.csv", fileType: "csv" }} />);
+    await user.click(screen.getByRole("button", { name: /^Save$/ }));
+
+    const candidate = useStore.getState().questions.find((question) => question.bank === "Structured trust");
+    expect(candidate?.correctKey).toBe("A");
+    expect(candidate?.needsReview).toBe(true);
+    expect(candidate && questionMappingStatus(candidate)).not.toBe("ready");
+    expect(candidate?.extraction?.parserRuleIds).toContain("answer.explicit-letter-text-drift");
+
+    useStore.getState().updateQuestion(candidate!.id, {
+      needsReview: false,
+      extraction: {
+        ...candidate!.extraction!,
+        reviewed: true,
+        reviewedAt: "2026-07-17T00:00:00.000Z",
+        parserRuleIds: [...new Set([...(candidate!.extraction?.parserRuleIds ?? []), "answer.user-reviewed-mapping"])],
+      },
+    });
+    const confirmed = useStore.getState().questions.find((question) => question.id === candidate!.id);
+    expect(confirmed && questionMappingStatus(confirmed)).toBe("ready");
+    expect(confirmed?.correctKey).toBe("A");
+
+    const restored = parseImport(JSON.stringify({
+      _app: "AXOM",
+      ...toPortableState(useStore.getState()),
+    }));
+    const reloaded = restored.questions.find((question) => question.id === candidate!.id);
+    expect(reloaded).toMatchObject({
+      correctKey: "A",
+      needsReview: false,
+      extraction: {
+        reviewed: true,
+        reviewedAt: "2026-07-17T00:00:00.000Z",
+      },
+    });
+    expect(reloaded?.extraction?.parserRuleIds).toContain("answer.user-reviewed-mapping");
+    expect(questionMappingStatus(reloaded!)).toBe("ready");
   });
 });

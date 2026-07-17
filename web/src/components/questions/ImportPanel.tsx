@@ -14,7 +14,10 @@ import { createImportMappingLedger, parseQuestionBlocks, type ParsedQuestionDraf
 import { detectImportFormat, importFromCsv, importFromJson, importFromText } from "../../lib/questionImport";
 import { extractDocxText, extractPdfText, extractPlainText } from "../../lib/extractText";
 import { documentTitleFromFile, type QuestionSet, type SourceDocument } from "../../lib/library";
-import { EXAM_TYPE_LABEL, QUESTION_CATEGORIES, type QuestionDifficulty, type QuestionExamType, type QuestionSource } from "../../lib/questions";
+import {
+  EXAM_TYPE_LABEL, QUESTION_CATEGORIES,
+  type QuestionDifficulty, type QuestionExamType, type QuestionRecord, type QuestionSource,
+} from "../../lib/questions";
 import { normalizeTags, suggestCategory } from "../../lib/taxonomy";
 import {
   checkProviderHealth, cleanExplanation as cleanExplanationWithAi, enhanceQuestionSet,
@@ -82,11 +85,86 @@ export function parseStoredDocument(document: SourceDocument): { drafts: ParsedQ
   return result;
 }
 
+/** User-reviewed mappings outrank deterministic reparse output for the same source question. */
+export function preserveUserReviewedMappings(
+  drafts: readonly ParsedQuestionDraft[],
+  existingQuestions: readonly QuestionRecord[],
+  sourceDocumentId: string | undefined,
+): ParsedQuestionDraft[] {
+  if (!sourceDocumentId) return [...drafts];
+  const confirmedByNumber = new Map(existingQuestions
+    .filter((question) => (
+      question.sourceDocumentId === sourceDocumentId
+      && question.questionNumber !== undefined
+      && Boolean(question.correctKey)
+      && question.extraction?.parserRuleIds?.includes("answer.user-reviewed-mapping")
+    ))
+    .map((question) => [question.questionNumber!, question]));
+  return drafts.map((draft) => {
+    const confirmed = draft.questionNumber === undefined ? undefined : confirmedByNumber.get(draft.questionNumber);
+    if (!confirmed?.correctKey) return draft;
+    if (!draft.options.some((option) => option.key === confirmed.correctKey)) {
+      return {
+        ...draft,
+        correctKey: undefined,
+        correctAnswerText: undefined,
+        needsReview: true,
+        answerDetectionConfidence: 0.05,
+        parserRuleIds: [...new Set([...(draft.parserRuleIds ?? []), "conflict.user-confirmed-mapping-vs-reparse"])],
+        warnings: [
+          ...draft.warnings,
+          `User-confirmed answer ${confirmed.correctKey} is unavailable in the reparsed options — left unset for review.`,
+        ],
+      };
+    }
+    const optionKeys = draft.options.map((option) => option.key);
+    const hasDuplicateOptionKeys = new Set(optionKeys).size !== optionKeys.length;
+    const hasNonSequentialOptionKeys = !hasDuplicateOptionKeys
+      && optionKeys.some((key, index) => key !== String.fromCharCode(65 + index));
+    const hasNonAnswerReviewGate = (
+      (draft.questionDetectionConfidence !== undefined && draft.questionDetectionConfidence < 0.75)
+      || hasDuplicateOptionKeys
+      || hasNonSequentialOptionKeys
+      || (draft.parserRuleIds ?? []).some((ruleId) => (
+        ruleId === "question.malformed-boundary"
+        || ruleId === "conflict.duplicate-question-number"
+      ))
+    );
+    const hasSupersededAnswerReviewGate = (draft.parserRuleIds ?? []).some((ruleId) => (
+      ruleId === "answer.explicit-letter-text-drift"
+      || ruleId === "conflict.answer-letter-vs-text"
+      || ruleId === "conflict.explicit-answer"
+      || ruleId === "conflict.answer-vs-explanation"
+      || ruleId === "conflict.answer-vs-rationale"
+      || ruleId === "conflict.inferred-answer"
+      || ruleId === "ambiguous.answer-text"
+      || ruleId === "answer.text-no-option-match"
+    ));
+    const stillNeedsReview = hasNonAnswerReviewGate
+      || (Boolean(draft.needsReview) && !hasSupersededAnswerReviewGate);
+    return {
+      ...draft,
+      correctKey: confirmed.correctKey,
+      correctAnswerText: draft.options.find((option) => option.key === confirmed.correctKey)?.text,
+      needsReview: stillNeedsReview || undefined,
+      answerDetectionConfidence: 1,
+      parserRuleIds: [...new Set([...(draft.parserRuleIds ?? []), "answer.user-reviewed-mapping"])],
+      warnings: [
+        ...draft.warnings,
+        `Preserved user-confirmed answer ${confirmed.correctKey} over re-imported parser output.`,
+      ],
+    };
+  });
+}
+
 export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed | null; initialTab?: ImportTab }) {
   const s = useStore();
   const [tab, setTab] = useState<ImportTab>(seed?.reference ? "ai" : initialTab);
   const [drafts, setDrafts] = useState<ReviewDraft[]>(() =>
-    seed?.drafts ? seed.drafts.map((d) => ({ ...d, include: true, source: seed.source ?? "imported" })) : []);
+    seed?.drafts
+      ? preserveUserReviewedMappings(seed.drafts, s.questions ?? [], seed.sourceDocumentId)
+        .map((d) => ({ ...d, include: true, source: seed.source ?? "imported" }))
+      : []);
   const [batchWarnings, setBatchWarnings] = useState<string[]>(() => seed?.warnings ?? []);
   const [pendingDoc, setPendingDoc] = useState<PendingDocument | null>(() =>
     seed?.drafts && seed.rawText != null
@@ -308,6 +386,24 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
 
   function updateDraft(index: number, patch: Partial<ReviewDraft>) {
     setDrafts((all) => all.map((d, i) => (i === index ? { ...d, ...patch } : d)));
+  }
+
+  function confirmDraftAnswer(index: number, draft: ReviewDraft, key: string | undefined) {
+    const answerScore = key ? 1 : 0;
+    const overall = (draft.questionDetectionConfidence ?? 0) * 0.4
+      + answerScore * 0.4
+      + (draft.explanationDetectionConfidence ?? 0) * 0.2;
+    updateDraft(index, {
+      correctKey: key,
+      correctAnswerText: key ? draft.options.find((option) => option.key === key)?.text : undefined,
+      answerDetectionConfidence: answerScore,
+      overallImportConfidence: overall,
+      needsReview: !key || (draft.questionDetectionConfidence ?? 0) < 0.75 || undefined,
+      confidence: overall >= 0.85 && key ? "high" : overall >= 0.6 ? "medium" : "low",
+      parserRuleIds: key
+        ? [...new Set([...(draft.parserRuleIds ?? []), "answer.user-reviewed-mapping"])]
+        : draft.parserRuleIds,
+    });
   }
 
   async function assistDraftMapping(index: number) {
@@ -608,23 +704,16 @@ export function ImportPanel({ seed, initialTab = "file" }: { seed?: ImportSeed |
                       <SelectField label="Correct answer" value={d.correctKey ?? ""}
                         onChange={(e) => {
                           const key = e.target.value || undefined;
-                          const answerScore = key ? 1 : 0;
-                          const overall = (d.questionDetectionConfidence ?? 0) * 0.4
-                            + answerScore * 0.4
-                            + (d.explanationDetectionConfidence ?? 0) * 0.2;
-                          updateDraft(i, {
-                            correctKey: key,
-                            correctAnswerText: key ? d.options.find((option) => option.key === key)?.text : undefined,
-                            answerDetectionConfidence: answerScore,
-                            overallImportConfidence: overall,
-                            needsReview: !key || (d.questionDetectionConfidence ?? 0) < 0.75 || undefined,
-                            confidence: overall >= 0.85 && key ? "high" : overall >= 0.6 ? "medium" : "low",
-                            parserRuleIds: [...new Set([...(d.parserRuleIds ?? []), "answer.user-reviewed-mapping"])],
-                          });
+                          confirmDraftAnswer(i, d, key);
                         }}>
                         <option value="">Not set</option>
                         {d.options.map((o) => <option key={o.key} value={o.key}>{o.key}</option>)}
                       </SelectField>
+                      {d.correctKey && d.needsReview && (
+                        <GhostButton onClick={() => confirmDraftAnswer(i, d, d.correctKey)}>
+                          Confirm mapped answer {d.correctKey}
+                        </GhostButton>
+                      )}
                       <Field label="Topic" value={d.topic ?? ""} onChange={(e) => updateDraft(i, { topic: e.target.value || undefined })} />
                       <Field label="Learning objective" value={d.objective ?? ""} onChange={(e) => updateDraft(i, { objective: e.target.value || undefined })} />
                       <Field label="Reference / source" value={d.reference ?? d.sourceLabel ?? ""}

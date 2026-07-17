@@ -4,6 +4,7 @@ import { evaluateQuestionImports } from "./questionImportEvaluation";
 import { QUESTION_IMPORT_ACCEPTANCE_FIXTURES } from "./questionImportFixtures";
 import { parseQuestionBlocks, type ParsedQuestionDraft } from "./questionParse";
 import { assignDraftProvenancePages } from "./questionProvenance";
+import { importFromCsv, importFromJson } from "./questionImport";
 
 describe("real-style question import acceptance", () => {
   it("meets the answer, explanation, and false-ready gates", async () => {
@@ -23,7 +24,11 @@ describe("real-style question import acceptance", () => {
         pages = extracted.pages;
         text = extracted.text;
       }
-      const drafts = parseQuestionBlocks(text);
+      const drafts = fixture.format === "csv"
+        ? importFromCsv(text).drafts
+        : fixture.format === "json"
+          ? importFromJson(text).drafts
+          : parseQuestionBlocks(text);
       if (fixture.format === "pdf") assignDraftProvenancePages(drafts, pages);
       parsed.set(fixture.id, drafts);
     }
