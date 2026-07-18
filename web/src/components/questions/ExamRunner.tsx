@@ -241,7 +241,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
 
   function begin() {
     const filters = currentFilters();
-    const built = buildQuizPool(questions, filters);
+    const built = buildQuizPool(questions, filters, questionSets);
     if (built.length === 0) {
       pushToast({ title: "No questions match", body: "Loosen the filters or import more questions first.", tone: "warn" });
       return;

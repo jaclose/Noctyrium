@@ -9,6 +9,7 @@ import {
   questionMappingStatus,
   type QuestionDifficulty, type QuestionExamType, type QuestionRecord,
 } from "./questions";
+import type { QuestionSet } from "./library";
 
 export type QuizMode = "tutor" | "exam";
 
@@ -64,11 +65,46 @@ export interface QuizSession {
 
 // --- pool building -----------------------------------------------------------
 
-export function buildQuizPool(questions: QuestionRecord[], filters: QuizFilters): QuestionRecord[] {
+export function buildQuizPool(
+  questions: QuestionRecord[],
+  filters: QuizFilters,
+  questionSets: readonly Pick<QuestionSet, "id" | "questionIds">[] = [],
+): QuestionRecord[] {
   // Imported mappings are runnable only after the canonical review gate says
   // they are trustworthy. This prevents a provisional/unresolved key from
   // being scored or revealed as fact.
   let pool = questions.filter((q) => q.options.length >= 2 && questionMappingStatus(q) === "ready");
+  let explicitMembership = false;
+  if (filters.setIds?.length) {
+    const setsById = new Map(questionSets.map((set) => [set.id, set]));
+    const explicitIds: string[] = [];
+    const legacySetIds = new Set<string>();
+    for (const setId of filters.setIds) {
+      const selected = setsById.get(setId);
+      if (selected?.questionIds.length) {
+        explicitMembership = true;
+        explicitIds.push(...selected.questionIds);
+      } else {
+        legacySetIds.add(setId);
+      }
+    }
+    if (explicitMembership) {
+      const runnableById = new Map(pool.map((question) => [question.id, question]));
+      const seen = new Set<string>();
+      const snapshotPool = explicitIds.flatMap((id) => {
+        const question = runnableById.get(id);
+        if (!question || seen.has(id)) return [];
+        seen.add(id);
+        return [question];
+      });
+      const legacyPool = legacySetIds.size
+        ? pool.filter((question) => question.setId && legacySetIds.has(question.setId) && !seen.has(question.id))
+        : [];
+      pool = [...snapshotPool, ...legacyPool];
+    } else {
+      pool = pool.filter((question) => question.setId && legacySetIds.has(question.setId));
+    }
+  }
   if (filters.status === "unused") pool = pool.filter((q) => q.attempts.length === 0);
   else if (filters.status === "incorrect") pool = pool.filter((q) => q.status === "incorrect" || q.status === "guessed");
   else if (filters.status === "marked") pool = pool.filter((q) => q.marked || q.status === "flagged");
@@ -93,15 +129,13 @@ export function buildQuizPool(questions: QuestionRecord[], filters: QuizFilters)
     const set = new Set(filters.topics.map((t) => t.toLowerCase()));
     pool = pool.filter((q) => q.topic && set.has(q.topic.toLowerCase()));
   }
-  if (filters.setIds?.length) {
-    const set = new Set(filters.setIds);
-    pool = pool.filter((q) => q.setId && set.has(q.setId));
-  }
   if (filters.documentIds?.length) {
     const set = new Set(filters.documentIds);
     pool = pool.filter((q) => q.sourceDocumentId && set.has(q.sourceDocumentId));
   }
-  const picked = filters.ordered
+  const picked = explicitMembership
+    ? pool
+    : filters.ordered
     ? [...pool].sort((a, b) => (a.questionNumber ?? 0) - (b.questionNumber ?? 0))
     : shuffle(pool);
   return picked.slice(0, Math.max(1, filters.count));

@@ -33,7 +33,7 @@ export function BlockBuilder({ onRunBlock, onNewBlock }: {
       ) : (
         <div className="stack gap6">
           {blocks.map((block) => {
-            const available = buildQuizPool(questions, { ...block.filters, count: 9999 }).length;
+            const available = buildQuizPool(questions, { ...block.filters, count: 9999 }, s.questionSets ?? []).length;
             return (
               <div key={block.id} className="import-draft">
                 <div className="row" style={{ gap: 8 }}>

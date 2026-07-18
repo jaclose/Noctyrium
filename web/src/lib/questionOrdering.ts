@@ -15,7 +15,7 @@ export const QUESTION_ORDERINGS: readonly QuestionOrdering[] = [
 ] as const;
 
 export const ORDERING_LABEL: Record<QuestionOrdering, string> = {
-  "import": "Original import order",
+  "import": "Recently added",
   "question-number": "Question number",
   "source": "Source (A→Z)",
   "created": "Date added",

@@ -110,6 +110,50 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     expect(screen.getByText(question.stem)).toBeTruthy();
   });
 
+  it("launches a snapshot set from explicit IDs in stored order without backlinks", async () => {
+    const questions = ["B", "A", "D"].map((id) => ({
+      ...question,
+      id,
+      stem: `Snapshot question ${id}`,
+      setId: undefined,
+    }));
+    const snapshot: QuestionSet = {
+      ...questionSet,
+      id: "snapshot",
+      title: "Snapshot set",
+      questionIds: ["A", "D", "B"],
+      ordering: "random",
+      seed: "creation-only",
+    };
+    setStore();
+    mocked.store = {
+      ...mocked.store,
+      questions,
+      questionSets: [snapshot],
+    };
+    const user = userEvent.setup();
+    render(<ExamRunner
+      mode="tutor"
+      presetFilters={{ count: 10, status: "all", setIds: [snapshot.id] }}
+      onClose={() => {}}
+    />);
+
+    const random = vi.spyOn(Math, "random").mockImplementation(() => {
+      throw new Error("Snapshot launch must not shuffle.");
+    });
+    try {
+      await user.click(screen.getByRole("button", { name: /Start tutor block/i }));
+      expect(screen.getByText("Snapshot question A")).toBeTruthy();
+      expect(random).not.toHaveBeenCalled();
+    } finally {
+      random.mockRestore();
+    }
+    await user.click(screen.getByRole("button", { name: "B. Beta" }));
+    await user.click(screen.getByRole("button", { name: "Check answer" }));
+    await user.click(screen.getByRole("button", { name: "Next question" }));
+    expect(screen.getByText("Snapshot question D")).toBeTruthy();
+  });
+
   it("announces answer, flag, and confidence selection while preserving shortcut guards", async () => {
     setStore();
     const user = userEvent.setup();

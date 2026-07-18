@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mergeStates, parseImport, toPortableState } from "./backup";
 import { makeSeed } from "./seed";
 import { createTextAnnotation } from "./questionAnnotations";
+import { buildQuizPool } from "./quiz";
 
 describe("portable backup safety", () => {
   it("round-trips notebook metadata, autosaved writing, and bounded local attachments on schema v32", () => {
@@ -339,6 +340,12 @@ describe("portable backup safety", () => {
 
   it("round-trips a question set's filter snapshot, ordering, and seed (Q2b-3)", () => {
     const state = makeSeed();
+    state.questions = ["b", "a"].map((id) => ({
+      id, source: "manual", stem: `Question ${id}`,
+      options: [{ key: "A", text: "Alpha" }, { key: "B", text: "Beta" }],
+      correctKey: "A", status: "unseen", tags: [], attempts: [],
+      createdAt: "2026-07-18T00:00:00.000Z", updatedAt: "2026-07-18T00:00:00.000Z",
+    }));
     state.questionSets = [{
       id: "set-1", title: "Cardio", sourceDocumentIds: [], createdAt: "2026-07-18T00:00:00.000Z",
       questionIds: ["a", "b"], tags: [], aiEnhanced: false, parserWarnings: [],
@@ -349,6 +356,9 @@ describe("portable backup safety", () => {
     expect(set.questionIds).toEqual(["a", "b"]);
     expect(set.filterSnapshot?.tags).toEqual(["cardiology"]);
     expect(set.seed).toBe("keep-me");
+    expect(buildQuizPool(restored.questions, {
+      count: 10, status: "all", setIds: [set.id],
+    }, restored.questionSets).map((question) => question.id)).toEqual(["a", "b"]);
   });
 
   it("normalizes imported question tags on the replace path (Q2b-3)", () => {

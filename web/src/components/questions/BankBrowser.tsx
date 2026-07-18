@@ -444,9 +444,14 @@ export function BankBrowser({
         />
       ) : (
         <div className="stack gap6">
-          {visible.map((q) => (
+          {visible.map((q, rowIndex) => (
             <div key={q.id} className={`question-row ${selected.has(q.id) ? "selected" : ""}`}>
-              <button className="qrow-check" aria-label={selected.has(q.id) ? "Deselect" : "Select"} aria-pressed={selected.has(q.id)} onClick={() => toggle(q.id)}>
+              <button
+                className="qrow-check"
+                aria-label={`${selected.has(q.id) ? "Deselect" : "Select"} question ${rowIndex + 1}: ${questionSelectionLabel(q.stem)}`}
+                aria-pressed={selected.has(q.id)}
+                onClick={() => toggle(q.id)}
+              >
                 {selected.has(q.id) ? <SquareCheck size={ICON_SIZE.body} /> : <Square size={ICON_SIZE.body} className="dim" />}
               </button>
               <button className="grow truncate qrow-open" onClick={() => onOpen(q)}>{q.stem}</button>
@@ -494,4 +499,9 @@ function FacetChip({ label, active, onClick, icon }: { label: string; active: bo
       {icon}{label}
     </button>
   );
+}
+
+function questionSelectionLabel(stem: string): string {
+  const clean = stem.replace(/\s+/g, " ").trim();
+  return clean.length > 80 ? `${clean.slice(0, 79).trimEnd()}…` : clean;
 }

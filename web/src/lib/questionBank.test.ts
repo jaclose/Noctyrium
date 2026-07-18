@@ -1,6 +1,6 @@
 // Pre-beta question bank: multi-question parsing, file import, and quiz
 // session scoring/pools — the flagship loop's domain logic.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createImportMappingLedger, expandInlineOptions, normalizeSourceText, parseQuestionBlocks, parseQuestionText,
   splitAnswerKeySection, splitOptionFeedback,
@@ -740,6 +740,46 @@ describe("library links", () => {
     expect(buildQuizPool(qs, { count: 10, status: "all", documentIds: ["doc9"] }).map((q) => q.id)).toEqual(["c"]);
     const ordered = buildQuizPool(qs, { count: 10, status: "all", setIds: ["set1"], ordered: true });
     expect(ordered.map((q) => q.id)).toEqual(["b", "a"]);
+  });
+
+  it("launches explicit-membership sets in stored order without backlinks or randomness", () => {
+    const qs = [
+      makeQuestion({ id: "B", setId: undefined }),
+      makeQuestion({ id: "F", setId: undefined }),
+      makeQuestion({ id: "A", setId: undefined }),
+      makeQuestion({ id: "D", setId: undefined }),
+    ];
+    const snapshot: QuestionSet = {
+      id: "snapshot", title: "Snapshot", sourceDocumentIds: [], createdAt: "2026-07-18T00:00:00.000Z",
+      questionIds: ["A", "D", "missing", "B", "F"], tags: [], aiEnhanced: false, parserWarnings: [],
+      ordering: "random", seed: "descriptive-only",
+    };
+    const random = vi.spyOn(Math, "random").mockImplementation(() => {
+      throw new Error("Snapshot membership must not use Math.random.");
+    });
+    const filters = { count: 10, status: "all" as const, setIds: [snapshot.id] };
+    try {
+      expect(buildQuizPool(qs, filters, [snapshot]).map((q) => q.id)).toEqual(["A", "D", "B", "F"]);
+      expect(buildQuizPool(qs, filters, [snapshot]).map((q) => q.id)).toEqual(["A", "D", "B", "F"]);
+      expect(random).not.toHaveBeenCalled();
+    } finally {
+      random.mockRestore();
+    }
+  });
+
+  it("keeps the question.setId path for legacy sets without explicit membership", () => {
+    const qs = [
+      makeQuestion({ id: "legacy-a", setId: "legacy" }),
+      makeQuestion({ id: "legacy-b", setId: "legacy" }),
+      makeQuestion({ id: "outside", setId: "other" }),
+    ];
+    const legacy: QuestionSet = {
+      id: "legacy", title: "Legacy", sourceDocumentIds: [], createdAt: "2026-07-18T00:00:00.000Z",
+      questionIds: [], tags: [], aiEnhanced: false, parserWarnings: [],
+    };
+    expect(buildQuizPool(qs, {
+      count: 10, status: "all", setIds: [legacy.id], ordered: true,
+    }, [legacy]).map((q) => q.id)).toEqual(["legacy-a", "legacy-b"]);
   });
 
   it("computes set accuracy from attempt history", () => {

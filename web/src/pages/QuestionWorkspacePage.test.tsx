@@ -234,6 +234,35 @@ describe("QuestionWorkspacePage returning state", () => {
     expect(screen.queryByRole("button", { name: "Stable ready question" })).toBeNull();
   });
 
+  it("launches a recent snapshot set through the shared runner path without backlinks", async () => {
+    const questions = ["B", "D", "A"].map((id) => question({
+      id,
+      stem: `Stored order ${id}`,
+      setId: undefined,
+    }));
+    const snapshot: QuestionSet = {
+      id: "snapshot-set",
+      title: "Deterministic snapshot",
+      sourceDocumentIds: [],
+      createdAt: "2026-07-18T12:00:00.000Z",
+      questionIds: ["D", "A", "B"],
+      tags: [],
+      aiEnhanced: false,
+      parserWarnings: [],
+      ordering: "random",
+      seed: "creation-provenance",
+    };
+    useStore.setState({ questions, questionSets: [snapshot] });
+    const user = userEvent.setup();
+    render(<QuestionWorkspacePage />);
+
+    const card = screen.getByRole("heading", { name: snapshot.title }).closest("article");
+    expect(card).not.toBeNull();
+    await user.click(within(card as HTMLElement).getByRole("button", { name: "Start" }));
+    await user.click(screen.getByRole("button", { name: "Start tutor block" }));
+    expect(screen.getByText("Stored order D")).toBeTruthy();
+  });
+
   it("removes the mapping alert after every issue is resolved", () => {
     seedReturningState();
     render(<QuestionWorkspacePage />);

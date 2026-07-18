@@ -75,7 +75,7 @@ describe("BankBrowser library", () => {
   it("selection persists to sessionStorage and survives a remount (reload)", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<BankBrowser onOpen={vi.fn()} />);
-    const rows = screen.getAllByRole("button", { name: "Select" });
+    const rows = screen.getAllByRole("button", { name: /^Select question \d+:/ });
     await user.click(rows[0]);
     await waitFor(() => expect(JSON.parse(sessionStorage.getItem("axom.bank.selection.v1")!)).toContain("cardio"));
     unmount();
@@ -87,7 +87,7 @@ describe("BankBrowser library", () => {
   it("bulk-adds tags to the selection", async () => {
     const user = userEvent.setup();
     render(<BankBrowser onOpen={vi.fn()} />);
-    await user.click(screen.getAllByRole("button", { name: "Select" })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^Select question \d+:/ })[0]);
     const toolbar = screen.getByRole("region", { name: /Bulk actions/ });
     await user.type(within(toolbar).getByLabelText("Tags to apply"), "exam-1");
     await user.click(within(toolbar).getByRole("button", { name: "Apply" }));
@@ -99,6 +99,8 @@ describe("BankBrowser library", () => {
     render(<BankBrowser onOpen={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /Create set/ }));
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("option", { name: "Recently added" })).toBeTruthy();
+    expect(within(dialog).queryByText("Original import order")).toBeNull();
     await user.type(within(dialog).getByLabelText("Set name"), "Cardio finals");
     await user.click(within(dialog).getByRole("button", { name: /Create set/ }));
     expect(store.createQuestionSetFromFilter).toHaveBeenCalledWith(expect.objectContaining({ title: "Cardio finals", ordering: "import" }));
@@ -107,11 +109,35 @@ describe("BankBrowser library", () => {
   it("exposes accessible pressed state and labelled bulk region", async () => {
     const user = userEvent.setup();
     render(<BankBrowser onOpen={vi.fn()} />);
+    const controls = screen.getAllByRole("button", { name: /^Select question \d+:/ });
+    expect(controls.map((control) => control.getAttribute("aria-label"))).toEqual([
+      "Select question 1: Cardiac output",
+      "Select question 2: Renal tubule",
+      "Select question 3: Ethics scenario",
+    ]);
+    expect(controls.every((control) => control.getAttribute("aria-pressed") === "false")).toBe(true);
     const chip = screen.getByRole("button", { name: "Incorrect" });
     expect(chip.getAttribute("aria-pressed")).toBe("false");
     await user.click(chip);
     expect(chip.getAttribute("aria-pressed")).toBe("true");
-    await user.click(screen.getAllByRole("button", { name: "Select" })[0]);
+    const cardiacControl = screen.getByRole("button", { name: "Select question 1: Cardiac output" });
+    await user.click(cardiacControl);
+    expect(cardiacControl.getAttribute("aria-label")).toBe("Deselect question 1: Cardiac output");
+    expect(cardiacControl.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("region", { name: /Bulk actions for 1 selected/ })).toBeTruthy();
+  });
+
+  it("truncates long question stems cleanly in selection names", () => {
+    store.questions = [makeQuestion({
+      id: "long",
+      stem: `A very long but distinguishable question stem ${"with additional clinical context ".repeat(5)}`,
+    })];
+    render(<BankBrowser onOpen={vi.fn()} />);
+    const control = screen.getByRole("button", { name: /^Select question 1:/ });
+    const label = control.getAttribute("aria-label") ?? "";
+    expect(label).toMatch(/^Select question 1: A very long but distinguishable/);
+    expect(label).toMatch(/…$/);
+    expect(label.length).toBeLessThanOrEqual(100);
+    expect(control.getAttribute("aria-pressed")).toBe("false");
   });
 });
