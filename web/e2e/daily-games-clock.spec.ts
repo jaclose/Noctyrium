@@ -59,7 +59,7 @@ test("Daily Games opt-in, Daily Word history, and shared clock preferences persi
 
   await page.reload({ waitUntil: "networkidle" });
   const persisted = await readPersistedWorkspace(page);
-  expect(persisted.schemaVersion).toBe(32);
+  expect(persisted.schemaVersion).toBe(33);
   expect(persisted.profile.experimentalFlags.dailyGames).toBe(true);
   expect(persisted.profile.timeZonePreference).toEqual({ mode: "custom", customTimezone: "America/Grenada" });
   expect(persisted.profile.clockPreferences).toMatchObject({

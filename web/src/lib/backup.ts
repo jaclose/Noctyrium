@@ -10,6 +10,8 @@ import {
 import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
+import { normalizeTagList } from "./questionTags";
+import { normalizeSavedQuestionFilters } from "./questionFilters";
 import { normalizeQuestionAnnotations, reconcileQuestionAnnotationSources } from "./questionAnnotations";
 import {
   ATTACHMENT_EXPORT_KEY,
@@ -28,7 +30,7 @@ const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
   "premedExperiences", "prompts", "folders", "logs", "integrations", "boardPrep", "blueprintInstalls", "dayPlans", "activeDayKey", "schemaVersion",
   "lastActiveLocalDate", "lastTimezoneOffset", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-  "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
+  "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "savedQuestionFilters", "quizBlocks", "ankiCards", "cardReviews",
   "dailyWordPuzzles",
 ] as const;
 
@@ -118,7 +120,7 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
     "premedExperiences", "prompts", "folders", "logs", "boardPrep" /* handled below */, "blueprintInstalls",
     "dayPlans", "dailyArchives", "dailyRolloverEvents", "energyFactors", "habits", "habitEntries",
-    "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "quizBlocks", "ankiCards", "cardReviews",
+    "sessions", "closeouts", "recoveryPlans", "questions", "quizSessions", "documents", "questionSets", "savedQuestionFilters", "quizBlocks", "ankiCards", "cardReviews",
     "dailyWordPuzzles",
   ] as const;
 
@@ -402,6 +404,7 @@ export function parseImport(text: string): NoctyriumState {
     quizSessions: Array.isArray(data.quizSessions) ? data.quizSessions : [],
     documents: Array.isArray(data.documents) ? data.documents : [],
     questionSets: Array.isArray(data.questionSets) ? data.questionSets : [],
+    savedQuestionFilters: normalizeSavedQuestionFilters(data.savedQuestionFilters),
     quizBlocks: Array.isArray(data.quizBlocks) ? data.quizBlocks : [],
     ankiCards: Array.isArray(data.ankiCards) ? data.ankiCards : [],
     cardReviews: Array.isArray(data.cardReviews) ? data.cardReviews : [],
@@ -414,6 +417,7 @@ function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
   const question = { ...value };
   question.annotations = normalizeQuestionAnnotations(question.annotations);
   question.attachments = normalizeQuestionAttachments(question.attachments);
+  question.tags = normalizeTagList(question.tags);
   if (fromVersion < 31) {
     question.taxonomy = normalizeQuestionTaxonomy(question.taxonomy, question) ?? {};
   }

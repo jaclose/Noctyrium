@@ -37,6 +37,7 @@ describe("orphan detection + repair (never destructive)", () => {
     const state = {
       documents: [],
       questionSets: [],
+      savedQuestionFilters: [],
       questions: [q({ id: "q1", setId: "gone-set", sourceDocumentId: "gone-doc", attempts: [{ at: "t", status: "correct" }] })],
     };
     const report = findOrphans(state);

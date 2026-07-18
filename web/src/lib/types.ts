@@ -785,6 +785,7 @@ import type { RecoveryPlan } from "./recovery";
 import type { QuestionRecord } from "./questions";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
+import type { SavedQuestionFilter } from "./questionFilters";
 import type { AnkiCard, CardReviewLog } from "./ankiCards";
 
 export interface NoctyriumState {
@@ -821,6 +822,8 @@ export interface NoctyriumState {
   // Question-bank library (schema v30)
   documents: SourceDocument[];
   questionSets: QuestionSet[];
+  /** Q2b-3: locally-saved Question Bank filter presets. */
+  savedQuestionFilters: SavedQuestionFilter[];
   quizBlocks: QuizBlock[]; // schema v29
   ankiCards: AnkiCard[];
   cardReviews: CardReviewLog[];

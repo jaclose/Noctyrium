@@ -12,6 +12,9 @@ import {
   type QuestionMappingSummary,
   type QuestionRecord,
 } from "./questions";
+import { applyQuestionFilter, normalizeQuestionFilter, type QuestionFilterCriteria } from "./questionFilters";
+import { orderQuestions, type QuestionOrdering } from "./questionOrdering";
+import { normalizeTagList } from "./questionTags";
 
 export interface SourceDocument {
   id: ID;
@@ -45,12 +48,55 @@ export interface QuestionSet {
   title: string;
   sourceDocumentIds: ID[];
   createdAt: string;
+  /** IMMUTABLE membership snapshot. Later tag/filter changes never mutate this. */
   questionIds: ID[];
   tags: string[];
   aiEnhanced: boolean;
   parserWarnings: string[];
   /** AI-generated digest (review-gated feature output, clearly labeled). */
   digest?: QuestionSetDigest;
+  // --- Q2b-3: sets built from a Bank filter capture how they were made so the
+  // membership is reproducible and explainable (the snapshot itself never moves).
+  /** The filter that produced this set, recorded for display/provenance. */
+  filterSnapshot?: QuestionFilterCriteria;
+  /** Ordering used to sequence questionIds at creation time. */
+  ordering?: QuestionOrdering;
+  /** Seed for `ordering: "random"` — re-running the seed reproduces the order. */
+  seed?: string;
+}
+
+/** Build a deterministic static snapshot from a live filter over the bank.
+ * Applies the filter, orders the survivors, and freezes their ids as membership.
+ * Pure — the caller persists the returned set via the store. */
+export function buildQuestionSetFromFilter(input: {
+  id: ID;
+  title: string;
+  questions: readonly QuestionRecord[];
+  criteria: QuestionFilterCriteria;
+  ordering: QuestionOrdering;
+  seed?: string;
+  now: string;
+  tags?: readonly string[];
+  /** Injected for deterministic tests; defaults to Date.parse of `now`. */
+  filterNow?: number;
+}): QuestionSet {
+  const criteria = normalizeQuestionFilter(input.criteria);
+  const filterNow = input.filterNow ?? (Number.isFinite(Date.parse(input.now)) ? Date.parse(input.now) : Date.now());
+  const matched = applyQuestionFilter(input.questions, criteria, filterNow);
+  const ordered = orderQuestions(matched, input.ordering, input.seed);
+  return {
+    id: input.id,
+    title: input.title.trim() || "Untitled set",
+    sourceDocumentIds: [],
+    createdAt: input.now,
+    questionIds: ordered.map((question) => question.id),
+    tags: normalizeTagList(input.tags),
+    aiEnhanced: false,
+    parserWarnings: [],
+    filterSnapshot: criteria,
+    ordering: input.ordering,
+    seed: input.ordering === "random" ? input.seed : undefined,
+  };
 }
 
 /** Historical accuracy for a set across every recorded attempt. */

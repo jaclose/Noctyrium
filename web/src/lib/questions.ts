@@ -5,6 +5,7 @@
 // and the faculty style analyzer (Phase 6 §13). Pure + testable.
 // ===========================================================================
 import type { ID } from "./types";
+import { normalizeTagList } from "./questionTags";
 import {
   normalizeQuestionAnnotations,
   reconcileQuestionAnnotationSources,
@@ -471,7 +472,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
         ? input.difficulty as QuestionDifficulty
         : undefined,
       marked: input.marked === true,
-      tags: Array.isArray(input.tags) ? input.tags.filter((t): t is string => typeof t === "string" && !!t.trim()).map((t) => t.trim()) : [],
+      tags: normalizeTagList(input.tags),
       errorType,
       notes: cleanString(input.notes),
       annotations: normalizeQuestionAnnotations(input.annotations),

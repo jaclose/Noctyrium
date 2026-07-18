@@ -42,7 +42,7 @@ describe("portable backup safety", () => {
     }];
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.schemaVersion).toBe(33);
     expect(parsed.profile.journalNotebook).toEqual(state.profile.journalNotebook);
     expect(parsed.journal).toEqual(state.journal);
     expect(JSON.stringify(parsed.journal)).not.toContain("https://");
@@ -70,7 +70,7 @@ describe("portable backup safety", () => {
     };
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.schemaVersion).toBe(33);
     expect(parsed.profile.dashboardLayout).toMatchObject(state.profile.dashboardLayout);
     const reparsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(parsed) }));
     expect(reparsed.profile.dashboardLayout).toEqual(parsed.profile.dashboardLayout);
@@ -108,7 +108,7 @@ describe("portable backup safety", () => {
       promptVersion: "promise-prompt-v1",
     };
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.schemaVersion).toBe(33);
     expect(parsed.profile.promisePromptStatus).toEqual(state.profile.promisePromptStatus);
   });
 
@@ -127,7 +127,7 @@ describe("portable backup safety", () => {
     expect(JSON.stringify(portable)).not.toContain("snoozedUntil");
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...portable }));
-    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.schemaVersion).toBe(33);
     expect(parsed.profile.dailyLoopReminders).toEqual(state.profile.dailyLoopReminders);
   });
 
@@ -321,6 +321,46 @@ describe("portable backup safety", () => {
     expect(atts?.[0].altText.length).toBe(500);
   });
 
+  it("round-trips saved filter presets and normalizes their tags (Q2b-3)", () => {
+    const state = makeSeed();
+    state.savedQuestionFilters = [{
+      id: "p1", name: "Cardio finals",
+      criteria: { tags: ["Cardiology", "cardiology"], incorrect: true, difficulty: ["hard"] },
+      ordering: "random", createdAt: "2026-07-18T00:00:00.000Z", updatedAt: "2026-07-18T00:00:00.000Z",
+    }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(restored.savedQuestionFilters).toHaveLength(1);
+    expect(restored.savedQuestionFilters[0].criteria.tags).toEqual(["cardiology"]);
+    expect(restored.savedQuestionFilters[0].ordering).toBe("random");
+    // Merge dedupes presets by id.
+    const merged = mergeStates(state, restored);
+    expect(merged.savedQuestionFilters.filter((f) => f.id === "p1")).toHaveLength(1);
+  });
+
+  it("round-trips a question set's filter snapshot, ordering, and seed (Q2b-3)", () => {
+    const state = makeSeed();
+    state.questionSets = [{
+      id: "set-1", title: "Cardio", sourceDocumentIds: [], createdAt: "2026-07-18T00:00:00.000Z",
+      questionIds: ["a", "b"], tags: [], aiEnhanced: false, parserWarnings: [],
+      filterSnapshot: { tags: ["cardiology"] }, ordering: "random", seed: "keep-me",
+    }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    const set = restored.questionSets[0];
+    expect(set.questionIds).toEqual(["a", "b"]);
+    expect(set.filterSnapshot?.tags).toEqual(["cardiology"]);
+    expect(set.seed).toBe("keep-me");
+  });
+
+  it("normalizes imported question tags on the replace path (Q2b-3)", () => {
+    const q = {
+      id: "q-tags", source: "manual", stem: "S", options: [], status: "unseen",
+      tags: ["Cardiology", "cardiology", " RENAL "], attempts: [],
+      createdAt: "2026-07-18T00:00:00.000Z", updatedAt: "2026-07-18T00:00:00.000Z",
+    };
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(makeSeed()), questions: [q] }));
+    expect(restored.questions[0].tags).toEqual(["cardiology", "renal"]);
+  });
+
   it("loads a legacy schema-v32 question without annotations unchanged", () => {
     const state = makeSeed();
     state.questions = [{
@@ -396,7 +436,7 @@ describe("portable backup safety", () => {
       createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
     }];
     const parsed = parseImport(JSON.stringify(legacy));
-    expect(parsed.schemaVersion).toBe(32);
+    expect(parsed.schemaVersion).toBe(33);
     expect(parsed.questions[0].correctAnswerText).toBe("Legacy answer");
     expect(parsed.questions[0].extraction?.overallImportConfidence).toBe(0.65);
   });

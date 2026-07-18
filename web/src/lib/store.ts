@@ -60,10 +60,16 @@ import {
 import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, withCorrectAnswerText, type QuestionAttempt, type QuestionRecord } from "./questions";
+import { normalizeTagList, mergeTagsInList } from "./questionTags";
+import {
+  normalizeSavedQuestionFilters, normalizeQuestionFilter,
+  type SavedQuestionFilter, type QuestionFilterCriteria,
+} from "./questionFilters";
+import type { QuestionOrdering } from "./questionOrdering";
 import { reconcileQuestionAnnotationSources } from "./questionAnnotations";
 import { deleteQuestionAttachmentBlobs, listQuestionAttachmentBlobKeys, runQuestionAttachmentMaintenance } from "./questionAttachments";
 import type { QuizBlock, QuizSession } from "./quiz";
-import type { QuestionSet, SourceDocument } from "./library";
+import { buildQuestionSetFromFilter, type QuestionSet, type SourceDocument } from "./library";
 import { repairOrphans } from "./orphanRepair";
 import {
   nextSchedule, validateAnkiCard,
@@ -216,8 +222,23 @@ interface Actions {
   toggleQuestionMarked: (id: string) => void;
   /** Bulk-apply category/tags to many questions (Question Bank bulk edit). */
   bulkUpdateQuestions: (ids: string[], patch: { category?: string; tags?: string[]; addTags?: string[] }) => void;
+  /** Q2b-3 bulk tag operations — add/remove/replace/clear across a selection. */
+  bulkTagQuestions: (ids: string[], op: { add?: string[]; remove?: string[]; replace?: string[]; clear?: boolean }) => void;
   renameTag: (from: string, to: string) => void;
   removeTag: (tag: string) => void;
+  /** Fold every `from` tag into `into` across the bank (normalized, deduped). */
+  mergeTags: (from: string[], into: string) => void;
+
+  // Q2b-3: locally-saved Question Bank filter presets
+  addSavedQuestionFilter: (input: { name: string; criteria: QuestionFilterCriteria; ordering?: QuestionOrdering }) => string;
+  updateSavedQuestionFilter: (id: string, patch: Partial<Pick<SavedQuestionFilter, "name" | "criteria" | "ordering">>) => void;
+  removeSavedQuestionFilter: (id: string) => void;
+  /** Create an immutable, deterministically-ordered question set from a filter.
+   * `scopeIds` (when given) restricts the source pool to exactly those ids so the
+   * snapshot matches the on-screen list under mode-pill / mapping-review scoping. */
+  createQuestionSetFromFilter: (input: {
+    title: string; criteria: QuestionFilterCriteria; ordering: QuestionOrdering; seed?: string; tags?: string[]; scopeIds?: readonly string[];
+  }) => string;
 
   // question-bank library (schema v30) — documents, sets, saved blocks
   addDocument: (doc: SourceDocument) => void;
@@ -944,9 +965,12 @@ export const useStore = create<Store>()(
       },
       updateQuestion: (id, patch) =>
         set((s) => ({
-          questions: (s.questions ?? []).map((q) => (q.id === id
-            ? reconcileQuestionAnnotationSources(withCorrectAnswerText({ ...q, ...patch, updatedAt: now() }))
-            : q)),
+          questions: (s.questions ?? []).map((q) => {
+            if (q.id !== id) return q;
+            const merged = { ...q, ...patch, updatedAt: now() };
+            if (patch.tags) merged.tags = normalizeTagList(patch.tags);
+            return reconcileQuestionAnnotationSources(withCorrectAnswerText(merged));
+          }),
         })),
       removeQuestion: (id) => set((s) => {
         // Q2b-2: deleting a question deletes its attachment bytes (targeted,
@@ -982,9 +1006,9 @@ export const useStore = create<Store>()(
             questions: (s.questions ?? []).map((q) => {
               if (!idSet.has(q.id)) return q;
               const tags = patch.tags
-                ? [...patch.tags]
+                ? normalizeTagList(patch.tags)
                 : patch.addTags
-                  ? [...new Set([...q.tags, ...patch.addTags])]
+                  ? normalizeTagList([...q.tags, ...patch.addTags])
                   : q.tags;
               return {
                 ...q,
@@ -995,22 +1019,61 @@ export const useStore = create<Store>()(
             }),
           };
         }),
+      bulkTagQuestions: (ids, op) =>
+        set((s) => {
+          const idSet = new Set(ids);
+          if (!idSet.size) return {};
+          const add = normalizeTagList(op.add ?? []);
+          const remove = new Set(normalizeTagList(op.remove ?? []));
+          const replace = op.replace ? normalizeTagList(op.replace) : undefined;
+          const stamp = now();
+          return {
+            questions: (s.questions ?? []).map((q) => {
+              if (!idSet.has(q.id)) return q;
+              let tags: string[];
+              if (op.clear) tags = [];
+              else if (replace) tags = replace;
+              else tags = normalizeTagList([...q.tags.filter((t) => !remove.has(t)), ...add]);
+              // No-op when the tag set is unchanged — avoids needless timestamp churn.
+              if (tags.length === q.tags.length && tags.every((t, i) => t === q.tags[i])) return q;
+              return { ...q, tags, updatedAt: stamp };
+            }),
+          };
+        }),
       renameTag: (from, to) =>
         set((s) => {
-          const target = to.trim();
-          if (!from || !target) return {};
+          const source = normalizeTagList([from])[0];
+          const target = normalizeTagList([to])[0];
+          if (!source || !target || source === target) return {};
+          const fromSet = new Set([source]);
           return {
             questions: (s.questions ?? []).map((q) =>
-              q.tags.includes(from)
-                ? { ...q, tags: [...new Set(q.tags.map((t) => (t === from ? target : t)))], updatedAt: now() }
+              q.tags.includes(source)
+                ? { ...q, tags: mergeTagsInList(q.tags, fromSet, target), updatedAt: now() }
                 : q),
           };
         }),
       removeTag: (tag) =>
-        set((s) => ({
-          questions: (s.questions ?? []).map((q) =>
-            q.tags.includes(tag) ? { ...q, tags: q.tags.filter((t) => t !== tag), updatedAt: now() } : q),
-        })),
+        set((s) => {
+          const target = normalizeTagList([tag])[0];
+          if (!target) return {};
+          return {
+            questions: (s.questions ?? []).map((q) =>
+              q.tags.includes(target) ? { ...q, tags: q.tags.filter((t) => t !== target), updatedAt: now() } : q),
+          };
+        }),
+      mergeTags: (from, into) =>
+        set((s) => {
+          const target = normalizeTagList([into])[0];
+          const fromSet = new Set(normalizeTagList(from).filter((tag) => tag !== target));
+          if (!target || !fromSet.size) return {};
+          return {
+            questions: (s.questions ?? []).map((q) =>
+              q.tags.some((tag) => fromSet.has(tag))
+                ? { ...q, tags: mergeTagsInList(q.tags, fromSet, target), updatedAt: now() }
+                : q),
+          };
+        }),
 
       addDocument: (doc) =>
         set((s) => ({ documents: [doc, ...(s.documents ?? []).filter((d) => d.id !== doc.id)] })),
@@ -1039,6 +1102,53 @@ export const useStore = create<Store>()(
           })),
           questions: (s.questions ?? []).map((q) => (q.setId === id ? { ...q, setId: undefined } : q)),
         })),
+      addSavedQuestionFilter: (input) => {
+        const id = uid();
+        const stamp = now();
+        const preset: SavedQuestionFilter = {
+          id,
+          name: input.name.trim().slice(0, 120) || "Saved filter",
+          criteria: normalizeQuestionFilter(input.criteria),
+          ordering: input.ordering,
+          createdAt: stamp,
+          updatedAt: stamp,
+        };
+        set((s) => ({ savedQuestionFilters: [preset, ...(s.savedQuestionFilters ?? [])] }));
+        return id;
+      },
+      updateSavedQuestionFilter: (id, patch) =>
+        set((s) => ({
+          savedQuestionFilters: (s.savedQuestionFilters ?? []).map((filter) => (filter.id === id
+            ? {
+                ...filter,
+                name: patch.name !== undefined ? patch.name.trim().slice(0, 120) || filter.name : filter.name,
+                criteria: patch.criteria !== undefined ? normalizeQuestionFilter(patch.criteria) : filter.criteria,
+                ordering: patch.ordering !== undefined ? patch.ordering : filter.ordering,
+                updatedAt: now(),
+              }
+            : filter)),
+        })),
+      removeSavedQuestionFilter: (id) =>
+        set((s) => ({ savedQuestionFilters: (s.savedQuestionFilters ?? []).filter((filter) => filter.id !== id) })),
+      createQuestionSetFromFilter: (input) => {
+        const id = uid();
+        const all = get().questions ?? [];
+        const pool = input.scopeIds
+          ? (() => { const allowed = new Set(input.scopeIds); return all.filter((q) => allowed.has(q.id)); })()
+          : all;
+        const built = buildQuestionSetFromFilter({
+          id,
+          title: input.title,
+          questions: pool,
+          criteria: input.criteria,
+          ordering: input.ordering,
+          seed: input.seed,
+          tags: input.tags,
+          now: now(),
+        });
+        set((s) => ({ questionSets: [built, ...(s.questionSets ?? []).filter((x) => x.id !== id)] }));
+        return id;
+      },
       saveQuizBlock: (block) =>
         set((s) => ({ quizBlocks: [block, ...(s.quizBlocks ?? []).filter((b) => b.id !== block.id)].slice(0, 200) })),
       removeQuizBlock: (id) =>
@@ -1110,7 +1220,7 @@ export const useStore = create<Store>()(
           journal: [], premedExperiences: [], prompts: [], folders: [], logs: [], dayPlans: [],
           energyFactors: [],
           habits: [], habitEntries: [],
-          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], documents: [], questionSets: [], quizBlocks: [], ankiCards: [], cardReviews: [], dailyWordPuzzles: [],
+          sessions: [], closeouts: [], recoveryPlans: [], questions: [], quizSessions: [], documents: [], questionSets: [], savedQuestionFilters: [], quizBlocks: [], ankiCards: [], cardReviews: [], dailyWordPuzzles: [],
           blueprintInstalls: [],
           boardPrep: defaultBoardPrepState(),
           activeDayKey: localDateKey(),
@@ -1143,13 +1253,13 @@ export const useStore = create<Store>()(
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, savedQuestionFilters, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
         } = s;
         return {
           profile, terms, courses, tracker, productivityTrackers, resources, tasks, journal, premedExperiences, prompts,
           folders, logs, integrations, boardPrep, dayPlans, blueprintInstalls, activeDayKey,
           lastActiveLocalDate, lastTimezoneOffset, dailyArchives, dailyRolloverEvents, energyFactors,
-          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
+          habits, habitEntries, sessions, closeouts, recoveryPlans, questions, quizSessions, documents, questionSets, savedQuestionFilters, quizBlocks, ankiCards, cardReviews, dailyWordPuzzles, schemaVersion,
         } as NoctyriumState;
       },
     },
@@ -1491,6 +1601,16 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
   s.profile = normalizeProfile(s.profile);
   s.journal = normalizeJournalEntries(s.journal);
   s.dailyWordPuzzles = normalizeDailyWordPuzzles(s.dailyWordPuzzles);
+  // Q2b-3: canonicalize question tags and default the saved-filter presets. The
+  // schema bump to 33 guarantees this one-time migration actually runs for the
+  // existing v32 population (persist only calls migrate on a version mismatch);
+  // keeping it in the unconditional tail also normalizes direct/imported payloads.
+  // Idempotent — tags are already string[]; this only re-cases/dedupes.
+  s.questions = arrayOfRecords(s.questions).map((question) => ({
+    ...question,
+    tags: normalizeTagList(question.tags),
+  }));
+  s.savedQuestionFilters = normalizeSavedQuestionFilters(s.savedQuestionFilters);
   s.schemaVersion = SCHEMA_VERSION;
   return s as unknown as NoctyriumState;
 }

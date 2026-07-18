@@ -1053,3 +1053,40 @@ and re-reads every object URL. OCR, drawing/markup, AI image interpretation,
 cloud upload, and account sync remain **out of scope**. Gates: typecheck 0 · lint
 0 · vitest (attachment suites 42/42) · build ✓ · schema **v32**, vault DB **v3**.
 The WebdriverIO/env harness was again **excluded** from the commit.
+
+**Q2b-3 — normalized tags, filtering, bulk tagging & deterministic sets (2026-07-18, Sol/Opus).**
+The Question Bank became a professional library. **Tag identity is canonical** —
+NFC + trim + collapsed whitespace + lowercase (code-point-capped at 64) — so
+"Cardiology"/"cardiology"/" CARDIOLOGY " collapse to one tag on every path: add,
+bulk add/remove/replace/clear, rename, merge, question import (replace + merge),
+and a **one-time load migration** (schema bumped **v32→v33** so the normalizer
+actually runs for the existing population — persist only calls `migrate` on a
+version mismatch). New pure modules: `questionTags.ts` (normalize/counts/merge),
+`questionFilters.ts` (a serializable `QuestionFilterCriteria` + a pure, stable,
+AND-composing `applyQuestionFilter`; saved-preset normalize), `questionOrdering.ts`
+(five total orders with an id tiebreak; **seeded** random via canonicalize-by-id +
+mulberry32/FNV-1a so the same seed always reproduces the order). Filters compose
+tags (ALL/ANY), difficulty, answered/unanswered, bookmarked, incorrect, review-due,
+source, course, has-image, has-notes, and debounced search over stem/options/tags/
+notes/source. **Saved filter presets** persist locally (`savedQuestionFilters`
+slice, in partialize + backup export/import + merge-by-id). **Question sets from a
+filter** are immutable snapshots — `buildQuestionSetFromFilter` freezes the
+scoped+ordered `questionIds` and records `filterSnapshot`/`ordering`/`seed`; later
+tag edits never move membership. Bulk tagging is a single O(n) pass with a no-churn
+guard; selection survives filtering/pagination/reload via **sessionStorage**
+(never localStorage/workspace — `workspaceLocalStorageKeys: []` holds). BankBrowser
+rebuilt with live counts (total → filtered), facet/tag chips (`aria-pressed`), a
+labelled bulk region with a live count, ordering + reshuffle, "Show more"
+pagination, and a Tag Manager (bank-wide rename/merge/remove with counts).
+**Independent Fable review: ACCEPT-WITH-FIXES** — all supported findings repaired:
+created sets now honor mode/mapping-review scoping (`scopeIds`); the schema bump
+makes load-time normalization actually run; mode-pill counts memoized; tag manager
+uses bank-wide counts; `normalizeTag` idempotent at the cap; require-only `false`
+facets dropped; presets deselect on search/order edits; debounced search flushed
+before save/create; set tags normalized; stale selection pruned on bank change.
+Gates: typecheck 0 · lint 0 · **vitest 949/949** (5 new suites + backup round-trips) ·
+e2e 6/6 · build ✓ · verify:question-imports / daily-games-offline (`[]`) / bundle ·
+diff-check clean · schema **v33**. Rendered: 120-question import → bulk tag →
+tag-chip filter (120→100) → facet compose → save preset → create set → tag rename,
+across dark/light/390px with **no horizontal overflow** and ~180ms bulk-tag on 100.
+No AI classification, OCR, cloud, or Doctordle. WebdriverIO/env harness **excluded**.

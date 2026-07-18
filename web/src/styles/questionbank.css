@@ -555,3 +555,110 @@
   .question-attachment { flex-wrap: wrap; }
   .question-attachment-meta { min-width: 60%; }
 }
+
+/* ===========================================================================
+   Q2b-3 — Question library: counts, presets, facets, tag chips, bulk toolbar,
+   tag manager. Everything wraps so the panel never scrolls horizontally.
+   =========================================================================== */
+.qb-count-line {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px; font-size: var(--fs-sm); color: var(--text-60);
+}
+.qb-count-line b { color: var(--text-90); font-weight: var(--fw-semibold); }
+.qb-count-filtered b { color: var(--cyan); }
+.qb-count-clear {
+  border: none; background: none; cursor: pointer; padding: 2px 4px;
+  color: var(--cyan); font-size: var(--fs-tiny); text-decoration: underline;
+}
+
+.qb-preset-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.qb-preset {
+  display: inline-flex; align-items: center;
+  border: 1px solid rgba(230,226,214,0.1); border-radius: var(--radius-pill);
+  background: rgba(230,226,214,0.045); overflow: hidden;
+}
+.qb-preset.on { border-color: rgba(200,169,106,0.5); background: rgba(12,12,13,0.55); }
+.qb-preset-apply {
+  border: none; background: none; cursor: pointer; padding: 6px 10px;
+  color: var(--text-70); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+}
+.qb-preset.on .qb-preset-apply { color: var(--bone); }
+.qb-preset-icon {
+  border: none; background: none; cursor: pointer; padding: 6px 7px;
+  color: var(--text-40); display: inline-flex; align-items: center;
+}
+.qb-preset-icon:hover { color: var(--text-80); }
+
+.qb-facets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.qb-facet-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.qb-facet-chip, .qb-tag-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; font-size: var(--fs-tiny); font-weight: var(--fw-medium);
+  border-radius: var(--radius-pill); cursor: pointer;
+  color: var(--text-60); background: rgba(230,226,214,0.04);
+  border: 1px solid rgba(230,226,214,0.08);
+  transition: color .13s ease, background .13s ease, border-color .13s ease;
+  text-transform: capitalize;
+}
+.qb-facet-chip:hover, .qb-tag-chip:hover { color: var(--text-80); background: rgba(230,226,214,0.08); }
+.qb-facet-chip.on, .qb-tag-chip.on {
+  color: var(--bone); background: rgba(12,12,13,0.6);
+  border-color: rgba(200,169,106,0.5);
+  box-shadow: 0 0 0 1px rgba(200,169,106,0.12);
+}
+
+.qb-tag-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.qb-tag-chip { text-transform: none; }
+.qb-tag-chip-count {
+  font-size: 10px; opacity: 0.7; padding: 0 4px; border-radius: 6px;
+  background: rgba(230,226,214,0.08);
+}
+.qb-tag-chip.on .qb-tag-chip-count { background: rgba(200,169,106,0.22); }
+.qb-tagmatch {
+  border: 1px dashed rgba(200,169,106,0.5); border-radius: var(--radius-pill);
+  background: none; cursor: pointer; padding: 4px 9px;
+  color: var(--cyan); font-size: 10px; font-weight: var(--fw-semibold); letter-spacing: 0.03em;
+}
+
+.qb-bulk-toolbar {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; margin-bottom: 10px;
+  border: 1px solid rgba(200,169,106,0.28); border-radius: var(--radius-md);
+  background: rgba(200,169,106,0.06);
+}
+.qb-bulk-count { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--fw-semibold); color: var(--text-90); font-size: var(--fs-sm); }
+
+.qb-tag-manager-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 52vh; overflow-y: auto; }
+.qb-tag-manager-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.qb-tag-manager-row:hover { background: rgba(230,226,214,0.04); }
+.qb-tag-manager-row.selected { border-color: rgba(200,169,106,0.4); background: rgba(200,169,106,0.06); }
+.qb-tag-manager-select { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; cursor: pointer; min-width: 0; }
+.qb-tag-manager-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb-tag-manager-count { flex: 0 0 auto; min-width: 2ch; text-align: right; }
+.qb-tag-merge-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(200,169,106,0.28); background: rgba(200,169,106,0.06);
+}
+
+/* Focus visibility for all new interactive chips/buttons. */
+.qb-facet-chip:focus-visible, .qb-tag-chip:focus-visible, .qb-tagmatch:focus-visible,
+.qb-preset-apply:focus-visible, .qb-preset-icon:focus-visible, .qb-count-clear:focus-visible {
+  outline: 2px solid var(--cyan); outline-offset: 2px;
+}
+
+/* Light theme softening. */
+:root[data-theme="light"] .qb-facet-chip, :root[data-theme="light"] .qb-tag-chip,
+:root[data-theme="light"] .qb-preset { background: rgba(67, 51, 31, 0.05); border-color: rgba(67, 51, 31, 0.12); }
+:root[data-theme="light"] .qb-facet-chip.on, :root[data-theme="light"] .qb-tag-chip.on,
+:root[data-theme="light"] .qb-preset.on { background: rgba(67, 51, 31, 0.12); }
+
+@media (max-width: 520px) {
+  .qb-facet-group { gap: 5px; }
+  .qb-bulk-toolbar { padding: 10px; }
+  .qb-count-line { font-size: var(--fs-tiny); }
+}

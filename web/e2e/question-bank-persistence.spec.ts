@@ -87,7 +87,7 @@ test("onboarding → import → block → repair → reload retains the full que
   expect(await page.locator(".surface-scroll").evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 
   const persisted = await readPersistedWorkspace(page);
-  expect(persisted.schemaVersion).toBe(32);
+  expect(persisted.schemaVersion).toBe(33);
   expect(persisted.questions).toHaveLength(1);
   expect(persisted.questions[0]).toMatchObject({
     correctKey: "B",
