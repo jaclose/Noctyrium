@@ -3,22 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0009` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft; initialized |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active; initialized |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0009-PRODUCT-LEXICON.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Existing approved terminology retains
-> authority where it conflicts.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Give every important AXOM concept one durable meaning so
 product decisions, interfaces, tests, and reviews speak the same language.
@@ -28,7 +21,7 @@ product decisions, interfaces, tests, and reviews speak the same language.
 **User Feeling:** “AXOM uses words consistently, so I always understand what
 will happen.”
 
-After approval, the original Product DNA above is immutable.
+The original Product DNA above is immutable.
 
 ---
 
@@ -55,6 +48,159 @@ This document is the canonical source for AXOM product terminology.
 Each definition records its definition, purpose, related terms, and
 cross-references. The implementation evidence used to initialize this lexicon
 does not make implementation details permanent product meaning.
+
+<a id="ax-0009-s1a"></a>
+
+## 1A. Continuity and institutional memory
+
+<a id="ax-0009-s1a-1"></a>
+
+### 1A.1 Continuity Engine
+
+**Definition:** A system designed to preserve understanding across people,
+time, technology, and changing assumptions. AXOM’s three preserved objects are
+Knowledge, Decisions, and Learning; its four continuity dimensions are
+Knowledge Continuity, Decision Continuity, Learning Continuity, and Product
+Continuity.
+
+**Purpose:** Name the institution behind the application and the durable
+outcome its governing and product systems exist to protect.
+
+**Related terms:** Knowledge, Decisions, Learning, Institution Test.
+
+**Cross-references:** [AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-2"></a>
+
+### 1A.2 Knowledge (preserved object)
+
+**Definition:** Definitions, concepts, relationships, and evidence-supported
+truth claims that remain understandable rather than merely stored.
+
+**Purpose:** Preserve what AXOM and its contributors know, together with enough
+context and provenance for that understanding to remain trustworthy.
+
+**Related terms:** Continuity Engine, Knowledge Continuity, Decisions.
+
+**Cross-references:** [AX-0002 C-002](AX-0002-CONSTITUTION.md#ax-0002-c-002),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-3"></a>
+
+### 1A.3 Decisions (preserved object)
+
+**Definition:** The intent, reasoning, tradeoffs, and evidence behind what was
+built, rejected, delayed, or changed—not merely the resulting outcome.
+
+**Purpose:** Let future contributors understand why a choice exists without
+repeating the original analysis.
+
+**Related terms:** Continuity Engine, Decision Continuity, Decision History.
+
+**Cross-references:** [AX-0002 C-008](AX-0002-CONSTITUTION.md#ax-0002-c-008),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-4"></a>
+
+### 1A.4 Learning (preserved object)
+
+**Definition:** What the learner understands, retains, and can build upon.
+Clicks, activity, and attempts may provide evidence of learning; they are not
+themselves Learning.
+
+**Purpose:** Keep AXOM oriented toward durable learner understanding rather
+than mistaking recorded interaction for educational progress.
+
+**Related terms:** Continuity Engine, Learning Continuity, Accuracy, Mastery.
+
+**Cross-references:** [Mastery §5.2](#ax-0009-s5-2),
+[AX-0002 C-002](AX-0002-CONSTITUTION.md#ax-0002-c-002),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-5"></a>
+
+### 1A.5 Knowledge Continuity
+
+**Definition:** The preservation of definitions, specifications,
+relationships, evidence, and institutional understanding so they remain
+discoverable and interpretable over time.
+
+**Purpose:** Prevent important understanding from becoming trapped in one
+person, conversation, implementation, or era.
+
+**Related terms:** Knowledge, Continuity Engine, Product Continuity.
+
+**Cross-references:** [AX-0002 C-008](AX-0002-CONSTITUTION.md#ax-0002-c-008),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-6"></a>
+
+### 1A.6 Decision Continuity
+
+**Definition:** The preservation of why a choice was made, rejected, delayed,
+or changed, including its intent, tradeoffs, evidence, and decision history.
+
+**Purpose:** Prevent future contributors from repeating settled reasoning or
+mistaking an old outcome for an unexplained accident.
+
+**Related terms:** Decisions, Continuity Engine, Knowledge Continuity.
+
+**Cross-references:** [AX-0001 Decision History field](AX-0001-MASTER-PRODUCT-BACKLOG.md#ax-0001-s3),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-7"></a>
+
+### 1A.7 Learning Continuity
+
+**Definition:** The learner’s ability to stop studying and later resume with
+their prior context, progress, evidence, and next steps intact, without
+reconstructing the learning journey from memory.
+
+**Purpose:** Let AXOM support learning across interruptions and long time
+horizons rather than only within one active session.
+
+**Related terms:** Learning, Study Session, evidence of learning, Learner
+Readiness.
+
+**Cross-references:** [Study Session §3.3](#ax-0009-s3-3),
+[AX-0002 C-003](AX-0002-CONSTITUTION.md#ax-0002-c-003),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-8"></a>
+
+### 1A.8 Product Continuity
+
+**Definition:** The ability for product and engineering work to continue
+coherently when original creators, contributors, tools, or assumptions are no
+longer available.
+
+**Purpose:** Preserve enough product intent, terminology, reasoning, and
+evidence for future contributors to continue AXOM without institutional
+archaeology.
+
+**Related terms:** Continuity Engine, Knowledge Continuity, Decision
+Continuity.
+
+**Cross-references:** [AX-0000](AX-0000-REGISTRY.md),
+[AX-0003](AX-0003-GOVERNANCE.md),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011).
+
+<a id="ax-0009-s1a-9"></a>
+
+### 1A.9 Institution Test
+
+**Definition:** The canonical belonging question: “Does this reduce the amount
+of important thinking that someone else will have to repeat?”
+
+**Purpose:** Test whether a proposed feature or artifact contributes to AXOM’s
+continuity mission. A negative answer requires scrutiny; it is not automatic
+rejection, acceptance, priority, or implementation authority.
+
+**Related terms:** Continuity Engine, Product Continuity, Product DNA.
+
+**Cross-references:** [AX-0002 C-010](AX-0002-CONSTITUTION.md#ax-0002-c-010),
+[AX-0002 C-011](AX-0002-CONSTITUTION.md#ax-0002-c-011),
+[AX-0001](AX-0001-MASTER-PRODUCT-BACKLOG.md).
 
 <a id="ax-0009-s2"></a>
 
@@ -552,3 +698,4 @@ Only the Product Owner approves a canonical definition under
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted canonical terminology for Workspace data, recovery, planning, Questions, metrics, and Daily Games for Product Owner acceptance. | Eliminate ambiguity before backlog reconstruction without self-approving product meaning. | `AX-0009` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the initialized Product Lexicon and added canonical continuity, preserved-object, and Institution Test definitions. | Give `C-011` one terminology source without creating the deferred continuity artifacts. | `AX-0002`, `AX-0009`, `AX-0050`–`AX-0054` |

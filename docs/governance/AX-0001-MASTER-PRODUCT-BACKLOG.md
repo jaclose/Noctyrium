@@ -3,21 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0001` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft; records pending reconstruction |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active; records pending reconstruction |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0001-MASTER-PRODUCT-BACKLOG.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Backlog reconstruction has not begun.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Move AXOM’s product memory out of conversations and into one
 ordered, owner-controlled artifact.
@@ -26,8 +20,8 @@ ordered, owner-controlled artifact.
 
 **User Feeling:** “The product remembers why every piece exists.”
 
-After approval, the original Product DNA above and each approved record’s
-original Product DNA are immutable. Evolution is appended to Decision History.
+The original Product DNA above and each approved record’s original Product DNA
+are immutable. Evolution is appended to Decision History.
 
 ---
 
@@ -371,3 +365,4 @@ approved scope.
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted schema, Product DNA, boards, workflows, templates, and contribution rules for Product Owner acceptance. | Replace fragmented conversational memory with one canonical product backlog without inferring approval. | `AX-0001` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the Master Product Backlog contract; the board ledger remains intentionally empty pending owner-led reconstruction. | Make the backlog AXOM’s active product-work authority without inferring or populating product direction. | `AX-0001` |

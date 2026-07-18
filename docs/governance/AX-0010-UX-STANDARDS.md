@@ -3,22 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0010` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft; initialized |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active; initialized |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0010-UX-STANDARDS.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Existing approved UX contracts retain
-> authority where they conflict.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Make every AXOM surface feel calm, premium, coherent, fast,
 and unmistakably part of one operating system.
@@ -28,7 +21,7 @@ and unmistakably part of one operating system.
 **User Feeling:** “I immediately understand what matters, and the interface
 stays out of my way.”
 
-After approval, the original Product DNA above is immutable.
+The original Product DNA above is immutable.
 
 ---
 
@@ -380,3 +373,4 @@ Passing automated checks alone does not establish UX verification.
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted AXOM hierarchy, typography, spacing, materials, component, state, navigation, motion, responsive, and accessibility standards for Product Owner acceptance. | Establish one durable UX language before backlog reconstruction without self-approving product intent. | `AX-0010` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the initialized visual, interaction, responsive, and accessibility standards. | Activate one durable UX language while leaving implementation primitives to the reserved Design System authority. | `AX-0010` |

@@ -3,21 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0000` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0000-REGISTRY.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Existing approved contracts retain authority.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Give AXOM one permanent, inspectable index for the documents
 that govern the product.
@@ -26,8 +20,8 @@ that govern the product.
 
 **User Feeling:** “AXOM remembers what governs it.”
 
-After approval, a later interpretation belongs in the amendment history; it
-never replaces the original Product DNA.
+The original Product DNA above is immutable. A later interpretation belongs in
+the amendment history; it never replaces the original Product DNA.
 
 ---
 
@@ -67,17 +61,22 @@ document it creates.
 
 | ID | Title | Owner | Canonical Path | Version | Approval Status | Approval Date | Current Status | Amendment History |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `AX-0000` | Governing Document Registry | AXOM Product Owner | [AX-0000-REGISTRY.md](AX-0000-REGISTRY.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft | [§6](#ax-0000-s6) |
-| `AX-0001` | Master Product Backlog | AXOM Product Owner | [AX-0001-MASTER-PRODUCT-BACKLOG.md](AX-0001-MASTER-PRODUCT-BACKLOG.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft; records pending reconstruction | [§11](AX-0001-MASTER-PRODUCT-BACKLOG.md#ax-0001-s11) |
-| `AX-0002` | Constitution | AXOM Product Owner | [AX-0002-CONSTITUTION.md](AX-0002-CONSTITUTION.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft | [§6](AX-0002-CONSTITUTION.md#ax-0002-s6) |
-| `AX-0003` | Governance | AXOM Product Owner | [AX-0003-GOVERNANCE.md](AX-0003-GOVERNANCE.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft | [§9](AX-0003-GOVERNANCE.md#ax-0003-s9) |
+| `AX-0000` | Governing Document Registry | AXOM Product Owner | [AX-0000-REGISTRY.md](AX-0000-REGISTRY.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active | [§6](#ax-0000-s6) |
+| `AX-0001` | Master Product Backlog | AXOM Product Owner | [AX-0001-MASTER-PRODUCT-BACKLOG.md](AX-0001-MASTER-PRODUCT-BACKLOG.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active; records pending reconstruction | [§11](AX-0001-MASTER-PRODUCT-BACKLOG.md#ax-0001-s11) |
+| `AX-0002` | Constitution | AXOM Product Owner | [AX-0002-CONSTITUTION.md](AX-0002-CONSTITUTION.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active | [§6](AX-0002-CONSTITUTION.md#ax-0002-s6) |
+| `AX-0003` | Governance | AXOM Product Owner | [AX-0003-GOVERNANCE.md](AX-0003-GOVERNANCE.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active | [§9](AX-0003-GOVERNANCE.md#ax-0003-s9) |
 | `AX-0004` | Design System | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved | Reserved 2026-07-18; no document history |
 | `AX-0005` | Architecture Principles | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved | Reserved 2026-07-18; no document history |
 | `AX-0006` | Release Policy | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved | Reserved 2026-07-18; no document history |
 | `AX-0007` | Review Standard | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved | Reserved 2026-07-18; no document history |
 | `AX-0008` | Testing Standard | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved | Reserved 2026-07-18; no document history |
-| `AX-0009` | Product Lexicon | AXOM Product Owner | [AX-0009-PRODUCT-LEXICON.md](AX-0009-PRODUCT-LEXICON.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft; initialized | [§8](AX-0009-PRODUCT-LEXICON.md#ax-0009-s8) |
-| `AX-0010` | UX Standards | AXOM Product Owner | [AX-0010-UX-STANDARDS.md](AX-0010-UX-STANDARDS.md) | `0.1.0` | Pending Product Owner acceptance | — | Draft; initialized | [§19](AX-0010-UX-STANDARDS.md#ax-0010-s19) |
+| `AX-0009` | Product Lexicon | AXOM Product Owner | [AX-0009-PRODUCT-LEXICON.md](AX-0009-PRODUCT-LEXICON.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active; initialized | [§8](AX-0009-PRODUCT-LEXICON.md#ax-0009-s8) |
+| `AX-0010` | UX Standards | AXOM Product Owner | [AX-0010-UX-STANDARDS.md](AX-0010-UX-STANDARDS.md) | `1.0.0` | Approved by Product Owner | 2026-07-18 | Active; initialized | [§19](AX-0010-UX-STANDARDS.md#ax-0010-s19) |
+| `AX-0050` | Continuity Index | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved; concept proposed | Owner-named 2026-07-18; charter deliberately deferred |
+| `AX-0051` | Memory Objects | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved; concept proposed | Owner-named 2026-07-18; charter deliberately deferred |
+| `AX-0052` | Knowledge Lifecycle | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved; concept proposed | Owner-named 2026-07-18; charter deliberately deferred |
+| `AX-0053` | Drift Detection | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved; concept proposed | Owner-named 2026-07-18; charter deliberately deferred |
+| `AX-0054` | Legacy Registry | AXOM Product Owner | Not yet assigned — registry entry only | — | Not approved | — | Reserved; concept proposed | Owner-named 2026-07-18; charter deliberately deferred |
 
 Registry-only reservations preserve identity without inventing policy. They do
 not become governing authority until the Product Owner charters, versions, and
@@ -105,8 +104,9 @@ When two documents appear to duplicate a rule, the document that owns the
 domain above is authoritative. The other document must link to it instead of
 creating a second definition.
 
-Ownership becomes normative when the corresponding document is approved. While
-an artifact remains a draft, existing approved contracts retain authority.
+An approved document is normative within its source-of-truth boundary. A
+registry-only reservation has no governing authority until the Product Owner
+charters, versions, and approves its substantive contents.
 
 <a id="ax-0000-s5"></a>
 
@@ -135,3 +135,4 @@ and the authority rules in
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted the governing-document registry and permanent ID reservations for Product Owner acceptance. | Create institutional memory and a single index for product governance without self-approving Product Owner decisions. | `AX-0000`–`AX-0010` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the six completed governing documents and reserved the owner-named `AX-0050` through `AX-0054` concepts without chartering them. | Activate the governing layer while deliberately deferring additional permanent artifacts until operating evidence justifies them. | `AX-0000`–`AX-0003`, `AX-0009`, `AX-0010`, `AX-0050`–`AX-0054` |

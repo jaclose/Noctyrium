@@ -3,21 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0003` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0003-GOVERNANCE.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Existing approved contracts retain authority.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Separate product authority, engineering execution, and
 independent verification so each decision has one accountable owner.
@@ -26,7 +20,7 @@ independent verification so each decision has one accountable owner.
 
 **User Feeling:** “AXOM changes deliberately, and every claim has an owner.”
 
-After approval, the original Product DNA above is immutable.
+The original Product DNA above is immutable.
 
 ---
 
@@ -210,3 +204,4 @@ override a newer approved governing amendment or backlog decision.
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted Product, Engineering, and Independent Verification authority and the checkpoint workflow for Product Owner acceptance. | Prevent scope inference and keep product meaning owner-controlled. | `AX-0003` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the Product, Engineering, and Independent Verification authority model and checkpoint workflow. | Activate explicit, non-overlapping authority for product decisions, execution, and independent review. | `AX-0003` |

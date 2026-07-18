@@ -3,21 +3,15 @@
 | Field | Value |
 | --- | --- |
 | Document ID | `AX-0002` |
-| Version | `0.1.0` |
+| Version | `1.0.0` |
 | Owner | AXOM Product Owner |
-| Approval Status | Pending Product Owner acceptance |
-| Approval Date | — |
-| Current Status | Draft |
+| Approval Status | Approved by Product Owner |
+| Approval Date | 2026-07-18 |
+| Current Status | Active |
 | Last Updated | 2026-07-18 |
 | Canonical Path | `docs/governance/AX-0002-CONSTITUTION.md` |
 
-> **Draft authority:** This owner-directed draft is non-normative until the
-> AXOM Product Owner accepts it. Existing approved contracts retain authority.
-
 ## Product DNA
-
-**Status:** Proposed. These fields become immutable when the Product Owner
-approves this document.
 
 **Design Intent:** Preserve the permanent principles that keep AXOM coherent
 across features, contributors, and time.
@@ -27,7 +21,7 @@ across features, contributors, and time.
 **User Feeling:** “AXOM protects my work, respects my attention, and keeps me
 in control.”
 
-After approval, the original Product DNA above is immutable.
+The original Product DNA above is immutable.
 
 ---
 
@@ -124,6 +118,32 @@ AXOM does not ship checkbox features. Every module and control must have a
 clear reason to exist, strengthen the product, and justify the attention it
 asks from the learner.
 
+<a id="ax-0002-c-011"></a>
+
+### C-011 — The Continuity Principle
+
+AXOM is a continuity engine. It exists to preserve
+[Knowledge](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-2),
+[Decisions](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-3), and
+[Learning](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-4) across people, time,
+technology, and changing assumptions. It protects them through
+[Knowledge Continuity](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-5),
+[Decision Continuity](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-6),
+[Learning Continuity](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-7), and
+[Product Continuity](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a-8).
+
+The first product question is: “What should the product remember?” Every
+proposed feature and artifact is evaluated by the Institution Test:
+“Does this reduce the amount of important thinking that someone else will
+have to repeat?” If not, question why it exists.
+
+Canonical definitions of the preserved objects, four continuities, and
+Institution Test live in
+[AX-0009 §1A](AX-0009-PRODUCT-LEXICON.md#ax-0009-s1a). The test is a product
+lens, not automatic acceptance or implementation authority; authorized work
+still requires an approved record in
+[AX-0001](AX-0001-MASTER-PRODUCT-BACKLOG.md).
+
 <a id="ax-0002-s3"></a>
 
 ## 3. Applying the Constitution
@@ -174,3 +194,4 @@ same commit.
 | Version | Date | Owner | Change | Rationale | Affected AX IDs |
 | --- | --- | --- | --- | --- | --- |
 | `0.1.0` | 2026-07-18 | Sol, at Product Owner direction | Drafted `C-001` through `C-010` and the append-only amendment process for Product Owner acceptance. | Preserve AXOM’s permanent product principles as institutional memory without inventing their precedence. | `AX-0002` |
+| `1.0.0` | 2026-07-18 | AXOM Product Owner | Ratified the Constitution and adopted `C-011 — The Continuity Principle`, including the Institution Test. | Define AXOM as a continuity engine that preserves Knowledge, Decisions, and Learning without granting any principle silent precedence. | `AX-0002`, `AX-0009` |
