@@ -61,6 +61,7 @@ import type { DailyCloseout } from "./closeout";
 import type { RecoveryPlan } from "./recovery";
 import { applyAttempt, normalizeQuestionTaxonomy, validateQuestionRecord, withCorrectAnswerText, type QuestionAttempt, type QuestionRecord } from "./questions";
 import { reconcileQuestionAnnotationSources } from "./questionAnnotations";
+import { deleteQuestionAttachmentBlobs, listQuestionAttachmentBlobKeys, runQuestionAttachmentMaintenance } from "./questionAttachments";
 import type { QuizBlock, QuizSession } from "./quiz";
 import type { QuestionSet, SourceDocument } from "./library";
 import { repairOrphans } from "./orphanRepair";
@@ -947,13 +948,20 @@ export const useStore = create<Store>()(
             ? reconcileQuestionAnnotationSources(withCorrectAnswerText({ ...q, ...patch, updatedAt: now() }))
             : q)),
         })),
-      removeQuestion: (id) => set((s) => ({
-        questions: (s.questions ?? []).filter((q) => q.id !== id),
-        questionSets: (s.questionSets ?? []).map((questionSet) => ({
-          ...questionSet,
-          questionIds: questionSet.questionIds.filter((questionId) => questionId !== id),
-        })),
-      })),
+      removeQuestion: (id) => set((s) => {
+        // Q2b-2: deleting a question deletes its attachment bytes (targeted,
+        // fire-and-forget; the post-restore sweep is the backstop).
+        const removed = (s.questions ?? []).find((q) => q.id === id);
+        const blobKeys = (removed?.attachments ?? []).map((attachment) => attachment.blobKey);
+        if (blobKeys.length) void deleteQuestionAttachmentBlobs(blobKeys).catch(() => {});
+        return {
+          questions: (s.questions ?? []).filter((q) => q.id !== id),
+          questionSets: (s.questionSets ?? []).map((questionSet) => ({
+            ...questionSet,
+            questionIds: questionSet.questionIds.filter((questionId) => questionId !== id),
+          })),
+        };
+      }),
       recordQuestionAttempt: (id, attempt) =>
         set((s) => ({
           questions: (s.questions ?? []).map((q) => (q.id === id ? applyAttempt(q, attempt) : q)),
@@ -1087,8 +1095,14 @@ export const useStore = create<Store>()(
         profile: normalizeProfile(state.profile),
         dailyWordPuzzles: normalizeDailyWordPuzzles(state.dailyWordPuzzles),
       })),
-      resetToSeed: () => set(() => ({ ...makeSeed() })),
-      startFresh: () =>
+      resetToSeed: () => {
+        // Wiping all questions orphans every stored image — purge the blob
+        // store so a "reset" leaves no screenshot bytes behind on disk.
+        void listQuestionAttachmentBlobKeys().then((keys) => keys.length ? deleteQuestionAttachmentBlobs(keys) : undefined).catch(() => {});
+        set(() => ({ ...makeSeed() }));
+      },
+      startFresh: () => {
+        void listQuestionAttachmentBlobKeys().then((keys) => keys.length ? deleteQuestionAttachmentBlobs(keys) : undefined).catch(() => {});
         set((s) => ({
           terms: [], courses: [], tracker: [], productivityTrackers: defaultProductivityTrackers(), tasks: [],
           // keep the curated shared drives even on a fresh start
@@ -1106,13 +1120,23 @@ export const useStore = create<Store>()(
           dailyRolloverEvents: [],
           // keep the user's profile + integrations catalog
           profile: normalizeProfile({ ...s.profile, name: isPlaceholderProfileName(s.profile.name) ? "" : s.profile.name }),
-        })),
+        }));
+      },
     }),
     {
       name: "noctyrium-state",
       version: SCHEMA_VERSION,
       storage: createJSONStorage(() => localVaultStorage),
       migrate: (persisted, fromVersion) => migratePersistedState(persisted, fromVersion),
+      onRehydrateStorage: () => (state) => {
+        // Startup orphan sweep — the ONLY safe moment to run it: rehydration is
+        // complete, so `state.questions` is authoritative (never the transient
+        // empty list that would nuke every blob). Bounded, non-destructive:
+        // referenced blobs are untouched; a missing blob is left for the UI.
+        if (state && Array.isArray(state.questions)) {
+          void runQuestionAttachmentMaintenance(state.questions).catch(() => {});
+        }
+      },
       partialize: (s) => {
         // persist data only — strip the action functions
         const {

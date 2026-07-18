@@ -4,6 +4,7 @@ import {
   BACKUP_STORE_NAME,
   DB_NAME,
   DB_VERSION as VAULT_DB_VERSION,
+  ensureVaultStores,
   STORE_NAME as VAULT_STORE_NAME,
 } from "./localVault";
 
@@ -224,14 +225,7 @@ function openVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, VAULT_DB_VERSION);
     let blocked = false;
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
-        request.result.createObjectStore(VAULT_STORE_NAME);
-      }
-      if (!request.result.objectStoreNames.contains(BACKUP_STORE_NAME)) {
-        request.result.createObjectStore(BACKUP_STORE_NAME);
-      }
-    };
+    request.onupgradeneeded = () => ensureVaultStores(request.result);
     request.onsuccess = () => {
       if (blocked) {
         request.result.close();
@@ -251,14 +245,7 @@ function openVault(): Promise<IDBDatabase> {
 function openExistingVault(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(VAULT_STORE_NAME)) {
-        request.result.createObjectStore(VAULT_STORE_NAME);
-      }
-      if (!request.result.objectStoreNames.contains(BACKUP_STORE_NAME)) {
-        request.result.createObjectStore(BACKUP_STORE_NAME);
-      }
-    };
+    request.onupgradeneeded = () => ensureVaultStores(request.result);
     request.onsuccess = () => {
       request.result.onversionchange = () => request.result.close();
       resolve(request.result);

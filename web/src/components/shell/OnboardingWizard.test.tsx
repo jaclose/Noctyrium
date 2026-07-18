@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { exportState } from "../../lib/backup";
+import { exportStateWithAttachments } from "../../lib/backup";
 import { evaluateDailySuccess } from "../../lib/dailySuccess";
 import { localDateKey } from "../../lib/dailyRollover";
 import { ONBOARDING_DRAFT_KEY } from "../../lib/onboardingProgress";
@@ -9,7 +9,7 @@ import { makeSeed } from "../../lib/seed";
 import { useStore } from "../../lib/store";
 import { OnboardingWizard } from "./OnboardingWizard";
 
-vi.mock("../../lib/backup", () => ({ exportState: vi.fn() }));
+vi.mock("../../lib/backup", () => ({ exportStateWithAttachments: vi.fn(() => Promise.resolve({ attachmentCount: 0, missingBlobKeys: [] })) }));
 
 const sessionValues = new Map<string, string>();
 const memorySession = {
@@ -26,7 +26,7 @@ beforeEach(() => {
   sessionStorage.clear();
   useStore.setState(makeSeed());
   useStore.getState().updateProfile({ onboarded: false, tourDone: undefined });
-  vi.mocked(exportState).mockClear();
+  vi.mocked(exportStateWithAttachments).mockClear();
 });
 
 afterEach(() => {
@@ -203,7 +203,7 @@ describe("OnboardingWizard", () => {
     expect(state.courses.some((course) => course.code === "Cardiology")).toBe(true);
     expect(onComplete).toHaveBeenCalledWith("questions");
     expect(sessionStorage.getItem(ONBOARDING_DRAFT_KEY)).toBeNull();
-    expect(exportState).not.toHaveBeenCalled();
+    expect(exportStateWithAttachments).not.toHaveBeenCalled();
   });
 
   it("never seeds or replaces course structure during a rerun", () => {
@@ -259,7 +259,7 @@ describe("OnboardingWizard", () => {
     continueSetup(3);
     fireEvent.click(screen.getByRole("button", { name: /Finish and create save file/ }));
 
-    expect(exportState).toHaveBeenCalledOnce();
-    expect(vi.mocked(exportState).mock.calls[0][0].profile.onboarded).toBe(true);
+    expect(exportStateWithAttachments).toHaveBeenCalledOnce();
+    expect(vi.mocked(exportStateWithAttachments).mock.calls[0][0].profile.onboarded).toBe(true);
   });
 });

@@ -7,7 +7,12 @@ import { ICON_SIZE } from "../../lib/iconSize";
 import { Modal, Field } from "../ui/Modal";
 import { GButton, Tag } from "../ui/primitives";
 import { useStore } from "../../lib/store";
-import { exportState, mergeStates, parseImport } from "../../lib/backup";
+import { exportStateWithAttachments, mergeStates, parseImport } from "../../lib/backup";
+import {
+  extractQuestionAttachmentPayloads,
+  restoreQuestionAttachmentPayloads,
+  runQuestionAttachmentMaintenance,
+} from "../../lib/questionAttachments";
 import { AiSettingsPanel } from "./AiSettingsPanel";
 import { DataHealthPanel } from "./DataHealthPanel";
 import { RecoveryStatusCard } from "./RecoveryStatusCard";
@@ -112,7 +117,24 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const next = parseImport(String(reader.result));
+        const rawText = String(reader.result);
+        const next = parseImport(rawText);
+        // Q2b-2: image bytes ride inside the exported file only; extract them
+        // here and restore into the blob store after the state lands.
+        let attachmentPayloads: ReturnType<typeof extractQuestionAttachmentPayloads> = [];
+        try {
+          attachmentPayloads = extractQuestionAttachmentPayloads(JSON.parse(rawText));
+        } catch {
+          attachmentPayloads = [];
+        }
+        const finishAttachments = (questions: typeof next.questions) => {
+          void restoreQuestionAttachmentPayloads(attachmentPayloads, questions ?? [])
+            .then(async ({ restored }) => {
+              await runQuestionAttachmentMaintenance(questions ?? []).catch(() => undefined);
+              if (restored) setMsg((current) => `${current} Restored ${restored} image attachment${restored === 1 ? "" : "s"}.`);
+            })
+            .catch(() => setMsg((current) => `${current} Some image attachments could not be restored.`));
+        };
         if (mode === "replace") {
           if (!confirm("Restore this backup? It REPLACES the current data on this device. Download a backup first if you want to keep both.")) {
             setMsg("Restore cancelled. No data changed.");
@@ -120,6 +142,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
           }
           store.replaceAll(next);
           setMsg(`Restored from ${file.name}. Your data is back.`);
+          finishAttachments(next.questions);
         } else {
           const merged = mergeStates(store, next);
           if (!confirm("Merge this backup into the current data? Records are combined by id (newer wins); your profile and current day stay as they are. Nothing is deleted.")) {
@@ -128,6 +151,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
           }
           store.replaceAll(merged);
           setMsg(`Merged ${file.name} into this device's data.`);
+          finishAttachments(merged.questions);
         }
       } catch (e) {
         setMsg((e as Error).message);
@@ -139,8 +163,13 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
   }
 
   function exportBackup() {
-    exportState(store);
-    setMsg("Downloaded your backup file.");
+    void exportStateWithAttachments(store).then(({ attachmentCount, missingBlobKeys }) => {
+      const missing = missingBlobKeys.length
+        ? ` ${missingBlobKeys.length} image attachment${missingBlobKeys.length === 1 ? "" : "s"} could not be read and were exported as metadata only.`
+        : "";
+      const included = attachmentCount ? ` Includes ${attachmentCount} image attachment${attachmentCount === 1 ? "" : "s"}.` : "";
+      setMsg(`Downloaded your backup file.${included}${missing}`);
+    });
   }
 
   function setAvatar(file: File) {

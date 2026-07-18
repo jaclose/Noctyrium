@@ -12,7 +12,7 @@ import {
   ListTree,
   ShieldCheck,
 } from "lucide-react";
-import { exportState } from "../../lib/backup";
+import { exportStateWithAttachments } from "../../lib/backup";
 import { focusOption, FOCUS_OPTIONS } from "../../lib/experience";
 import {
   clearOnboardingDraft,
@@ -190,7 +190,7 @@ export function OnboardingWizard({
     }
     addFirstCourse(draft.firstCourse);
     clearOnboardingDraft();
-    if (downloadBackup) exportState(useStore.getState());
+    if (downloadBackup) void exportStateWithAttachments(useStore.getState());
     onComplete?.(draft.launchTour ? "dashboard" : draft.destination);
   }
 

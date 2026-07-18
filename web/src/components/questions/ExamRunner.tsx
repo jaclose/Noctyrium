@@ -30,6 +30,7 @@ import { createTextAnnotationWithIntegrity, removeTextAnnotationById, type Quest
 import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
 import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
 import { QuestionNotesPanel } from "./QuestionNotesPanel";
+import { QuestionAttachmentsPanel } from "./QuestionAttachmentsPanel";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -857,6 +858,15 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
               // not just in the persisted store.
               setPool((current) => current.map((item) => item.id === question.id ? { ...item, notes: trimmed } : item));
               s.updateQuestion(question.id, { notes: trimmed });
+            }}
+          />
+          <QuestionAttachmentsPanel
+            questionId={question.id}
+            attachments={question.attachments ?? []}
+            onChange={(next) => {
+              const value = next.length ? next : undefined;
+              setPool((current) => current.map((item) => item.id === question.id ? { ...item, attachments: value } : item));
+              s.updateQuestion(question.id, { attachments: value });
             }}
           />
         </>

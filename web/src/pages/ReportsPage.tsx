@@ -5,7 +5,7 @@ import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitive
 import { dayTotals, todayGrade, gradeColor, gradeLabel, prettyDate } from "../lib/scoring";
 import { PASS_COLOR, PASS_LABEL, YIELD_LABEL, YIELD_TONE, passStage, scopeMastery } from "../lib/tracker";
 import { resolveTrack } from "../lib/tracks";
-import { exportState } from "../lib/backup";
+import { exportStateWithAttachments } from "../lib/backup";
 import { analyzePerformance } from "../lib/performance";
 import { calculateReadiness } from "../lib/energy";
 import type { PassStage } from "../lib/tracker";
@@ -213,7 +213,7 @@ export function ReportsPage() {
                   <button type="button" key={r} className={`filter-pill ${range === r ? "on" : ""}`} onClick={() => setRange(r)}>{r}d</button>
                 ))}
               </div>
-              <GButton size="sm" onClick={() => exportState(s)}><Download size={ICON_SIZE.body} /> Export</GButton>
+              <GButton size="sm" onClick={() => void exportStateWithAttachments(s)}><Download size={ICON_SIZE.body} /> Export</GButton>
             </div>} />
       </GlassCard>
 

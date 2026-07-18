@@ -121,7 +121,7 @@ test("onboarding → import → block → repair → reload retains the full que
       scopedWorkspaceInLocalStorage: Object.keys(localStorage).some((key) => key.startsWith(`${stateKey}:user:`)),
     };
   }, { dbName: STORAGE_KEYS.vaultDb, stateKey: STORAGE_KEYS.persistedState });
-  expect(storageEvidence.stores.sort()).toEqual(["backups", "state"]);
+  expect(storageEvidence.stores.sort()).toEqual(["backups", "questionAttachmentBlobs", "state"]);
   expect(storageEvidence.workspaceInLocalStorage).toBeNull();
   expect(storageEvidence.scopedWorkspaceInLocalStorage).toBe(false);
   expect(browserErrors).toEqual([]);

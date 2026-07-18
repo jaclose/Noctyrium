@@ -258,6 +258,69 @@ describe("portable backup safety", () => {
     expect(merged.questions[0].annotations?.find((annotation) => annotation.id === "second")?.status).toBe("needs-repair");
   });
 
+  it("round-trips attachment metadata in the portable state and merges by id with later updatedAt", () => {
+    const attachment = {
+      id: "attachment-1", fileName: "figure.png", mimeType: "image/png" as const, byteSize: 1024,
+      altText: "Coombs figure", createdAt: "2026-07-17T10:00:00.000Z", updatedAt: "2026-07-17T10:00:00.000Z",
+      blobKey: "attachment-1",
+    };
+    const state = makeSeed();
+    state.questions = [{
+      id: "q-attach", source: "manual", stem: "Stem", options: [],
+      status: "unseen", tags: [], attempts: [],
+      attachments: [attachment],
+      createdAt: "2026-07-17T10:00:00.000Z", updatedAt: "2026-07-17T10:00:00.000Z",
+    }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(restored.questions[0].attachments).toEqual([expect.objectContaining({ id: "attachment-1", altText: "Coombs figure" })]);
+
+    // Merge: same attachment id on both sides — later updatedAt wins, no duplicates.
+    const current = makeSeed();
+    const base = {
+      id: "q-attach", source: "manual" as const, stem: "Stem", options: [], status: "unseen" as const,
+      tags: [], attempts: [], createdAt: "2026-07-17T09:00:00.000Z", updatedAt: "2026-07-17T12:00:00.000Z",
+    };
+    current.questions = [{ ...base, attachments: [{ ...attachment, altText: "old", updatedAt: "2026-07-17T09:30:00.000Z" }] }];
+    const imported = { ...current, questions: [{ ...base, attachments: [{ ...attachment, altText: "newer", updatedAt: "2026-07-17T11:00:00.000Z" }] }] };
+    const merged = mergeStates(current, parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(imported) })));
+    const mergedAttachments = merged.questions.find((q) => q.id === "q-attach")?.attachments;
+    expect(mergedAttachments).toHaveLength(1);
+    expect(mergedAttachments?.[0]).toMatchObject({ id: "attachment-1", altText: "newer" });
+  });
+
+  it("loads a legacy schema-v32 question without attachments unchanged", () => {
+    const seed = makeSeed();
+    seed.questions = [{
+      id: "legacy-q", source: "manual", stem: "Old", options: [], status: "unseen",
+      tags: [], attempts: [], createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
+    }];
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(seed), schemaVersion: 32 }));
+    expect(restored.questions[0].attachments).toBeUndefined();
+  });
+
+  it("normalizes malformed attachment metadata on the replace/import path", () => {
+    // A hand-edited/corrupt backup restored via replace must go through
+    // normalizeQuestionAttachments — not straight into persisted state.
+    const malformed = {
+      id: "q-mal", source: "manual", stem: "S", options: [], status: "unseen", tags: [], attempts: [],
+      createdAt: "2026-07-17T10:00:00.000Z", updatedAt: "2026-07-17T10:00:00.000Z",
+      attachments: [
+        // no blobKey (must default to id); over-long altText (must cap to 500); wins by updatedAt
+        { id: "att-1", fileName: "x.png", mimeType: "image/png", byteSize: 2048, altText: "A".repeat(900), createdAt: "2026-07-17T10:00:00.000Z", updatedAt: "2026-07-17T10:00:00.000Z" },
+        // duplicate id, older — deduped away
+        { id: "att-1", fileName: "dup.png", mimeType: "image/png", byteSize: 2048, altText: "older", createdAt: "2020-01-01T00:00:00.000Z", updatedAt: "2020-01-01T00:00:00.000Z" },
+        // unsupported type — dropped entirely
+        { id: "bad", fileName: "v.svg", mimeType: "image/svg+xml", byteSize: 5, altText: "", createdAt: "x", updatedAt: "x" },
+      ],
+    };
+    const restored = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(makeSeed()), questions: [malformed] }));
+    const atts = restored.questions[0].attachments;
+    expect(atts).toHaveLength(1);
+    expect(atts?.[0].id).toBe("att-1");
+    expect(atts?.[0].blobKey).toBe("att-1");
+    expect(atts?.[0].altText.length).toBe(500);
+  });
+
   it("loads a legacy schema-v32 question without annotations unchanged", () => {
     const state = makeSeed();
     state.questions = [{

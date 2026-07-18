@@ -505,3 +505,53 @@
   .question-annotation-toolbar { align-items: stretch; }
   .question-annotation-toolbar .sub { flex-basis: 100%; }
 }
+
+/* ---- Question-note image attachments (Q2b-2) ---------------------------- */
+.question-attachments { display: grid; gap: 8px; }
+.question-attachments-head { display: flex; align-items: center; gap: 10px; }
+.question-attachments-empty { margin: 0; }
+.question-attachment-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.question-attachment {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px; border-radius: var(--radius-md);
+  border: 1px solid var(--hairline-soft); background: rgba(230, 226, 214, 0.025);
+}
+.question-attachment-thumb {
+  flex: 0 0 auto; width: 64px; height: 64px; padding: 0;
+  display: grid; place-items: center; overflow: hidden;
+  border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.25); cursor: zoom-in;
+}
+.question-attachment-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.question-attachment-thumb.is-missing {
+  cursor: default; color: var(--text-45); font-size: var(--fs-tiny); text-align: center; padding: 4px;
+}
+.question-attachment-meta { flex: 1 1 auto; min-width: 0; display: grid; gap: 3px; }
+.question-attachment-name {
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.question-attachment-alt { min-height: 32px; font-size: var(--fs-sm); }
+.question-attachment-lightbox {
+  position: fixed; inset: 0; z-index: 340;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px; background: rgba(8, 8, 10, 0.86);
+  -webkit-backdrop-filter: var(--blur-veil); backdrop-filter: var(--blur-veil);
+}
+.question-attachment-lightbox img {
+  max-width: min(92vw, 1100px); max-height: 76vh;
+  border-radius: var(--radius-md); border: 1px solid var(--hairline);
+  background: #000;
+}
+.question-attachment-lightbox-head {
+  display: flex; align-items: center; gap: 14px;
+  color: var(--bone);
+}
+.question-attachment-lightbox p { margin: 0; max-width: 70ch; text-align: center; }
+:root[data-theme="light"] .question-attachment-thumb { background: rgba(67, 51, 31, 0.08); }
+:root[data-theme="light"] .question-attachment-lightbox { background: rgba(40, 34, 24, 0.8); }
+:root[data-theme="light"] .question-attachment-lightbox-head { color: #fff; }
+@media (max-width: 520px) {
+  .question-attachment { flex-wrap: wrap; }
+  .question-attachment-meta { min-width: 60%; }
+}

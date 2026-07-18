@@ -5,7 +5,17 @@ import { STORAGE_KEYS } from "./brand";
 export const DB_NAME = STORAGE_KEYS.vaultDb;
 export const STORE_NAME = "state";
 export const BACKUP_STORE_NAME = "backups";
-export const DB_VERSION = 2;
+/** Question-note image bytes live here, keyed by blobKey — never in the JSON
+ * workspace state and never in localStorage (Q2b-2). */
+export const ATTACHMENT_STORE_NAME = "questionAttachmentBlobs";
+export const DB_VERSION = 3;
+
+/** Shared upgrade path: create any missing stores without touching existing data. */
+export function ensureVaultStores(db: IDBDatabase) {
+  if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+  if (!db.objectStoreNames.contains(BACKUP_STORE_NAME)) db.createObjectStore(BACKUP_STORE_NAME);
+  if (!db.objectStoreNames.contains(ATTACHMENT_STORE_NAME)) db.createObjectStore(ATTACHMENT_STORE_NAME);
+}
 const activeUserKey = (name: string) => `${name}:active-user`;
 const scopedStateKey = (name: string, userId: string) => `${name}:user:${userId}`;
 
@@ -25,10 +35,7 @@ function openVault(): Promise<IDBDatabase> {
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     let blocked = false;
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE_NAME)) req.result.createObjectStore(STORE_NAME);
-      if (!req.result.objectStoreNames.contains(BACKUP_STORE_NAME)) req.result.createObjectStore(BACKUP_STORE_NAME);
-    };
+    req.onupgradeneeded = () => ensureVaultStores(req.result);
     req.onsuccess = () => {
       if (blocked) {
         req.result.close();
@@ -52,10 +59,7 @@ function openExistingVault(): Promise<IDBDatabase> {
       return;
     }
     const req = indexedDB.open(DB_NAME);
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE_NAME)) req.result.createObjectStore(STORE_NAME);
-      if (!req.result.objectStoreNames.contains(BACKUP_STORE_NAME)) req.result.createObjectStore(BACKUP_STORE_NAME);
-    };
+    req.onupgradeneeded = () => ensureVaultStores(req.result);
     req.onsuccess = () => {
       req.result.onversionchange = () => req.result.close();
       resolve(req.result);

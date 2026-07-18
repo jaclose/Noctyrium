@@ -1018,3 +1018,38 @@ build ✓ · verify:question-imports (100% exact, falseReady 0, allACollapse fal
 verify:daily-games-bundle (isolated) · diff-check clean · schema **v32**. The
 unrelated WebdriverIO harness in the tree (package.json/lock, wdio.conf.ts,
 test/, artifacts/, .nvmrc, root tsconfig.json) was **excluded** from the commit.
+
+**Q2b-2 — persistent image attachments to notes (2026-07-18, Fable).** Question
+notes now carry image/screenshot attachments. Metadata is a tiny additive
+`attachments?: QuestionImageAttachment[]` array on `QuestionRecord` (workspace
+schema **stays v32** — no migration); the image **bytes** live in a dedicated
+IndexedDB object store `questionAttachmentBlobs` inside the existing vault DB,
+whose **version bumps 2→3** via a shared `ensureVaultStores()` helper wired into
+every `onupgradeneeded` (localVault + localBackup). Bytes never enter question
+records and never enter localStorage. Accepted types are **PNG/JPEG/WebP/GIF
+only** — SVG/PDF/everything else is rejected by declared MIME *and* a
+`createImageBitmap` decode probe (a renamed non-image fails). Named limits: **8
+MB/image, 10 attachments/question, 30 MB/question**. Creation supports the file
+picker, image-only clipboard paste (normal text paste is never intercepted), and
+multi-file selection in deterministic order where one failure never discards the
+successes; writes are atomic with blob-rollback if metadata persistence throws.
+The gallery (thumbnail, filename, size, editable alt text, remove, full-size
+lightbox) is keyboard-accessible with focus-return on Escape; alt text is
+user-authored only (blank → "Description not added"), never AI-generated. A
+bounded, non-destructive orphan sweep (`runQuestionAttachmentMaintenance`) runs
+only post-restore/merge and on question deletion — never per-render, never before
+rehydration. Portable backups **inline base64 payloads inside the exported file
+only** (key `questionAttachmentPayloads`), round-tripping exact bytes with
+dedup-by-id, later-`updatedAt`-wins, and same-id/different-bytes handled
+deterministically; legacy backups without payloads still load. Rendered journey
+(tutor block, real Chromium): two images uploaded (`2 images attached.`), SVG
+rejected (`AXOM accepts PNG, JPEG, WebP, and GIF images only.`), lightbox opens
+and Escape returns focus to its trigger, delete works, no 390px horizontal
+overflow, dark/light verified, and **no image bytes in localStorage**;
+reload-persistence confirmed at the storage layer (both blobs + metadata survive
+`reload()`, `questionAttachmentBlobs` present). Self-review fix: the thumbnail
+loader is now keyed on the set of blobs, so editing alt text no longer revokes
+and re-reads every object URL. OCR, drawing/markup, AI image interpretation,
+cloud upload, and account sync remain **out of scope**. Gates: typecheck 0 · lint
+0 · vitest (attachment suites 42/42) · build ✓ · schema **v32**, vault DB **v3**.
+The WebdriverIO/env harness was again **excluded** from the commit.

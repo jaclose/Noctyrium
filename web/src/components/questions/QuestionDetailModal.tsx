@@ -23,6 +23,7 @@ import { createTextAnnotationWithIntegrity, removeTextAnnotationById, type Quest
 import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
 import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
 import { QuestionNotesPanel } from "./QuestionNotesPanel";
+import { QuestionAttachmentsPanel } from "./QuestionAttachmentsPanel";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 
@@ -41,6 +42,7 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
   const [sourceKind, setSourceKind] = useState<QuestionEvidenceKind>("question");
   const [startedAt] = useState(() => Date.now());
   const [annotations, setAnnotations] = useState(() => question.annotations ?? []);
+  const [attachmentsList, setAttachmentsList] = useState(() => question.attachments ?? []);
   const annotationsRef = useRef(annotations);
   const [annotationStatus, setAnnotationStatus] = useState<string>();
   const [annotationTone, setAnnotationTone] = useState<QuestionAnnotationTone>("yellow");
@@ -401,6 +403,15 @@ export function QuestionDetailModal({ question, onClose }: { question: QuestionR
             questionId={question.id}
             value={question.notes}
             onSave={(notes) => s.updateQuestion(question.id, { notes: notes.trim() || undefined })}
+          />
+          <QuestionAttachmentsPanel
+            questionId={question.id}
+            attachments={attachmentsList}
+            onChange={(next) => {
+              const value = next.length ? next : undefined;
+              setAttachmentsList(next);
+              s.updateQuestion(question.id, { attachments: value });
+            }}
           />
         </>
       )}

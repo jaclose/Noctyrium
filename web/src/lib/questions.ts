@@ -10,6 +10,7 @@ import {
   reconcileQuestionAnnotationSources,
   type QuestionTextAnnotation,
 } from "./questionAnnotations";
+import { normalizeQuestionAttachments, type QuestionImageAttachment } from "./questionAttachments";
 
 export type QuestionStatus =
   | "unseen"
@@ -186,6 +187,8 @@ export interface QuestionRecord {
   notes?: string;
   /** Learner-owned overlays; imported source text remains immutable. */
   annotations?: QuestionTextAnnotation[];
+  /** Note image metadata only — bytes live in the questionAttachmentBlobs store. */
+  attachments?: QuestionImageAttachment[];
   attempts: QuestionAttempt[];
   attemptedAt?: string;
   reviewDueAt?: string;
@@ -472,6 +475,7 @@ export function validateQuestionRecord(input: unknown, now: Date = new Date()): 
       errorType,
       notes: cleanString(input.notes),
       annotations: normalizeQuestionAnnotations(input.annotations),
+      attachments: normalizeQuestionAttachments(input.attachments),
       attempts: Array.isArray(input.attempts) ? (input.attempts as QuestionAttempt[]) : [],
       attemptedAt: typeof input.attemptedAt === "string" ? input.attemptedAt : undefined,
       reviewDueAt: typeof input.reviewDueAt === "string" ? input.reviewDueAt : undefined,

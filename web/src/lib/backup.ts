@@ -11,6 +11,11 @@ import { BRAND, STORAGE_KEYS } from "./brand";
 import { userIdFromName } from "./userIdentity";
 import { normalizeQuestionTaxonomy } from "./questions";
 import { normalizeQuestionAnnotations, reconcileQuestionAnnotationSources } from "./questionAnnotations";
+import {
+  ATTACHMENT_EXPORT_KEY,
+  collectQuestionAttachmentPayloads,
+  normalizeQuestionAttachments,
+} from "./questionAttachments";
 import { DEFAULT_FOCUS_IDS, focusOption, normalizedFocusIds } from "./experience";
 import { isAcademicStageId, resolveTrack } from "./tracks";
 import { normalizeDailySuccessConfig } from "./dailySuccess";
@@ -39,12 +44,42 @@ export function toPortableState(state: NoctyriumState): NoctyriumState {
 }
 
 export function exportState(state: NoctyriumState) {
+  downloadBackupPayload({
+    _app: BRAND.productName,
+    _exported: new Date().toISOString(),
+    ...toPortableState(state),
+  });
+}
+
+/** Complete portable backup: workspace JSON plus question-note image bytes as
+ * base64 payloads that exist only inside the exported file (Q2b-2). Reports
+ * any attachment whose bytes were unavailable so the export is never silently
+ * incomplete. */
+export async function exportStateWithAttachments(
+  state: NoctyriumState,
+): Promise<{ attachmentCount: number; missingBlobKeys: string[] }> {
   const payload: Record<string, unknown> = {
     _app: BRAND.productName,
     _exported: new Date().toISOString(),
     ...toPortableState(state),
   };
+  let attachmentCount = 0;
+  let missingBlobKeys: string[];
+  try {
+    const collected = await collectQuestionAttachmentPayloads(state.questions ?? []);
+    if (collected.payloads.length) payload[ATTACHMENT_EXPORT_KEY] = collected.payloads;
+    attachmentCount = collected.payloads.length;
+    missingBlobKeys = collected.missingBlobKeys;
+  } catch {
+    // Blob store unavailable (private mode): export metadata-only, reported.
+    missingBlobKeys = (state.questions ?? []).flatMap((question) =>
+      (question.attachments ?? []).map((attachment) => attachment.blobKey));
+  }
+  downloadBackupPayload(payload);
+  return { attachmentCount, missingBlobKeys };
+}
 
+function downloadBackupPayload(payload: Record<string, unknown>) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -162,6 +197,7 @@ function mergeQuestionsById(
       ...newer,
       attempts: mergeQuestionAttempts(older.attempts, newer.attempts),
       annotations: mergeQuestionAnnotations(older.annotations, newer.annotations),
+      attachments: mergeQuestionAttachmentsMetadata(older.attachments, newer.attachments),
     });
   }
   const unkeyed = [...current, ...imported].filter((record) => !String(record.id ?? ""));
@@ -187,6 +223,14 @@ function reconcileAnnotationRecord(record: Record<string, unknown>): Record<stri
     options,
     annotations,
   });
+}
+
+function mergeQuestionAttachmentsMetadata(left: unknown, right: unknown) {
+  // Dedup by id; normalizeQuestionAttachments keeps the later updatedAt.
+  return normalizeQuestionAttachments([
+    ...(Array.isArray(left) ? left : []),
+    ...(Array.isArray(right) ? right : []),
+  ]);
 }
 
 function mergeQuestionAnnotations(left: unknown, right: unknown) {
@@ -369,6 +413,7 @@ function migrateImportedQuestion(value: unknown, fromVersion: number): unknown {
   if (!isRecord(value)) return value;
   const question = { ...value };
   question.annotations = normalizeQuestionAnnotations(question.annotations);
+  question.attachments = normalizeQuestionAttachments(question.attachments);
   if (fromVersion < 31) {
     question.taxonomy = normalizeQuestionTaxonomy(question.taxonomy, question) ?? {};
   }
