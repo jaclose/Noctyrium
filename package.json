@@ -11,14 +11,30 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node lib/api/*.ts api/*.ts",
-    "db:migration": "cat db/migrations/001_initial.sql"
+    "db:migration": "cat db/migrations/001_initial.sql",
+    "wdio": "wdio run ./wdio.conf.ts",
+    "audit:site": "wdio run ./wdio.conf.ts --spec ./test/specs/axom.audit.e2e.ts",
+    "audit:open": "open artifacts/site-audit/report.md",
+    "audit:folder": "open artifacts/site-audit",
+    "audit:full": "wdio run ./wdio.conf.ts --spec ./test/specs/axom.full-audit.e2e.ts",
+    "audit:full:open": "open artifacts/site-audit-v2/report.md",
+    "audit:full:folder": "open artifacts/site-audit-v2",
+    "audit:beta": "wdio run ./wdio.conf.ts --spec ./test/specs/axom.beta-audit.e2e.ts",
+    "audit:beta:open": "open artifacts/beta-audit-v3/report.md",
+    "audit:beta:folder": "open artifacts/beta-audit-v3"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.20.1",
+    "@wdio/cli": "^9.29.1",
+    "@wdio/globals": "^9.29.1",
+    "@wdio/local-runner": "^9.29.1",
+    "@wdio/mocha-framework": "^9.29.1",
+    "@wdio/spec-reporter": "^9.29.1",
+    "expect-webdriverio": "^5.7.0",
     "typescript": "^5.6.3"
   }
 }

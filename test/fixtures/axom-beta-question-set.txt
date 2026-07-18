@@ -1,0 +1,37 @@
+AXOM AUTOMATED BETA AUDIT QUESTION SET
+
+1. A 24-year-old healthy adult has a resting heart rate of 70 beats per minute. Which structure normally initiates each heartbeat?
+
+A. Atrioventricular node
+B. Bundle of His
+C. Purkinje fibers
+D. Sinoatrial node
+
+Correct Answer: D
+
+Explanation:
+The sinoatrial node is the normal pacemaker of the heart and initiates atrial depolarization.
+
+2. Which epidemiologic measure compares the probability of an outcome in an exposed group with the probability in an unexposed group?
+
+A. Odds ratio
+B. Relative risk
+C. Prevalence
+D. Specificity
+
+Correct Answer: B
+
+Explanation:
+Relative risk is the incidence or risk in the exposed group divided by the incidence or risk in the unexposed group.
+
+3. A highly sensitive screening test is especially useful when a negative result helps rule out disease. Which mnemonic describes this principle?
+
+A. SpPin
+B. SnNout
+C. PPVin
+D. NPVout
+
+Correct Answer: B
+
+Explanation:
+SnNout means a highly sensitive test, when negative, helps rule out disease.

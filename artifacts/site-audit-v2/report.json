@@ -1,0 +1,566 @@
+{
+  "startedAt": "2026-07-17T02:33:29.931Z",
+  "completedAt": "2026-07-17T02:35:31.442Z",
+  "baseUrl": "https://www.axom.info/",
+  "pages": [
+    {
+      "name": "Onboarding - Identity",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 681,
+      "buttons": 2,
+      "links": 0,
+      "fields": 4,
+      "dialogs": 1,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/onboarding-identity-desktop.png"
+    },
+    {
+      "name": "Onboarding - Step 2",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 709,
+      "buttons": 3,
+      "links": 0,
+      "fields": 6,
+      "dialogs": 1,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/onboarding-step-2-desktop.png"
+    },
+    {
+      "name": "Onboarding - Step 3",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 622,
+      "buttons": 4,
+      "links": 0,
+      "fields": 2,
+      "dialogs": 1,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/onboarding-step-3-desktop.png"
+    },
+    {
+      "name": "Onboarding - Step 4",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 697,
+      "buttons": 4,
+      "links": 0,
+      "fields": 1,
+      "dialogs": 1,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/onboarding-step-4-desktop.png"
+    },
+    {
+      "name": "Dashboard",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 2709,
+      "buttons": 59,
+      "links": 9,
+      "fields": 7,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/dashboard-desktop.png"
+    },
+    {
+      "name": "Profile & settings",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 3198,
+      "buttons": 68,
+      "links": 10,
+      "fields": 15,
+      "dialogs": 1,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/profile-settings-desktop.png"
+    },
+    {
+      "name": "Subscribe or unsubscribe sections",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 2789,
+      "buttons": 65,
+      "links": 9,
+      "fields": 7,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/subscribe-or-unsubscribe-sections-desktop.png"
+    },
+    {
+      "name": "Profile & settings - Mobile",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 4600,
+      "buttons": 93,
+      "links": 8,
+      "fields": 14,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotMobile": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/profile-settings-mobile-mobile.png"
+    },
+    {
+      "name": "Subscribe or unsubscribe sections - Mobile",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 2789,
+      "buttons": 65,
+      "links": 9,
+      "fields": 7,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotMobile": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/subscribe-or-unsubscribe-sections-mobile-mobile.png"
+    },
+    {
+      "name": "Dashboard",
+      "url": "https://www.axom.info/",
+      "title": "AXOM",
+      "bodyLength": 2647,
+      "buttons": 59,
+      "links": 9,
+      "fields": 7,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotDesktop": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/dashboard-desktop.png"
+    },
+    {
+      "name": "Dashboard - Mobile",
+      "url": "https://www.axom.info/#dashboard",
+      "title": "AXOM",
+      "bodyLength": 2647,
+      "buttons": 60,
+      "links": 9,
+      "fields": 7,
+      "dialogs": 0,
+      "duplicateIds": [],
+      "unnamedButtons": [],
+      "unlabeledFields": [],
+      "horizontalOverflow": 0,
+      "consoleErrors": [],
+      "runtimeErrors": [],
+      "status": "passed",
+      "screenshotMobile": "/Users/jd/Developer/AXOM/artifacts/site-audit-v2/screenshots/dashboard-mobile-mobile.png"
+    }
+  ],
+  "interactions": [
+    {
+      "page": "Onboarding step 1",
+      "control": "Continue",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Onboarding step 2",
+      "control": "Continue",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Onboarding step 3",
+      "control": "Continue",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Sidebar",
+      "control": "Profile & settings",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Study Methods, New",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#methods",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Settings",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Open Course Tracker",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#tracker",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Open Productivity",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#productivity",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Open Question Bank",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#questions",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Edit dashboard",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Customize Daily Check-In",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Profile & settings",
+      "control": "Customize Today's targets",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Sidebar",
+      "control": "Subscribe or unsubscribe sections",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Study Methods",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Settings",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Open Course Tracker",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#tracker",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Open Productivity",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#productivity",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Open Question Bank",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/#questions",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Edit dashboard",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Customize Daily Check-In",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Subscribe or unsubscribe sections",
+      "control": "Customize Today's targets",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Sidebar",
+      "control": "Dashboard",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Settings",
+      "beforeUrl": "https://www.axom.info/",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Open navigation menu",
+      "beforeUrl": "https://www.axom.info/#dashboard",
+      "afterUrl": "https://www.axom.info/#dashboard",
+      "status": "passed"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Open Course Tracker",
+      "beforeUrl": "https://www.axom.info/#dashboard",
+      "afterUrl": "https://www.axom.info/",
+      "status": "passed"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Open Productivity",
+      "beforeUrl": "https://www.axom.info/#tracker",
+      "afterUrl": "https://www.axom.info/#tracker",
+      "status": "skipped"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Open Question Bank",
+      "beforeUrl": "https://www.axom.info/#tracker",
+      "afterUrl": "https://www.axom.info/#questions",
+      "status": "passed"
+    },
+    {
+      "page": "Dashboard",
+      "control": "Edit dashboard",
+      "beforeUrl": "https://www.axom.info/#dashboard",
+      "afterUrl": "https://www.axom.info/#dashboard",
+      "status": "passed"
+    }
+  ],
+  "discoveredModules": [
+    {
+      "name": "Profile & settings",
+      "url": "https://www.axom.info/"
+    },
+    {
+      "name": "Subscribe or unsubscribe sections",
+      "url": "https://www.axom.info/"
+    },
+    {
+      "name": "Dashboard",
+      "url": "https://www.axom.info/"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Onboarding - Identity"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Onboarding - Identity"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Onboarding - Step 2"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Onboarding - Step 2"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Onboarding - Step 3"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Onboarding - Step 3"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Onboarding - Step 4"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Onboarding - Step 4"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Dashboard"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Dashboard"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Profile & settings"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Profile & settings"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Subscribe or unsubscribe sections"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Subscribe or unsubscribe sections"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Profile & settings - Mobile"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Profile & settings - Mobile"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Subscribe or unsubscribe sections - Mobile"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Subscribe or unsubscribe sections - Mobile"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Dashboard"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Dashboard"
+    },
+    {
+      "severity": "medium",
+      "category": "Accessibility",
+      "message": "No main landmark found",
+      "page": "Dashboard - Mobile"
+    },
+    {
+      "severity": "low",
+      "category": "Accessibility",
+      "message": "No visible H1 found",
+      "page": "Dashboard - Mobile"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 11,
+    "low": 11,
+    "info": 0,
+    "pagesAudited": 11,
+    "pagesPassed": 11,
+    "pagesFailed": 0,
+    "modulesDiscovered": 3,
+    "interactionsAttempted": 28,
+    "interactionsPassed": 27,
+    "interactionsFailed": 0,
+    "interactionsSkipped": 1
+  }
+}

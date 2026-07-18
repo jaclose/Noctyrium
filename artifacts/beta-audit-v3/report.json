@@ -1,0 +1,249 @@
+{
+  "startedAt": "2026-07-17T02:56:02.467Z",
+  "completedAt": "2026-07-17T03:12:14.787Z",
+  "baseUrl": "https://www.axom.info/",
+  "auditIdentity": {
+    "displayName": "AXOM Automated Beta Tester",
+    "course": "AXOM Audit Course",
+    "task": "AXOM Audit Task",
+    "intention": "Complete the AXOM automated beta audit",
+    "questionFixture": "/Users/jd/Developer/AXOM/test/fixtures/axom-beta-question-set.txt"
+  },
+  "summary": {
+    "totalScenarios": 11,
+    "passed": 1,
+    "failed": 10,
+    "blocked": 0,
+    "critical": 0,
+    "high": 10,
+    "medium": 0,
+    "low": 0,
+    "info": 0
+  },
+  "scenarios": [
+    {
+      "name": "Complete configured onboarding",
+      "feature": "Onboarding",
+      "status": "passed",
+      "startedAt": "2026-07-17T02:56:04.393Z",
+      "completedAt": "2026-07-17T02:56:21.431Z",
+      "durationMs": 17038,
+      "assertions": [
+        "Identity step accepted the audit display name",
+        "Dashboard displayed the onboarding name",
+        "Display name persisted after browser refresh",
+        "Onboarding completed and survived refresh"
+      ],
+      "evidence": [
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/complete-configured-onboarding-step-1-before.png",
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/complete-configured-onboarding-step-4.png",
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/complete-configured-onboarding-dashboard-after.png"
+      ],
+      "urlBefore": "about:blank",
+      "urlAfter": "https://www.axom.info/#tracker"
+    },
+    {
+      "name": "Render known hash routes",
+      "feature": "Navigation",
+      "status": "failed",
+      "startedAt": "2026-07-17T02:56:21.432Z",
+      "completedAt": "2026-07-17T03:00:07.360Z",
+      "durationMs": 225929,
+      "assertions": [
+        "No fatal application-error screen appeared",
+        "Dashboard route rendered expected content",
+        "No fatal application-error screen appeared",
+        "Course Tracker route rendered expected content",
+        "No fatal application-error screen appeared",
+        "Question Bank route rendered expected content",
+        "No fatal application-error screen appeared",
+        "Productivity route rendered expected content"
+      ],
+      "evidence": [
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/render-known-hash-routes-dashboard.png",
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/render-known-hash-routes-course-tracker.png",
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/render-known-hash-routes-question-bank.png",
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/render-known-hash-routes-productivity.png"
+      ],
+      "urlBefore": "https://www.axom.info/#tracker",
+      "error": "Error: Command browsingContext.navigate with id 81 (with the following parameter: {\"context\":\"52EF3AF5254CD92FD9289B3225B84837\",\"url\":\"https://www.axom.info/#journal\",\"wait\":\"complete\"}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Create persistent course",
+      "feature": "Course Tracker",
+      "status": "failed",
+      "startedAt": "2026-07-17T02:58:21.441Z",
+      "completedAt": "2026-07-17T03:00:21.790Z",
+      "durationMs": 120349,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#productivity",
+      "error": "Error: Command script.callFunction with id 82 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Create persistent task",
+      "feature": "Productivity",
+      "status": "failed",
+      "startedAt": "2026-07-17T02:59:51.484Z",
+      "completedAt": "2026-07-17T03:01:51.601Z",
+      "durationMs": 120117,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#productivity",
+      "error": "Error: Command script.callFunction with id 85 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Persist daily intention",
+      "feature": "Dashboard",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:01:21.508Z",
+      "completedAt": "2026-07-17T03:03:21.932Z",
+      "durationMs": 120426,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#productivity",
+      "error": "Error: Command script.callFunction with id 87 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Exercise timer lifecycle",
+      "feature": "Timer",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:02:21.518Z",
+      "completedAt": "2026-07-17T03:04:21.906Z",
+      "durationMs": 120388,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#productivity",
+      "error": "Error: Command script.callFunction with id 88 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Import known question set",
+      "feature": "Question Bank",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:03:51.538Z",
+      "completedAt": "2026-07-17T03:05:14.687Z",
+      "durationMs": 83149,
+      "assertions": [],
+      "evidence": [
+        "/Users/jd/Developer/AXOM/artifacts/beta-audit-v3/screenshots/import-known-question-set-failure.png"
+      ],
+      "urlBefore": "https://www.axom.info/#productivity",
+      "error": "Error: Command script.callFunction with id 91 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Run quiz and validate feedback",
+      "feature": "Question Bank",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:05:14.692Z",
+      "completedAt": "2026-07-17T03:07:14.725Z",
+      "durationMs": 120034,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#journal",
+      "error": "Error: Command script.callFunction with id 94 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Open calculator and reading controls",
+      "feature": "Question Bank",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:07:14.707Z",
+      "completedAt": "2026-07-17T03:09:14.842Z",
+      "durationMs": 120137,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#journal",
+      "error": "Error: Command script.callFunction with id 96 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Persist appearance setting",
+      "feature": "Settings",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:08:14.717Z",
+      "completedAt": "2026-07-17T03:10:14.804Z",
+      "durationMs": 120087,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#journal",
+      "error": "Error: Command script.callFunction with id 98 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    },
+    {
+      "name": "Navigate core mobile interface",
+      "feature": "Responsive UI",
+      "status": "failed",
+      "startedAt": "2026-07-17T03:09:44.737Z",
+      "completedAt": "2026-07-17T03:11:44.832Z",
+      "durationMs": 120095,
+      "assertions": [],
+      "evidence": [],
+      "urlBefore": "https://www.axom.info/#journal",
+      "error": "Error: Command script.callFunction with id 100 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"string\\\"?event.reason:JSON.stringify(event.reason)}catch{message=String(event.reason)}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.unhandledRejections.push(message)})}/* __wdio script end__ */).apply(this, arguments);\\n}\",\"awaitPromise\":true,\"arguments\":[],\"target\":{\"context\":\"52EF3AF5254CD92FD9289B3225B84837\"}}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "high",
+      "feature": "Navigation",
+      "message": "Error: Command browsingContext.navigate with id 81 (with the following parameter: {\"context\":\"52EF3AF5254CD92FD9289B3225B84837\",\"url\":\"https://www.axom.info/#journal\",\"wait\":\"complete\"}) timed out\n    at Timeout._onTimeout (file:///Users/jd/Developer/AXOM/node_modules/webdriver/build/node.js:360:16)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)",
+      "url": "https://www.axom.info/#productivity"
+    },
+    {
+      "severity": "high",
+      "feature": "Course Tracker",
+      "message": "Error: Command script.callFunction with id 82 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#productivity"
+    },
+    {
+      "severity": "high",
+      "feature": "Productivity",
+      "message": "Error: Command script.callFunction with id 85 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#productivity"
+    },
+    {
+      "severity": "high",
+      "feature": "Dashboard",
+      "message": "Error: Command script.callFunction with id 87 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#productivity"
+    },
+    {
+      "severity": "high",
+      "feature": "Timer",
+      "message": "Error: Command script.callFunction with id 88 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#productivity"
+    },
+    {
+      "severity": "high",
+      "feature": "Question Bank",
+      "message": "Error: Command script.callFunction with id 91 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#journal"
+    },
+    {
+      "severity": "high",
+      "feature": "Question Bank",
+      "message": "Error: Command script.callFunction with id 94 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#journal"
+    },
+    {
+      "severity": "high",
+      "feature": "Question Bank",
+      "message": "Error: Command script.callFunction with id 96 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#journal"
+    },
+    {
+      "severity": "high",
+      "feature": "Settings",
+      "message": "Error: Command script.callFunction with id 98 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"s",
+      "url": "https://www.axom.info/#journal"
+    },
+    {
+      "severity": "high",
+      "feature": "Responsive UI",
+      "message": "Error: Command script.callFunction with id 100 (with the following parameter: {\"functionDeclaration\":\"function anonymous(\\n) {\\nreturn (/* __wdio script__ */()=>{const auditWindow=window;if(auditWindow.__AXOM_BETA_AUDIT_RUNTIME__){return}auditWindow.__AXOM_BETA_AUDIT_RUNTIME__={consoleErrors:[],runtimeErrors:[],unhandledRejections:[]};const originalConsoleError=console.error.bind(console);console.error=(...args)=>{const message=args.map(item=>{if(typeof item===\\\"string\\\")return item;try{return JSON.stringify(item)}catch{return String(item)}}).join(\\\" \\\");auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.consoleErrors.push(message);originalConsoleError(...args)};window.addEventListener(\\\"error\\\",event=>{auditWindow.__AXOM_BETA_AUDIT_RUNTIME__?.runtimeErrors.push(`${event.message||\\\"Unknown runtime error\\\"} at ${event.filename||\\\"unknown\\\"}:${event.lineno||0}`)});window.addEventListener(\\\"unhandledrejection\\\",event=>{let message=\\\"Unhandled promise rejection\\\";try{message=typeof event.reason===\\\"",
+      "url": "https://www.axom.info/#journal"
+    }
+  ],
+  "runtime": {
+    "consoleErrors": [],
+    "runtimeErrors": [],
+    "unhandledRejections": []
+  }
+}
