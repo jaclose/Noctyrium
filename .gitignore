@@ -53,3 +53,6 @@ Medical School/
 active_study_day.txt
 !CHANGELOG.md
 !README.md
+
+# AXOM-0002b.1: archival evidence is never ignored (durability, AXOM-0002b finding A2)
+!docs/product-memory/**/*.csv

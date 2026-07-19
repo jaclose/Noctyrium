@@ -1,0 +1,620 @@
+{
+  "generatedAt": "2026-07-17T02:21:17.304Z",
+  "auditedShas": {
+    "originMain": "26707a8713105746c641846bf51b3f92f000b260",
+    "detached": "26707a8713105746c641846bf51b3f92f000b260",
+    "liveHead": "26707a8713105746c641846bf51b3f92f000b260"
+  },
+  "files": [
+    {
+      "file": "AXOM-ACCESSIBILITY-AUDIT.md",
+      "size": 2366,
+      "sha256": "98a1a50ac6a9f9d8cc001963c76bd85e5befefe3ca2c79576b3b02598f9e1ea7"
+    },
+    {
+      "file": "AXOM-DEFERRED-FEATURE-LEDGER.csv",
+      "size": 4969,
+      "sha256": "f75979a993d6388b87a87068fcf935c219da79117bc1c95ecadad76c1980ed83"
+    },
+    {
+      "file": "AXOM-FEATURE-MATRIX.csv",
+      "size": 14834,
+      "sha256": "daf53a37ea091eab73ebf3fa1a0b75530220a70cd9648fafc588fa432a86f844"
+    },
+    {
+      "file": "AXOM-FINDINGS.csv",
+      "size": 5742,
+      "sha256": "544bd56ad0698261f597b2822d18e16e4cb1dde6ad02b21337b01426462440e3"
+    },
+    {
+      "file": "AXOM-FULL-REPOSITORY-AND-PRODUCT-AUDIT.md",
+      "size": 19207,
+      "sha256": "2854080ae1580f6fdd55a28963ffe5827d8bc28bd5a55b96e00fdbd7e02f0943"
+    },
+    {
+      "file": "AXOM-PERFORMANCE-AUDIT.md",
+      "size": 1613,
+      "sha256": "e2678363cd34bb346fbac275bc18306109fef4ccc2223c0ff21f71482db7ac7c"
+    },
+    {
+      "file": "AXOM-PRE-ALPHA-RELEASE-CHECKLIST.md",
+      "size": 2273,
+      "sha256": "3f5e323a015173907283bc99fb472c674a6339d09cf62d46d90decf43a6219b0"
+    },
+    {
+      "file": "AXOM-QUALITY-GATES.md",
+      "size": 2542,
+      "sha256": "e56f5c9035f0b70309f96d249eaab65230b6a90cc0326ddbc012a0182bdb774c"
+    },
+    {
+      "file": "AXOM-ROUTE-TEST-MATRIX.csv",
+      "size": 22118,
+      "sha256": "bb7078167326b443bce50bd13c0f67157bebb23bb79fbc9351ad5aa7f9c4d788"
+    },
+    {
+      "file": "AXOM-STORAGE-AND-BACKUP-MAP.md",
+      "size": 3983,
+      "sha256": "e361353128c984fac28c56906a7937b0fe84b58b0bdb34fc3bf23358765fd4ce"
+    },
+    {
+      "file": "logs/browser-audit.json",
+      "size": 50111,
+      "sha256": "9ca8539f45b19f466c72aba7e84fc2e7c7839db2223cee6c581039120c0ac89e"
+    },
+    {
+      "file": "logs/build-web-standalone.log",
+      "size": 423,
+      "sha256": "6fd1efaae9c5c76414512a46ecfcd131dc32345f3f5019956a24fb097389e862"
+    },
+    {
+      "file": "logs/build.log",
+      "size": 2297,
+      "sha256": "7c3e2c332498f55f375dbb02d644064309f038898507ae440e5f8e6d445e462b"
+    },
+    {
+      "file": "logs/git-diff-check-detached.log",
+      "size": 100,
+      "sha256": "778a9cdc20fe28234f25987a722eaf7a3140073c948de0efeaf8928e7863a9ef"
+    },
+    {
+      "file": "logs/git-diff-check.log",
+      "size": 7505,
+      "sha256": "c4bdd213546d4f0cbd6f4053c21f10aac658733cfc3a50282dca41c2146a1856"
+    },
+    {
+      "file": "logs/lint.log",
+      "size": 119,
+      "sha256": "22591c00ff536678562b6bea2b33b6f2a426482da527a78c846fb6e229aa14fe"
+    },
+    {
+      "file": "logs/npm-ci-root.log",
+      "size": 178,
+      "sha256": "b0a84fc26764bbf6d3d0b0912069c58bbe014ee60e3730b1301eb9b384b9356f"
+    },
+    {
+      "file": "logs/npm-ci-web-after-root.log",
+      "size": 575,
+      "sha256": "90f14ea03f7071b6a0d8c6910ec5d9b3e96407e360e78e391fca370688013f60"
+    },
+    {
+      "file": "logs/npm-ci-web-standalone.log",
+      "size": 575,
+      "sha256": "faec2b6ac87df25fbee5dfbcb49697eda7113e2ff23305fc006a1f2db6b47e2c"
+    },
+    {
+      "file": "logs/test-e2e.log",
+      "size": 1216,
+      "sha256": "0eee245bcea403de3760caa4af202b02f3bd4faf12f59ea043dd618fafcd9b4e"
+    },
+    {
+      "file": "logs/test.log",
+      "size": 6006,
+      "sha256": "847d2d05f9fbce9a41d57f3892b1dc5b346b290f22a675c67a9394912738a8fd"
+    },
+    {
+      "file": "logs/typecheck-web-standalone.log",
+      "size": 371,
+      "sha256": "9445385966dfc14c29268e41af1444896df5d2f1e9c6dcf447c86ed9c4e27523"
+    },
+    {
+      "file": "logs/typecheck.log",
+      "size": 128,
+      "sha256": "d9c0e0b4ce2596cc3e51362969cad19b933bfbc74a87f8a10e44e52f4488a292"
+    },
+    {
+      "file": "logs/verify-daily-games-bundle.log",
+      "size": 524,
+      "sha256": "d171742960e9c82c564c4663cd9cfa4f48f02f3705986cf998958123fbd3174a"
+    },
+    {
+      "file": "logs/verify-daily-games-offline.log",
+      "size": 425,
+      "sha256": "57d6d2e0667c1d95a2257e0434ec27138d6823f70ba776dcbe9dc463c6c6c4a3"
+    },
+    {
+      "file": "logs/verify-question-imports.log",
+      "size": 7585,
+      "sha256": "a4732601f200988629cdbd3cf5cb2e49c679272360bf6bc5fa78ea5b8a54623f"
+    },
+    {
+      "file": "screenshots/desktop--about.png",
+      "size": 1063934,
+      "sha256": "e6125640f52454064a50f39a1ad1b43201691d65ecabef00ff0d693190a0b179"
+    },
+    {
+      "file": "screenshots/desktop--activity.png",
+      "size": 721596,
+      "sha256": "874c033d8273ec69af04865854603e61593b4fd809b33af40e0b2584fcf255a6"
+    },
+    {
+      "file": "screenshots/desktop--anki.png",
+      "size": 727506,
+      "sha256": "c9d541f67217099aaa43b3e73023e1ee8851168745d24e29e0514306d9052891"
+    },
+    {
+      "file": "screenshots/desktop--appchecker.png",
+      "size": 848841,
+      "sha256": "c8054d3dac1482f0fb6afaa3dc5268d2c32cf523ab16c87eff0051aee2b113cb"
+    },
+    {
+      "file": "screenshots/desktop--casper.png",
+      "size": 884068,
+      "sha256": "7172874fdc7d12570a6c8d5123a619c0e6cb4bfbdb7f2392648bd6d835e6b7a4"
+    },
+    {
+      "file": "screenshots/desktop--courses.png",
+      "size": 733531,
+      "sha256": "476c457d4f026de5c98b8d88e62f4934441f507292d5cad57d0cfe2f9b15eec1"
+    },
+    {
+      "file": "screenshots/desktop--daily-word.png",
+      "size": 701132,
+      "sha256": "4991fb3caa04334df09a6ed3d0b64e4b0bcdc4a5064d6acdc982fc6111678c3a"
+    },
+    {
+      "file": "screenshots/desktop--dashboard.png",
+      "size": 784574,
+      "sha256": "80d27dc75cd1fa8deaf5d526b89f158f8f2147d75f0b39d526b5f74834dc5903"
+    },
+    {
+      "file": "screenshots/desktop--dat.png",
+      "size": 882010,
+      "sha256": "527f9561e272b5958d3acfc1721361449cb1d2f51cf9801c4274bec9e25153e4"
+    },
+    {
+      "file": "screenshots/desktop--dedicated.png",
+      "size": 736087,
+      "sha256": "2ab6f8e56b8f0d0b4670308dd06bd8be2fd0948fc39a6cccadb38efbf130f3d1"
+    },
+    {
+      "file": "screenshots/desktop--doctordle.png",
+      "size": 700559,
+      "sha256": "adaa90effb62ebb98f1a4aa00b085fc172bac6667183f379f6bb052b678a12bd"
+    },
+    {
+      "file": "screenshots/desktop--folders.png",
+      "size": 719097,
+      "sha256": "55b8deaea4a5084b759fa88af3a3fc0a2dcaeb0567826c986581cf7be2af5d17"
+    },
+    {
+      "file": "screenshots/desktop--habits.png",
+      "size": 661857,
+      "sha256": "a41b45398ca4fef312c310db2729be354b1947d7a77329674d48ef85bf3e3ebf"
+    },
+    {
+      "file": "screenshots/desktop--help.png",
+      "size": 879031,
+      "sha256": "76f31551e1d2d75f6efae4a62dc2bc8d4f5c6c27af78ba4aceaf80bb1f43a1a6"
+    },
+    {
+      "file": "screenshots/desktop--integrations.png",
+      "size": 874546,
+      "sha256": "0aed932865219dc2c278aba2cf85e0af542df8cce66a922d6610d28a3359a13f"
+    },
+    {
+      "file": "screenshots/desktop--journal.png",
+      "size": 822379,
+      "sha256": "5a7a3a238dec3b8d2ec698f1033a2dca4dbff7890225a6e43b49d0825f1115a2"
+    },
+    {
+      "file": "screenshots/desktop--leaderboards.png",
+      "size": 756105,
+      "sha256": "9b30f4116e2dcd39dcc545abd031022897edfbf4c57e4ef8e951482b3f56465c"
+    },
+    {
+      "file": "screenshots/desktop--mcat.png",
+      "size": 885254,
+      "sha256": "d880cfb580687df319b445e1d777d463ec0bcd44b222b940e4289135b249d0f9"
+    },
+    {
+      "file": "screenshots/desktop--methods.png",
+      "size": 952904,
+      "sha256": "68131a24406f521b47683456def23cda22d2835965fe5761d2e442b3e747e995"
+    },
+    {
+      "file": "screenshots/desktop--premed-log.png",
+      "size": 852293,
+      "sha256": "ce9ef863e52ae1272bb58a90ecb9d10a863efe7f4b14daf890a275d8c3f350fc"
+    },
+    {
+      "file": "screenshots/desktop--premed.png",
+      "size": 880919,
+      "sha256": "10cb0a6a5402a3ad8bf029280b4cc49f490f2aa9cc5ffbdecf5fd2ef756d16b0"
+    },
+    {
+      "file": "screenshots/desktop--productivity.png",
+      "size": 788092,
+      "sha256": "6ec96371e7af6a3d234dd33b002ccc095e8bfa7210574731b6fecf5238e7b036"
+    },
+    {
+      "file": "screenshots/desktop--prompts.png",
+      "size": 760957,
+      "sha256": "b5bf6c18e9cbb555a9c969f6d279dfbfb2711db3722282f0862cfb0ec181148e"
+    },
+    {
+      "file": "screenshots/desktop--questions.png",
+      "size": 778461,
+      "sha256": "30354e165c046a38934f2db39320a055ec364ed10017bc976dd8a252f4d4e9cd"
+    },
+    {
+      "file": "screenshots/desktop--reports.png",
+      "size": 834560,
+      "sha256": "e6960acafb3df78cac8fa17a86d50d114d6cc0365542303f4cd361b662ff1355"
+    },
+    {
+      "file": "screenshots/desktop--resources.png",
+      "size": 956380,
+      "sha256": "3513aa7a2429fa450e867359d6956aa4dbacda5e5edfb96f52a393657eb461cd"
+    },
+    {
+      "file": "screenshots/desktop--shelf.png",
+      "size": 878636,
+      "sha256": "75bde1832c26ad510a80b68fbe2dbc9f40a85278c5ad6d954fe442f85f6591c5"
+    },
+    {
+      "file": "screenshots/desktop--step.png",
+      "size": 739787,
+      "sha256": "26c8731eb4472b7b2d48d8dc4d6a03eda15cb4d6a6db683df4f009007ca7e555"
+    },
+    {
+      "file": "screenshots/desktop--step2.png",
+      "size": 734302,
+      "sha256": "6e78bf1921fde4b3662afdd4ffde275b0b5c3856453bae377aec638fdd70e256"
+    },
+    {
+      "file": "screenshots/desktop--step3.png",
+      "size": 733002,
+      "sha256": "c38f79995027513ab05baa9503e3351a1f4b77367b3c9721588fa610a4e2cc2c"
+    },
+    {
+      "file": "screenshots/desktop--tasks.png",
+      "size": 700336,
+      "sha256": "19095345a908f2ea134ddba26900380ccbfa00bcfa0ec8d16851dfe1ad0a3d12"
+    },
+    {
+      "file": "screenshots/desktop--tracker.png",
+      "size": 949772,
+      "sha256": "98fe0ddcb06b2fd32b79bda584a9a82af3446ee7d9bb9ea0bdfd5a16c8cb02eb"
+    },
+    {
+      "file": "screenshots/mobile--about.png",
+      "size": 311416,
+      "sha256": "bc868cc272bd292c8598770c1b5dbcb3faa66579058bea343938e6c061751293"
+    },
+    {
+      "file": "screenshots/mobile--activity.png",
+      "size": 229583,
+      "sha256": "a4c097725db3c5f37c31cd7759adb7e8fbbbd88b8ad11e0b76f96dbcb1bf6a2a"
+    },
+    {
+      "file": "screenshots/mobile--anki.png",
+      "size": 242630,
+      "sha256": "1a63694a82c79f03b3cf2ed070abc740909c9e0a8db4220aa9c84bb0528e39a3"
+    },
+    {
+      "file": "screenshots/mobile--appchecker.png",
+      "size": 259418,
+      "sha256": "5667c8064bd3f52fcd2b788adac891b248dd09937a64d7312dd70e2937c0e462"
+    },
+    {
+      "file": "screenshots/mobile--casper.png",
+      "size": 252803,
+      "sha256": "ed484645bbabeba9fc737fade037f6be7c22cd0107607f906b4d12e5f4c50cb5"
+    },
+    {
+      "file": "screenshots/mobile--courses.png",
+      "size": 220373,
+      "sha256": "6b88b1541bbfc43607408a2cde4cd6cdd9196738c6b778e0f45ce87d75d63157"
+    },
+    {
+      "file": "screenshots/mobile--daily-word.png",
+      "size": 231610,
+      "sha256": "ea7cec9a8afb45990c9f18529dbc0af8de9a2b6c9daf3e81017df3e8af58f232"
+    },
+    {
+      "file": "screenshots/mobile--dashboard.png",
+      "size": 229816,
+      "sha256": "713a34f0165afc168201c9b4ea745624884f66ac11da0852f4553c50ab6308b8"
+    },
+    {
+      "file": "screenshots/mobile--dat.png",
+      "size": 250348,
+      "sha256": "dabac97f26947edb0e8039b7cf49eb344c6d681bda18155af6e5f4f4ce1b47bd"
+    },
+    {
+      "file": "screenshots/mobile--dedicated.png",
+      "size": 248169,
+      "sha256": "317aa143e826f1b7d3c755789fb060575fffd4fcd74fc95c3f78817ddaafc20b"
+    },
+    {
+      "file": "screenshots/mobile--doctordle.png",
+      "size": 231274,
+      "sha256": "36436a22e93992ed73263d918d74f908472cdf68a50f1b2557aa9a6af191ef8f"
+    },
+    {
+      "file": "screenshots/mobile--folders.png",
+      "size": 240672,
+      "sha256": "0cc649fa3f1585eb2ca2691e06d97e1cfc5b31ed0acd1e5b676af63ba87e13dc"
+    },
+    {
+      "file": "screenshots/mobile--habits.png",
+      "size": 216971,
+      "sha256": "6aa5ec1fe4b4534c970e3c0c4cb4e13d0b5ddbdf4b7b35ea6e9597e386998d62"
+    },
+    {
+      "file": "screenshots/mobile--help.png",
+      "size": 262370,
+      "sha256": "6f9c82a23087845b28f29a1859d0287a7d35838a6b39253f23783cc3d7090eab"
+    },
+    {
+      "file": "screenshots/mobile--integrations.png",
+      "size": 255550,
+      "sha256": "2da6c6c25c25fa51596af9494467909f7680b5cd82570d036ff027f918e571fc"
+    },
+    {
+      "file": "screenshots/mobile--journal.png",
+      "size": 252197,
+      "sha256": "55a558f450aec4150d5a988940f85fce816cf3550ad49c394cd2116d3408dc05"
+    },
+    {
+      "file": "screenshots/mobile--leaderboards.png",
+      "size": 243118,
+      "sha256": "ad2f5560172b6d01d36daf8538dac51d89d2637ee6870f7ca76d64491883750e"
+    },
+    {
+      "file": "screenshots/mobile--mcat.png",
+      "size": 253061,
+      "sha256": "09771a5345f83f574a8ec5e51b09461fba731ecb429c2de0dc7fbdd1a48d4eb7"
+    },
+    {
+      "file": "screenshots/mobile--methods.png",
+      "size": 246996,
+      "sha256": "8f1667e8dedfee432edc8ad99139734ca5612ad0f96a296971766d14210cbca8"
+    },
+    {
+      "file": "screenshots/mobile--premed-log.png",
+      "size": 262954,
+      "sha256": "fb371783bf32c58c63acb6874d858b949688f6b1642ee18872425d04e38520dc"
+    },
+    {
+      "file": "screenshots/mobile--premed.png",
+      "size": 254096,
+      "sha256": "d82a8254581565bfc73a999817fd7c8e546172682069f4bb4eec315a54fae7f3"
+    },
+    {
+      "file": "screenshots/mobile--productivity.png",
+      "size": 230530,
+      "sha256": "69a78b79725bba4924eb075afb06ded07877716d19bfdd26bbd89bff43733995"
+    },
+    {
+      "file": "screenshots/mobile--prompts.png",
+      "size": 264219,
+      "sha256": "b93a098e10eb7ddaf6010af2f4fa4ad25aa66f2c865df9a43b9cc61acd9233c2"
+    },
+    {
+      "file": "screenshots/mobile--questions.png",
+      "size": 289594,
+      "sha256": "2b0c16b2712447e43dd0e1ede90602491a6f2437faa8d9b78e63d644f2e7aafd"
+    },
+    {
+      "file": "screenshots/mobile--reports.png",
+      "size": 247395,
+      "sha256": "3a05a4f49df7d70f4c49c5cd4c674dd71eb4184009797ae8ded7cd54a7fa30a1"
+    },
+    {
+      "file": "screenshots/mobile--resources.png",
+      "size": 229319,
+      "sha256": "d3f03e284569a9bb961257740757acb2ab7fb3443decefad0a161656dd9cd888"
+    },
+    {
+      "file": "screenshots/mobile--shelf.png",
+      "size": 251032,
+      "sha256": "5b0d9417795fb37c0e513057d7569f7fab06ceddcdf49921d3077eae955c508e"
+    },
+    {
+      "file": "screenshots/mobile--step.png",
+      "size": 248080,
+      "sha256": "18301cd46b0c07d9e1acf7a82fb7ed22adba73097f1dec88a988d5473799b771"
+    },
+    {
+      "file": "screenshots/mobile--step2.png",
+      "size": 249661,
+      "sha256": "e437137e278dc0c0cbd8252ac204e4eca601f432e02d24a6415dff36879272d7"
+    },
+    {
+      "file": "screenshots/mobile--step3.png",
+      "size": 247301,
+      "sha256": "1822889cdd6d984881694fc4b96a8ac9d339e26fa31e91da566d98770b1298c8"
+    },
+    {
+      "file": "screenshots/mobile--tasks.png",
+      "size": 240151,
+      "sha256": "4300d7b366b5e1e2935daf5fcf0abce635de2abfac3a12cc1777edecfb8181d3"
+    },
+    {
+      "file": "screenshots/mobile--tracker.png",
+      "size": 230898,
+      "sha256": "e365960adda8eef71ca2b44d97a05c3a2aba298ea3eff480f8f158c4c80841d7"
+    },
+    {
+      "file": "screenshots/tablet--about.png",
+      "size": 655086,
+      "sha256": "b356075b535ebcb57ce65cefccdfb9231c6d32ed296f7b31cdc37cefb0327c9c"
+    },
+    {
+      "file": "screenshots/tablet--activity.png",
+      "size": 452778,
+      "sha256": "c0efd0790ac5d6feba512f4cf7686c0e4c701cdb79d90681b3dfffb30da905b0"
+    },
+    {
+      "file": "screenshots/tablet--anki.png",
+      "size": 440261,
+      "sha256": "38c22830ea882d284023fa7d4a7ae0e4b5b57b4e0e8fb331b13d771843d56af2"
+    },
+    {
+      "file": "screenshots/tablet--appchecker.png",
+      "size": 547097,
+      "sha256": "9b3accbe903f2036121f4958f3239a216408a09d9a587ec9100ea49d601148f2"
+    },
+    {
+      "file": "screenshots/tablet--casper.png",
+      "size": 586717,
+      "sha256": "56148cdcb03f51364d47aac744c92a1a86d6bb2e9353d551d32634c2e4b908b4"
+    },
+    {
+      "file": "screenshots/tablet--courses.png",
+      "size": 466998,
+      "sha256": "64f2e153d68cc379360144508259363797a7ee3433a912be09562a6218919b78"
+    },
+    {
+      "file": "screenshots/tablet--daily-word.png",
+      "size": 416009,
+      "sha256": "79558c3811e100cab8c9230d533de03312624689328b0659b2adcb2a906608d8"
+    },
+    {
+      "file": "screenshots/tablet--dashboard.png",
+      "size": 508024,
+      "sha256": "b4b2daccc78321ae1526369a98fc8ae34ce4215f1cc66e8d43e34a9b53611b23"
+    },
+    {
+      "file": "screenshots/tablet--dat.png",
+      "size": 583597,
+      "sha256": "5dd4c72806450b23e8615768e3290b946e31bb81bb3765d29fc98bf6ce9041fd"
+    },
+    {
+      "file": "screenshots/tablet--dedicated.png",
+      "size": 451072,
+      "sha256": "eff82452694ab1a0de9c218a3ac9af82426ec6712aed932f6ce08495e03c7f86"
+    },
+    {
+      "file": "screenshots/tablet--doctordle.png",
+      "size": 416572,
+      "sha256": "83ed24457eddc898ac12f0fed6fd5123dd71c3bd6ba80621bccaaa97aca63c94"
+    },
+    {
+      "file": "screenshots/tablet--folders.png",
+      "size": 446283,
+      "sha256": "ad5fedd486745baae2f1e85e69bef615ad87cc16aab110aef66e20774c1d29d8"
+    },
+    {
+      "file": "screenshots/tablet--habits.png",
+      "size": 375407,
+      "sha256": "0fd91bdc836aaeae9f51eef94bc4848792b3daf087edde56664d1985974a4645"
+    },
+    {
+      "file": "screenshots/tablet--help.png",
+      "size": 555562,
+      "sha256": "d87f357a42250b74dc1f7a8924f980a6d067d4a155895577278cb913091ec907"
+    },
+    {
+      "file": "screenshots/tablet--integrations.png",
+      "size": 548026,
+      "sha256": "2405833bed212552b92202aaa476cfb24f51d419db9f828478be4f2e382b6b03"
+    },
+    {
+      "file": "screenshots/tablet--journal.png",
+      "size": 501652,
+      "sha256": "a5317af3592f7003e10772b995f6ab145c7c0e3e16eb7a2107438a320d1ad8f6"
+    },
+    {
+      "file": "screenshots/tablet--leaderboards.png",
+      "size": 470103,
+      "sha256": "6e68c79626c716c82bd74ab7a0e60df597207077959fe79391b694768344dd28"
+    },
+    {
+      "file": "screenshots/tablet--mcat.png",
+      "size": 587183,
+      "sha256": "1804aa1a9e854568a3aaebbd9c47928c5705539013f310ce21a1083e929a1fbc"
+    },
+    {
+      "file": "screenshots/tablet--methods.png",
+      "size": 618197,
+      "sha256": "2e5865ff4fb1ff305b8d06675f0c9a2a777e9bbe5f34a6aefb8b19706a93c11d"
+    },
+    {
+      "file": "screenshots/tablet--premed-log.png",
+      "size": 568991,
+      "sha256": "acf212512715c12ec03c43951142b1c2f265918cc864fa8cd4d7b0d311d8f4e8"
+    },
+    {
+      "file": "screenshots/tablet--premed.png",
+      "size": 585072,
+      "sha256": "f5aefa28b23eaa6cbf4bb8f8b14a6197749aee3b299f06952f49d4016dece633"
+    },
+    {
+      "file": "screenshots/tablet--productivity.png",
+      "size": 495066,
+      "sha256": "ae0bd3ace968fb9232bf3f204704c2111efc14f56a779bdfd3eab15455119270"
+    },
+    {
+      "file": "screenshots/tablet--prompts.png",
+      "size": 499780,
+      "sha256": "6628af4a07e56f5da3b5ea82f5b52f4a02a3143dc66368cc714db294e6992a84"
+    },
+    {
+      "file": "screenshots/tablet--questions.png",
+      "size": 477702,
+      "sha256": "6fac1c7153f5b7e456f5bfbc111d222df1778c9cc29d63eaa6c17c471265bf11"
+    },
+    {
+      "file": "screenshots/tablet--reports.png",
+      "size": 503870,
+      "sha256": "2477dadb42eddf2df983868bb4340bdb67a2154fe1f35405e8921545dbbe4e7a"
+    },
+    {
+      "file": "screenshots/tablet--resources.png",
+      "size": 567273,
+      "sha256": "9b0357862a6955109bc19f34ae02298c1c7bc4becd499cd9adf55eb3268fbc94"
+    },
+    {
+      "file": "screenshots/tablet--shelf.png",
+      "size": 535857,
+      "sha256": "939573bc898f5ad89256ed58785274a0f48b644eff3effea0ba19f518c599183"
+    },
+    {
+      "file": "screenshots/tablet--step.png",
+      "size": 451599,
+      "sha256": "133dca58fa8ade18395d6d1b4e5af60e67099ce9819b4ecfddb4c13d0ae958eb"
+    },
+    {
+      "file": "screenshots/tablet--step2.png",
+      "size": 450155,
+      "sha256": "831fa1dff753dd059241cc1aa2b25ac386d55adf8f06cd83b0e587bfed5f331c"
+    },
+    {
+      "file": "screenshots/tablet--step3.png",
+      "size": 448821,
+      "sha256": "b51f3e8cfbfa9af5c86fe30f87785d102e382cfbeb16fc169a688c8493c43312"
+    },
+    {
+      "file": "screenshots/tablet--tasks.png",
+      "size": 418511,
+      "sha256": "318d8d830d304def31334dae9f3c29c26b3d5895082f25a68171b451d11a3901"
+    },
+    {
+      "file": "screenshots/tablet--tracker.png",
+      "size": 550673,
+      "sha256": "b49aec5e47e5509479fe1f79dc8b4786a29dbf8b2b23b9937311c6decd4428e6"
+    }
+  ]
+}
