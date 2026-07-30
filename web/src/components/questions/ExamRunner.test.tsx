@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { QuestionSet } from "../../lib/library";
 import type { QuestionRecord } from "../../lib/questions";
 import type { QuizBlock } from "../../lib/quiz";
@@ -74,9 +74,26 @@ function setStore() {
   };
 }
 
+const localValues = new Map<string, string>();
+const memoryLocalStorage = {
+  get length() { return localValues.size; },
+  clear: () => localValues.clear(),
+  getItem: (key: string) => localValues.get(key) ?? null,
+  key: (index: number) => [...localValues.keys()][index] ?? null,
+  removeItem: (key: string) => { localValues.delete(key); },
+  setItem: (key: string, value: string) => { localValues.set(key, String(value)); },
+};
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", memoryLocalStorage);
+  localStorage.clear();
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 describe("ExamRunner saved blocks and selection semantics", () => {
@@ -259,4 +276,182 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     await user.click(screen.getByRole("button", { name: "Previous" }));
     expect(screen.getAllByLabelText("Highlighted text: option")).toHaveLength(1);
   });
+
+  it("keeps utilities outside the question region and opens one panel at a time", async () => {
+    setStore();
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+
+    const main = screen.getByRole("main", { name: "Tutor question workspace" });
+    const questionRegion = main.querySelector(".tutor-question-region")!;
+    expect(questionRegion.contains(screen.getByRole("button", { name: "A. Alpha" }))).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Calculator" }));
+    expect(questionRegion.contains(screen.getByRole("dialog", { name: "Calculator" }))).toBe(false);
+    expect(screen.getAllByRole("dialog")).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: "Question notes" }));
+    expect(screen.queryByRole("dialog", { name: "Calculator" })).toBeNull();
+    expect(questionRegion.contains(screen.getByLabelText("Question note"))).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Text settings" }));
+    expect(screen.queryByLabelText("Question note")).toBeNull();
+    expect(questionRegion.contains(screen.getByRole("group", { name: "Question text size" }))).toBe(false);
+  });
+
+  it("persists calculator value and notes across tool close and reopen", async () => {
+    setStore();
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Calculator" }));
+    await user.click(screen.getByRole("button", { name: "7" }));
+    await user.click(screen.getByRole("button", { name: "Close calculator tools" }));
+    await user.click(screen.getByRole("button", { name: "Calculator" }));
+    expect(document.querySelector(".quiz-calc-expr")?.textContent).toBe("7");
+
+    await user.click(screen.getByRole("button", { name: "Question notes" }));
+    await user.type(screen.getByLabelText("Question note"), "Local tutor note");
+    await user.click(screen.getByRole("button", { name: "Close notes tools" }));
+    expect(mocked.updateQuestion).toHaveBeenCalledWith(question.id, { notes: "Local tutor note" });
+    await user.click(screen.getByRole("button", { name: "Question notes" }));
+    expect((screen.getByLabelText("Question note") as HTMLTextAreaElement).value).toBe("Local tutor note");
+  });
+
+  it("resets calculator state for a brand-new Tutor session", async () => {
+    setStore();
+    const user = userEvent.setup();
+    const first = render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Calculator" }));
+    await user.click(screen.getByRole("button", { name: "7" }));
+    expect(document.querySelector(".quiz-calc-expr")?.textContent).toBe("7");
+    first.unmount();
+
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "Calculator" }));
+    expect(document.querySelector(".quiz-calc-expr")?.textContent).toBe("0");
+  });
+
+  it("flushes a rapid note to the correct question before navigation", async () => {
+    const second = { ...question, id: "question-2", stem: "Which second option is correct?", notes: undefined };
+    setStore();
+    mocked.store = { ...mocked.store, questions: [question, second] };
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id, second.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Question notes" }));
+    await user.type(screen.getByLabelText("Question note"), "Bound to first");
+    await user.click(screen.getByRole("button", { name: "B. Beta" }));
+    await user.click(screen.getByRole("button", { name: "Check answer" }));
+    await user.click(screen.getByRole("button", { name: "Next question" }));
+
+    expect(mocked.updateQuestion).toHaveBeenCalledWith(question.id, { notes: "Bound to first" });
+    expect(mocked.updateQuestion).not.toHaveBeenCalledWith(second.id, expect.objectContaining({ notes: expect.anything() }));
+    expect((screen.getByLabelText("Question note") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("keeps highlight mode active, toggles it off, and erases only one highlight", async () => {
+    setStore();
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Highlight tools" }));
+    const yellow = screen.getByRole("button", { name: "Yellow persistent highlight" });
+    await user.click(yellow);
+    expect(yellow.getAttribute("aria-pressed")).toBe("true");
+
+    selectText(screen.getByLabelText("Question stem"), 6, 12);
+    expect(screen.getByLabelText("Highlighted text: option")).toBeTruthy();
+    expect(yellow.getAttribute("aria-pressed")).toBe("true");
+
+    selectText(screen.getByLabelText("Question stem"), 16, 23);
+    expect(screen.getByLabelText("Highlighted text: correct")).toBeTruthy();
+    expect(screen.getAllByLabelText(/Highlighted text:/)).toHaveLength(2);
+
+    await user.click(yellow);
+    expect(yellow.getAttribute("aria-pressed")).toBe("false");
+    const updateCount = mocked.updateQuestion.mock.calls.length;
+    selectText(screen.getByLabelText("Question stem"), 0, 5);
+    expect(mocked.updateQuestion).toHaveBeenCalledTimes(updateCount);
+
+    await user.click(screen.getByRole("button", { name: "Erase highlights" }));
+    await user.click(screen.getByLabelText("Highlighted text: option"));
+    expect(screen.queryByLabelText("Highlighted text: option")).toBeNull();
+    expect(screen.getByLabelText("Highlighted text: correct")).toBeTruthy();
+  });
+
+  it("confirms clear-all, clears annotation mode with Escape, and restores tool focus", async () => {
+    const first = createTextAnnotation({
+      id: "first", target: "stem", sourceText: question.stem, startOffset: 6,
+      endOffset: 12, tone: "yellow", now: "2026-07-16T12:00:00.000Z",
+    });
+    const second = createTextAnnotation({
+      id: "second", target: "stem", sourceText: question.stem, startOffset: 16,
+      endOffset: 23, tone: "cyan", now: "2026-07-16T12:00:00.000Z",
+    });
+    setStore();
+    mocked.store = { ...mocked.store, questions: [{ ...question, annotations: [first, second] }] };
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Highlight tools" }));
+    const cyan = screen.getByRole("button", { name: "Cyan persistent highlight" });
+    await user.click(cyan);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByLabelText("highlight tools")).toBeNull();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Highlight tools" }));
+
+    const eraser = screen.getByRole("button", { name: "Erase highlights" });
+    await user.click(eraser);
+    expect(eraser.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(eraser.getAttribute("aria-pressed")).toBe("false");
+
+    await user.click(screen.getByRole("button", { name: "Highlight tools" }));
+    await user.click(screen.getByRole("button", { name: "Clear highlights" }));
+    expect(confirm).toHaveBeenCalledWith("Clear all 2 highlights from this question?");
+    expect(screen.queryByLabelText(/Highlighted text:/)).toBeNull();
+  });
+
+  it("persists text scale and restores first-use guidance on request", async () => {
+    setStore();
+    const user = userEvent.setup();
+    render(<ExamRunner mode="tutor" retakeIds={[question.id]} onClose={() => {}} />);
+    expect(screen.getByText(/Highlight stays active/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Text settings" }));
+    await user.click(screen.getByRole("button", { name: "Increase reading size" }));
+    expect(localStorage.getItem("axom.quiz.reading-scale.v1")).toBe("1.1");
+    expect(screen.getByRole("status").textContent).toContain("110%");
+
+    await user.click(screen.getByRole("button", { name: "Tutor tips" }));
+    await user.click(screen.getByRole("button", { name: "Show first-use tip again" }));
+    expect(screen.getByText(/Highlight stays active/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Got it" }));
+    expect(localStorage.getItem("axom.quiz.tutor-tips.v1")).toBe("dismissed");
+  });
 });
+
+function selectText(root: HTMLElement, startOffset: number, endOffset: number) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Array<{ node: Text; start: number; end: number }> = [];
+  let cursor = 0;
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const end = cursor + node.data.length;
+    nodes.push({ node, start: cursor, end });
+    cursor = end;
+  }
+  const start = nodes.find((entry) => startOffset >= entry.start && startOffset <= entry.end);
+  const end = nodes.find((entry) => endOffset >= entry.start && endOffset <= entry.end);
+  if (!start || !end) throw new Error("Expected text nodes spanning the requested selection.");
+  const range = document.createRange();
+  range.setStart(start.node, startOffset - start.start);
+  range.setEnd(end.node, endOffset - end.start);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  fireEvent.mouseUp(root);
+}

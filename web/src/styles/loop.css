@@ -496,9 +496,8 @@
 .quiz-player-body .quiz-reading .question-stem { font-size: calc(var(--fs-md) * var(--quiz-reading-scale)); }
 .quiz-reading .option-pick { font-size: calc(var(--fs-md) * var(--quiz-reading-scale)); }
 .quiz-calculator {
-  align-self: flex-end;
-  width: min(240px, 100%);
-  margin: 4px 0 8px auto;
+  width: 100%;
+  margin: 0;
   padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-card-border);

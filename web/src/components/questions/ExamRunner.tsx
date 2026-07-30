@@ -5,10 +5,9 @@
 // every answer is recorded on the question for spaced retry.
 // ===========================================================================
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ChevronLeft, Flag, Play, WandSparkles, Sparkles, Calculator, Minus, Plus, RotateCcw } from "lucide-react";
+import { ChevronLeft, Flag, Play, WandSparkles, Sparkles, Minus, RotateCcw } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { STORAGE_KEYS } from "../../lib/brand";
-import { QuizCalculator } from "./QuizCalculator";
 import {
   buildQuizPool, missedQuestionIds, scoreSession,
   type QuizAnswer, type QuizFilters, type QuizMode, type QuizSession,
@@ -28,9 +27,13 @@ import { accuracyTone } from "../../lib/library";
 import { ICON_SIZE } from "../../lib/iconSize";
 import { createTextAnnotationWithIntegrity, removeTextAnnotationById, type QuestionAnnotationTarget, type QuestionAnnotationTone } from "../../lib/questionAnnotations";
 import { AnnotatedQuestionText, type QuestionTextSelection } from "./AnnotatedQuestionText";
-import { QuestionAnnotationToolbar } from "./QuestionAnnotationToolbar";
-import { QuestionNotesPanel } from "./QuestionNotesPanel";
 import { QuestionAttachmentsPanel } from "./QuestionAttachmentsPanel";
+import {
+  TutorUtilityDock,
+  type AnnotationTool,
+  type TutorPanel,
+} from "./TutorUtilityDock";
+import type { QuizCalculatorValue } from "./QuizCalculator";
 
 const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
@@ -98,7 +101,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const [startedAt, setStartedAt] = useState<string>(() => new Date().toISOString());
   const [shownAt, setShownAt] = useState(() => Date.now());
   const [nowTick, setNowTick] = useState(() => Date.now());
-  const [annotationTone, setAnnotationTone] = useState<QuestionAnnotationTone>("yellow");
+  const [annotationTool, setAnnotationTool] = useState<AnnotationTool>(null);
   const [annotationSelection, setAnnotationSelection] = useState<{
     target: QuestionAnnotationTarget;
     range: QuestionTextSelection;
@@ -115,8 +118,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   // --- Q2a player toolkit: strikeout (session-transient per question), reading
   // scale (persisted device pref), calculator, and scroll-to-top on advance.
   const [struck, setStruck] = useState<Set<string>>(() => new Set());
-  const [calcOpen, setCalcOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<TutorPanel | null>(null);
+  const [calculatorValue, setCalculatorValue] = useState<QuizCalculatorValue>({ expression: "", result: "" });
   const [readingScale, setReadingScale] = useState(() => readReadingScale());
+  const [tipVisible, setTipVisible] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEYS.quizTutorTips) !== "dismissed"; } catch { return true; }
+  });
   const stemRef = useRef<HTMLDivElement>(null);
 
   function toggleStrike(key: string) {
@@ -133,11 +140,17 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       return next;
     });
   }
-  function closeCalculator() {
-    setCalcOpen(false);
-    window.setTimeout(() => {
-      document.querySelector<HTMLButtonElement>('button[aria-label="Calculator"]')?.focus();
-    }, 0);
+  function resetReadingScale() {
+    setReadingScale(1);
+    try { localStorage.setItem(STORAGE_KEYS.quizReadingScale, "1"); } catch { /* device pref only */ }
+  }
+  function dismissTip() {
+    setTipVisible(false);
+    try { localStorage.setItem(STORAGE_KEYS.quizTutorTips, "dismissed"); } catch { /* device guidance only */ }
+  }
+  function resetTips() {
+    setTipVisible(true);
+    try { localStorage.removeItem(STORAGE_KEYS.quizTutorTips); } catch { /* device guidance only */ }
   }
 
   const timeLimitSeconds = timed ? Math.round(pool.length * minutesPerQ * 60) : undefined;
@@ -194,6 +207,32 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, question?.id, revealed, picked, mode, errorType, confidence]);
+
+  // Tutor tools consume Escape before the containing modal. The first press
+  // closes the utility/mode; a later press retains the established leave-block
+  // confirmation behavior.
+  useEffect(() => {
+    if (stage !== "running") return;
+    function onToolEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape" || (!activePanel && !annotationTool)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (activePanel) {
+        const label = activePanel === "highlight" ? "Highlight tools"
+          : activePanel === "notes" ? "Question notes"
+            : activePanel === "text" ? "Text settings"
+              : activePanel === "help" ? "Tutor tips" : "Calculator";
+        setActivePanel(null);
+        window.setTimeout(() => document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)?.focus(), 0);
+      } else {
+        setAnnotationTool(null);
+        setAnnotationStatus("Annotation tool off.");
+      }
+    }
+    window.addEventListener("keydown", onToolEscape, true);
+    return () => window.removeEventListener("keydown", onToolEscape, true);
+  }, [activePanel, annotationTool, stage]);
 
   // On advancing to a new question, clear this question's eliminations and reset
   // the reading surface to the top of the stem, moving focus there so assistive
@@ -577,17 +616,20 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const stemAnnotations = annotations.filter((annotation) => annotation.target === "stem");
   const explanationAnnotations = annotations.filter((annotation) => annotation.target === "explanation");
 
-  function saveAnnotation() {
-    if (!annotationSelection) return;
-    const sourceText = annotationSelection.target === "stem" ? question.stem : question.explanation ?? "";
+  function saveAnnotation(
+    selection = annotationSelection,
+    tone: QuestionAnnotationTone = annotationTool?.kind === "highlight" ? annotationTool.tone : "yellow",
+  ) {
+    if (!selection) return;
+    const sourceText = selection.target === "stem" ? question.stem : question.explanation ?? "";
     const now = new Date().toISOString();
     const result = createTextAnnotationWithIntegrity({
       id: `annotation-${crypto.randomUUID()}`,
-      target: annotationSelection.target,
+      target: selection.target,
       sourceText,
-      startOffset: annotationSelection.range.startOffset,
-      endOffset: annotationSelection.range.endOffset,
-      tone: annotationTone,
+      startOffset: selection.range.startOffset,
+      endOffset: selection.range.endOffset,
+      tone,
       now,
       existingAnnotations: localAnnotationsRef.current,
     });
@@ -605,14 +647,24 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     window.getSelection()?.removeAllRanges();
   }
 
+  function handleAnnotationSelection(target: QuestionAnnotationTarget, range: QuestionTextSelection | null) {
+    const selection = range ? { target, range } : null;
+    setAnnotationSelection(selection);
+    if (selection && annotationTool?.kind === "highlight") {
+      saveAnnotation(selection, annotationTool.tone);
+      dismissTip();
+    }
+  }
+
   function clearAnnotations() {
     if (!annotations.length) return;
+    if (annotations.length > 1 && !confirm(`Clear all ${annotations.length} highlights from this question?`)) return;
     localAnnotationsRef.current = [];
     setLocalAnnotations([]);
     setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: [] } : item));
     s.updateQuestion(question.id, { annotations: [] });
     setAnnotationSelection(null);
-    setAnnotationStatus("Highlights cleared.");
+    setAnnotationStatus("All highlights cleared.");
   }
 
   function deleteAnnotation(annotationId: string) {
@@ -622,7 +674,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
     setLocalAnnotations(next);
     setPool((current) => current.map((item) => item.id === question.id ? { ...item, annotations: next } : item));
     s.updateQuestion(question.id, { annotations: next });
-    setAnnotationStatus("Highlight deleted.");
+    setAnnotationStatus("One highlight erased.");
+    dismissTip();
   }
 
   return (
@@ -636,7 +689,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           ? (
             <>
               <GhostButton disabled={index === 0} onClick={goPrevious}><ChevronLeft size={ICON_SIZE.body} /> Previous</GhostButton>
-              <GhostButton onClick={toggleFlag} aria-pressed={answer?.flagged ?? false}>
+              <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
                 <Flag size={ICON_SIZE.body} /> {answer?.flagged ? "Flagged" : "Mark review"}
               </GhostButton>
               {!revealed
@@ -658,7 +711,10 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       <div className="quiz-progress" aria-hidden="true">
         <span className="quiz-progress-fill" style={{ width: `${Math.round(((index + (revealed ? 1 : 0)) / pool.length) * 100)}%` }} />
       </div>
-      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+      <main className={`tutor-workspace-shell ${activePanel ? "panel-open" : ""}`} aria-label="Tutor question workspace">
+      <section className="tutor-question-region" aria-labelledby="tutor-question-heading">
+      <h2 id="tutor-question-heading" className="sr-only">Question {index + 1} of {pool.length}</h2>
+      <div className="tutor-question-meta">
         {timed && timeLeft !== undefined && (
           <Tag tone={timeLeft < 60 ? "red" : "neutral"}>{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")} left</Tag>
         )}
@@ -666,36 +722,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
         {question.examType && <Tag tone="neutral">{EXAM_TYPE_LABEL[question.examType]}</Tag>}
         {question.sourcePage && <Tag tone="neutral">p.{question.sourcePage}</Tag>}
         {question.bank && <span className="sub truncate" style={{ maxWidth: 200 }}>{question.bank}</span>}
-        <div className="quiz-tools" role="group" aria-label="Reading tools">
-          {struck.size > 0 && (
-            <GhostButton className="quiz-tool" onClick={() => setStruck(new Set())} aria-label="Reset eliminations">
-              <RotateCcw size={ICON_SIZE.microInline} /> Reset
-            </GhostButton>
-          )}
-          <div className="quiz-reading-control" role="group" aria-label="Reading size">
-            <GhostButton className="icon-only" aria-label="Decrease reading size" disabled={readingScale <= READING_SCALE_MIN} onClick={() => adjustReadingScale(-1)}><Minus size={ICON_SIZE.microInline} /></GhostButton>
-            <span className="quiz-reading-value" aria-hidden="true">A</span>
-            <GhostButton className="icon-only" aria-label="Increase reading size" disabled={readingScale >= READING_SCALE_MAX} onClick={() => adjustReadingScale(1)}><Plus size={ICON_SIZE.microInline} /></GhostButton>
-          </div>
-          <GhostButton className="icon-only" aria-label="Calculator" aria-pressed={calcOpen} onClick={() => setCalcOpen((value) => !value)}>
-            <Calculator size={ICON_SIZE.body} />
+        {struck.size > 0 && (
+          <GhostButton className="quiz-tool" onClick={() => setStruck(new Set())} aria-label="Reset eliminations">
+            <RotateCcw size={ICON_SIZE.microInline} /> Reset eliminations
           </GhostButton>
-          <GhostButton onClick={toggleFlag} aria-label="Flag question" aria-pressed={answer?.flagged ?? false}>
-            <Flag size={ICON_SIZE.body} style={{ color: answer?.flagged ? "var(--gold)" : undefined }} /> {answer?.flagged ? "Flagged" : "Flag"}
-          </GhostButton>
-        </div>
+        )}
       </div>
-
-      {calcOpen && <QuizCalculator onClose={closeCalculator} />}
-
-      <QuestionAnnotationToolbar
-        selectedTone={annotationTone}
-        hasSelection={Boolean(annotationSelection)}
-        onTone={setAnnotationTone}
-        onHighlight={saveAnnotation}
-        onClear={clearAnnotations}
-        statusMessage={annotationStatus}
-      />
 
       <div className="quiz-reading" style={{ "--quiz-reading-scale": readingScale } as CSSProperties}>
         <AnnotatedQuestionText
@@ -704,11 +736,12 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           className="question-stem"
           label="Question stem"
           onDelete={deleteAnnotation}
+          eraseMode={annotationTool?.kind === "eraser"}
           focusRef={stemRef}
-          onSelection={(range) => setAnnotationSelection(range ? { target: "stem", range } : null)}
+          onSelection={(range) => handleAnnotationSelection("stem", range)}
         />
 
-        <div className="stack gap6">
+        <div className="tutor-answer-options">
           {question.options.map((opt) => {
             const isPicked = picked === opt.key;
             const showCorrect = revealed && correctKey === opt.key;
@@ -755,8 +788,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
                 className="question-explanation-text"
                 label="Question explanation"
                 onDelete={deleteAnnotation}
+                eraseMode={annotationTool?.kind === "eraser"}
                 inline
-                onSelection={(range) => setAnnotationSelection(range ? { target: "explanation", range } : null)}
+                onSelection={(range) => handleAnnotationSelection("explanation", range)}
               />
             ) : undefined}
           />
@@ -848,18 +882,6 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
               <b>{provider?.info.label}:</b> {aiText}
             </div>
           )}
-          <QuestionNotesPanel
-            questionId={question.id}
-            value={question.notes}
-            onSave={(notesValue) => {
-              const trimmed = notesValue.trim() || undefined;
-              // Keep the in-run pool in sync (like annotations) so a note
-              // survives navigating away and back within the same block —
-              // not just in the persisted store.
-              setPool((current) => current.map((item) => item.id === question.id ? { ...item, notes: trimmed } : item));
-              s.updateQuestion(question.id, { notes: trimmed });
-            }}
-          />
           <QuestionAttachmentsPanel
             questionId={question.id}
             attachments={question.attachments ?? []}
@@ -871,6 +893,41 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
           />
         </>
       )}
+      </section>
+      <TutorUtilityDock
+        activePanel={activePanel}
+        setActivePanel={(panel) => {
+          setActivePanel(panel);
+          if (panel && panel !== "help") dismissTip();
+        }}
+        annotationTool={annotationTool}
+        setAnnotationTool={(tool) => {
+          setAnnotationTool(tool);
+          if (tool) dismissTip();
+          setAnnotationStatus(tool?.kind === "highlight" ? `${tool.tone} highlight mode active.` : tool?.kind === "eraser" ? "Eraser mode active." : "Annotation tool off.");
+        }}
+        annotationStatus={annotationStatus}
+        hasAnnotations={annotations.length > 0}
+        onClearAnnotations={clearAnnotations}
+        questionId={question.id}
+        note={question.notes}
+        onSaveNote={(notesValue) => {
+          const trimmed = notesValue.trim() || undefined;
+          setPool((current) => current.map((item) => item.id === question.id ? { ...item, notes: trimmed } : item));
+          s.updateQuestion(question.id, { notes: trimmed });
+        }}
+        calculator={calculatorValue}
+        onCalculatorChange={setCalculatorValue}
+        readingScale={readingScale}
+        readingScaleMin={READING_SCALE_MIN}
+        readingScaleMax={READING_SCALE_MAX}
+        onReadingScale={adjustReadingScale}
+        onResetReadingScale={resetReadingScale}
+        tipVisible={tipVisible}
+        onDismissTip={dismissTip}
+        onResetTips={resetTips}
+      />
+      </main>
     </Modal>
   );
 }

@@ -48,6 +48,8 @@ export const STORAGE_KEYS = {
   quotePreferences: "axom.quotes.preferences.v1",
   /** Device-only quiz reading preference (font-scale step); never workspace content. */
   quizReadingScale: "axom.quiz.reading-scale.v1",
+  /** Device-only Tutor tool guidance dismissal; contains no learner content. */
+  quizTutorTips: "axom.quiz.tutor-tips.v1",
   /** Small device-only reminder ledger; contains date keys only, never journal content. */
   missedStandupReminder: "noctyrium-missed-standup-alert",
   /** Daily check-in/closeout delivery state: date, status, and snooze timestamps only. */
