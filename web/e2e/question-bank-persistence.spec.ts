@@ -39,12 +39,29 @@ test("onboarding → import → block → repair → reload retains the full que
   await draft.locator("button.card-row-main").click();
   await expect(draft.getByLabel("Correct answer")).toHaveValue("B");
   await expect(draft.getByRole("textbox", { name: "Option E" })).toHaveValue("Neutrophils");
-  await expect(draft.getByLabel("Explanation")).toHaveValue(
+  await expect(draft.getByLabel("Explanation or rationale")).toHaveValue(
     "The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.",
   );
 
+  await draft.getByLabel("Question number").fill("12");
+  await draft.getByLabel("Stem").fill(
+    "A 36-year-old man with tuberculosis exposure has a positive PPD skin test. Which cell type primarily mediates this reaction? Select the best answer.",
+  );
+  await draft.getByRole("textbox", { name: "Option B" }).fill("CD4+ T lymphocytes (Th1)");
+  await draft.getByLabel("Correct answer").selectOption("C");
+  await draft.getByLabel("Correct answer").selectOption("B");
+  await draft.getByLabel("Reference / source").fill("Reviewed immunology handout");
+  await draft.getByLabel("Explanation or rationale").fill(
+    "The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages. Reviewed before finalization.",
+  );
+  await draft.getByRole("button", { name: "+ Add option", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Finalize import" })).toBeDisabled();
+  await draft.getByRole("textbox", { name: "Option F" }).fill("Transient review choice");
+  await draft.getByRole("button", { name: "Remove option F" }).click();
+  await expect(page.getByRole("button", { name: "Finalize import" })).toBeEnabled();
+
   await page.getByLabel("Set title").fill("AXOM persisted journey");
-  await page.getByRole("button", { name: /^Save$/ }).click();
+  await page.getByRole("button", { name: "Finalize import" }).click();
   await page.getByRole("tab", { name: /Question Sets \(1\)/ }).click();
   const setCard = page.locator("article.qset-card").filter({ hasText: "AXOM persisted journey" });
   await expect(setCard).toBeVisible();
@@ -60,7 +77,7 @@ test("onboarding → import → block → repair → reload retains the full que
   await page.keyboard.press("Enter");
   await expect(page.locator(".result-banner[role='status']")).toContainText("Incorrect — you picked A, answer is B");
   await expect(page.locator(".feedback-explanation p")).toHaveText(
-    "The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages.",
+    "The PPD test is a type IV hypersensitivity reaction mediated by Th1 CD4+ T cells and macrophages. Reviewed before finalization.",
   );
 
   await page.getByRole("button", { name: "Repair card" }).click();
@@ -91,8 +108,13 @@ test("onboarding → import → block → repair → reload retains the full que
   expect(persisted.questions).toHaveLength(1);
   expect(persisted.questions[0]).toMatchObject({
     correctKey: "B",
-    correctAnswerText: "CD4+ T lymphocytes",
+    correctAnswerText: "CD4+ T lymphocytes (Th1)",
+    questionNumber: 12,
+    citation: "Reviewed immunology handout",
+    stem: expect.stringContaining("Select the best answer"),
+    explanation: expect.stringContaining("Reviewed before finalization"),
   });
+  expect(persisted.questions[0].options.map((option: { key: string }) => option.key)).toEqual(["A", "B", "C", "D", "E"]);
   expect(persisted.questions[0].attempts[0]).toMatchObject({
     answerKey: "A",
     status: "incorrect",

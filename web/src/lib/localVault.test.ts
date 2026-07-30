@@ -1,6 +1,12 @@
 import { indexedDB as fakeIndexedDb, IDBKeyRange } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { localVaultStorage } from "./localVault";
+import {
+  assertVaultWrite,
+  assertVaultWritesSince,
+  getVaultWriteCheckpoint,
+  localVaultStorage,
+  writeLocalFallback,
+} from "./localVault";
 import { STORAGE_KEYS } from "./brand";
 
 const values = new Map<string, string>();
@@ -38,6 +44,37 @@ describe("IndexedDB-first local vault", () => {
     await localVaultStorage.setItem(STORAGE_KEYS.persistedState, persisted);
     expect(localStorage.getItem(STORAGE_KEYS.persistedState)).toBe(persisted);
     expect(await localVaultStorage.getItem(STORAGE_KEYS.persistedState)).toBe(persisted);
+  });
+
+  it("rejects instead of claiming durability when neither storage path is available", () => {
+    const persisted = JSON.stringify({ state: { questions: [{ id: "not-durable" }] }, version: 32 });
+
+    expect(() => writeLocalFallback(null, STORAGE_KEYS.persistedState, persisted, ""))
+      .toThrow(/no local storage fallback/i);
+  });
+
+  it("records an adapter failure for operations that explicitly require durability", async () => {
+    vi.stubGlobal("indexedDB", undefined);
+    vi.stubGlobal("localStorage", undefined);
+    const checkpoint = getVaultWriteCheckpoint();
+
+    await localVaultStorage.setItem(STORAGE_KEYS.persistedState, "not-durable");
+
+    expect(() => assertVaultWritesSince(checkpoint)).toThrow(/no local storage fallback/i);
+  });
+
+  it("attributes durability failure to the exact adapter write sequence", async () => {
+    const checkpoint = getVaultWriteCheckpoint();
+    await localVaultStorage.setItem(STORAGE_KEYS.persistedState, "durable");
+    const durableSequence = checkpoint + 1;
+
+    vi.stubGlobal("indexedDB", undefined);
+    vi.stubGlobal("localStorage", undefined);
+    await localVaultStorage.setItem(STORAGE_KEYS.persistedState, "not-durable");
+    const failedSequence = durableSequence + 1;
+
+    expect(() => assertVaultWrite(durableSequence)).not.toThrow();
+    expect(() => assertVaultWrite(failedSequence)).toThrow(/no local storage fallback/i);
   });
 
   it("removes primary, profile pointer, and scoped IndexedDB records together", async () => {

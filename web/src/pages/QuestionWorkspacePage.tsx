@@ -20,7 +20,6 @@ import type { QuizBlock, QuizFilters, QuizMode } from "../lib/quiz";
 import type { QuestionSet, SourceDocument } from "../lib/library";
 import { GlassCard, PanelHeader, EmptyState } from "../components/ui/primitives";
 import { ImportPanel, parseStoredDocument, type ImportSeed } from "../components/questions/ImportPanel";
-import { MassImport } from "../components/questions/MassImport";
 import { ExamRunner } from "../components/questions/ExamRunner";
 import { PerformancePanel } from "../components/questions/PerformancePanel";
 import { QuestionDetailModal } from "../components/questions/QuestionDetailModal";
@@ -184,6 +183,7 @@ export function QuestionWorkspacePage() {
       sizeBytes: doc.sizeBytes,
       pageTexts: doc.pageTexts,
       checksum: doc.checksum,
+      source: doc.fileType.toLowerCase().includes("pdf") ? "pdf" : "imported",
     });
     setImportEntry("file");
     setTab("import");
@@ -476,25 +476,15 @@ export function QuestionWorkspacePage() {
       )}
 
       {tab === "import" && (
-        // One Import surface: the multi-file queue leads on a fresh visit; the
-        // paste/review panel leads when arriving with an inspect/parse seed.
-        <>
-          {importSeed && (
-            <ImportPanel
-              key={`${importSeed.sourceDocumentId ?? importSeed.reference?.title ?? importSeed.fileName ?? "plain"}-${importEntry}`}
-              seed={importSeed}
-              initialTab={importEntry}
-            />
-          )}
-          <MassImport onInspect={(payload) => {
-            setImportSeed(payload);
-            setImportEntry("file");
-            setTab("import");
-          }} />
-          {!importSeed && (
-            <ImportPanel key={`plain-${importEntry}`} seed={importSeed} initialTab={importEntry} />
-          )}
-        </>
+        <ImportPanel
+          key={`${importSeed?.sourceDocumentId ?? importSeed?.reference?.title ?? importSeed?.fileName ?? "plain"}-${importEntry}`}
+          seed={importSeed}
+          initialTab={importEntry}
+          onFinalized={(result) => {
+            setImportSeed(null);
+            setTab(result.setId ? "sets" : "library");
+          }}
+        />
       )}
       {tab === "sets" && (
         <QuestionSetList

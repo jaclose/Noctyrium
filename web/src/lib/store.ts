@@ -29,7 +29,7 @@ import {
   shouldRollover,
   type RolloverReason,
 } from "./dailyRollover";
-import { localVaultStorage } from "./localVault";
+import { assertVaultWrite, getVaultWriteCheckpoint, localVaultStorage } from "./localVault";
 import { userIdFromName } from "./userIdentity";
 import { ACADEMIC_TEMPLATE_COURSES, ACADEMIC_TEMPLATE_TERMS, focusOption, normalizedFocusIds } from "./experience";
 import { inferTrackFromFocus, isAcademicStageId, resolveTrack } from "./tracks";
@@ -71,6 +71,10 @@ import { deleteQuestionAttachmentBlobs, listQuestionAttachmentBlobKeys, runQuest
 import type { QuizBlock, QuizSession } from "./quiz";
 import { buildQuestionSetFromFilter, type QuestionSet, type SourceDocument } from "./library";
 import { repairOrphans } from "./orphanRepair";
+import type {
+  ReviewedImportPersistencePlan,
+  ReviewedImportPersistenceResult,
+} from "./questionImportFinalization";
 import {
   nextSchedule, validateAnkiCard,
   type AnkiCard, type CardReviewLog, type ReviewRating,
@@ -213,6 +217,8 @@ interface Actions {
 
   // question workspace (Phase 4) — records are validated at the boundary
   addQuestion: (input: unknown) => { ok: boolean; errors: string[]; id?: string };
+  /** Validate and durably persist one complete reviewed import snapshot. */
+  commitReviewedImport: (plan: ReviewedImportPersistencePlan) => Promise<ReviewedImportPersistenceResult>;
   updateQuestion: (id: string, patch: Partial<QuestionRecord>) => void;
   removeQuestion: (id: string) => void;
   recordQuestionAttempt: (id: string, attempt: Omit<QuestionAttempt, "at">) => void;
@@ -962,6 +968,316 @@ export const useStore = create<Store>()(
         const record = result.value;
         set((s) => ({ questions: [record, ...(s.questions ?? [])] }));
         return { ok: true, errors: [], id: record.id };
+      },
+      commitReviewedImport: async (plan) => {
+        const current = get();
+        const failure = (message: string, rollbackFailures: string[] = []): ReviewedImportPersistenceResult => ({
+          ok: false,
+          message,
+          rollbackFailures,
+        });
+        const validId = (value: unknown): value is string => (
+          typeof value === "string" && value.length > 0 && value === value.trim()
+        );
+
+        if (!plan.questions.length && !plan.questionSet && !plan.documentWrite) {
+          return failure("The reviewed import does not contain anything to persist.");
+        }
+        if (plan.questions.length > 0 && !plan.questionSet) {
+          return failure("Reviewed questions must be finalized into a question set.");
+        }
+
+        const requestedQuestionIds = plan.questions.map((question) => question.id);
+        if (requestedQuestionIds.some((id) => !validId(id))) {
+          return failure("Every reviewed question must have a stable ID before finalization.");
+        }
+        if (new Set(requestedQuestionIds).size !== requestedQuestionIds.length) {
+          return failure("Reviewed question IDs must be unique within one import.");
+        }
+        const existingQuestionIds = new Set((current.questions ?? []).map((question) => question.id));
+        const conflictingQuestionId = requestedQuestionIds.find((id) => existingQuestionIds.has(id));
+        if (conflictingQuestionId) {
+          return failure(`Question ID "${conflictingQuestionId}" already exists.`);
+        }
+
+        const validationTime = new Date();
+        const validatedQuestions: QuestionRecord[] = [];
+        for (let index = 0; index < plan.questions.length; index += 1) {
+          const result = validateQuestionRecord(plan.questions[index], validationTime);
+          if (!result.ok || !result.value) {
+            return failure(
+              `Question ${plan.questions[index].questionNumber ?? index + 1}: ${result.errors.slice(0, 2).join(" ")}`,
+            );
+          }
+          const optionKeys = result.value.options.map((option) => option.key);
+          if (result.value.options.length < 2 || new Set(optionKeys).size !== optionKeys.length) {
+            return failure(
+              `Question ${plan.questions[index].questionNumber ?? index + 1}: At least two usable, uniquely labeled answer choices are required.`,
+            );
+          }
+          if (!result.value.correctKey || !optionKeys.includes(result.value.correctKey)) {
+            return failure(
+              `Question ${plan.questions[index].questionNumber ?? index + 1}: A correct answer matching an existing choice is required.`,
+            );
+          }
+          if (result.value.needsReview) {
+            return failure(
+              `Question ${plan.questions[index].questionNumber ?? index + 1}: Review must be completed before finalization.`,
+            );
+          }
+          if (result.value.extraction?.reviewed !== true) {
+            return failure(
+              `Question ${plan.questions[index].questionNumber ?? index + 1}: Reviewed import confirmation is required before finalization.`,
+            );
+          }
+          validatedQuestions.push(result.value);
+        }
+
+        const questionSet = plan.questionSet
+          ? { ...plan.questionSet, questionIds: validatedQuestions.map((question) => question.id) }
+          : undefined;
+        if (questionSet) {
+          if (!validId(questionSet.id)) return failure("The reviewed question set must have a stable ID.");
+          if (!validatedQuestions.length) return failure("A reviewed question set must contain at least one question.");
+          if (new Set(questionSet.sourceDocumentIds).size !== questionSet.sourceDocumentIds.length) {
+            return failure("Question-set source-document IDs must be unique.");
+          }
+          if ((current.questionSets ?? []).some((item) => item.id === questionSet.id)) {
+            return failure(`Question set ID "${questionSet.id}" already exists.`);
+          }
+          for (let index = 0; index < validatedQuestions.length; index += 1) {
+            validatedQuestions[index] = { ...validatedQuestions[index], setId: questionSet.id };
+          }
+        }
+
+        let documents = current.documents ?? [];
+        const documentWrite = plan.documentWrite;
+        if (documentWrite?.kind === "create") {
+          if (!validId(documentWrite.document.id)) {
+            return failure("The imported source document must have a stable ID.");
+          }
+          if (documents.some((document) => document.id === documentWrite.document.id)) {
+            return failure(`Source document ID "${documentWrite.document.id}" already exists.`);
+          }
+          documents = [documentWrite.document, ...documents];
+        } else if (documentWrite?.kind === "update") {
+          if (!validId(documentWrite.id)) {
+            return failure("The source-document update must have a stable ID.");
+          }
+          const target = documents.find((document) => document.id === documentWrite.id);
+          if (!target) {
+            return failure(`Source document "${documentWrite.id}" no longer exists.`);
+          }
+          if (documentWrite.patch.id !== undefined && documentWrite.patch.id !== documentWrite.id) {
+            return failure("A source-document update cannot change the document ID.");
+          }
+          documents = documents.map((document) => document.id === documentWrite.id
+            ? { ...document, ...documentWrite.patch, id: document.id }
+            : document);
+        }
+
+        const availableDocumentIds = new Set(documents.map((document) => document.id));
+        const missingSetDocument = questionSet?.sourceDocumentIds.find((id) => !availableDocumentIds.has(id));
+        if (missingSetDocument) {
+          return failure(`Source document "${missingSetDocument}" does not exist.`);
+        }
+        const missingQuestionDocument = validatedQuestions
+          .map((question) => question.sourceDocumentId)
+          .find((id): id is string => Boolean(id) && !availableDocumentIds.has(id!));
+        if (missingQuestionDocument) {
+          return failure(`Source document "${missingQuestionDocument}" does not exist.`);
+        }
+        if (questionSet) {
+          const setDocumentIds = new Set(questionSet.sourceDocumentIds);
+          const inconsistentQuestion = validatedQuestions.find((question) => (
+            question.sourceDocumentId
+              ? !setDocumentIds.has(question.sourceDocumentId)
+              : setDocumentIds.size > 0
+          ));
+          if (inconsistentQuestion) {
+            return failure(
+              `Question "${inconsistentQuestion.id}" does not share the question set's source-document association.`,
+            );
+          }
+        }
+
+        if (questionSet?.sourceDocumentIds.length) {
+          const linkedDocumentIds = new Set(questionSet.sourceDocumentIds);
+          documents = documents.map((document) => linkedDocumentIds.has(document.id)
+            ? {
+                ...document,
+                linkedQuestionSetIds: [...new Set([...document.linkedQuestionSetIds, questionSet.id])],
+                libraryOnly: false,
+              }
+            : document);
+        }
+
+        const previous = {
+          questions: current.questions ?? [],
+          questionSets: current.questionSets ?? [],
+          documents: current.documents ?? [],
+        };
+        const next = {
+          // Preserve the existing addQuestion ordering while committing one
+          // serialized workspace snapshot.
+          questions: [...validatedQuestions].reverse().concat(previous.questions),
+          questionSets: questionSet ? [questionSet, ...previous.questionSets] : previous.questionSets,
+          documents,
+        };
+
+        const sameValue = (left: unknown, right: unknown) => (
+          JSON.stringify(left) === JSON.stringify(right)
+        );
+        const insertedQuestionIds = new Set(validatedQuestions.map((question) => question.id));
+        const insertedSetId = questionSet?.id;
+        const createdDocumentId = documentWrite?.kind === "create" ? documentWrite.document.id : undefined;
+        const priorDocuments = new Map(previous.documents.map((document) => [document.id, document]));
+        const committedDocuments = new Map(next.documents.map((document) => [document.id, document]));
+        const changedDocumentIds = new Set([
+          ...(questionSet?.sourceDocumentIds ?? []),
+          ...(documentWrite?.kind === "update" ? [documentWrite.id] : []),
+        ]);
+
+        const writeSequence = getVaultWriteCheckpoint() + 1;
+        try {
+          // Zustand persist returns the storage promise at runtime. Awaiting it
+          // here guarantees that success means the complete snapshot reached
+          // IndexedDB or the established localStorage fallback.
+          await set(() => next);
+          assertVaultWrite(writeSequence);
+        } catch (error) {
+          const rollbackFailures = new Set<string>();
+          const rollbackSequence = getVaultWriteCheckpoint() + 1;
+          try {
+            await set((live) => {
+              const liveQuestionSets = live.questionSets ?? [];
+              const liveQuestions = live.questions ?? [];
+              for (const liveSet of liveQuestionSets) {
+                if (liveSet.id !== insertedSetId
+                  && liveSet.questionIds.some((id) => insertedQuestionIds.has(id))) {
+                  rollbackFailures.add(`question set ${liveSet.id}`);
+                }
+              }
+
+              const createdDocumentHasConcurrentReferences = Boolean(createdDocumentId) && (
+                liveQuestionSets.some((liveSet) => (
+                  liveSet.id !== insertedSetId
+                  && liveSet.sourceDocumentIds.includes(createdDocumentId!)
+                ))
+                || liveQuestions.some((question) => (
+                  !insertedQuestionIds.has(question.id)
+                  && question.sourceDocumentId === createdDocumentId
+                ))
+              );
+              if (createdDocumentHasConcurrentReferences) {
+                rollbackFailures.add(`source document ${createdDocumentId} (concurrent references)`);
+              }
+
+              let rolledBackDocuments = (live.documents ?? [])
+                .filter((document) => (
+                  document.id !== createdDocumentId || createdDocumentHasConcurrentReferences
+                ))
+                .map((document) => {
+                  const beforeDocument = priorDocuments.get(document.id);
+                  const committedDocument = committedDocuments.get(document.id);
+                  const restore: Partial<SourceDocument> = {};
+
+                  // A failed set cannot retain reverse links to itself. Remove
+                  // only the inserted set ID, preserving every other live link.
+                  if (insertedSetId
+                    && document.linkedQuestionSetIds.includes(insertedSetId)
+                    && !beforeDocument?.linkedQuestionSetIds.includes(insertedSetId)) {
+                    restore.linkedQuestionSetIds = document.linkedQuestionSetIds
+                      .filter((id) => id !== insertedSetId);
+                  }
+
+                  if (!changedDocumentIds.has(document.id) || !beforeDocument || !committedDocument) {
+                    return Object.keys(restore).length ? { ...document, ...restore } : document;
+                  }
+
+                  const beforeValues = beforeDocument as unknown as Record<string, unknown>;
+                  const committedValues = committedDocument as unknown as Record<string, unknown>;
+                  const liveValues = document as unknown as Record<string, unknown>;
+                  const restoreValues = restore as unknown as Record<string, unknown>;
+                  const changedKeys = new Set([
+                    ...Object.keys(beforeValues),
+                    ...Object.keys(committedValues),
+                  ]);
+
+                  for (const key of changedKeys) {
+                    if (key === "id" || sameValue(beforeValues[key], committedValues[key])) continue;
+                    if (key === "linkedQuestionSetIds") {
+                      const liveLinks = restore.linkedQuestionSetIds ?? document.linkedQuestionSetIds;
+                      const committedLinks = committedDocument.linkedQuestionSetIds
+                        .filter((id) => id !== insertedSetId || beforeDocument.linkedQuestionSetIds.includes(id));
+                      if (sameValue(committedLinks, beforeDocument.linkedQuestionSetIds)) {
+                        // The import changed only its own reverse link. It was
+                        // removed above; retain unrelated concurrent links.
+                        continue;
+                      }
+                      if (sameValue(liveLinks, committedLinks)) {
+                        restore.linkedQuestionSetIds = [...beforeDocument.linkedQuestionSetIds];
+                      } else if (!sameValue(liveLinks, beforeDocument.linkedQuestionSetIds)) {
+                        rollbackFailures.add(`source document ${document.id}.linkedQuestionSetIds`);
+                      }
+                      continue;
+                    }
+
+                    if (sameValue(liveValues[key], committedValues[key])) {
+                      restoreValues[key] = beforeValues[key];
+                    } else if (!sameValue(liveValues[key], beforeValues[key])) {
+                      rollbackFailures.add(`source document ${document.id}.${key}`);
+                    }
+                  }
+
+                  return Object.keys(restore).length ? { ...document, ...restore, id: document.id } : document;
+                });
+
+              // A concurrently-created document can observe the tentative set;
+              // remove only that now-invalid reverse link as well.
+              if (insertedSetId) {
+                rolledBackDocuments = rolledBackDocuments.map((document) => (
+                  document.linkedQuestionSetIds.includes(insertedSetId)
+                    && !priorDocuments.get(document.id)?.linkedQuestionSetIds.includes(insertedSetId)
+                    ? {
+                        ...document,
+                        linkedQuestionSetIds: document.linkedQuestionSetIds.filter((id) => id !== insertedSetId),
+                      }
+                    : document
+                ));
+              }
+
+              // A concurrent link makes a document part of the active
+              // question-bank graph even if the import had temporarily
+              // changed libraryOnly from true to false.
+              rolledBackDocuments = rolledBackDocuments.map((document) => (
+                document.linkedQuestionSetIds.length > 0 && document.libraryOnly
+                  ? { ...document, libraryOnly: false }
+                  : document
+              ));
+
+              return {
+                questions: liveQuestions.filter((question) => !insertedQuestionIds.has(question.id)),
+                questionSets: liveQuestionSets.filter((item) => item.id !== insertedSetId),
+                documents: rolledBackDocuments,
+              };
+            });
+            assertVaultWrite(rollbackSequence);
+          } catch {
+            rollbackFailures.add("reviewed import state");
+          }
+          return failure(
+            error instanceof Error ? error.message : "AXOM could not persist the reviewed import.",
+            [...rollbackFailures],
+          );
+        }
+
+        return {
+          ok: true,
+          questionIds: validatedQuestions.map((question) => question.id),
+          questionSetId: questionSet?.id,
+          documentId: documentWrite?.kind === "create" ? documentWrite.document.id : documentWrite?.id,
+        };
       },
       updateQuestion: (id, patch) =>
         set((s) => ({

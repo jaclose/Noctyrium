@@ -18,12 +18,64 @@ export function ensureVaultStores(db: IDBDatabase) {
 }
 const activeUserKey = (name: string) => `${name}:active-user`;
 const scopedStateKey = (name: string, userId: string) => `${name}:user:${userId}`;
+let vaultWriteSequence = 0;
+const vaultWriteFailures = new Map<number, Error>();
+
+/** Capture the current adapter position before a write that must be durable. */
+export function getVaultWriteCheckpoint(): number {
+  return vaultWriteSequence;
+}
+
+/** Assert the outcome of one exact adapter write, without attributing a later
+ * unrelated write failure to this operation. */
+export function assertVaultWrite(sequence: number): void {
+  if (vaultWriteSequence < sequence) {
+    throw new Error("AXOM could not confirm that the expected local vault write started.");
+  }
+  const failure = vaultWriteFailures.get(sequence);
+  if (failure) throw failure;
+}
+
+/**
+ * Ordinary store writes remain best-effort for non-browser/test environments,
+ * but finalization can explicitly require that every adapter write since its
+ * checkpoint reached IndexedDB or the localStorage fallback.
+ */
+export function assertVaultWritesSince(checkpoint: number): void {
+  const failed = [...vaultWriteFailures.entries()]
+    .filter(([sequence]) => sequence > checkpoint)
+    .sort(([left], [right]) => left - right)[0];
+  if (failed) throw failed[1];
+}
 
 function localFallback(): Storage | null {
   try {
+    // Node 25 exposes an unusable experimental global `localStorage` unless a
+    // file flag is supplied. In browsers/jsdom, the Window-owned storage is the
+    // real fallback and must take precedence over that process-level getter.
+    if (typeof window !== "undefined") return window.localStorage;
     return typeof localStorage === "undefined" ? null : localStorage;
   } catch {
     return null;
+  }
+}
+
+export function writeLocalFallback(
+  fallbackStore: Storage | null,
+  name: string,
+  value: string,
+  userId: string,
+  indexedDbError?: unknown,
+): void {
+  if (!fallbackStore) {
+    throw new Error("AXOM could not write to IndexedDB and no local storage fallback is available.", {
+      cause: indexedDbError,
+    });
+  }
+  fallbackStore.setItem(name, value);
+  if (userId) {
+    fallbackStore.setItem(activeUserKey(name), userId);
+    fallbackStore.setItem(scopedStateKey(name, userId), value);
   }
 }
 
@@ -128,6 +180,7 @@ export const localVaultStorage: StateStorage = {
   },
 
   async setItem(name, value) {
+    const writeSequence = ++vaultWriteSequence;
     const userId = persistedUserId(value);
     const fallbackStore = localFallback();
     try {
@@ -147,13 +200,18 @@ export const localVaultStorage: StateStorage = {
         fallbackStore?.setItem(activeUserKey(name), userId);
         fallbackStore?.removeItem(scopedStateKey(name, userId));
       }
-    } catch {
+    } catch (indexedDbError) {
       // IndexedDB can be blocked/private-mode unavailable. In that case retain
       // the full localStorage fallback so the app stays usable and data-safe.
-      fallbackStore?.setItem(name, value);
-      if (userId) {
-        fallbackStore?.setItem(activeUserKey(name), userId);
-        fallbackStore?.setItem(scopedStateKey(name, userId), value);
+      try {
+        writeLocalFallback(fallbackStore, name, value, userId, indexedDbError);
+      } catch (fallbackError) {
+        vaultWriteFailures.set(
+          writeSequence,
+          fallbackError instanceof Error
+            ? fallbackError
+            : new Error("AXOM could not persist the local workspace."),
+        );
       }
     }
   },
