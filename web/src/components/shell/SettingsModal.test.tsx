@@ -97,8 +97,7 @@ describe("Settings information architecture", () => {
     expect(reset).not.toHaveBeenCalled();
   });
 
-  it("keeps Daily Games disabled by default and preserves history across enable and disable", async () => {
-    const user = userEvent.setup();
+  it("keeps Daily Games persistent and retains its explicit history reset", () => {
     useStore.setState({
       dailyWordPuzzles: [{
         puzzleId: "daily-word:general-1:2026-07-12",
@@ -114,18 +113,8 @@ describe("Settings information architecture", () => {
     });
     render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
 
-    const toggle = screen.getByRole("checkbox", { name: "Enable Daily Games" });
-    expect((toggle as HTMLInputElement).checked).toBe(false);
-    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(false);
-
-    await user.click(toggle);
-    expect((toggle as HTMLInputElement).checked).toBe(true);
-    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(true);
-    expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
-
-    await user.click(toggle);
-    expect((toggle as HTMLInputElement).checked).toBe(false);
-    expect(useStore.getState().profile.experimentalFlags?.dailyGames).toBe(false);
+    expect(screen.queryByRole("checkbox", { name: "Enable Daily Games" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Reset Daily Word" })).toBeTruthy();
     expect(useStore.getState().dailyWordPuzzles).toHaveLength(1);
   });
 

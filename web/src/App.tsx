@@ -13,7 +13,7 @@ import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
 import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
 import { SessionOverlay } from "./components/session/SessionOverlay";
-import { isDailyGamesRoute, NAV } from "./components/shell/nav";
+import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
 import { useUi } from "./lib/uiStore";
 import { pushToast } from "./lib/toast";
@@ -43,7 +43,6 @@ import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
 import { QuestionWorkspacePage } from "./pages/QuestionWorkspacePage";
 import { StudyMethodsPage } from "./pages/StudyMethodsPage";
-import { OptionalDailyGamesPage } from "./pages/OptionalDailyGamesPage";
 
 const DevDesignPreview = import.meta.env.DEV
   ? lazy(() => import("./pages/DesignPreviewPage"))
@@ -54,6 +53,8 @@ const DevDesignPreview = import.meta.env.DEV
 // route cannot fetch the engine or list.
 const LazyDailyWordPage = lazy(() => import("./pages/DailyWordPage").then((module) => ({ default: module.DailyWordPage })));
 const LazyDoctordlePage = lazy(() => import("./pages/DoctordlePage").then((module) => ({ default: module.DoctordlePage })));
+const LazyDailyGamesPage = lazy(() => import("./pages/OptionalDailyGamesPage").then((module) => ({ default: module.OptionalDailyGamesPage })));
+const LazyBuildingPage = lazy(() => import("./pages/BuildingPage").then((module) => ({ default: module.BuildingPage })));
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -86,6 +87,10 @@ const PAGES: Record<string, () => JSX.Element> = {
   help: HelpPage,
   appchecker: ApplicationCheckerPage,
   leaderboards: LeaderboardsPage,
+  "daily-games": () => <LazyDailyGamesPage />,
+  "daily-word": () => <LazyDailyWordPage />,
+  doctordle: () => <LazyDoctordlePage />,
+  building: () => <LazyBuildingPage />,
 };
 
 export default function App({ startupStatus }: { startupStatus?: StorageMigrationResult }) {
@@ -112,7 +117,6 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const restoreMenuFocusRef = useRef(false);
   const onboarded = useStore((s) => s.profile.onboarded);
-  const dailyGamesEnabled = useStore((s) => s.profile.experimentalFlags?.dailyGames === true);
   const tourDone = useStore((s) => s.profile.tourDone);
   const updateProfile = useStore((s) => s.updateProfile);
   // Show the tour once after onboarding; "Replay tour" simply clears tourDone.
@@ -265,12 +269,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
   }
 
   const nav = NAV.find((n) => n.id === route) ?? NAV[0];
-  let Page: ComponentType = PAGES[route] ?? DashboardPage;
-  if (isDailyGamesRoute(route)) {
-    Page = !dailyGamesEnabled
-      ? OptionalDailyGamesPage
-      : route === "daily-word" ? LazyDailyWordPage : LazyDoctordlePage;
-  }
+  const Page: ComponentType = PAGES[route] ?? DashboardPage;
 
   if (!onboarded || setupMode) {
     return (

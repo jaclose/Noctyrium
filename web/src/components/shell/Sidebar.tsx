@@ -6,8 +6,6 @@ import {
   DAILY_GAMES_FOLDER,
   getNavAnnouncementId,
   getNavModuleStatus,
-  isDailyGamesEnabled,
-  isDailyGamesRoute,
   MODULE_STATUS_META,
   navById,
   SIDEBAR_BOTTOM,
@@ -64,7 +62,6 @@ export function Sidebar({
   const sidebarRef = useRef<HTMLElement>(null);
   const mobile = useMobileSidebar();
   const hiddenOffscreen = mobile && !collapsed;
-  const dailyGamesOn = isDailyGamesEnabled(profile.experimentalFlags);
 
   useLayoutEffect(() => {
     const sidebar = sidebarRef.current;
@@ -84,9 +81,8 @@ export function Sidebar({
     if (!announcementId || isAnnouncementDismissed(announcementId, dismissedAnnouncements)) return;
     // The optional-route gate is an enablement explanation, not a meaningful
     // open of the game itself. Dismiss only once the module can render.
-    if (isDailyGamesRoute(active) && !dailyGamesOn) return;
     setDismissedAnnouncements(dismissAnnouncement(announcementId));
-  }, [active, dailyGamesOn, dismissedAnnouncements]);
+  }, [active, dismissedAnnouncements]);
 
   const hidden = new Set(profile.hiddenNav ?? []);
   const toolsOpen = !profile.toolsCollapsed;
@@ -251,29 +247,7 @@ export function Sidebar({
             </div>
           )}
 
-          {manage && (
-            <button
-              type="button"
-              className={`nav-item manage ${dailyGamesOn ? "" : "off"}`}
-              aria-label={`${DAILY_GAMES_FOLDER.label}, optional feature`}
-              aria-pressed={dailyGamesOn}
-              onClick={() => updateProfile({
-                experimentalFlags: {
-                  ...(profile.experimentalFlags ?? {}),
-                  [DAILY_GAMES_FOLDER.featureFlag]: !dailyGamesOn,
-                },
-              })}
-              title={dailyGamesOn ? "Disable Daily Games (history is preserved)" : "Enable Daily Games"}
-            >
-              <span className={`nav-check ${dailyGamesOn ? "on" : ""}`}>{dailyGamesOn && <Check size={ICON_SIZE.microInline} />}</span>
-              <DailyGamesIcon size={ICON_SIZE.emphasis} />
-              <span className="nav-item-label">{DAILY_GAMES_FOLDER.label}</span>
-              <span className="nav-status nav-status--wip" aria-hidden="true">OPTIONAL</span>
-            </button>
-          )}
-
-          {dailyGamesOn && (
-            <div className="nav-folder">
+          <div className="nav-folder">
               <button
                 id={DAILY_GAMES_FOLDER.toggleId}
                 type="button"
@@ -295,8 +269,7 @@ export function Sidebar({
               >
                 {dailyGameItems.map((id) => <Item key={id} id={id} />)}
               </div>
-            </div>
-          )}
+          </div>
 
           {SIDEBAR_BOTTOM.map((id) => <Item key={id} id={id} />)}
         </nav>

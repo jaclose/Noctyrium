@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
-  Bell, Clock3, Database, Download, FileJson, Gamepad2, ImagePlus, Palette, RotateCcw, ShieldCheck,
+  Bell, Clock3, Database, Download, FileJson, ImagePlus, Palette, RotateCcw, ShieldCheck,
   Sparkles, Trash2, Upload, UserCircle2, Check, ScrollText, MessageCircle, Settings2,
 } from "lucide-react";
 import { ICON_SIZE } from "../../lib/iconSize";
@@ -472,23 +472,6 @@ function DailyUtilitiesSettings() {
     <details className="backup-actions-panel" open>
       <summary>Daily utilities</summary>
       <div className="stack" style={{ gap: 12, marginTop: 10 }}>
-        <div className="settings-utility-row">
-          <div>
-            <div className="sync-title"><Gamepad2 size={ICON_SIZE.body} /> Daily Games</div>
-            <div className="sub">Optional Daily Word and Doctordle WIP folder. Disabling it hides navigation and preserves history.</div>
-          </div>
-          <label className="settings-inline-toggle">
-            <input
-              type="checkbox"
-              checked={profile.experimentalFlags?.dailyGames === true}
-              onChange={(event) => updateProfile({
-                experimentalFlags: { ...(profile.experimentalFlags ?? {}), dailyGames: event.target.checked },
-              })}
-            />
-            <span>Enable Daily Games</span>
-          </label>
-        </div>
-
         <div className="settings-utility-row">
           <div>
             <div className="sync-title"><Clock3 size={ICON_SIZE.body} /> Clock</div>

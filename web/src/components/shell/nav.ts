@@ -4,7 +4,7 @@ import type { ExperimentalFlags } from "../../lib/types";
 import {
   LayoutGrid, BookOpen, BadgeCheck, Brain, LineChart, Calendar, ListChecks,
   BookText, Share2, Library, Folder, Link, Wand2, LifeBuoy, ClipboardCheck, Trophy, Compass, Info, CalendarCheck,
-  HelpCircle, BookOpenCheck, WholeWord, Stethoscope, Gamepad2,
+  HelpCircle, BookOpenCheck, WholeWord, Stethoscope, Gamepad2, Blocks,
 } from "lucide-react";
 
 export interface NavItem {
@@ -45,8 +45,9 @@ export const NAV = [
   { id: "productivity", label: "Productivity", subtitle: "Study time, Anki cards, lecture blocks, day usefulness", icon: Calendar },
   { id: "journal", label: "Journal", subtitle: "Daily standups, intention follow-up, blockers, and tomorrow's plan", icon: BookText },
   { id: "reports", label: "Reports", subtitle: "Traceable statistics, energy, and performance vs. your goals", icon: LineChart },
+  { id: "daily-games", label: "Daily Games", subtitle: "Short daily puzzles, status, and verified destinations", icon: Gamepad2 },
   { id: "daily-word", label: "Daily Word", subtitle: "A daily five-letter word puzzle.", icon: WholeWord },
-  { id: "doctordle", label: "Doctordle", subtitle: "Integration pending collaboration approval.", icon: Stethoscope },
+  { id: "doctordle", label: "Doctordle", subtitle: "Open the verified independent daily diagnosis game", icon: Stethoscope },
   { id: "resources", label: "Resources", subtitle: "Saved hyperlinks for courses, boards, references, and tools", icon: Link },
   { id: "step", label: "USMLE / Shelf Prep", subtitle: "Step 1, Step 2, Step 3, shelf exams, and blueprint strategy", icon: Brain },
   { id: "step2", label: "Step 2 CK", subtitle: "Clinical reasoning blueprint and CK execution", icon: Brain },
@@ -70,6 +71,7 @@ export const NAV = [
   // After Tools
   { id: "about", label: "About", subtitle: "What AXOM is, where it is headed, and the live project preview", icon: Info },
   { id: "folders", label: "Hub Folders", subtitle: "Your modular folders and shortcuts", icon: Folder },
+  { id: "building", label: "Building", subtitle: "A transparent map of AXOM systems and planned concepts", icon: Blocks },
   // Footer (Help is a page; Settings + Account open the modal)
   { id: "help", label: "Help", subtitle: "Guided tour, master guide, Anki import, and feedback", icon: LifeBuoy },
 ] as const satisfies readonly NavItem[];
@@ -82,7 +84,8 @@ export const MODULE_STATUS_BY_NAV_ID = {
   questions: { status: "new", announcementId: "question-bank-entry-v1" },
   methods: { status: "new", announcementId: "study-methods-library-v1" },
   "daily-word": { status: "new", announcementId: "daily-word-launch-v1" },
-  doctordle: { status: "wip" },
+  "daily-games": { status: "new", announcementId: "daily-games-hub-v1" },
+  building: { status: "new", announcementId: "building-preview-v1" },
   anki: { status: "wip" },
   habits: { status: "wip" },
   step: { status: "wip" },
@@ -112,18 +115,18 @@ export const SIDEBAR_TOP = [
 ];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "habits", "methods", "resources", "prompts", "integrations", "leaderboards"];
-export const SIDEBAR_BOTTOM = ["folders"];
+export const SIDEBAR_BOTTOM = ["folders", "building"];
 // Dashboard can't be hidden; everything else is subscribe/unsubscribe-able.
 export const SIDEBAR_LOCKED = new Set(["dashboard"]);
 
-export const DAILY_GAMES_ROUTE_IDS = ["daily-word", "doctordle"] as const satisfies readonly NavItemId[];
+export const DAILY_GAMES_ROUTE_IDS = ["daily-games", "daily-word", "doctordle"] as const satisfies readonly NavItemId[];
 export type DailyGamesRouteId = (typeof DAILY_GAMES_ROUTE_IDS)[number];
 
 /** Optional-folder metadata stays beside the rest of the navigation model. */
 export const DAILY_GAMES_FOLDER = {
   id: "daily-games",
   label: "Daily Games",
-  description: "Optional daily puzzles stored only in your local AXOM workspace.",
+  description: "Daily puzzles with clear local and external boundaries.",
   icon: Gamepad2,
   featureFlag: "dailyGames",
   toggleId: "sidebar-daily-games-toggle",
