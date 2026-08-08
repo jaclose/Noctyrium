@@ -19,7 +19,7 @@ describe("Daily Word help and status", () => {
     expect(screen.getByText("AXOM Daily Word")).toBeTruthy();
     expect(screen.getByText(/Optional local-first five-letter puzzle/)).toBeTruthy();
     expect(screen.getByText(/after one successful online load/)).toBeTruthy();
-    expect(screen.getByText(/no cloud account or cross-device sync/i)).toBeTruthy();
+    expect(screen.getByText(/account protection remains unavailable until the deployment supplies and verifies its Supabase configuration/i)).toBeTruthy();
     expect(screen.queryByTitle("Live site preview")).toBeNull();
   });
 });

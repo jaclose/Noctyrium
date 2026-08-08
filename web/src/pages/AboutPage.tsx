@@ -34,7 +34,7 @@ const PLANNED: Feature[] = [
   { name: "Application Checker", detail: "Between planned and in-progress — the shell exists, but it isn't gathering or validating data yet." },
   { name: "Casper & DAT lanes", detail: "Separate pre-health lanes alongside MCAT and Pre-Med, each with their own outline." },
   { name: "Exports", detail: "Themed Excel / spreadsheet exports for the activity log and experience hours." },
-  { name: "Device or cloud sync", detail: "Not implemented. Any future sync must preserve AXOM's explicit local-first and backup boundaries." },
+  { name: "Live account protection", detail: "Local-first account and revision architecture is implemented; production activation still requires a configured Supabase project and live two-account security testing." },
   { name: "Performance intelligence", detail: "Sharper, day-aware recommendations as enough real days accumulate." },
   { name: "More integrations", detail: "Calendar study blocks, drives, and (where possible) screen-time signals." },
 ];
@@ -59,7 +59,7 @@ export function AboutPage() {
               backup file you can export when you choose.
             </p>
             <p className="sub">
-              Pre-beta honesty: AXOM has no cloud account or cross-device sync. Supported PDFs use local text
+              Pre-beta honesty: AXOM’s account protection remains unavailable until the deployment supplies and verifies its Supabase configuration. Supported PDFs use local text
               extraction; image-only OCR is not promised. Optional provider tools require explicit setup, and
               local AnkiConnect access still depends on your browser and desktop Anki configuration.
             </p>

@@ -19,15 +19,22 @@ self.addEventListener("activate", (e) => {
 // with a network fallback that also fills the cache.
 self.addEventListener("fetch", (e) => {
   const req = e.request;
-  if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (req.mode === "navigate") {
+    e.respondWith(fetch(req).then((res) => res.ok ? res : Promise.reject(new Error("navigation unavailable"))).catch(() => caches.match("./index.html")));
+    return;
+  }
   e.respondWith(
     caches.match(req).then((hit) =>
       hit ||
       fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        if (res.ok && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
         return res;
-      }).catch(() => caches.match("./index.html")),
+      }),
     ),
   );
 });
