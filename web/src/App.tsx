@@ -55,6 +55,7 @@ const LazyDailyWordPage = lazy(() => import("./pages/DailyWordPage").then((modul
 const LazyDoctordlePage = lazy(() => import("./pages/DoctordlePage").then((module) => ({ default: module.DoctordlePage })));
 const LazyDailyGamesPage = lazy(() => import("./pages/OptionalDailyGamesPage").then((module) => ({ default: module.OptionalDailyGamesPage })));
 const LazyBuildingPage = lazy(() => import("./pages/BuildingPage").then((module) => ({ default: module.BuildingPage })));
+const LazySharedQuestionSetPage = lazy(() => import("./pages/SharedQuestionSetPage").then((module) => ({ default: module.SharedQuestionSetPage })));
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -91,6 +92,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   "daily-word": () => <LazyDailyWordPage />,
   doctordle: () => <LazyDoctordlePage />,
   building: () => <LazyBuildingPage />,
+  "shared-set": () => <LazySharedQuestionSetPage />,
 };
 
 export default function App({ startupStatus }: { startupStatus?: StorageMigrationResult }) {
@@ -268,8 +270,9 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
     setTimeout(() => setRefreshing(false), 650);
   }
 
-  const nav = NAV.find((n) => n.id === route) ?? NAV[0];
-  const Page: ComponentType = PAGES[route] ?? DashboardPage;
+  const routeKey = route.split("?")[0];
+  const nav = NAV.find((n) => n.id === routeKey) ?? NAV[0];
+  const Page: ComponentType = PAGES[routeKey] ?? DashboardPage;
 
   if (!onboarded || setupMode) {
     return (

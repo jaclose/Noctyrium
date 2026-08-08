@@ -37,13 +37,13 @@ afterEach(() => {
 });
 
 describe("Settings information architecture", () => {
-  it("uses five accessible sections with only the active tab owning its mounted panel", async () => {
+  it("uses six accessible sections with only the active tab owning its mounted panel", async () => {
     const user = userEvent.setup();
     render(<SettingsModal onClose={() => {}} />);
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual([
-      "Profile", "Data", "Backup", "Personalization", "Advanced",
+      "Profile", "Account", "Data", "Backup", "Personalization", "Advanced",
     ]);
     for (const tab of tabs) {
       const controls = tab.getAttribute("aria-controls");
@@ -65,7 +65,7 @@ describe("Settings information architecture", () => {
     const user = userEvent.setup();
     render(<SettingsModal onClose={() => {}} initialTab="data" />);
     expect(screen.getByText(/workspace is stored on this device/i)).toBeTruthy();
-    expect(screen.getByText(/not automatically synced to an account or uploaded to the cloud/i)).toBeTruthy();
+    expect(screen.getByText(/deliberately link an account/i)).toBeTruthy();
     expect(screen.queryByText(/your account is synced/i)).toBeNull();
     expect(screen.queryByText(/workspace follows you across devices/i)).toBeNull();
 

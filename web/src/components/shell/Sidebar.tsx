@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Settings, UserCircle2, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
+  Settings, Cloud, SlidersHorizontal, Check, ChevronDown, ChevronRight, Wrench, GraduationCap, MessageCircle,
 } from "lucide-react";
 import {
   DAILY_GAMES_FOLDER,
@@ -305,8 +305,8 @@ export function Sidebar({
             </button>
             <div className="user-actions">
               <QuickThemeControl />
-              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("data")} title="Local data and backups" data-tour="data-safety-settings">
-                <UserCircle2 size={ICON_SIZE.emphasis} />
+              <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("account")} title="Account and protection" data-tour="data-safety-settings">
+                <Cloud size={ICON_SIZE.emphasis} />
               </button>
               <button type="button" className="user-icon-btn" onClick={() => onOpenSettings("profile")} title="Settings">
                 <Settings size={ICON_SIZE.emphasis} />

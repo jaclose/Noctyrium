@@ -32,6 +32,7 @@ import { runStorageMigrations } from "../../lib/storageMigrations";
 import { requestOnboardingRerun } from "../../lib/uiStore";
 import { canonicalTimeZone, normalizeClockPreferences, normalizeTimeZonePreference, systemTimeZone } from "../../lib/clock";
 import { normalizeDailyLoopReminderPreferences } from "../../lib/dailyLoopReminders";
+import { AccountSyncPanel } from "./AccountSyncPanel";
 import {
   CURRENT_DASHBOARD_WIDGET_IDS,
   adaptLegacyDashboardLayout,
@@ -40,12 +41,13 @@ import {
   normalizeDashboardLayoutPreferences,
 } from "../../lib/dashboardWidgets";
 
-type SettingsSection = "profile" | "data" | "backup" | "personalization" | "advanced";
+type SettingsSection = "profile" | "account" | "data" | "backup" | "personalization" | "advanced";
 /** Legacy names remain accepted so existing deep links keep opening safely. */
 export type SettingsTab = SettingsSection | "general" | "ai" | "account";
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeof UserCircle2 }> = [
   { id: "profile", label: "Profile", icon: UserCircle2 },
+  { id: "account", label: "Account", icon: ShieldCheck },
   { id: "data", label: "Data", icon: Database },
   { id: "backup", label: "Backup", icon: FileJson },
   { id: "personalization", label: "Personalization", icon: Palette },
@@ -54,7 +56,7 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeo
 
 function normalizeSettingsTab(tab: SettingsTab): SettingsSection {
   if (tab === "general") return "profile";
-  if (tab === "ai" || tab === "account") return "advanced";
+  if (tab === "ai") return "advanced";
   return tab;
 }
 
@@ -76,6 +78,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       title: "Profile",
       body: "Your identity, academic path, current focus, and good-enough daily targets.",
     },
+    account: { title: "Account & protection", body: "Optional sign-in, automatic protected versions, and safe restore controls." },
     data: {
       title: "Data on this device",
       body: "See where your workspace lives, whether storage is healthy, and what AXOM has saved.",
@@ -283,8 +286,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             <div>
               <div className="sync-title">Local-first workspace</div>
               <div className="sub">
-                Your AXOM workspace is stored on this device. It is not automatically synced to an account or uploaded to the cloud.
-                Changes save locally as you work.
+                Your AXOM workspace is stored on this device and changes save locally as you work.
+                When you deliberately link an account, acknowledged protected versions are also retained remotely.
               </div>
             </div>
             <Tag tone="green"><ShieldCheck size={ICON_SIZE.microInline} /> On this device</Tag>
@@ -292,11 +295,12 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
           <DataHealthPanel />
         </section>
       )}
+      {tab === "account" && <section role="tabpanel" id={`${tabsId}-panel-account`} aria-labelledby={`${tabsId}-tab-account`}><AccountSyncPanel /></section>}
 
       {tab === "backup" && (
         <section role="tabpanel" id={`${tabsId}-panel-backup`} aria-labelledby={`${tabsId}-tab-backup`} className="backup-center">
           <div className="sub" style={{ marginBottom: 4 }}>
-            Automatic local recovery snapshots help protect updates and migrations. Export a backup to keep a portable copy.
+            Signed-in accounts can retain protected server versions. Manual JSON backup remains an emergency portable safety valve.
           </div>
 
           <RecoveryStatusCard
@@ -316,8 +320,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
           <div className="backup-actions-panel">
             <div>
-              <div className="sync-title">Portable backup file</div>
-              <div className="sub">Export a copy you control, or choose a saved AXOM JSON file to restore or merge.</div>
+              <div className="sync-title">Manual backup &amp; recovery</div>
+              <div className="sub">Export a portable emergency copy you control, or choose a saved AXOM JSON file to restore or merge.</div>
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" variant="primary" onClick={exportBackup}>

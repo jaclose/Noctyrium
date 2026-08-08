@@ -1,0 +1,9 @@
+import { getSupabase } from "../account/supabase";
+import type { ProtectedRevision, PushResult, SnapshotEnvelope, SyncTransport } from "./syncTypes";
+export class SupabaseSyncTransport implements SyncTransport{
+  private client(){const value=getSupabase();if(!value)throw new Error("Cloud protection is not configured. Your work remains saved on this device.");return value;}
+  async push(e:SnapshotEnvelope):Promise<PushResult>{const{data,error}=await this.client().rpc("push_workspace_revision",{p_base_revision:e.baseRevision,p_schema_version:e.schemaVersion,p_content_hash:e.contentHash,p_snapshot_payload:e.payload,p_device_id:e.deviceId,p_idempotency_key:e.idempotencyKey,p_reason:e.reason});if(error)throw new Error(error.message);const row=data as Record<string,unknown>;return row.status==="conflict"?{status:"conflict",serverRevision:Number(row.server_revision),preservedRevisionId:String(row.preserved_revision_id)}:{status:"accepted",revision:Number(row.revision),revisionId:String(row.revision_id),idempotent:Boolean(row.idempotent)};}
+  async history(){const{data,error}=await this.client().from("workspace_revisions").select("id,revision,schema_version,content_hash,snapshot_payload,reason,created_at").neq("reason","conflict").order("revision",{ascending:false}).limit(30);if(error)throw new Error(error.message);return(data??[]).map(mapRevision);}
+  async revision(id:string){const{data,error}=await this.client().from("workspace_revisions").select("id,revision,schema_version,content_hash,snapshot_payload,reason,created_at").eq("id",id).single();if(error)throw new Error(error.message);return mapRevision(data);}
+}
+function mapRevision(row:Record<string,unknown>):ProtectedRevision{return{id:String(row.id),revision:Number(row.revision),schemaVersion:Number(row.schema_version),contentHash:String(row.content_hash),payload:row.snapshot_payload as ProtectedRevision["payload"],reason:String(row.reason),createdAt:String(row.created_at)};}
