@@ -140,4 +140,22 @@ describe("Mass Import trust handoff", () => {
       screen.getByRole("button", { name: "Remove third.txt" }),
     ));
   });
+
+  it("associates a separate numbered answer file and keeps it as provenance", async () => {
+    const user = userEvent.setup();
+    const onInspect = vi.fn();
+    render(<MassImport onInspect={onInspect} />);
+    await user.upload(screen.getByLabelText("Choose multiple question files"), [
+      new File(["1. Which option is correct?\nA. Alpha\nB. Beta\nC. Gamma"], "questions.txt", { type: "text/plain" }),
+      new File(["Answer key\n1. B"], "answers.txt", { type: "text/plain" }),
+    ]);
+    await user.click(screen.getByRole("button", { name: "Import files" }));
+    await screen.findByRole("button", { name: "Match answers.txt to questions" });
+    await user.click(screen.getByRole("button", { name: "Match answers.txt to questions" }));
+    expect(await screen.findByText("answers matched")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Inspect questions.txt" }));
+    expect(onInspect).toHaveBeenCalledWith(expect.objectContaining({
+      drafts: [expect.objectContaining({ correctKey: "B" })],
+    }));
+  });
 });

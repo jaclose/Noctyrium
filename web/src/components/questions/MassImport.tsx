@@ -9,7 +9,7 @@
 // ===========================================================================
 import { useEffect, useRef, useState } from "react";
 import { FileUp, RefreshCw, CheckCircle2, AlertTriangle, Trash2, Eye } from "lucide-react";
-import { parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
+import { associateAnswerSource, parseAnswerSections, parseQuestionBlocks, type ParsedQuestionDraft } from "../../lib/questionParse";
 import { importFromCsv, importFromJson } from "../../lib/questionImport";
 import { extractDocxText, extractPdfText, extractPlainText } from "../../lib/extractText";
 import { documentTitleFromFile } from "../../lib/library";
@@ -21,7 +21,7 @@ import type { ImportSeed } from "./ImportPanel";
 import { draftImportStatus } from "../../lib/questionImportTrust";
 import { ICON_SIZE } from "../../lib/iconSize";
 
-type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "no-text" | "error";
+type FileStatus = "queued" | "extracting" | "parsing" | "ready" | "needs-review" | "answer-source" | "no-text" | "error";
 
 interface QueuedFile {
   id: string;
@@ -196,15 +196,31 @@ export function MassImport({
       });
     } catch (err) {
       patch(id, { status: "error", error: err instanceof Error ? err.message : "Could not read this file." });
-    } finally {
-      fileMap.delete(id);
-      ownedFileIds.current.delete(id);
-    }
+    } finally { /* retain the File for an explicit retry; removal/finalization releases it */ }
+  }
+
+  function retry(id: string) {
+    patch(id, { status: "queued", error: undefined, warnings: [], drafts: [], rawText: "" });
+    queueMicrotask(() => void processOne(id));
+  }
+
+  function associateAnswers(answerFile: QueuedFile, target: QueuedFile) {
+    const result = associateAnswerSource(target.drafts, answerFile.rawText);
+    const status = massImportFileStatus(result.drafts);
+    patch(target.id, {
+      drafts: result.drafts,
+      status,
+      answerKeyDetected: result.matched > 0,
+      warnings: [...target.warnings, `Matched ${result.matched} numbered answer${result.matched === 1 ? "" : "s"} from ${answerFile.fileName}.`, ...(result.unmatchedNumbers.length ? [`Unmatched answer numbers: ${result.unmatchedNumbers.join(", ")}.`] : [])],
+    });
+    patch(answerFile.id, { status: "answer-source", error: undefined });
   }
 
   const readyCount = queue.filter((f) => f.status === "ready").length;
   const needsReviewCount = queue.filter((f) => f.status === "needs-review").length;
   const anyQueued = queue.some((f) => f.status === "queued");
+  const failedCount = queue.filter((f) => f.status === "error" || f.status === "no-text").length;
+  const finishedCount = queue.filter((f) => !["queued", "extracting", "parsing"].includes(f.status)).length;
 
   return (
     <GlassCard>
@@ -238,6 +254,8 @@ export function MassImport({
             <div className="row wrap gap6" aria-label="Mass import review status">
               <Tag tone="green">Ready to inspect {readyCount}</Tag>
               <Tag tone="orange">Needs review {needsReviewCount}</Tag>
+              <Tag tone="red">Could not import {failedCount}</Tag>
+              <Tag tone="cyan">Processed {finishedCount}/{queue.length}</Tag>
             </div>
             <span className="sub">Inspect each parsed file to edit and finalize its questions.</span>
           </div>
@@ -277,6 +295,21 @@ export function MassImport({
                         source: file.source,
                       })}>
                       <Eye size={ICON_SIZE.body} /> Inspect
+                    </GhostButton>
+                  )}
+                  {file.status === "error" && parseAnswerSections(file.rawText).entries.size > 0 && queue.filter((candidate) => candidate.drafts.length > 0).length === 1 && (
+                    <GhostButton aria-label={`Match ${file.fileName} to questions`} onClick={() => associateAnswers(file, queue.find((candidate) => candidate.drafts.length > 0)!)}>
+                      Match answers
+                    </GhostButton>
+                  )}
+                  {file.status === "answer-source" && (
+                    <GhostButton aria-label={`Inspect ${file.fileName}`} onClick={() => onInspect({ batchQueueId: file.id, title: documentTitleFromFile(file.fileName), drafts: [], rawText: file.rawText, fileName: file.fileName, fileType: file.fileType, sizeBytes: file.sizeBytes, checksum: file.checksum, warnings: file.warnings, source: file.source })}>
+                      <Eye size={ICON_SIZE.body} /> Keep source
+                    </GhostButton>
+                  )}
+                  {(file.status === "error" || file.status === "no-text") && fileMap.has(file.id) && (
+                    <GhostButton aria-label={`Retry ${file.fileName}`} onClick={() => retry(file.id)}>
+                      <RefreshCw size={ICON_SIZE.body} /> Retry
                     </GhostButton>
                   )}
                   <GhostButton id={`mass-import-remove-${file.id}`} aria-label={`Remove ${file.fileName}`}
@@ -340,6 +373,7 @@ function StatusTag({ status }: { status: FileStatus }) {
     parsing: { label: "parsing", tone: "cyan" },
     ready: { label: "ready to inspect", tone: "green" },
     "needs-review": { label: "needs review", tone: "orange" },
+    "answer-source": { label: "answers matched", tone: "cyan" },
     "no-text": { label: "no text (scan)", tone: "orange" },
     error: { label: "no questions", tone: "red" },
   };

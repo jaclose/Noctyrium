@@ -7,6 +7,7 @@ import type { QuestionRecord } from "../../lib/questions";
 import type { QuizBlock } from "../../lib/quiz";
 import { ExamRunner } from "./ExamRunner";
 import { createTextAnnotation } from "../../lib/questionAnnotations";
+import { STORAGE_KEYS } from "../../lib/brand";
 
 const mocked = vi.hoisted(() => ({
   store: {} as Record<string, unknown>,
@@ -97,6 +98,17 @@ afterEach(() => {
 });
 
 describe("ExamRunner saved blocks and selection semantics", () => {
+  it("restores an active question, picked answer, and position after refresh", () => {
+    setStore();
+    localStorage.setItem(STORAGE_KEYS.quizActiveSession, JSON.stringify({
+      mode: "tutor", poolIds: [question.id], index: 0, answers: [], picked: "A",
+      revealed: false, startedAt: "2026-07-10T01:00:00.000Z", timed: false,
+      filters: { count: 1, status: "all", ordered: true },
+    }));
+    render(<ExamRunner mode="tutor" onClose={() => {}} />);
+    expect(screen.getByText(question.stem)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /A\. Alpha/i }).getAttribute("aria-pressed")).toBe("true");
+  });
   it("reopens a timed block as timed and advances lastRunAt only when Start is pressed", async () => {
     setStore();
     const user = userEvent.setup();

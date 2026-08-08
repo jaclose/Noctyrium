@@ -39,6 +39,16 @@ const ERROR_TYPES = Object.keys(ERROR_TYPE_LABEL) as QuestionErrorType[];
 const EXAM_TYPES = Object.keys(EXAM_TYPE_LABEL) as QuestionExamType[];
 
 type Stage = "setup" | "running" | "results";
+interface ActiveQuizSnapshot {
+  mode: QuizMode; poolIds: string[]; index: number; answers: QuizAnswer[];
+  picked?: string; revealed: boolean; startedAt: string; timed: boolean; filters: QuizFilters;
+}
+function readActiveQuiz(): ActiveQuizSnapshot | undefined {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.quizActiveSession) ?? "null") as ActiveQuizSnapshot | null;
+    return value && Array.isArray(value.poolIds) && value.poolIds.length > 0 ? value : undefined;
+  } catch { return undefined; }
+}
 
 function trustedCorrectKey(question: QuestionRecord): string | undefined {
   return questionMappingStatus(question) === "ready" ? question.correctKey : undefined;
@@ -70,8 +80,9 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const s = useStore();
   const questions = s.questions ?? [];
   const questionSets = s.questionSets ?? [];
+  const restored = useMemo(() => readActiveQuiz(), []);
   const [mode, setMode] = useState<QuizMode>(initialMode);
-  const [stage, setStage] = useState<Stage>(retakeIds?.length ? "running" : "setup");
+  const [stage, setStage] = useState<Stage>(restored || retakeIds?.length ? "running" : "setup");
 
   // --- setup state
   const [count, setCount] = useState(presetFilters?.count ?? 10);
@@ -80,25 +91,26 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const [examType, setExamType] = useState<QuestionExamType | "">(presetFilters?.examTypes?.[0] ?? "");
   const [setIds, setSetIds] = useState<string[]>(presetFilters?.setIds ?? []);
   const [ordered, setOrdered] = useState(presetFilters?.ordered ?? false);
-  const [timed, setTimed] = useState(presetTimed);
+  const [timed, setTimed] = useState(restored?.timed ?? presetTimed);
   const [runBlockId, setRunBlockId] = useState(blockId);
   const [minutesPerQ] = useState(1.5);
 
   // --- run state
-  const [pool, setPool] = useState<QuestionRecord[]>(() =>
-    retakeIds?.length
+  const [pool, setPool] = useState<QuestionRecord[]>(() => restored
+    ? restored.poolIds.map((id) => questions.find((question) => question.id === id)).filter((question): question is QuestionRecord => Boolean(question))
+    : retakeIds?.length
       ? buildQuizPool(
           questions.filter((question) => retakeIds.includes(question.id)),
           { count: Math.max(1, retakeIds.length), status: "all", ordered: true },
         )
       : []);
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Map<string, QuizAnswer>>(new Map());
-  const [picked, setPicked] = useState<string | undefined>();
-  const [revealed, setRevealed] = useState(false); // tutor mode reveal
+  const [index, setIndex] = useState(restored?.index ?? 0);
+  const [answers, setAnswers] = useState<Map<string, QuizAnswer>>(() => new Map((restored?.answers ?? []).map((answer) => [answer.questionId, answer])));
+  const [picked, setPicked] = useState<string | undefined>(restored?.picked);
+  const [revealed, setRevealed] = useState(restored?.revealed ?? false); // tutor mode reveal
   const [errorType, setErrorType] = useState<QuestionErrorType | "">("");
   const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5 | undefined>();
-  const [startedAt, setStartedAt] = useState<string>(() => new Date().toISOString());
+  const [startedAt, setStartedAt] = useState<string>(() => restored?.startedAt ?? new Date().toISOString());
   const [shownAt, setShownAt] = useState(() => Date.now());
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [annotationTool, setAnnotationTool] = useState<AnnotationTool>(null);
@@ -156,6 +168,17 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const timeLimitSeconds = timed ? Math.round(pool.length * minutesPerQ * 60) : undefined;
   const question = pool[index];
   const provider = useMemo(() => resolveActiveProvider(), []);
+
+  useEffect(() => {
+    if (stage !== "running" || pool.length === 0) return;
+    const filters: QuizFilters = { count, status, categories: category ? [category] : undefined, examTypes: examType ? [examType] : undefined, setIds: setIds.length ? setIds : undefined, ordered: ordered || undefined };
+    const snapshot: ActiveQuizSnapshot = { mode, poolIds: pool.map((item) => item.id), index, answers: [...answers.values()], picked, revealed, startedAt, timed, filters };
+    try { localStorage.setItem(STORAGE_KEYS.quizActiveSession, JSON.stringify(snapshot)); } catch { /* Local Vault remains authoritative for saved work. */ }
+  }, [answers, category, count, examType, index, mode, ordered, picked, pool, revealed, setIds, stage, startedAt, status, timed]);
+
+  function clearActiveQuiz() {
+    try { localStorage.removeItem(STORAGE_KEYS.quizActiveSession); } catch { /* non-fatal */ }
+  }
 
   // Timer display tick (display only — limits derive from timestamps).
   useEffect(() => {
@@ -389,6 +412,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       }
     }
     s.saveQuizSession(result);
+    clearActiveQuiz();
     setSession(result);
     setStage("results");
   }
@@ -683,7 +707,7 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       title={`${mode === "exam" ? "Exam" : "Tutor"} · ${index + 1} of ${pool.length}`}
       className="quiz-player-modal"
       bodyClassName="quiz-player-body"
-      onClose={() => { if (confirm("Leave this block? Progress in unanswered questions is discarded.")) onClose(); }}
+      onClose={() => { if (confirm("Leave this block? Progress in unanswered questions is discarded.")) { clearActiveQuiz(); onClose(); } }}
       footer={
         mode === "tutor"
           ? (

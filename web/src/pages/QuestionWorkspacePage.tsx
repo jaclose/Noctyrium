@@ -31,6 +31,7 @@ import { coachWeakness, resolveActiveProvider } from "../lib/ai";
 import { pushToast } from "../lib/toast";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
 import { ICON_SIZE } from "../lib/iconSize";
+import { STORAGE_KEYS } from "../lib/brand";
 
 const NO_QUESTIONS: QuestionRecord[] = [];
 const NO_SETS: QuestionSet[] = [];
@@ -77,7 +78,12 @@ export function QuestionWorkspacePage() {
   const [tab, setTab] = useState<BankTab>("overview");
   const [open, setOpen] = useState<QuestionRecord | null>(null);
   const [showStyle, setShowStyle] = useState(false);
-  const [runner, setRunner] = useState<RunnerLaunch | null>(null);
+  const [runner, setRunner] = useState<RunnerLaunch | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.quizActiveSession) ?? "null") as { mode?: QuizMode; poolIds?: string[] } | null;
+      return saved?.mode && saved.poolIds?.length ? { mode: saved.mode } : null;
+    } catch { return null; }
+  });
   const [importSeed, setImportSeed] = useState<ImportSeed | null>(null);
   const [importEntry, setImportEntry] = useState<"file" | "paste">("file");
   const [bankReview, setBankReview] = useState<{ ids?: string[]; key: number }>({ key: 0 });

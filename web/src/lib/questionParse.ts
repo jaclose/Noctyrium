@@ -1645,6 +1645,23 @@ function applyAnswerEntries(drafts: ParsedQuestionDraft[], entries: Map<number, 
   });
 }
 
+/** Deterministically associate a separately supplied numbered answer or
+ * explanation source. Numbered matches are applied; unmatched or conflicting
+ * entries remain visible through the returned diagnostics. */
+export function associateAnswerSource(
+  drafts: readonly ParsedQuestionDraft[],
+  answerSourceText: string,
+): { drafts: ParsedQuestionDraft[]; matched: number; unmatchedNumbers: number[] } {
+  const { entries } = parseAnswerSections(answerSourceText);
+  const before = new Map(drafts.map((draft) => [draft.questionNumber, draft.correctKey]));
+  const associated = applyAnswerEntries([...drafts], entries);
+  const matched = associated.filter((draft) => draft.questionNumber !== undefined
+    && entries.has(draft.questionNumber)
+    && (draft.correctKey !== before.get(draft.questionNumber) || Boolean(draft.answerEvidence))).length;
+  const known = new Set(drafts.map((draft) => draft.questionNumber).filter((number): number is number => number !== undefined));
+  return { drafts: associated, matched, unmatchedNumbers: [...entries.keys()].filter((number) => !known.has(number)) };
+}
+
 function refreshAnswerEntryDiagnostics(draft: ParsedQuestionDraft): ParsedQuestionDraft {
   const warnings = draft.warnings.filter((warning) => !/no correct answer/i.test(warning));
   const parserRuleIds = [...new Set([...(draft.parserRuleIds ?? []), "answer.trailing-section"])];

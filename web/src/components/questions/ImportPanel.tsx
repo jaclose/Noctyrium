@@ -47,6 +47,7 @@ import {
 } from "../../lib/questionImportFinalization";
 import { ICON_SIZE } from "../../lib/iconSize";
 import { MassImport } from "./MassImport";
+import { flagImportDuplicates } from "../../lib/questionDuplicates";
 
 export type ImportTab = "paste" | "file" | "batch" | "ai";
 type SaveMode = "set" | "doc" | "both";
@@ -200,7 +201,10 @@ export function ImportPanel({
   const [step, setStep] = useState<ImportStep>(seed?.drafts ? "review" : "source");
   const [drafts, setDrafts] = useState<ReviewDraft[]>(() =>
     seed?.drafts
-      ? preserveUserReviewedMappings(seed.drafts, s.questions ?? [], seed.sourceDocumentId)
+      ? flagImportDuplicates(
+        preserveUserReviewedMappings(seed.drafts, s.questions ?? [], seed.sourceDocumentId),
+        s.questions ?? [],
+      )
         .map((d) => ({ ...d, reviewId: uid(), include: true, source: seed.source ?? "imported" }))
       : []);
   const [sourceText, setSourceText] = useState(seed?.rawText ?? "");
@@ -274,7 +278,8 @@ export function ImportPanel({
   function loadDrafts(parsed: ParsedQuestionDraft[], warnings: string[], source: QuestionSource, doc: PendingDocument | null, ai = false) {
     finalizingRef.current = false;
     setFinalizing(false);
-    setDrafts(parsed.map((d) => ({ ...d, reviewId: uid(), include: true, aiGenerated: ai, source })));
+    const duplicateAware = flagImportDuplicates(parsed, s.questions ?? []);
+    setDrafts(duplicateAware.map((d) => ({ ...d, reviewId: uid(), include: true, aiGenerated: ai, source })));
     setBatchWarnings(warnings);
     setPendingDoc(doc);
     setSourceType(source);
