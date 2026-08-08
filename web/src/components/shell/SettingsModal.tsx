@@ -33,6 +33,7 @@ import { requestOnboardingRerun } from "../../lib/uiStore";
 import { canonicalTimeZone, normalizeClockPreferences, normalizeTimeZonePreference, systemTimeZone } from "../../lib/clock";
 import { normalizeDailyLoopReminderPreferences } from "../../lib/dailyLoopReminders";
 import { AccountSyncPanel } from "./AccountSyncPanel";
+import { DEFAULT_STUDY_WORKFLOW, normalizeStudyWorkflow, type StudyMethodId } from "../../lib/studyPreferences";
 import {
   CURRENT_DASHBOARD_WIDGET_IDS,
   adaptLegacyDashboardLayout,
@@ -372,6 +373,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
             <ThemeToggle />
           </div>
           <DailyUtilitiesSettings />
+          <StudyWorkflowSettings />
           <DashboardVisibilitySettings />
           <DevicePreferencePanel />
           <PersonalizationPanel />
@@ -428,6 +430,25 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       {viewingPromise && promise && <PromiseSheet onClose={() => setViewingPromise(false)} />}
     </Modal>
   );
+}
+
+const STUDY_METHOD_OPTIONS: Array<{ id: StudyMethodId; label: string }> = [
+  { id: "lecture-passes", label: "Lecture passes" }, { id: "practice-questions", label: "Practice questions" },
+  { id: "anki", label: "Anki" }, { id: "quizlet", label: "Quizlet" }, { id: "noji", label: "Noji" },
+  { id: "remnote", label: "RemNote" }, { id: "notes", label: "Notes / concept notes" },
+  { id: "teach-aloud", label: "Teaching aloud / Feynman" }, { id: "recall", label: "Recall sessions" },
+  { id: "external-resource", label: "External resources" }, { id: "custom", label: "Other" },
+];
+
+function StudyWorkflowSettings() {
+  const store = useStore();
+  const workflow = normalizeStudyWorkflow(store.profile.studyWorkflow ?? DEFAULT_STUDY_WORKFLOW);
+  const enabled = new Set((workflow.methods ?? []).filter((method) => method.enabled).map((method) => method.id));
+  function toggle(id: StudyMethodId) {
+    const methods = STUDY_METHOD_OPTIONS.map((option) => ({ id: option.id, enabled: option.id === id ? !enabled.has(id) : enabled.has(option.id) }));
+    store.updateProfile({ studyWorkflow: { ...workflow, configured: true, methods } });
+  }
+  return <div className="backup-actions-panel"><div><div className="sync-title">How you study</div><div className="sub">Optional learner defaults. Courses and individual items can override these without changing your original choices.</div></div><div className="row wrap gap8" aria-label="Study methods">{STUDY_METHOD_OPTIONS.map((option) => <button key={option.id} type="button" className={`filter-pill ${enabled.has(option.id) ? "on" : ""}`} aria-pressed={enabled.has(option.id)} onClick={() => toggle(option.id)}>{option.label}</button>)}</div><div className="settings-target-grid"><label className="stack gap6"><span>Usual lecture passes</span><input className="field" type="number" min={1} max={6} value={workflow.lecturePasses ?? 2} onChange={(event) => store.updateProfile({ studyWorkflow: { ...workflow, configured: true, lecturePasses: Number(event.target.value) } })}/></label><label className="stack gap6"><span>Review again after (days)</span><input className="field" type="number" min={1} max={14} value={workflow.reviewAfterDays ?? 3} onChange={(event) => store.updateProfile({ studyWorkflow: { ...workflow, configured: true, reviewAfterDays: Number(event.target.value) } })}/></label></div><label className="stack gap6"><span>Other — tell AXOM how you study</span><textarea className="field" value={workflow.customContext ?? ""} onChange={(event) => store.updateProfile({ studyWorkflow: { ...workflow, configured: true, customContext: event.target.value } })}/></label><div className="sub">AXOM preserves this text as your context. V1 does not pretend to interpret it with AI.</div></div>;
 }
 
 function DailyUtilitiesSettings() {

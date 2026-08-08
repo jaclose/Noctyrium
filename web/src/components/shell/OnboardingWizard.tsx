@@ -35,6 +35,7 @@ import { Field, SelectField } from "../ui/Modal";
 import { GButton, GhostButton } from "../ui/primitives";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { ICON_SIZE } from "../../lib/iconSize";
+import { normalizeStudyWorkflow, type StudyMethodId } from "../../lib/studyPreferences";
 
 const STEP_TITLES = ["Identity", "Core setup", "Workspace", "Data safety"] as const;
 
@@ -65,6 +66,10 @@ export function OnboardingWizard({
     return readOnboardingDraft(fallback);
   });
   const [notificationStatus, setNotificationStatus] = useState(() => notificationPermission());
+  const existingWorkflow = normalizeStudyWorkflow(store.profile.studyWorkflow);
+  const [studyMethods, setStudyMethods] = useState<StudyMethodId[]>(() => existingWorkflow.configured ? (existingWorkflow.methods ?? []).filter((method) => method.enabled).map((method) => method.id) : []);
+  const [studyPasses, setStudyPasses] = useState(existingWorkflow.lecturePasses ?? 2);
+  const [studyContext, setStudyContext] = useState(existingWorkflow.customContext ?? "");
   const dialogRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -170,6 +175,7 @@ export function OnboardingWizard({
           : [],
       } : {}),
       ...(effectiveMode === "first-run" || draft.launchTour ? { tourDone: !draft.launchTour } : {}),
+      ...(studyMethods.length || studyContext.trim() ? { studyWorkflow: { configured: true, lecturePasses: studyPasses, reviewAfterDays: existingWorkflow.reviewAfterDays ?? 3, customContext: studyContext.trim() || undefined, methods: (["lecture-passes", "practice-questions", "anki", "notes", "teach-aloud", "custom"] as StudyMethodId[]).map((id) => ({ id, enabled: studyMethods.includes(id) })) } } : {}),
     };
     store.updateProfile(profilePatch);
     applyQuickRequirements(draft.quickRequirements);
@@ -409,6 +415,16 @@ export function OnboardingWizard({
               </div>
               <div className="onboarding-custom-later">Custom later — add schedules and targets when you know what fits.</div>
             </section>
+            <details className="onboarding-disclosure">
+              <summary>How do you usually study? (optional)</summary>
+              <p className="sub">Choose only methods you actually use. You can skip this and edit it later in Settings.</p>
+              <div className="onboarding-quick-requirements">
+                {([ ["lecture-passes", "Lecture passes"], ["practice-questions", "Question-based practice"], ["anki", "Anki"], ["notes", "Notes"], ["teach-aloud", "Teaching / retrieval"], ["custom", "Other"] ] as Array<[StudyMethodId, string]>).map(([id, label]) => <label key={id}><input type="checkbox" checked={studyMethods.includes(id)} onChange={(event) => setStudyMethods((current) => event.target.checked ? [...current, id] : current.filter((method) => method !== id))}/><span><b>{label}</b></span></label>)}
+              </div>
+              {studyMethods.includes("lecture-passes") && <label className="stack gap6"><span>Usual lecture passes</span><input className="field" type="number" min={1} max={6} value={studyPasses} onChange={(event) => setStudyPasses(Math.max(1, Math.min(6, Number(event.target.value))))}/></label>}
+              <label className="stack gap6"><span>Other — tell AXOM how you study</span><textarea className="field" value={studyContext} onChange={(event) => setStudyContext(event.target.value)} /></label>
+              <p className="sub">Your words are preserved as context; V1 does not infer hidden settings from them.</p>
+            </details>
             <StepActions onBack={() => move(0)} onNext={() => move(2)} />
           </div>
         )}

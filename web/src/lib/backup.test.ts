@@ -43,7 +43,7 @@ describe("portable backup safety", () => {
     }];
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(33);
+    expect(parsed.schemaVersion).toBe(34);
     expect(parsed.profile.journalNotebook).toEqual(state.profile.journalNotebook);
     expect(parsed.journal).toEqual(state.journal);
     expect(JSON.stringify(parsed.journal)).not.toContain("https://");
@@ -71,7 +71,7 @@ describe("portable backup safety", () => {
     };
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(33);
+    expect(parsed.schemaVersion).toBe(34);
     expect(parsed.profile.dashboardLayout).toMatchObject(state.profile.dashboardLayout);
     const reparsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(parsed) }));
     expect(reparsed.profile.dashboardLayout).toEqual(parsed.profile.dashboardLayout);
@@ -109,7 +109,7 @@ describe("portable backup safety", () => {
       promptVersion: "promise-prompt-v1",
     };
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
-    expect(parsed.schemaVersion).toBe(33);
+    expect(parsed.schemaVersion).toBe(34);
     expect(parsed.profile.promisePromptStatus).toEqual(state.profile.promisePromptStatus);
   });
 
@@ -128,7 +128,7 @@ describe("portable backup safety", () => {
     expect(JSON.stringify(portable)).not.toContain("snoozedUntil");
 
     const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...portable }));
-    expect(parsed.schemaVersion).toBe(33);
+    expect(parsed.schemaVersion).toBe(34);
     expect(parsed.profile.dailyLoopReminders).toEqual(state.profile.dailyLoopReminders);
   });
 
@@ -446,7 +446,7 @@ describe("portable backup safety", () => {
       createdAt: "2026-07-01T00:00:00.000Z", updatedAt: "2026-07-01T00:00:00.000Z",
     }];
     const parsed = parseImport(JSON.stringify(legacy));
-    expect(parsed.schemaVersion).toBe(33);
+    expect(parsed.schemaVersion).toBe(34);
     expect(parsed.questions[0].correctAnswerText).toBe("Legacy answer");
     expect(parsed.questions[0].extraction?.overallImportConfidence).toBe(0.65);
   });

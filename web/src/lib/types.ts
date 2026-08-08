@@ -5,6 +5,7 @@
 // ===========================================================================
 
 import type { JournalNotebookEntryFields, JournalNotebookPreferences } from "./journalNotebook";
+import type { StudyPlanSettings, StudyWorkflowPreferences } from "./studyPreferences";
 
 export type ID = string;
 export type BoardExamId = "step1" | "step2" | "step3" | "shelf" | "mcat" | "premed";
@@ -30,6 +31,7 @@ export interface Course {
   files: number; // count shown on the card; user-editable
   link?: string; // optional URL the "Open" button targets
   modules: CourseModule[];
+  studyPlanOverride?: StudyPlanSettings;
 }
 
 export type TrackerStatus = "anki" | "working" | "mature" | "reset";
@@ -65,6 +67,7 @@ export interface TrackerItem {
   yield: Yield; // high / low / review / none
   note?: string;
   updated: string; // ISO
+  studyPlanOverride?: StudyPlanSettings;
 }
 
 export interface Task {
@@ -764,6 +767,8 @@ export interface Profile {
   // Custom Pomodoro durations (§3), persisted with the profile.
   pomodoroCustom?: { focus: number; break: number; longBreak: number; cyclesBeforeLongBreak: number };
   pomodoroPreferences?: PomodoroPreferences;
+  /** Learner-authored defaults; course, kind, and item layers resolve without duplicating state. */
+  studyWorkflow?: StudyWorkflowPreferences;
 }
 
 export interface DailyLoopReminderPreferences {

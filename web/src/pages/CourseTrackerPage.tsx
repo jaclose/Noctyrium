@@ -9,8 +9,10 @@ import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from ".
 import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import {
   passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
-  suggestMoves, scopeMastery, isCompletionKind, isQuestionKind,
+  scopeMastery, isCompletionKind, isQuestionKind,
 } from "../lib/tracker";
+import { personalizedSuggestions } from "../lib/recommendationFactors";
+import { resolveStudyPlan, type StudyMethodId } from "../lib/studyPreferences";
 import { BLUEPRINT_LANES } from "../lib/blueprintCatalog";
 import { routeForBlueprintLane } from "../lib/blueprintRoutes";
 import {
@@ -182,7 +184,10 @@ export function CourseTrackerPage() {
   );
   const items = inScope.filter((t) => tabMatch(tab, t.kind));
   const mastery = inBlueprintScope ? blueprintMastery : scopeMastery(inScope);
-  const suggestions = useMemo(() => inBlueprintScope ? [] : suggestMoves(inScope, 3, salt), [inBlueprintScope, inScope, salt]);
+  const suggestions = useMemo(() => {
+    void salt; // Refresh recomputes current facts; deterministic evidence keeps the same order stable.
+    return inBlueprintScope ? [] : personalizedSuggestions(inScope, 3, { preferences: s.profile.studyWorkflow, courses: s.courses });
+  }, [inBlueprintScope, inScope, s.profile.studyWorkflow, s.courses, salt]);
 
   function toggle(path: string) {
     setOpenNodes((prev) => {
@@ -243,7 +248,7 @@ export function CourseTrackerPage() {
           </GlassCard>
 
           <GlassCard pad className="tracker-suggestions-card" data-module-tour="tracker-suggestions">
-            <PanelHeader title="Suggested next moves" sub="Based on passes, yield, and unfinished work"
+            <PanelHeader title="Suggested next moves" sub="Stable guidance based on progress, yield, timing, and your study workflow"
               action={<GhostButton title="Refresh suggestions" onClick={() => setSalt((x) => x + 1)}><RefreshCw size={ICON_SIZE.body} /></GhostButton>} />
             {!inBlueprintScope && (
               <select className="scope-select" value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Suggestion scope">
@@ -365,8 +370,12 @@ function suggestionEffortMinutes(item?: TrackerItem) {
 
 function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }) {
   const s = useStore();
+  const [planOpen, setPlanOpen] = useState(false);
   const questionStyle = isQuestionKind(item.kind);
   const completionStyle = isCompletionKind(item.kind);
+  const course = s.courses.find((candidate) => item.path.toLowerCase().includes(candidate.code.toLowerCase()) || item.path.toLowerCase().includes(candidate.name.toLowerCase()));
+  const plan = resolveStudyPlan(s.profile.studyWorkflow, course, item);
+  const planLabels = plan.methods.filter((method) => method.enabled).slice(0, 3).map((method) => method.id === "lecture-passes" ? `Pass ×${plan.lecturePasses}` : method.id === "practice-questions" ? "Questions" : method.id === "teach-aloud" ? "Teach" : method.label ?? method.id);
   return (
     <div className={`dense-row tracker-item-row ${questionStyle ? "pq-row" : ""} ${completionStyle ? "milestone-row" : ""} ${highlight ? "row-highlight" : ""}`} data-item-id={item.id}>
       {!questionStyle && !completionStyle && <MasteryShard item={item} />}
@@ -374,6 +383,7 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
         <div className="dr-label">{item.label}</div>
         <div className="dr-type">{item.path}</div>
         {item.note && <div className="dr-note">{item.note}</div>}
+        {planLabels.length > 0 && <div className="row wrap gap6" aria-label="Effective study plan">{planLabels.map((label) => <Tag key={label} tone="neutral">{label}</Tag>)}</div>}
       </div>
 
       <button className={`yield-badge y-${item.yield}`} onClick={() => s.cycleYield(item.id)} title="Cycle yield">
@@ -393,9 +403,20 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
         }}>
         <Pencil size={ICON_SIZE.body} />
       </GhostButton>
+      <GhostButton title="Edit study plan" onClick={() => setPlanOpen(true)}><Brain size={ICON_SIZE.body} /></GhostButton>
       <GhostButton className="danger" onClick={() => s.removeTrackerItem(item.id)}><Trash2 size={ICON_SIZE.body} /></GhostButton>
+      {planOpen && <ItemStudyPlanEditor item={item} onClose={() => setPlanOpen(false)} />}
     </div>
   );
+}
+
+function ItemStudyPlanEditor({ item, onClose }: { item: TrackerItem; onClose: () => void }) {
+  const store = useStore();
+  const base = item.studyPlanOverride ?? {};
+  const [passes, setPasses] = useState(base.lecturePasses);
+  const [methods, setMethods] = useState(() => new Map((base.methods ?? []).map((method) => [method.id, method.enabled])));
+  const options: Array<[StudyMethodId, string]> = [["anki", "Anki"], ["practice-questions", "Practice questions"], ["notes", "Notes"], ["teach-aloud", "Teaching / retrieval"]];
+  return <Modal title={`Study plan · ${item.label}`} onClose={onClose} footer={<><GButton onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: undefined }); onClose(); }}>Use inherited plan</GButton><GButton variant="primary" onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: { lecturePasses: passes, methods: options.map(([id]) => ({ id, enabled: methods.get(id) ?? true })) } }); onClose(); }}>Save plan</GButton></>}><p className="sub">Only this item changes. Learner and course defaults remain intact.</p><label className="stack gap6"><span>Lecture passes</span><input className="field" type="number" min={1} max={6} value={passes ?? ""} placeholder="Inherited" onChange={(event) => setPasses(event.target.value ? Number(event.target.value) : undefined)}/></label><div className="row wrap gap8">{options.map(([id, label]) => { const active = methods.get(id) ?? true; return <button key={id} type="button" className={`filter-pill ${active ? "on" : ""}`} aria-pressed={active} onClick={() => setMethods((current) => new Map(current).set(id, !active))}>{label}</button>; })}</div></Modal>;
 }
 
 function PQCompleteBlocks({ item }: { item: TrackerItem }) {
