@@ -1928,6 +1928,13 @@ export function migratePersistedState(persisted: unknown, fromVersion: number): 
     tags: normalizeTagList(question.tags),
   }));
   s.savedQuestionFilters = normalizeSavedQuestionFilters(s.savedQuestionFilters);
+  s.tracker = arrayOfRecords(s.tracker).map((item) => {
+    const difficulty = ["easy", "moderate", "hard", "very-hard"].includes(String(item.difficulty)) ? item.difficulty : undefined;
+    const assessmentDate = typeof item.assessmentDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.assessmentDate) ? item.assessmentDate : undefined;
+    const priority = Number(item.explicitPriority);
+    const recommendationSnoozedUntil = typeof item.recommendationSnoozedUntil === "string" && Number.isFinite(Date.parse(item.recommendationSnoozedUntil)) ? item.recommendationSnoozedUntil : undefined;
+    return { ...item, path: normalizeTrackerPath(String(item.path ?? "")), difficulty, assessmentDate, explicitPriority: priority >= 1 && priority <= 5 ? Math.round(priority) : undefined, recommendationSnoozedUntil };
+  });
   s.schemaVersion = SCHEMA_VERSION;
   return s as unknown as NoctyriumState;
 }

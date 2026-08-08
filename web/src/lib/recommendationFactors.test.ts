@@ -17,7 +17,7 @@ describe("deterministic recommendation factors", () => {
     const fresh = make({ id: "fresh", passes: 1, updated: "2026-08-07T12:00:00Z" });
     const ranked = rankTrackerItems([fresh, due], { now, preferences: { configured: true, reviewAfterDays: 3 } });
     expect(ranked[0].item.id).toBe("due");
-    expect(ranked[0].factors.some((factor) => factor.id === "stale-review")).toBe(true);
+    expect(ranked[0].factors.some((factor) => factor.id === "review-urgency")).toBe(true);
   });
 
   it("does not force Anki for a learner who disabled it", () => {
@@ -29,5 +29,33 @@ describe("deterministic recommendation factors", () => {
     const items = [make({ id: "b" }), make({ id: "a" })];
     expect(rankTrackerItems(items, { now }).map((entry) => entry.item.id)).toEqual(["a", "b"]);
     expect(rankTrackerItems(items, { now }).map((entry) => entry.item.id)).toEqual(["a", "b"]);
+  });
+
+  it("uses explicit difficulty and assessment proximity without inventing either", () => {
+    const urgent = make({ id: "urgent", difficulty: "hard", assessmentDate: "2026-08-09" });
+    const unknown = make({ id: "unknown" });
+    const ranked = rankTrackerItems([unknown, urgent], { now });
+    expect(ranked[0].item.id).toBe("urgent");
+    expect(ranked[0].factors.map((factor) => factor.id)).toEqual(expect.arrayContaining(["difficulty", "assessment-urgency"]));
+    expect(ranked[1].factors.map((factor) => factor.id)).not.toContain("difficulty");
+  });
+
+  it("temporarily omits snoozed work without deleting it", () => {
+    const snoozed = make({ id: "later", recommendationSnoozedUntil: "2026-08-09T08:00:00Z" });
+    expect(rankTrackerItems([snoozed], { now })).toEqual([]);
+    expect(rankTrackerItems([snoozed], { now: new Date("2026-08-10T00:00:00Z") })[0].item.id).toBe("later");
+  });
+
+  it("ranks 2,000 tracker items without pairwise comparison", () => {
+    const items = Array.from({ length: 2000 }, (_, index) => make({ id: `item-${index}`, label: `Lecture ${index}`, yield: index % 7 === 0 ? "high" : "none" }));
+    const started = performance.now();
+    expect(rankTrackerItems(items, { now })).toHaveLength(2000);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("uses the resolved learner pass target to decide completion", () => {
+    const item = make({ id: "four-pass", passes: 3 });
+    expect(rankTrackerItems([item], { now, preferences: { configured: true, lecturePasses: 4 } })).toHaveLength(1);
+    expect(rankTrackerItems([item], { now, preferences: { configured: true, lecturePasses: 3 } })).toHaveLength(0);
   });
 });

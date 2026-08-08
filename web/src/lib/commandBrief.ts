@@ -11,7 +11,8 @@
 import type { Course, DayPlan, Habit, HabitEntry, NoctyriumState, Task, TrackerItem } from "./types";
 import { sessionElapsedMinutes, type StudySession, type SessionLink } from "./sessions";
 import type { DailyCloseout } from "./closeout";
-import { suggestMoves, targetPassesForItem, isQuestionKind } from "./tracker";
+import { targetPassesForItem, isQuestionKind } from "./tracker";
+import { rankTrackerItems } from "./recommendationFactors";
 import { dayTotals, isoDate } from "./scoring";
 import { pickFocusExam, daysUntilExam, EXAM_META } from "./examPlan";
 import { previousCloseout } from "./closeout";
@@ -936,14 +937,10 @@ export function rankCommandBriefCandidates(
     });
   }
 
-  for (const item of s.tracker.filter(isMeaningfulActiveTrackerItem)) {
-    const [suggestion] = suggestMoves([item], 1);
-    const contributions = [evidence("active-item", "Active study item", 15, "Course Tracker")];
-    if (item.yield === "review") contributions.push(evidence("review-flag", "Marked for review", 70, "Course Tracker"));
-    if (item.yield === "high") contributions.push(evidence("high-yield", "Marked high yield", item.passes === 0 ? 55 : 35, "Course Tracker"));
-    if (item.passes === 0) contributions.push(evidence("untouched", "Not started", 25, "Course Tracker"));
-    else if (item.passes === 1) contributions.push(evidence("fragile", "One pass so far", 22, "Course Tracker"));
-    if (isQuestionKind(item.kind)) contributions.push(evidence("question-practice", "Practice work", 12, "Course Tracker"));
+  const sharedTrackerRanks = rankTrackerItems(s.tracker.filter(isMeaningfulActiveTrackerItem), { now });
+  for (const ranked of sharedTrackerRanks) {
+    const item = ranked.item;
+    const contributions = ranked.factors.map((factor) => evidence(factor.id, factor.label, factor.value, "Course Tracker"));
     if (examNear && (item.yield === "review" || item.yield === "high" || isQuestionKind(item.kind))) {
       contributions.push(evidence("exam-proximity", `${EXAM_META[examId!].label} is within seven days`, 18, "Exam plan"));
     }
@@ -952,11 +949,11 @@ export function rankCommandBriefCandidates(
     const score = candidateScore(contributions);
     candidates.push({
       candidateId: `tracker:${item.id}`,
-      title: suggestion?.title ?? item.label,
+      title: item.passes === 0 ? `Start: ${item.label}` : `Review: ${item.label}`,
       link: { kind: "tracker", id: item.id, label: item.label, context: item.path.split("/").slice(0, 3).join(" · ") },
       estimatedMinutes: mode === "recovery" ? 25 : minutes,
       resources: isQuestionKind(item.kind) ? ["Linked question set", "Error log"] : ["Lecture notes / slides", "Anki Lab for anchoring"],
-      reason: suggestion?.reason ?? "This active item has the strongest current evidence.",
+      reason: ranked.reason || "This active item has the strongest current evidence.",
       expectedOutcome: item.passes === 0 ? "Complete a first pass so this is no longer unknown." : "Move one pass closer to stable recall.",
       score,
       contributions,

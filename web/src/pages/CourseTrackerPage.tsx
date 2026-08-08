@@ -31,6 +31,7 @@ import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncement
 import { pushToast } from "../lib/toast";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
 import { ICON_SIZE } from "../lib/iconSize";
+import { parseCourseSchedule, scheduleCandidatesToTracker } from "../lib/courseScheduleImport";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
@@ -125,6 +126,7 @@ export function CourseTrackerPage() {
   const [adding, setAdding] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [moduleHelpOpen, setModuleHelpOpen] = useState(false);
   const [moduleTourOpen, setModuleTourOpen] = useState(false);
   const [deleteScope, setDeleteScope] = useState<string | null>(null);
@@ -244,6 +246,7 @@ export function CourseTrackerPage() {
               <GButton size="sm" onClick={() => setModuleOpen(true)}>
                 <BookOpen size={ICON_SIZE.body} /> Add course or module
               </GButton>
+              <GButton size="sm" onClick={() => setScheduleOpen(true)}><Upload size={ICON_SIZE.body}/> Import schedule</GButton>
             </div>
           </GlassCard>
 
@@ -267,6 +270,7 @@ export function CourseTrackerPage() {
                       <div className="grow"><b>{sg.title}</b><span>{sg.reason}</span></div>
                       <small>~{suggestionEffortMinutes(item)} min</small>
                       <GButton size="tiny" onClick={() => sg.itemId ? focusItem(sg.itemId) : setBulkOpen(true)}>Open</GButton>
+                      {item && <GhostButton title="Snooze until tomorrow" onClick={() => s.updateTrackerItem(item.id, { recommendationSnoozedUntil: tomorrowIso() })}>Not now</GhostButton>}
                     </div>
                   );
                 })}
@@ -334,10 +338,18 @@ export function CourseTrackerPage() {
       {adding && <TrackerEditor defaultPath={scope} onClose={() => setAdding(false)} />}
       {moduleOpen && <ModuleEditor onDone={(nextScope) => { setModuleOpen(false); if (nextScope) setScope(nextScope); }} />}
       {bulkOpen && <BulkImportModal defaultPath={scope} onClose={() => setBulkOpen(false)} />}
+      {scheduleOpen && <ScheduleImportModal defaultPath={scope} onClose={() => setScheduleOpen(false)} />}
       {deleteScope && <DeleteScopeModal scope={deleteScope} onSelect={setScope} onClose={() => setDeleteScope(null)} />}
       {moduleTourOpen && <ModuleTour name="Course Tracker" route="tracker" steps={COURSE_TRACKER_TOUR_STEPS} onExit={() => setModuleTourOpen(false)} />}
     </div>
   );
+}
+
+function ScheduleImportModal({ defaultPath, onClose }: { defaultPath: string; onClose: () => void }) {
+  const store=useStore();const[path,setPath]=useState(defaultPath);const[text,setText]=useState("");const[review,setReview]=useState<ReturnType<typeof parseCourseSchedule>>([]);
+  function extract(){setReview(parseCourseSchedule(text,store.tracker));}
+  function commit(){store.bulkAddTrackerItems(scheduleCandidatesToTracker(review,path||"Imported schedule"));onClose();}
+  return <Modal title="Import course schedule" onClose={onClose} footer={<><GButton onClick={onClose}>Cancel</GButton>{review.length?<GButton variant="primary" disabled={!review.some(row=>row.selected&&row.duplicate!=="exact")} onClick={commit}>Import selected</GButton>:<GButton variant="primary" disabled={!text.trim()} onClick={extract}>Review schedule</GButton>}</>}><p className="sub">Paste CSV or tab-separated rows. AXOM extracts candidates first; nothing is created until you review and import.</p><Field label="Tracker destination" value={path} onChange={event=>setPath(event.target.value)} placeholder="Term/Course/Module"/><TextAreaField label="Schedule source" value={text} onChange={event=>setText(event.target.value)} placeholder={"2026-08-14,Renal Physiology,Lecture\n2026-08-20,IMCQ 2,Assessment"}/>{review.length>0&&<div className="stack gap8" aria-label="Schedule review">{review.map((row,index)=><label className="early-feature-row" key={row.id}><input type="checkbox" checked={row.selected} disabled={row.duplicate==="exact"} onChange={event=>setReview(current=>current.map((candidate,i)=>i===index?{...candidate,selected:event.target.checked}:candidate))}/><span><b>{row.date?`${row.date} · `:""}{row.label}</b><small>{row.kind}{row.duplicate!=="none"?` · ${row.duplicate} duplicate`:" · Ready"}</small></span></label>)}</div>}</Modal>;
 }
 
 function CourseTrackerHelpEntry({ onClose, onStartTour }: { onClose: () => void; onStartTour: () => void }) {
@@ -415,9 +427,14 @@ function ItemStudyPlanEditor({ item, onClose }: { item: TrackerItem; onClose: ()
   const base = item.studyPlanOverride ?? {};
   const [passes, setPasses] = useState(base.lecturePasses);
   const [methods, setMethods] = useState(() => new Map((base.methods ?? []).map((method) => [method.id, method.enabled])));
+  const [difficulty, setDifficulty] = useState(item.difficulty ?? "");
+  const [assessmentDate, setAssessmentDate] = useState(item.assessmentDate ?? "");
+  const [priority, setPriority] = useState(item.explicitPriority?.toString() ?? "");
   const options: Array<[StudyMethodId, string]> = [["anki", "Anki"], ["practice-questions", "Practice questions"], ["notes", "Notes"], ["teach-aloud", "Teaching / retrieval"]];
-  return <Modal title={`Study plan · ${item.label}`} onClose={onClose} footer={<><GButton onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: undefined }); onClose(); }}>Use inherited plan</GButton><GButton variant="primary" onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: { lecturePasses: passes, methods: options.map(([id]) => ({ id, enabled: methods.get(id) ?? true })) } }); onClose(); }}>Save plan</GButton></>}><p className="sub">Only this item changes. Learner and course defaults remain intact.</p><label className="stack gap6"><span>Lecture passes</span><input className="field" type="number" min={1} max={6} value={passes ?? ""} placeholder="Inherited" onChange={(event) => setPasses(event.target.value ? Number(event.target.value) : undefined)}/></label><div className="row wrap gap8">{options.map(([id, label]) => { const active = methods.get(id) ?? true; return <button key={id} type="button" className={`filter-pill ${active ? "on" : ""}`} aria-pressed={active} onClick={() => setMethods((current) => new Map(current).set(id, !active))}>{label}</button>; })}</div></Modal>;
+  return <Modal title={`Study plan · ${item.label}`} onClose={onClose} footer={<><GButton onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: undefined }); onClose(); }}>Use inherited plan</GButton><GButton variant="primary" onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: { lecturePasses: passes, methods: options.map(([id]) => ({ id, enabled: methods.get(id) ?? true })) }, difficulty: difficulty as TrackerItem["difficulty"] || undefined, assessmentDate: assessmentDate || undefined, explicitPriority: priority ? Number(priority) as TrackerItem["explicitPriority"] : undefined }); onClose(); }}>Save plan</GButton></>}><p className="sub">Only this item changes. Learner and course defaults remain intact.</p><label className="stack gap6"><span>Lecture passes</span><input className="field" type="number" min={1} max={6} value={passes ?? ""} placeholder="Inherited" onChange={(event) => setPasses(event.target.value ? Number(event.target.value) : undefined)}/></label><div className="row wrap gap8">{options.map(([id, label]) => { const active = methods.get(id) ?? true; return <button key={id} type="button" className={`filter-pill ${active ? "on" : ""}`} aria-pressed={active} onClick={() => setMethods((current) => new Map(current).set(id, !active))}>{label}</button>; })}</div><div className="settings-target-grid"><label className="stack gap6"><span>Difficulty</span><select className="field" value={difficulty} onChange={(event) => setDifficulty(event.target.value as typeof difficulty)}><option value="">Unknown</option><option value="easy">Easy</option><option value="moderate">Moderate</option><option value="hard">Hard</option><option value="very-hard">Very hard</option></select></label><label className="stack gap6"><span>Assessment date</span><input className="field" type="date" value={assessmentDate} onChange={(event) => setAssessmentDate(event.target.value)}/></label><label className="stack gap6"><span>Priority</span><select className="field" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="">Normal</option>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div></Modal>;
 }
+
+function tomorrowIso() { const date = new Date(); date.setDate(date.getDate() + 1); date.setHours(8, 0, 0, 0); return date.toISOString(); }
 
 function PQCompleteBlocks({ item }: { item: TrackerItem }) {
   const s = useStore();

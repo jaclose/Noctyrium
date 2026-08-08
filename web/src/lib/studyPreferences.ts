@@ -19,10 +19,12 @@ export const DEFAULT_STUDY_WORKFLOW: StudyWorkflowPreferences = {
 
 export function normalizeStudyWorkflow(value: unknown): StudyWorkflowPreferences {
   const source = record(value);
+  const rawKinds = record(source.itemKindDefaults); const itemKindDefaults: StudyWorkflowPreferences["itemKindDefaults"] = {};
+  for (const kind of ["Lecture","DLA","PQ","Lab","Reading","Requirement","Milestone","Evidence","Question Block","Assessment","Review Loop"] as TrackerKind[]) if (rawKinds[kind]) itemKindDefaults[kind]=normalizeSettings(record(rawKinds[kind]));
   return {
     configured: source.configured === true,
     ...normalizeSettings(source),
-    itemKindDefaults: record(source.itemKindDefaults) as StudyWorkflowPreferences["itemKindDefaults"],
+    itemKindDefaults,
   };
 }
 

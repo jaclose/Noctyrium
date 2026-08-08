@@ -215,7 +215,7 @@ describe("next best move priority", () => {
       ],
     });
     const move = deriveNextBestMove(s, "maintain", deriveSignals(s));
-    expect(move.title).toContain("Needs review"); // review outranks untouched
+    expect(move.title).toContain("Untouched high-yield"); // first exposure can outrank an additional pass
     expect(move.reason.length).toBeGreaterThan(10);
     expect(move.expectedOutcome.length).toBeGreaterThan(10);
     expect(move.estimatedMinutes).toBeGreaterThan(0);

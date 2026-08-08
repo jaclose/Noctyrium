@@ -68,6 +68,10 @@ export interface TrackerItem {
   note?: string;
   updated: string; // ISO
   studyPlanOverride?: StudyPlanSettings;
+  difficulty?: "easy" | "moderate" | "hard" | "very-hard";
+  assessmentDate?: string; // yyyy-MM-dd; explicit learner/course evidence only
+  explicitPriority?: 1 | 2 | 3 | 4 | 5;
+  recommendationSnoozedUntil?: string; // ISO timestamp; defers, never deletes
 }
 
 export interface Task {
