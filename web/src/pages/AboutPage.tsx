@@ -5,6 +5,7 @@ import {
 import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
 import { AxomMark, AxomWordmark } from "../components/ui/BrandMark";
 import { ICON_SIZE } from "../lib/iconSize";
+import { InstallAxomCard } from "../components/shell/InstallAxomCard";
 
 const WEBSITE_URL = "https://www.jafardabbagh.com/";
 
@@ -81,6 +82,8 @@ export function AboutPage() {
           <StatusColumn status="planned" features={PLANNED} />
         </div>
       </GlassCard>
+
+      <InstallAxomCard />
 
       <LiveSiteDisclosure />
     </>

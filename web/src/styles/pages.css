@@ -5202,3 +5202,23 @@
   .bp-container-head { flex-wrap: wrap; }
   .bp-tracker-tools, .bp-tracker-edit-grid, .bp-tracker-edit-grid.two { grid-template-columns: 1fr; }
 }
+.application-state {
+  min-height: 180px; display: grid; place-items: center; align-content: center; gap: 10px;
+  padding: 28px; text-align: center; border: 1px dashed var(--hairline); border-radius: var(--radius-md);
+}
+.application-state h3, .application-school-card h3 { margin: 0; }
+.application-state p { max-width: 680px; margin: 0; }
+.application-dataset-meta, .application-controls, .application-source { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.application-dataset-meta { margin-bottom: 14px; color: var(--text-60); font-size: var(--fs-sm); }
+.application-controls { margin-bottom: 16px; }
+.application-search { flex: 1 1 300px; display: flex; align-items: center; gap: 8px; }
+.application-search input, .application-controls select { width: 100%; min-height: 42px; }
+.application-controls label:last-child { flex: 0 1 220px; }
+.application-school-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 12px; }
+.application-school-card { padding: 16px; border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--surface-2); }
+.application-school-card dl { display: grid; gap: 8px; margin: 14px 0; }
+.application-school-card dl div { display: grid; grid-template-columns: minmax(95px, .45fr) 1fr; gap: 10px; }
+.application-school-card dt { color: var(--text-60); }
+.application-school-card dd { margin: 0; overflow-wrap: anywhere; }
+.application-source { justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--hairline); color: var(--text-60); font-size: var(--fs-sm); }
+.application-source a { display: inline-flex; align-items: center; gap: 4px; }

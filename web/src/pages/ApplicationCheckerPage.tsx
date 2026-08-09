@@ -1,35 +1,67 @@
-import {
-  ClipboardCheck, GraduationCap, Stethoscope, HeartPulse, Syringe, BookOpen,
-  FlaskConical, FileText, HandHeart, Microscope, Mail, Award,
-} from "lucide-react";
-import { GlassCard, PanelHeader, Tag } from "../components/ui/primitives";
+import { useEffect, useMemo, useState } from "react";
+import { ClipboardCheck, ExternalLink, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
 import { ICON_SIZE } from "../lib/iconSize";
+import {
+  parseApplicationSchoolDataset,
+  type ApplicationSchool,
+  type ApplicationSchoolDataset,
+  type SchoolVerificationStatus,
+} from "../lib/applicationSchools";
 
-const TRACKS = [
-  { icon: GraduationCap, title: "Medical School", body: "AMCAS/AACOMAS timeline, secondaries, interviews, decisions — the primary focus.", tone: "cyan" as const },
-  { icon: Stethoscope, title: "Residency / Match", body: "ERAS, programs, LORs, interviews, rank list, and Match milestones.", tone: "purple" as const },
-];
+const DATASET_URL = "./application-schools.json";
+const STATUS: Record<SchoolVerificationStatus, { label: string; tone: "green" | "orange" | "neutral" | "cyan" }> = {
+  verified: { label: "Verified", tone: "green" },
+  incomplete: { label: "Incomplete", tone: "orange" },
+  unknown: { label: "Unknown", tone: "neutral" },
+  "needs-refresh": { label: "Needs refresh", tone: "cyan" },
+};
 
-// Ordered top → bottom per the roadmap: graduate research, then undergrad,
-// then the adjacent health professions (PA / Nursing) nearer the bottom.
-const PATHWAYS = [
-  { icon: FlaskConical, title: "PhD / Master's Programs", body: "Research-degree apps: statements of purpose, PI outreach, GRE where required, and funding." },
-  { icon: BookOpen, title: "Undergraduate", body: "College apps + major planning, transfer pathways, and pre-req mapping before pre-med." },
-  { icon: HeartPulse, title: "Nursing School", body: "NursingCAS application tracking." },
-  { icon: Syringe, title: "PA School", body: "CASPA application tracking, patient-care hours, and prerequisites." },
-];
-
-// The bigger vision this page grows into (kept honest with "planned").
-const PLANNED_CAPABILITIES = [
-  { icon: BookOpen, title: "Major & DARS import", body: "Drop in your DARS (or equivalent) audit; see required courses left and track them to graduation." },
-  { icon: HandHeart, title: "Experience hours", body: "Log clinical & non-clinical hours, volunteering, and work — totaled toward your goals." },
-  { icon: Microscope, title: "Research & projects", body: "Track research, posters, presentations, and publications in one place." },
-  { icon: Mail, title: "Letters of rec", body: "Who's writing, what they have, and when each is committed and submitted." },
-  { icon: Award, title: "Grades & GPA", body: "Science vs. cumulative GPA trends to protect the number that matters." },
-  { icon: FileText, title: "Application guide", body: "Step-by-step AMCAS / AACOMAS (or program-specific) guide when you're ready to apply." },
-];
+type LoadState =
+  | { kind: "loading" }
+  | { kind: "ready"; dataset: ApplicationSchoolDataset; warnings: string[] }
+  | { kind: "empty" }
+  | { kind: "error"; message: string };
 
 export function ApplicationCheckerPage() {
+  const [loadKey, setLoadKey] = useState(0);
+  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<SchoolVerificationStatus | "all">("all");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ kind: "loading" });
+    fetch(DATASET_URL, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (response.status === 404) return setState({ kind: "empty" });
+        if (!response.ok) throw new Error(`Dataset request failed (${response.status}).`);
+        // Several SPA hosts answer a missing static asset with index.html and
+        // status 200. That means "not connected", not "corrupt admissions data".
+        if (!response.headers.get("content-type")?.includes("application/json")) {
+          return setState({ kind: "empty" });
+        }
+        const result = parseApplicationSchoolDataset(await response.json());
+        if (!result.ok) throw new Error(result.issues.map((issue) => `${issue.path}: ${issue.message}`).join(" "));
+        setState({ kind: "ready", dataset: result.dataset, warnings: result.issues.map((issue) => `${issue.path}: ${issue.message}`) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ kind: "error", message: error instanceof Error ? error.message : "School data could not be loaded." });
+      });
+    return () => controller.abort();
+  }, [loadKey]);
+
+  const schools = useMemo(() => state.kind === "ready" ? state.dataset.schools : [], [state]);
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    return schools.filter((school) => {
+      if (status !== "all" && school.verificationStatus !== status) return false;
+      return !needle || [school.name, school.location, school.degree, school.programType, school.applicationPlatform]
+        .some((value) => value?.toLocaleLowerCase().includes(needle));
+    });
+  }, [query, schools, status]);
+
   return (
     <>
       <GlassCard pad>
@@ -37,72 +69,72 @@ export function ApplicationCheckerPage() {
           <span className="folder-icon" style={{ color: "var(--cyan)" }}><ClipboardCheck size={ICON_SIZE.control} /></span>
           <div className="grow">
             <div style={{ fontSize: 18, fontWeight: 800 }}>Application Checker</div>
-            <div className="sub">Track applications end to end — built primarily for medical school and residency.</div>
+            <div className="sub">Explore sourced school requirements without turning missing information into advice.</div>
           </div>
-          <Tag tone="orange">Alpha 2 · coming soon</Tag>
+          <Tag tone="cyan">Data preview</Tag>
         </div>
       </GlassCard>
 
-      <GlassCard pad className="under-construction">
-        <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-tape t2">Alpha 2</span>
-        <span className="uc-badge"><ClipboardCheck size={ICON_SIZE.body} /> Application tracking — coming soon</span>
-        <div className="uc-inner">
-          <PanelHeader title="Primary tracks" sub="Stage-by-stage checklists, deadlines, and status" />
-          <div className="grid grid-2">
-            {TRACKS.map((t) => {
-              const I = t.icon;
-              return (
-                <div className="int-row" key={t.title}>
-                  <span className="folder-icon" style={{ color: `var(--${t.tone})` }}><I size={ICON_SIZE.emphasis} /></span>
-                  <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
-                  <Tag tone={t.tone}>Planned</Tag>
-                </div>
-              );
-            })}
+      <GlassCard pad>
+        <PanelHeader title="Medical school data" sub="Verified means the record includes a retrievable source. Unknown remains unknown." />
+        {state.kind === "loading" && <div className="application-state" role="status">Loading school data…</div>}
+        {state.kind === "empty" && (
+          <div className="application-state">
+            <ShieldCheck size={ICON_SIZE.display} />
+            <h3>No verified school dataset is connected yet</h3>
+            <p className="sub">The review surface and versioned ingestion contract are ready. AXOM will not display placeholder admissions facts while the external source pipeline is being validated.</p>
           </div>
-        </div>
-      </GlassCard>
-
-      <GlassCard pad className="under-construction">
-        <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><GraduationCap size={ICON_SIZE.body} /> More pathways — coming soon</span>
-        <div className="uc-inner">
-          <PanelHeader title="Other pathways" sub="From graduate research down to adjacent health professions — pick the lane that fits" />
-          <div className="grid grid-2">
-            {PATHWAYS.map((t) => {
-              const I = t.icon;
-              return (
-                <div className="int-row" key={t.title}>
-                  <span className="folder-icon"><I size={ICON_SIZE.emphasis} /></span>
-                  <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
-                  <Tag tone="neutral">Planned</Tag>
-                </div>
-              );
-            })}
+        )}
+        {state.kind === "error" && (
+          <div className="application-state" role="alert">
+            <h3>School data needs attention</h3>
+            <p className="sub">{state.message}</p>
+            <GButton size="sm" onClick={() => setLoadKey((key) => key + 1)}><RefreshCw size={ICON_SIZE.body} /> Retry</GButton>
           </div>
-        </div>
-      </GlassCard>
-
-      <GlassCard pad className="under-construction">
-        <span className="uc-tape t1">Under Construction</span>
-        <span className="uc-badge"><FileText size={ICON_SIZE.body} /> Full applicant tracker — planned</span>
-        <div className="uc-inner">
-          <PanelHeader title="What this grows into" sub="A complete applicant dashboard — majors, experiences, and the application itself" />
-          <div className="grid grid-2">
-            {PLANNED_CAPABILITIES.map((t) => {
-              const I = t.icon;
-              return (
-                <div className="int-row" key={t.title}>
-                  <span className="folder-icon"><I size={ICON_SIZE.emphasis} /></span>
-                  <div className="grow"><div style={{ fontWeight: 700 }}>{t.title}</div><div className="sub">{t.body}</div></div>
-                  <Tag tone="neutral">Planned</Tag>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        )}
+        {state.kind === "ready" && (
+          <>
+            <div className="application-dataset-meta">
+              <span>{schools.length} schools</span>
+              <span>Dataset updated {formatDate(state.dataset.generatedAt)}</span>
+              {state.warnings.length > 0 && <Tag tone="orange">{state.warnings.length} rejected row{state.warnings.length === 1 ? "" : "s"}</Tag>}
+            </div>
+            <div className="application-controls">
+              <label className="application-search"><Search size={ICON_SIZE.body} /><span className="sr-only">Search schools</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search school, location, degree…" /></label>
+              <label><span className="sr-only">Filter verification status</span><select value={status} onChange={(event) => setStatus(event.target.value as SchoolVerificationStatus | "all")}>
+                <option value="all">All data states</option>
+                {Object.entries(STATUS).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}
+              </select></label>
+            </div>
+            {filtered.length ? <div className="application-school-grid">{filtered.map((school) => <SchoolCard school={school} key={school.id} />)}</div>
+              : <div className="application-state"><h3>No matching schools</h3><button className="ghost-btn" type="button" onClick={() => { setQuery(""); setStatus("all"); }}>Clear search and filters</button></div>}
+          </>
+        )}
       </GlassCard>
     </>
   );
+}
+
+function SchoolCard({ school }: { school: ApplicationSchool }) {
+  const meta = STATUS[school.verificationStatus];
+  const source = school.sources[0];
+  return (
+    <article className="application-school-card">
+      <div className="row"><div className="grow"><h3>{school.name}</h3><div className="sub">{[school.location, school.degree, school.programType].filter(Boolean).join(" · ") || "Details not supplied"}</div></div><Tag tone={meta.tone}>{meta.label}</Tag></div>
+      <dl>
+        <div><dt>Application</dt><dd>{school.applicationPlatform ?? "Unknown"}</dd></div>
+        <div><dt>Deadline</dt><dd>{school.deadline ?? "Unknown"}</dd></div>
+        <div><dt>MCAT policy</dt><dd>{school.mcatPolicy ?? "Unknown"}</dd></div>
+      </dl>
+      <div className="application-source">
+        <span>{school.updatedAt ? `Record updated ${formatDate(school.updatedAt)}` : "Record update date unknown"}</span>
+        {source ? <a href={source.url} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={ICON_SIZE.microInline} /></a> : <span>No source supplied</span>}
+      </div>
+    </article>
+  );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? "unknown" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
 }
