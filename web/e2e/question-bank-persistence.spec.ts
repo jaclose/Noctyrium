@@ -141,6 +141,9 @@ test("onboarding → import → block → repair → reload retains the full que
   await page.getByRole("button", { name: "Confidence 4 of 5" }).click();
   await page.getByRole("button", { name: "Finish block" }).click();
   await expect(page.getByRole("dialog", { name: "Block results" })).toContainText("0/1 correct (0%)");
+  await expect(page.getByText("What next?")).toBeVisible();
+  await page.getByRole("button", { name: "Create set from missed" }).click();
+  await expect(page.getByRole("button", { name: "Review set created", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Done" }).click();
 
   await expect.poll(async () => (await readPersistedWorkspace(page)).questions?.[0]?.attempts?.length ?? 0).toBe(1);
@@ -179,8 +182,12 @@ test("onboarding → import → block → repair → reload retains the full que
     confidence: 4,
     errorType: "knowledge-gap",
   });
-  expect(persisted.documents[0].linkedQuestionSetIds).toEqual([persisted.questionSets[0].id]);
-  expect(persisted.questionSets[0].sourceDocumentIds).toEqual([persisted.documents[0].id]);
+  expect(persisted.questionSets).toHaveLength(2);
+  const importedSet = persisted.questionSets.find((set: { title: string }) => set.title === "AXOM persisted journey");
+  const missedSet = persisted.questionSets.find((set: { tags: string[] }) => set.tags.includes("missed-review"));
+  expect(persisted.documents[0].linkedQuestionSetIds).toEqual([importedSet!.id]);
+  expect(importedSet!.sourceDocumentIds).toEqual([persisted.documents[0].id]);
+  expect(missedSet!.questionIds).toEqual([persisted.questions[0].id]);
   expect(persisted.quizBlocks[0]).toMatchObject({ title: "AXOM persisted block" });
   expect(persisted.quizBlocks[0].lastRunAt).toBeTruthy();
   expect(persisted.ankiCards).toEqual(expect.arrayContaining([

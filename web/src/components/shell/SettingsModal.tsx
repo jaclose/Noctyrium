@@ -50,7 +50,7 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeo
   { id: "profile", label: "Profile", icon: UserCircle2 },
   { id: "account", label: "Account", icon: ShieldCheck },
   { id: "data", label: "Data", icon: Database },
-  { id: "backup", label: "Backup", icon: FileJson },
+  { id: "backup", label: "Emergency recovery", icon: FileJson },
   { id: "personalization", label: "Personalization", icon: Palette },
   { id: "advanced", label: "Advanced", icon: Settings2 },
 ];
@@ -85,7 +85,7 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
       body: "See where your workspace lives, whether storage is healthy, and what AXOM has saved.",
     },
     backup: {
-      title: "Backup & recovery",
+      title: "Emergency recovery",
       body: "Export a portable copy, restore safely, and review automatic local recovery snapshots.",
     },
     personalization: {
@@ -321,8 +321,8 @@ export function SettingsModal({ onClose, initialTab = "general" }: { onClose: ()
 
           <div className="backup-actions-panel">
             <div>
-              <div className="sync-title">Manual backup &amp; recovery</div>
-              <div className="sub">Export a portable emergency copy you control, or choose a saved AXOM JSON file to restore or merge.</div>
+              <div className="sync-title">Portable emergency copy</div>
+              <div className="sub">Automatic local saving is primary. Export a portable copy you control, or restore or merge a saved AXOM JSON file when recovery is needed.</div>
             </div>
             <div className="row wrap gap8">
               <GButton size="sm" variant="primary" onClick={exportBackup}>

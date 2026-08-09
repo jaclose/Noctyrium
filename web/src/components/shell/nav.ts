@@ -111,9 +111,10 @@ export function getNavAnnouncementId(id: string): string | undefined {
 export const navById = (id: string): NavItem | undefined => NAV.find((n) => n.id === id);
 
 // Sidebar order (Alpha 2). Tools is a collapsible folder.
-export const SIDEBAR_TOP = [
-  "dashboard", "courses", "tracker", "questions", "anki", "productivity", "journal", "reports",
-];
+export const SIDEBAR_TODAY = ["dashboard"] as const;
+export const SIDEBAR_LEARN = ["courses", "tracker", "questions", "anki"] as const;
+export const SIDEBAR_REVIEW = ["productivity", "journal", "reports"] as const;
+export const SIDEBAR_TOP = [...SIDEBAR_TODAY, ...SIDEBAR_LEARN, ...SIDEBAR_REVIEW];
 export const SIDEBAR_PREP = ["step", "premed", "appchecker"];
 export const SIDEBAR_TOOLS = ["tasks", "habits", "methods", "resources", "prompts", "integrations", "leaderboards"];
 export const SIDEBAR_BOTTOM = ["folders", "building"];

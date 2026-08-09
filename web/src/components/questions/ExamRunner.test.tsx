@@ -14,6 +14,8 @@ const mocked = vi.hoisted(() => ({
   saveQuizBlock: vi.fn(),
   updateQuestion: vi.fn(),
   recordQuestionAttempt: vi.fn(),
+  addQuestionSet: vi.fn(),
+  bulkAddTrackerItems: vi.fn(),
 }));
 
 vi.mock("../../lib/store", () => ({ useStore: () => mocked.store }));
@@ -72,6 +74,9 @@ function setStore() {
     recordQuestionAttempt: mocked.recordQuestionAttempt,
     updateQuestion: mocked.updateQuestion,
     addAnkiCards: vi.fn(() => ({ saved: 1, errors: [] })),
+    addQuestionSet: mocked.addQuestionSet,
+    bulkAddTrackerItems: mocked.bulkAddTrackerItems,
+    tracker: [],
   };
 }
 
@@ -242,6 +247,28 @@ describe("ExamRunner saved blocks and selection semantics", () => {
     await user.click(screen.getByRole("button", { name: "Submit & finish" }));
 
     expect(screen.getByText(edited).textContent).toBe(edited);
+  });
+
+  it("turns missed results into a fixed review set and Tracker review work", async () => {
+    setStore();
+    mocked.store = { ...mocked.store, questions: [{ ...question, topic: "Renal clearance", category: "Physiology" }] };
+    const user = userEvent.setup();
+    render(<ExamRunner mode="exam" retakeIds={[question.id]} onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: "A. Alpha" }));
+    await user.click(screen.getByRole("button", { name: "Submit & finish" }));
+
+    expect(screen.getByText("What next?")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Create set from missed" }));
+    expect(mocked.addQuestionSet).toHaveBeenCalledWith(expect.objectContaining({ questionIds: [question.id], ordering: "import", tags: ["missed-review"] }));
+    await user.click(screen.getByRole("button", { name: "Add weak topics to Tracker" }));
+    expect(mocked.bulkAddTrackerItems).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({ label: "Review Renal clearance", kind: "Review Loop" }),
+      expect.objectContaining({ label: "Review Physiology", kind: "Review Loop" }),
+    ]));
+    expect(screen.getByRole("button", { name: "Review set created" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Topics added to Tracker" })).toHaveProperty("disabled", true);
+    await user.click(screen.getByRole("button", { name: "Review set created" }));
+    expect(mocked.addQuestionSet).toHaveBeenCalledTimes(1);
   });
 
   it("does not retake a missed question after its answer mapping is marked wrong", async () => {

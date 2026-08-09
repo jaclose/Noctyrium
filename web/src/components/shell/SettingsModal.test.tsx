@@ -43,7 +43,7 @@ describe("Settings information architecture", () => {
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual([
-      "Profile", "Account", "Data", "Backup", "Personalization", "Advanced",
+      "Profile", "Account", "Data", "Emergency recovery", "Personalization", "Advanced",
     ]);
     for (const tab of tabs) {
       const controls = tab.getAttribute("aria-controls");

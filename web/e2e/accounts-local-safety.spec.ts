@@ -24,10 +24,10 @@ test("account foundation preserves local-only use and manual recovery at every l
 
     await expect(page.getByRole("tab", { name: "Account" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByText(/Cloud credentials are absent/)).toBeVisible();
-    await expect(page.getByText(/Manual JSON export/i)).toBeVisible();
+    await expect(page.getByText(/Portable JSON export/i)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
-    await page.getByRole("tab", { name: "Backup" }).click();
+    await page.getByRole("tab", { name: "Emergency recovery" }).click();
     await expect(page.getByRole("button", { name: /Export backup/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Import \/ restore/ })).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();

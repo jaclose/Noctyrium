@@ -5,7 +5,7 @@
 // every answer is recorded on the question for spaced retry.
 // ===========================================================================
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ChevronLeft, Flag, Play, WandSparkles, Sparkles, Minus, RotateCcw } from "lucide-react";
+import { BookOpenCheck, ChevronLeft, Flag, ListPlus, Play, WandSparkles, Sparkles, Minus, RotateCcw } from "lucide-react";
 import { useStore } from "../../lib/store";
 import { STORAGE_KEYS } from "../../lib/brand";
 import {
@@ -122,6 +122,8 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
   const localAnnotationsRef = useRef(localAnnotations);
   const [annotationStatus, setAnnotationStatus] = useState<string>();
   const [session, setSession] = useState<QuizSession | null>(null);
+  const [reviewSetCreated, setReviewSetCreated] = useState(false);
+  const [trackerReviewAdded, setTrackerReviewAdded] = useState(false);
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [editingMapping, setEditingMapping] = useState(false);
@@ -451,6 +453,44 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
       : { title: "Couldn't create card", body: result.errors.join(" "), tone: "warn" });
   }
 
+  function createMissedReviewSet(questionIds: string[]) {
+    if (!questionIds.length || reviewSetCreated) return;
+    const createdAt = new Date().toISOString();
+    s.addQuestionSet({
+      id: crypto.randomUUID(),
+      title: `Missed review — ${new Date(createdAt).toLocaleDateString()}`,
+      sourceDocumentIds: [],
+      createdAt,
+      questionIds: [...questionIds],
+      tags: ["missed-review"],
+      aiEnhanced: false,
+      parserWarnings: [],
+      ordering: "import",
+    });
+    setReviewSetCreated(true);
+    pushToast({ title: "Review set created", body: `${questionIds.length} missed question${questionIds.length === 1 ? "" : "s"} saved as a fixed Question Set.`, tone: "success" });
+  }
+
+  function addMissedTopicsToTracker(questionIds: string[]) {
+    if (!questionIds.length || trackerReviewAdded) return;
+    const topics = [...new Set(questionIds.flatMap((id) => {
+      const item = questions.find((candidate) => candidate.id === id);
+      return item ? [item.topic, item.category].filter((value): value is string => Boolean(value?.trim())) : [];
+    }))];
+    const existing = new Set(s.tracker.map((item) => `${item.path}|${item.label}`.toLowerCase()));
+    const items = topics.flatMap((topic) => {
+      const item = { path: "Question Bank/Review", label: `Review ${topic}`, kind: "Review Loop" as const, passes: 0, ankiPasses: 0, yield: "review" as const, note: "Created from missed Question Bank results." };
+      return existing.has(`${item.path}|${item.label}`.toLowerCase()) ? [] : [item];
+    });
+    if (!items.length) {
+      pushToast({ title: topics.length ? "Review topics already tracked" : "No topic labels available", body: topics.length ? "Nothing new was added." : "Add a topic or category to these questions before creating Tracker review work.", tone: "warn" });
+      return;
+    }
+    s.bulkAddTrackerItems(items);
+    setTrackerReviewAdded(true);
+    pushToast({ title: "Review work added", body: `${items.length} weak topic${items.length === 1 ? "" : "s"} added under Question Bank/Review.`, tone: "success" });
+  }
+
   async function runAi(kind: "simple" | "why-wrong" | "hook") {
     if (!provider || !question) return;
     setAiBusy(true);
@@ -604,6 +644,13 @@ export function ExamRunner({ mode: initialMode, retakeIds, presetFilters, preset
             <span className="sub">{session.score.total - session.score.scored} unscored (no correct answer set)</span>
           )}
         </div>
+        <section className="quiz-results-next" aria-labelledby="quiz-results-next-heading">
+          <div><b id="quiz-results-next-heading">What next?</b><span className="sub">Continue with the missed material without rebuilding the session.</span></div>
+          {missed.length > 0 ? <div className="row gap8" style={{ flexWrap: "wrap" }}>
+            <GButton size="sm" onClick={() => createMissedReviewSet(missed)} disabled={reviewSetCreated}><ListPlus size={ICON_SIZE.body} /> {reviewSetCreated ? "Review set created" : "Create set from missed"}</GButton>
+            <GButton size="sm" onClick={() => addMissedTopicsToTracker(missed)} disabled={trackerReviewAdded}><BookOpenCheck size={ICON_SIZE.body} /> {trackerReviewAdded ? "Topics added to Tracker" : "Add weak topics to Tracker"}</GButton>
+          </div> : <span className="sub">You cleared this block. Close results or start another filtered block when ready.</span>}
+        </section>
         {missed.length > 0 && (
           <div className="stack gap6">
             <span className="field-label">Missed — review and repair</span>

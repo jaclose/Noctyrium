@@ -10,9 +10,11 @@ import {
   navById,
   SIDEBAR_BOTTOM,
   SIDEBAR_LOCKED,
+  SIDEBAR_LEARN,
   SIDEBAR_PREP,
+  SIDEBAR_REVIEW,
+  SIDEBAR_TODAY,
   SIDEBAR_TOOLS,
-  SIDEBAR_TOP,
 } from "./nav";
 import { useStore } from "../../lib/store";
 import { AxomBrandLockup } from "../ui/BrandMark";
@@ -194,8 +196,12 @@ export function Sidebar({
         </div>
 
         <nav className="nav">
-          <div className="nav-cat"><span>{manage ? "Customize sidebar" : "Control surface"}</span></div>
-          {SIDEBAR_TOP.map((id) => <Item key={id} id={id} />)}
+          <div className="nav-cat"><span>{manage ? "Customize sidebar" : "Today"}</span></div>
+          {SIDEBAR_TODAY.map((id) => <Item key={id} id={id} />)}
+          <div className="nav-cat"><span>Learn</span></div>
+          {SIDEBAR_LEARN.map((id) => <Item key={id} id={id} />)}
+          <div className="nav-cat"><span>Review &amp; reflect</span></div>
+          {SIDEBAR_REVIEW.map((id) => <Item key={id} id={id} />)}
 
           {(prepItems.length > 0 || manage) && (
             <div className="nav-folder">
