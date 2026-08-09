@@ -64,11 +64,36 @@ describe("Course Tracker comprehension layout", () => {
     expect(screen.getByRole("dialog", { name: "Add course module" })).toBeTruthy();
   });
 
+  it("reviews, edits, and imports schedule candidates before persistence", () => {
+    render(<CourseTrackerPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Import schedule" }));
+    const dialog = screen.getByRole("dialog", { name: "Import course schedule" });
+    expect(within(dialog).getByRole("button", { name: "Add schedule files" })).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText("Or paste schedule rows"), { target: { value: "2026-09-01,Unique Renal Seminar,Lecture" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Review schedule" }));
+    expect(within(dialog).getByText("1 ready")).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText("Title"), { target: { value: "Edited Renal Seminar" } });
+    fireEvent.change(within(dialog).getByLabelText("Type"), { target: { value: "Assessment" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Import selected (1)" }));
+    expect(useStore.getState().tracker.some((item) => item.label === "Edited Renal Seminar" && item.kind === "Assessment" && item.assessmentDate === "2026-09-01")).toBe(true);
+  });
+
   it("opens suggestions for inspection without mutating pass history", () => {
     const before = useStore.getState().tracker.map((item) => ({ id: item.id, passes: item.passes }));
     render(<CourseTrackerPage />);
     fireEvent.click(screen.getAllByRole("button", { name: "Open" })[0]);
     expect(useStore.getState().tracker.map((item) => ({ id: item.id, passes: item.passes }))).toEqual(before);
+  });
+
+  it("defers a recommendation with explicit, reversible timing", () => {
+    render(<CourseTrackerPage />);
+    const deferButton = screen.getAllByRole("button", { name: /^Defer / })[0];
+    fireEvent.click(deferButton);
+    const dialog = screen.getByRole("dialog", { name: "When should this return?" });
+    expect(within(dialog).getByText(/stays in your Tracker/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "In 2 days" }));
+    expect(useStore.getState().tracker.some((item) => item.recommendationSnoozedUntil && Date.parse(item.recommendationSnoozedUntil) > Date.now())).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "When should this return?" })).toBeNull();
   });
 
   it("exposes a plain Help entry point and stable module-tour anchors", () => {

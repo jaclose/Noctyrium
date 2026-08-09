@@ -26,12 +26,12 @@ import {
   trackerPathKey,
 } from "../lib/pathUtils";
 import type { BlueprintNodeStatus, Course, InstalledBlueprint, InstalledBlueprintNode, Term, TrackerItem, TrackerKind, Yield } from "../lib/types";
-import { extractPdfText, extractPlainText, type ExtractedText } from "../lib/extractText";
+import { extractDocxText, extractPdfText, extractPlainText, type ExtractedText } from "../lib/extractText";
 import { dismissAnnouncement, isAnnouncementDismissed, readDismissedAnnouncements } from "../lib/announcements";
 import { pushToast } from "../lib/toast";
 import { ModuleTour, type ModuleTourStep } from "../components/shell/ModuleTour";
 import { ICON_SIZE } from "../lib/iconSize";
-import { parseCourseSchedule, scheduleCandidatesToTracker } from "../lib/courseScheduleImport";
+import { parseCourseSchedule, reconcileScheduleDuplicates, scheduleCandidatesToTracker, type ScheduleCandidate } from "../lib/courseScheduleImport";
 
 const KINDS: TrackerKind[] = ["Lecture", "DLA", "PQ", "Lab", "Reading", "Requirement", "Milestone", "Evidence", "Question Block", "Assessment", "Review Loop"];
 const TABS = ["All", "Lecture", "DLA", "PQ", "Blueprint", "Extra"] as const;
@@ -127,6 +127,7 @@ export function CourseTrackerPage() {
   const [moduleOpen, setModuleOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [snoozeItem, setSnoozeItem] = useState<TrackerItem | null>(null);
   const [moduleHelpOpen, setModuleHelpOpen] = useState(false);
   const [moduleTourOpen, setModuleTourOpen] = useState(false);
   const [deleteScope, setDeleteScope] = useState<string | null>(null);
@@ -270,7 +271,7 @@ export function CourseTrackerPage() {
                       <div className="grow"><b>{sg.title}</b><span>{sg.reason}</span></div>
                       <small>~{suggestionEffortMinutes(item)} min</small>
                       <GButton size="tiny" onClick={() => sg.itemId ? focusItem(sg.itemId) : setBulkOpen(true)}>Open</GButton>
-                      {item && <GhostButton title="Snooze until tomorrow" onClick={() => s.updateTrackerItem(item.id, { recommendationSnoozedUntil: tomorrowIso() })}>Not now</GhostButton>}
+                      {item && <GhostButton aria-label={`Defer ${item.label}`} title="Choose when this suggestion returns" onClick={() => setSnoozeItem(item)}>Not now</GhostButton>}
                     </div>
                   );
                 })}
@@ -339,17 +340,124 @@ export function CourseTrackerPage() {
       {moduleOpen && <ModuleEditor onDone={(nextScope) => { setModuleOpen(false); if (nextScope) setScope(nextScope); }} />}
       {bulkOpen && <BulkImportModal defaultPath={scope} onClose={() => setBulkOpen(false)} />}
       {scheduleOpen && <ScheduleImportModal defaultPath={scope} onClose={() => setScheduleOpen(false)} />}
+      {snoozeItem && <RecommendationSnoozeModal item={snoozeItem} onClose={() => setSnoozeItem(null)} />}
       {deleteScope && <DeleteScopeModal scope={deleteScope} onSelect={setScope} onClose={() => setDeleteScope(null)} />}
       {moduleTourOpen && <ModuleTour name="Course Tracker" route="tracker" steps={COURSE_TRACKER_TOUR_STEPS} onExit={() => setModuleTourOpen(false)} />}
     </div>
   );
 }
 
+function RecommendationSnoozeModal({ item, onClose }: { item: TrackerItem; onClose: () => void }) {
+  const updateTrackerItem = useStore((state) => state.updateTrackerItem);
+  const [custom, setCustom] = useState("");
+  function defer(until: string) {
+    updateTrackerItem(item.id, { recommendationSnoozedUntil: until });
+    pushToast({ title: "Suggestion deferred", body: `${item.label} will return when the pause ends.`, tone: "success" });
+    onClose();
+  }
+  return (
+    <Modal title="When should this return?" onClose={onClose} footer={<GButton onClick={onClose}>Cancel</GButton>}>
+      <p className="sub"><b>{item.label}</b> stays in your Tracker. Deferring only removes it from suggestions temporarily.</p>
+      <div className="snooze-choice-grid">
+        <GButton onClick={() => defer(laterTodayIso())}>Later today</GButton>
+        <GButton onClick={() => defer(tomorrowIso())}>Tomorrow</GButton>
+        <GButton onClick={() => defer(daysFromNowIso(2))}>In 2 days</GButton>
+      </div>
+      <div className="row gap8 align-end">
+        <Field label="Custom return time" type="datetime-local" min={localDateTimeValue(new Date())} value={custom} onChange={(event) => setCustom(event.target.value)} />
+        <GButton variant="primary" disabled={!custom || Date.parse(custom) <= Date.now()} onClick={() => defer(new Date(custom).toISOString())}>Defer</GButton>
+      </div>
+    </Modal>
+  );
+}
+
 function ScheduleImportModal({ defaultPath, onClose }: { defaultPath: string; onClose: () => void }) {
-  const store=useStore();const[path,setPath]=useState(defaultPath);const[text,setText]=useState("");const[review,setReview]=useState<ReturnType<typeof parseCourseSchedule>>([]);
-  function extract(){setReview(parseCourseSchedule(text,store.tracker));}
-  function commit(){store.bulkAddTrackerItems(scheduleCandidatesToTracker(review,path||"Imported schedule"));onClose();}
-  return <Modal title="Import course schedule" onClose={onClose} footer={<><GButton onClick={onClose}>Cancel</GButton>{review.length?<GButton variant="primary" disabled={!review.some(row=>row.selected&&row.duplicate!=="exact")} onClick={commit}>Import selected</GButton>:<GButton variant="primary" disabled={!text.trim()} onClick={extract}>Review schedule</GButton>}</>}><p className="sub">Paste CSV or tab-separated rows. AXOM extracts candidates first; nothing is created until you review and import.</p><Field label="Tracker destination" value={path} onChange={event=>setPath(event.target.value)} placeholder="Term/Course/Module"/><TextAreaField label="Schedule source" value={text} onChange={event=>setText(event.target.value)} placeholder={"2026-08-14,Renal Physiology,Lecture\n2026-08-20,IMCQ 2,Assessment"}/>{review.length>0&&<div className="stack gap8" aria-label="Schedule review">{review.map((row,index)=><label className="early-feature-row" key={row.id}><input type="checkbox" checked={row.selected} disabled={row.duplicate==="exact"} onChange={event=>setReview(current=>current.map((candidate,i)=>i===index?{...candidate,selected:event.target.checked}:candidate))}/><span><b>{row.date?`${row.date} · `:""}{row.label}</b><small>{row.kind}{row.duplicate!=="none"?` · ${row.duplicate} duplicate`:" · Ready"}</small></span></label>)}</div>}</Modal>;
+  const store = useStore();
+  const [path, setPath] = useState(defaultPath);
+  const [text, setText] = useState("");
+  const [review, setReview] = useState<ScheduleCandidate[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const counts = review.reduce((result, row) => {
+    if (row.problem) result.invalid += 1;
+    else if (row.duplicate === "exact") result.existing += 1;
+    else if (row.duplicate === "likely") result.review += 1;
+    else result.ready += 1;
+    return result;
+  }, { ready: 0, review: 0, existing: 0, invalid: 0 });
+
+  function updateRow(index: number, patch: Partial<ScheduleCandidate>) {
+    setReview((current) => reconcileScheduleDuplicates(current.map((candidate, candidateIndex) => candidateIndex === index ? { ...candidate, ...patch } : candidate), store.tracker));
+  }
+  function extractPaste() {
+    setErrors([]);
+    setReview(parseCourseSchedule(text, store.tracker, "Pasted schedule"));
+  }
+  async function extractFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setBusy(true);
+    setErrors([]);
+    const settled = await Promise.allSettled([...files].map(async (file) => {
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      let extracted: ExtractedText;
+      if (extension === "pdf") extracted = await extractPdfText(await file.arrayBuffer());
+      else if (extension === "docx") extracted = await extractDocxText(await file.arrayBuffer());
+      else extracted = extractPlainText(await file.text());
+      if (extracted.empty) throw new Error(extracted.warnings[0] ?? "No readable schedule text was found.");
+      const parsed = parseCourseSchedule(extracted.text, store.tracker, file.name);
+      if (!parsed.length) throw new Error("No schedule entries were detected. Check the file format or paste the rows for review.");
+      return parsed;
+    }));
+    const candidates = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+    setErrors(settled.flatMap((result, index) => result.status === "rejected" ? [`${files[index].name}: ${result.reason instanceof Error ? result.reason.message : "Could not read file."}`] : []));
+    setReview((current) => reconcileScheduleDuplicates([...current, ...candidates], store.tracker));
+    setBusy(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+  function commit() {
+    const items = scheduleCandidatesToTracker(review, path || "Imported schedule");
+    store.bulkAddTrackerItems(items);
+    pushToast({ title: `${items.length} schedule item${items.length === 1 ? "" : "s"} imported`, body: "Your reviewed items are ready in Course Tracker.", tone: "success" });
+    onClose();
+  }
+  const importable = review.filter((row) => row.selected && row.duplicate !== "exact" && !row.problem).length;
+  return (
+    <Modal title="Import course schedule" onClose={onClose} footer={<><GButton onClick={onClose}>Cancel</GButton>{review.length ? <GButton variant="primary" disabled={!importable || busy} onClick={commit}>Import selected ({importable})</GButton> : <GButton variant="primary" disabled={!text.trim() || busy} onClick={extractPaste}>Review schedule</GButton>}</>}>
+      <p className="sub">Add PDF, DOCX, ICS, CSV, TSV, or TXT files—or paste rows. AXOM extracts candidates first; nothing is created until you review.</p>
+      <Field label="Tracker destination" value={path} onChange={(event) => setPath(event.target.value)} placeholder="Term/Course/Module" />
+      <div className="schedule-source-actions">
+        <GButton onClick={() => fileRef.current?.click()} disabled={busy}><Upload size={ICON_SIZE.body} /> {busy ? "Reading files…" : "Add schedule files"}</GButton>
+        <input ref={fileRef} hidden type="file" multiple accept=".pdf,.docx,.ics,.csv,.tsv,.txt,text/calendar,text/csv,text/tab-separated-values,text/plain,application/pdf" onChange={(event) => void extractFiles(event.target.files)} />
+        <span className="sub">One unreadable file will not stop the rest.</span>
+      </div>
+      <TextAreaField label="Or paste schedule rows" value={text} onChange={(event) => setText(event.target.value)} placeholder={"2026-08-14,Renal Physiology,Lecture\n2026-08-20,IMCQ 2,Assessment"} />
+      {text.trim() && review.length > 0 && <GButton size="sm" onClick={extractPaste}>Replace review with pasted rows</GButton>}
+      <div aria-live="polite" className="sr-only">{busy ? "Reading schedule files" : review.length ? `${counts.ready} ready, ${counts.review} need review, ${counts.existing} already exist, ${counts.invalid} invalid` : ""}</div>
+      {errors.length > 0 && <div className="schedule-import-errors" role="alert"><b>Some files could not be read. Your other files are still available.</b>{errors.map((error) => <span key={error}>{error}</span>)}</div>}
+      {review.length > 0 && <>
+        <div className="schedule-review-summary" aria-label="Schedule import summary">
+          <b>{counts.ready} ready</b><span>{counts.review} need review</span><span>{counts.existing} already exist</span><span>{counts.invalid} invalid</span>
+          <GButton size="tiny" onClick={() => setReview((current) => current.map((row) => ({ ...row, selected: !row.problem && row.duplicate !== "exact" })))}>Select importable</GButton>
+          <GButton size="tiny" onClick={() => setReview((current) => current.map((row) => ({ ...row, selected: false })))}>Clear selection</GButton>
+        </div>
+        <div className="schedule-review-list" aria-label="Schedule review">
+          {review.map((row, index) => <div className="schedule-review-row" key={`${row.id}-${index}`}>
+            <input aria-label={`Select ${row.label || `row ${row.sourceLine}`}`} type="checkbox" checked={row.selected} disabled={row.duplicate === "exact" || Boolean(row.problem)} onChange={(event) => updateRow(index, { selected: event.target.checked })} />
+            <div className="schedule-review-fields">
+              <Field label="Date" type="date" value={row.date ?? ""} onChange={(event) => updateRow(index, { date: event.target.value || undefined })} />
+              <Field label="Title" value={row.label} onChange={(event) => updateRow(index, { label: event.target.value, problem: event.target.value.trim() ? undefined : "A title is required." })} />
+              <SelectField label="Type" value={row.kind} onChange={(event) => updateRow(index, { kind: event.target.value as TrackerKind })}>{KINDS.map((kind) => <option key={kind}>{kind}</option>)}</SelectField>
+            </div>
+            <small className={`schedule-row-state schedule-row-state--${row.problem ? "invalid" : row.duplicate}`}>
+              {row.problem ?? (row.duplicate === "exact" ? "Already exists" : row.duplicate === "likely" ? "Possible duplicate — compare before importing" : "Ready")}
+              {row.sourceName ? ` · ${row.sourceName}` : ""}
+            </small>
+          </div>)}
+        </div>
+      </>}
+    </Modal>
+  );
 }
 
 function CourseTrackerHelpEntry({ onClose, onStartTour }: { onClose: () => void; onStartTour: () => void }) {
@@ -435,6 +543,9 @@ function ItemStudyPlanEditor({ item, onClose }: { item: TrackerItem; onClose: ()
 }
 
 function tomorrowIso() { const date = new Date(); date.setDate(date.getDate() + 1); date.setHours(8, 0, 0, 0); return date.toISOString(); }
+function laterTodayIso() { return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(); }
+function daysFromNowIso(days: number) { const date = new Date(); date.setDate(date.getDate() + days); date.setHours(8, 0, 0, 0); return date.toISOString(); }
+function localDateTimeValue(date: Date) { const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000); return local.toISOString().slice(0, 16); }
 
 function PQCompleteBlocks({ item }: { item: TrackerItem }) {
   const s = useStore();

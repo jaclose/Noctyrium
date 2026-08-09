@@ -22,8 +22,6 @@ import { readOnboardingDraftMode, type OnboardingDestination, type OnboardingMod
 import { promisePromptStatus, shouldOfferPromiseAfterGlobalTour, shouldOfferPromisePrompt } from "./lib/promisePrompt";
 
 import { DashboardPage } from "./pages/DashboardPage";
-import { CoursesPage } from "./pages/CoursesPage";
-import { CourseTrackerPage } from "./pages/CourseTrackerPage";
 import { AnkiLabPage } from "./pages/AnkiLabPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { StepPage } from "./pages/StepPage";
@@ -41,7 +39,6 @@ import { ApplicationCheckerPage } from "./pages/ApplicationCheckerPage";
 import { LeaderboardsPage } from "./pages/LeaderboardsPage";
 import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
-import { QuestionWorkspacePage } from "./pages/QuestionWorkspacePage";
 import { StudyMethodsPage } from "./pages/StudyMethodsPage";
 
 const DevDesignPreview = import.meta.env.DEV
@@ -56,12 +53,15 @@ const LazyDoctordlePage = lazy(() => import("./pages/DoctordlePage").then((modul
 const LazyDailyGamesPage = lazy(() => import("./pages/OptionalDailyGamesPage").then((module) => ({ default: module.OptionalDailyGamesPage })));
 const LazyBuildingPage = lazy(() => import("./pages/BuildingPage").then((module) => ({ default: module.BuildingPage })));
 const LazySharedQuestionSetPage = lazy(() => import("./pages/SharedQuestionSetPage").then((module) => ({ default: module.SharedQuestionSetPage })));
+const LazyCoursesPage = lazy(() => import("./pages/CoursesPage").then((module) => ({ default: module.CoursesPage })));
+const LazyCourseTrackerPage = lazy(() => import("./pages/CourseTrackerPage").then((module) => ({ default: module.CourseTrackerPage })));
+const LazyQuestionWorkspacePage = lazy(() => import("./pages/QuestionWorkspacePage").then((module) => ({ default: module.QuestionWorkspacePage })));
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
-  courses: CoursesPage,
-  tracker: CourseTrackerPage,
-  questions: QuestionWorkspacePage,
+  courses: () => <LazyCoursesPage />,
+  tracker: () => <LazyCourseTrackerPage />,
+  questions: () => <LazyQuestionWorkspacePage />,
   methods: StudyMethodsPage,
   anki: AnkiLabPage,
   resources: ResourcesPage,
@@ -323,7 +323,7 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
           />
           <div className="surface-scroll">
             <div className={route === "tracker" ? "page page-tracker" : "page"}>
-              <Suspense fallback={<div className="route-loading" role="status">Opening optional module…</div>}>
+              <Suspense fallback={<div className="route-loading" role="status" aria-live="polite">Opening your workspace…</div>}>
                 <Page />
               </Suspense>
             </div>

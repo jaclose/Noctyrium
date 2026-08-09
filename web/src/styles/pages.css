@@ -657,6 +657,10 @@
 }
 .early-feature-row input { margin-top: 2px; flex: none; }
 
+.schedule-source-actions,.schedule-review-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.schedule-review-summary{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--glass-2)}.schedule-review-list{display:grid;gap:10px;max-height:min(48vh,520px);overflow:auto;padding-right:3px}.schedule-review-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:rgba(255,255,255,.025)}.schedule-review-row>input{margin-top:29px}.schedule-review-fields{display:grid;grid-template-columns:minmax(130px,.55fr) minmax(220px,1.6fr) minmax(140px,.75fr);gap:8px}.schedule-row-state{grid-column:2;color:var(--text-55)}.schedule-row-state--likely{color:var(--orange)}.schedule-row-state--exact,.schedule-row-state--invalid{color:var(--red)}.schedule-import-errors{display:grid;gap:4px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--red) 45%,var(--line));border-radius:var(--radius-md);color:var(--text-75)}
+@media(max-width:680px){.schedule-review-fields{grid-template-columns:1fr}.schedule-review-row>input{margin-top:30px}.schedule-review-list{max-height:52vh}.schedule-review-summary>*{flex:1 1 auto}.schedule-source-actions .sub{flex-basis:100%}}
+.snooze-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.snooze-choice-grid .gbtn{justify-content:center}@media(max-width:430px){.snooze-choice-grid{grid-template-columns:1fr}.snooze-choice-grid+.row{align-items:stretch;flex-direction:column}.snooze-choice-grid+.row>*{width:100%}}
+
 /* Habit tracker (experimental — §6) */
 .habit-card {
   display: flex;
