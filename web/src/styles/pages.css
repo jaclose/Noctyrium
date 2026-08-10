@@ -5222,3 +5222,7 @@
 .application-school-card dd { margin: 0; overflow-wrap: anywhere; }
 .application-source { justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--hairline); color: var(--text-60); font-size: var(--fs-sm); }
 .application-source a { display: inline-flex; align-items: center; gap: 4px; }
+.application-school-details { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 10px; }
+.application-school-details summary { cursor: pointer; color: var(--cyan); font-weight: var(--fw-semibold); }
+.application-school-details dl { margin-bottom: 0; }
+.application-conflict { margin: 10px 0 0; color: var(--orange); font-size: var(--fs-sm); }

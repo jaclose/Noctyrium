@@ -1,40 +1,83 @@
 import { describe, expect, it } from "vitest";
-import { parseApplicationSchoolDataset } from "./applicationSchools";
+import { mergeApplicationSchoolDatasets, parseApplicationSchoolDataset, type ApplicationSchoolDataset } from "./applicationSchools";
 
+const source = { url: "https://example.edu/admissions", retrievedAt: "2026-08-08T12:00:00Z" };
 const valid = {
   schemaVersion: 1,
   generatedAt: "2026-08-09T12:00:00Z",
-  schools: [{
-    id: "example-med",
-    name: "Example School of Medicine",
-    verificationStatus: "verified",
-    sources: [{ url: "https://example.edu/admissions", retrievedAt: "2026-08-08T12:00:00Z" }],
-  }],
+  schools: [{ id: "example-med", name: "Example School of Medicine", degree: "MD", verificationStatus: "verified", sources: [source] }],
 };
 
 describe("application school ingestion contract", () => {
-  it("accepts sourced verified records", () => {
-    const result = parseApplicationSchoolDataset(valid);
+  it("accepts v1 input and upgrades it to the auditable v2 envelope", () => {
+    const result = parseApplicationSchoolDataset(valid, new Date("2026-08-09T12:00:00Z"));
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.dataset.schools[0].name).toBe("Example School of Medicine");
+    if (result.ok) expect(result.dataset).toMatchObject({ schemaVersion: 2, recordCount: 1, successfulRecords: 1, rejectedRecords: 0 });
   });
 
-  it("does not allow scraped claims to become verified without provenance", () => {
+  it("rejects a verified record without provenance", () => {
     const result = parseApplicationSchoolDataset({ ...valid, schools: [{ ...valid.schools[0], sources: [] }] });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.dataset.schools).toHaveLength(0);
-      expect(result.issues[0].message).toMatch(/require a valid source/i);
+      expect(result.dataset.rejectedRecords).toBe(1);
+      expect(result.issues.some((issue) => /require a valid source/i.test(issue.message))).toBe(true);
     }
   });
 
-  it("rejects incompatible envelopes and duplicate identifiers", () => {
-    expect(parseApplicationSchoolDataset({ ...valid, schemaVersion: 2 }).ok).toBe(false);
-    const result = parseApplicationSchoolDataset({ ...valid, schools: [valid.schools[0], valid.schools[0]] });
+  it("keeps partial data while diagnosing duplicate IDs, duplicate names, bad URLs, and stale sources", () => {
+    const result = parseApplicationSchoolDataset({
+      schemaVersion: 2, generatedAt: "2026-08-09T12:00:00Z", recordCount: 4,
+      schools: [
+        { id: "one", canonicalName: "Same School", verificationStatus: "verified", sources: [source] },
+        { id: "two", canonicalName: "Same School", verificationStatus: "incomplete", sources: [{ url: "not-a-url", retrievedAt: "2026-08-08T12:00:00Z" }] },
+        { id: "two", canonicalName: "Another School", verificationStatus: "unknown", sources: [] },
+        { id: "three", canonicalName: "Old School", verificationStatus: "verified", sources: [{ url: "https://old.example.edu", retrievedAt: "2020-01-01T12:00:00Z" }] },
+      ],
+    }, new Date("2026-08-09T12:00:00Z"));
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.dataset.schools).toHaveLength(1);
-      expect(result.issues.some((issue) => issue.message.includes("Duplicate"))).toBe(true);
+      expect(result.dataset.schools.map((school) => school.id)).toEqual(["one", "two", "three"]);
+      expect(result.dataset.schools.find((school) => school.id === "three")?.verificationStatus).toBe("needs-refresh");
+      expect(result.issues.some((issue) => /duplicate canonical/i.test(issue.message))).toBe(true);
+      expect(result.issues.some((issue) => /duplicate school id/i.test(issue.message))).toBe(true);
+      expect(result.issues.some((issue) => /source url/i.test(issue.message))).toBe(true);
     }
   });
+
+  it("preserves old fields and surfaces incoming conflicts during incremental merge", () => {
+    const base = parseApplicationSchoolDataset(valid, new Date("2026-08-09T12:00:00Z"));
+    const incoming = parseApplicationSchoolDataset({
+      schemaVersion: 2, generatedAt: "2026-08-10T12:00:00Z", sourcePipelineVersion: "scraper-2",
+      schools: [{ id: "example-med", canonicalName: "Example School of Medicine", name: "Example School of Medicine", degree: "DO", tuition: "$50k", verificationStatus: "verified", sources: [{ url: "https://example.edu/fees", retrievedAt: "2026-08-10T12:00:00Z" }] }],
+    }, new Date("2026-08-10T12:00:00Z"));
+    expect(base.ok && incoming.ok).toBe(true);
+    if (!base.ok || !incoming.ok) return;
+    const merged = mergeApplicationSchoolDatasets(base.dataset, incoming.dataset);
+    expect(merged.dataset.schools).toHaveLength(1);
+    expect(merged.dataset.schools[0].tuition).toBe("$50k");
+    expect(merged.dataset.schools[0].conflicts?.degree).toBeDefined();
+    expect(merged.dataset.schools[0].verificationStatus).toBe("conflicting");
+    expect(merged.dataset.schools[0].sources).toHaveLength(2);
+  });
+
+  it("handles a 271-school partial run without quadratic work", () => {
+    const schools = Array.from({ length: 271 }, (_, index) => ({
+      id: `school-${index}`, canonicalName: `Synthetic Medical School ${index}`, programType: index % 2 ? "md" : "do",
+      verificationStatus: index % 9 === 0 ? "unknown" : "incomplete", sources: [],
+    }));
+    const started = performance.now();
+    const result = parseApplicationSchoolDataset({ schemaVersion: 2, generatedAt: "2026-08-09T12:00:00Z", schools }, new Date("2026-08-09T12:00:00Z"));
+    const elapsed = performance.now() - started;
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.dataset.schools).toHaveLength(271);
+      expect(result.dataset.recordCount).toBe(271);
+    }
+    expect(elapsed).toBeLessThan(1000);
+  });
 });
+
+export function testDataset(schools: ApplicationSchoolDataset["schools"]): ApplicationSchoolDataset {
+  return { schemaVersion: 2, generatedAt: "2026-08-09T12:00:00Z", recordCount: schools.length, successfulRecords: schools.length, incompleteRecords: 0, rejectedRecords: 0, schools };
+}

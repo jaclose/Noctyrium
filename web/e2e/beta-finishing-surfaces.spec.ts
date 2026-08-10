@@ -51,6 +51,33 @@ test("install affordance appears only after browser support and is single use", 
   await expect(page.getByRole("button", { name: "Install AXOM" })).toHaveCount(0);
 });
 
+test("Application Checker renders a 271-row partial dataset and filters by program", async ({ page }) => {
+  const schools = Array.from({ length: 271 }, (_, index) => ({
+    id: `school-${index}`,
+    canonicalName: `Synthetic Medical School ${index}`,
+    name: `Synthetic Medical School ${index}`,
+    programType: index % 2 ? "md" : "do",
+    location: `State ${index % 10}`,
+    verificationStatus: index % 7 === 0 ? "unknown" : "incomplete",
+    sources: [],
+  }));
+  await page.route("**/application-schools.json", (route) => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ schemaVersion: 2, generatedAt: "2026-08-09T12:00:00Z", recordCount: 271, schools }),
+  }));
+  await page.goto("/", { waitUntil: "networkidle" });
+  await onboard(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => { window.location.hash = "appchecker"; });
+  await expect(page.getByText("271 schools")).toBeVisible();
+  await expect(page.getByText("Synthetic Medical School 270")).toBeVisible();
+  const programFilter = page.getByLabel("Filter program type");
+  await programFilter.selectOption("md");
+  await expect(page.getByRole("heading", { name: "Synthetic Medical School 1", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Synthetic Medical School 0", exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
 async function onboard(page: Page) {
   const name = page.getByLabel("Display name (optional)");
   if (!(await name.isVisible().catch(() => false))) return;

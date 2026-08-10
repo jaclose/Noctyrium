@@ -15,6 +15,7 @@ const STATUS: Record<SchoolVerificationStatus, { label: string; tone: "green" | 
   incomplete: { label: "Incomplete", tone: "orange" },
   unknown: { label: "Unknown", tone: "neutral" },
   "needs-refresh": { label: "Needs refresh", tone: "cyan" },
+  conflicting: { label: "Conflicting", tone: "orange" },
 };
 
 type LoadState =
@@ -28,6 +29,7 @@ export function ApplicationCheckerPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SchoolVerificationStatus | "all">("all");
+  const [program, setProgram] = useState("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,10 +59,13 @@ export function ApplicationCheckerPage() {
     const needle = query.trim().toLocaleLowerCase();
     return schools.filter((school) => {
       if (status !== "all" && school.verificationStatus !== status) return false;
+      if (program !== "all" && school.programType !== program) return false;
       return !needle || [school.name, school.location, school.degree, school.programType, school.applicationPlatform]
         .some((value) => value?.toLocaleLowerCase().includes(needle));
     });
-  }, [query, schools, status]);
+  }, [program, query, schools, status]);
+
+  const programs = useMemo(() => [...new Set(schools.map((school) => school.programType).filter((value): value is string => Boolean(value)))].sort(), [schools]);
 
   return (
     <>
@@ -97,6 +102,7 @@ export function ApplicationCheckerPage() {
             <div className="application-dataset-meta">
               <span>{schools.length} schools</span>
               <span>Dataset updated {formatDate(state.dataset.generatedAt)}</span>
+              <span>{state.dataset.incompleteRecords} incomplete · {state.dataset.rejectedRecords} rejected</span>
               {state.warnings.length > 0 && <Tag tone="orange">{state.warnings.length} rejected row{state.warnings.length === 1 ? "" : "s"}</Tag>}
             </div>
             <div className="application-controls">
@@ -105,9 +111,13 @@ export function ApplicationCheckerPage() {
                 <option value="all">All data states</option>
                 {Object.entries(STATUS).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}
               </select></label>
+              <label><span className="sr-only">Filter program type</span><select value={program} onChange={(event) => setProgram(event.target.value)}>
+                <option value="all">All programs</option>
+                {programs.map((value) => <option value={value} key={value}>{value.toUpperCase()}</option>)}
+              </select></label>
             </div>
             {filtered.length ? <div className="application-school-grid">{filtered.map((school) => <SchoolCard school={school} key={school.id} />)}</div>
-              : <div className="application-state"><h3>No matching schools</h3><button className="ghost-btn" type="button" onClick={() => { setQuery(""); setStatus("all"); }}>Clear search and filters</button></div>}
+              : <div className="application-state"><h3>No matching schools</h3><button className="ghost-btn" type="button" onClick={() => { setQuery(""); setStatus("all"); setProgram("all"); }}>Clear search and filters</button></div>}
           </>
         )}
       </GlassCard>
@@ -130,6 +140,17 @@ function SchoolCard({ school }: { school: ApplicationSchool }) {
         <span>{school.updatedAt ? `Record updated ${formatDate(school.updatedAt)}` : "Record update date unknown"}</span>
         {source ? <a href={source.url} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={ICON_SIZE.microInline} /></a> : <span>No source supplied</span>}
       </div>
+      <details className="application-school-details">
+        <summary>Review available details</summary>
+        <dl>
+          <div><dt>Prerequisites</dt><dd>{school.prerequisiteCategories?.join(", ") ?? "Unknown"}</dd></div>
+          <div><dt>CASPer</dt><dd>{school.casperPolicy ?? "Unknown"}</dd></div>
+          <div><dt>PREview</dt><dd>{school.previewPolicy ?? "Unknown"}</dd></div>
+          <div><dt>Letters</dt><dd>{school.letters ?? "Unknown"}</dd></div>
+          <div><dt>Mission</dt><dd>{school.missionNotes ?? "Unknown"}</dd></div>
+        </dl>
+        {school.conflicts && <p className="application-conflict" role="alert">Conflicting fields need review: {Object.keys(school.conflicts).join(", ")}.</p>}
+      </details>
     </article>
   );
 }

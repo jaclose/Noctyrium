@@ -35,7 +35,6 @@ import { PromptLibraryPage } from "./pages/PromptLibraryPage";
 import { HubFoldersPage } from "./pages/HubFoldersPage";
 import { HelpPage } from "./pages/HelpPage";
 import { AboutPage } from "./pages/AboutPage";
-import { ApplicationCheckerPage } from "./pages/ApplicationCheckerPage";
 import { LeaderboardsPage } from "./pages/LeaderboardsPage";
 import { PremedExperienceLogPage } from "./pages/PremedExperienceLogPage";
 import { ActivityHistoryPage } from "./pages/ActivityHistoryPage";
@@ -56,6 +55,7 @@ const LazySharedQuestionSetPage = lazy(() => import("./pages/SharedQuestionSetPa
 const LazyCoursesPage = lazy(() => import("./pages/CoursesPage").then((module) => ({ default: module.CoursesPage })));
 const LazyCourseTrackerPage = lazy(() => import("./pages/CourseTrackerPage").then((module) => ({ default: module.CourseTrackerPage })));
 const LazyQuestionWorkspacePage = lazy(() => import("./pages/QuestionWorkspacePage").then((module) => ({ default: module.QuestionWorkspacePage })));
+const LazyApplicationCheckerPage = lazy(() => import("./pages/ApplicationCheckerPage").then((module) => ({ default: module.ApplicationCheckerPage })));
 
 const PAGES: Record<string, () => JSX.Element> = {
   dashboard: DashboardPage,
@@ -86,7 +86,7 @@ const PAGES: Record<string, () => JSX.Element> = {
   folders: HubFoldersPage,
   about: AboutPage,
   help: HelpPage,
-  appchecker: ApplicationCheckerPage,
+  appchecker: () => <LazyApplicationCheckerPage />,
   leaderboards: LeaderboardsPage,
   "daily-games": () => <LazyDailyGamesPage />,
   "daily-word": () => <LazyDailyWordPage />,
