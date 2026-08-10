@@ -1104,12 +1104,18 @@ function parseAnswerSectionContent(
     const continuationIsExplanation = continuation
       ? Boolean(continuation.match(EXPLANATION_RE) || isRationaleTail(continuation))
       : false;
-    const answerText = explicit.answerText && !sectionIncludesExplanations && continuation && !continuationIsExplanation
+    // Keep textual answers even in an "Answers and Explanations" section;
+    // applyAnswerEntries resolves them against the question's actual options.
+    // Treating the text as explanation here loses valid answers such as
+    // "1. CD4 T lymphocyte".
+    const answerText = explicit.key && sectionIncludesExplanations
+      ? undefined
+      : explicit.answerText && continuation && !continuationIsExplanation
       ? `${explicit.answerText} ${continuation}`
-      : sectionIncludesExplanations ? undefined : explicit.answerText;
+      : explicit.answerText;
     const explanation = [
       explicit.rationale,
-      sectionIncludesExplanations ? explicit.answerText : undefined,
+      sectionIncludesExplanations && explicit.key ? explicit.answerText : undefined,
       (sectionIncludesExplanations || continuationIsExplanation) ? continuation : undefined,
     ]
       .filter(Boolean).join("\n").trim() || undefined;
@@ -1488,7 +1494,9 @@ function attachNumberedExplanations(entries: Map<number, AnswerSectionEntry>, se
     const numberMatch = entryLines[0].match(ENTRY_START_RE);
     if (!numberMatch) continue;
     const number = Number(numberMatch[1]);
-    const explanation = [entryLines[0].slice(numberMatch[0].length), ...entryLines.slice(1)].join("\n").trim();
+    const contentLines = [entryLines[0].slice(numberMatch[0].length), ...entryLines.slice(1)];
+    const noiseIndex = contentLines.findIndex((line) => /^(?:footer\b|page\s+\d+\s+of\s+\d+\b|commercial-style footer\b)/i.test(line.trim()));
+    const explanation = contentLines.slice(0, noiseIndex < 0 ? contentLines.length : noiseIndex).join("\n").trim();
     if (!explanation) continue;
     const existing = entries.get(number);
     entries.set(number, {
