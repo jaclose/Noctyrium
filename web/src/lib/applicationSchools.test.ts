@@ -61,8 +61,8 @@ describe("application school ingestion contract", () => {
     expect(merged.dataset.schools[0].sources).toHaveLength(2);
   });
 
-  it("handles a 271-school partial run without quadratic work", () => {
-    const schools = Array.from({ length: 271 }, (_, index) => ({
+  it.each([271, 500, 1000])("handles a %i-school partial run without quadratic work", (count) => {
+    const schools = Array.from({ length: count }, (_, index) => ({
       id: `school-${index}`, canonicalName: `Synthetic Medical School ${index}`, programType: index % 2 ? "md" : "do",
       verificationStatus: index % 9 === 0 ? "unknown" : "incomplete", sources: [],
     }));
@@ -71,10 +71,42 @@ describe("application school ingestion contract", () => {
     const elapsed = performance.now() - started;
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.dataset.schools).toHaveLength(271);
-      expect(result.dataset.recordCount).toBe(271);
+      expect(result.dataset.schools).toHaveLength(count);
+      expect(result.dataset.recordCount).toBe(count);
     }
     expect(elapsed).toBeLessThan(1000);
+  });
+
+  it("round-trips a 271-school incremental patch without changing untouched records", () => {
+    const source = (index: number) => ({ url: `https://school-${index}.example.edu/admissions`, retrievedAt: "2026-08-10T12:00:00Z" });
+    const baseInput = {
+      schemaVersion: 2, generatedAt: "2026-08-10T12:00:00Z", recordCount: 271,
+      schools: Array.from({ length: 271 }, (_, index) => ({
+        id: `school-${index}`, canonicalName: `Synthetic Medical School ${index}`, tuition: "Unknown",
+        verificationStatus: "incomplete", sources: [source(index)],
+      })),
+    };
+    const patchInput = {
+      schemaVersion: 2, generatedAt: "2026-08-11T12:00:00Z", recordCount: 33,
+      schools: [
+        ...Array.from({ length: 30 }, (_, index) => ({
+          id: `school-${index}`, canonicalName: `Synthetic Medical School ${index}`, tuition: `$${index + 1}0k`,
+          verificationStatus: "verified", sources: [source(index)],
+        })),
+        ...Array.from({ length: 3 }, (_, index) => ({
+          id: `new-${index}`, canonicalName: `New Medical School ${index}`, verificationStatus: "unknown", sources: [],
+        })),
+      ],
+    };
+    const base = parseApplicationSchoolDataset(baseInput, new Date("2026-08-11T00:00:00Z"));
+    const patch = parseApplicationSchoolDataset(patchInput, new Date("2026-08-11T00:00:00Z"));
+    expect(base.ok && patch.ok).toBe(true);
+    if (!base.ok || !patch.ok) return;
+    const merged = mergeApplicationSchoolDatasets(base.dataset, patch.dataset);
+    expect(merged.dataset.schools).toHaveLength(274);
+    expect(merged.dataset.schools.find((school) => school.id === "school-40")?.tuition).toBe("Unknown");
+    expect(merged.dataset.schools.find((school) => school.id === "school-4")?.tuition).toBe("$50k");
+    expect(merged.dataset.schools.find((school) => school.id === "new-2")?.canonicalName).toBe("New Medical School 2");
   });
 });
 

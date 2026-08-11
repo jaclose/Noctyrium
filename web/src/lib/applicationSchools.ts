@@ -90,13 +90,17 @@ export function parseApplicationSchoolDataset(input: unknown, now = new Date()):
   if (!Array.isArray(input.schools)) return { ok: false, issues: [issue("schools", "Schools must be an array.")] };
 
   const ids = new Set<string>();
+  const rawIds = new Set<string>();
   const canonicalNames = new Map<string, number>();
   const schools: ApplicationSchool[] = [];
   for (const [index, raw] of input.schools.entries()) {
     const path = `schools[${index}]`;
+    const rawId = isRecord(raw) ? stringValue(raw.id) ?? stringValue(raw.schoolId) : undefined;
+    const duplicateRawId = Boolean(rawId && rawIds.has(rawId));
+    if (rawId) rawIds.add(rawId);
     const normalized = normalizeSchool(raw, path, now, issues);
     if (!normalized) continue;
-    if (ids.has(normalized.id)) {
+    if (duplicateRawId || ids.has(normalized.id)) {
       issues.push(issue(`${path}.id`, `Duplicate school ID: ${normalized.id}`));
       continue;
     }
@@ -239,8 +243,8 @@ function mergeSchool(base: ApplicationSchool, incoming: ApplicationSchool): Appl
   for (const field of MATERIAL_FIELDS) {
     const existing = next[field];
     const candidate = incoming[field];
-    if (candidate === undefined || candidate === null || candidate === "") continue;
-    if (existing === undefined || existing === null || existing === "") {
+    if (isMissingField(candidate)) continue;
+    if (isMissingField(existing)) {
       (next as unknown as Record<string, unknown>)[field] = candidate;
       continue;
     }
@@ -267,6 +271,10 @@ function mergeProvenance(base: ApplicationSchool["fieldProvenance"], incoming: A
 }
 function dedupeSources(sources: ApplicationSchoolSource[]) { return [...new Map(sources.map((source) => [`${source.url}|${source.retrievedAt}`, source])).values()]; }
 function newerDate(a?: string, b?: string) { return !a ? b : !b ? a : a > b ? a : b; }
+function isMissingField(value: unknown) {
+  if (value === undefined || value === null || value === "") return true;
+  return typeof value === "string" && /^(unknown|not reported|not-reported|tbd)$/i.test(value.trim());
+}
 function fieldProvenance(value: unknown): Record<string, ApplicationSchoolSource[]> | undefined { return isRecord(value) ? value as Record<string, ApplicationSchoolSource[]> : undefined; }
 function conflictsValue(value: unknown): Record<string, ApplicationSchoolConflict> | undefined { return isRecord(value) ? value as Record<string, ApplicationSchoolConflict> : undefined; }
 function normalizeName(value: string) { return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }

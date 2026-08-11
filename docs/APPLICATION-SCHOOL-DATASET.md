@@ -62,6 +62,45 @@ Rules:
 - Do not reuse a canonical school under multiple IDs without investigating the
   duplicate-name warning.
 
+Executable validation and merge commands:
+
+```bash
+# Validate an external scraper export. Warnings are reported; unsafe errors
+# return exit code 1 and never write an output file.
+npm run schools:validate -- path/to/medical-schools-export.json \
+  --now 2026-08-11T00:00:00Z
+
+# Normalize a safe export directly to the application handoff path.
+npm run schools:validate -- path/to/medical-schools-export.json \
+  --output web/public/application-schools.json
+
+# Merge a safe incremental export. Existing values are never erased; material
+# disagreements remain field-level conflicts for review.
+npm run schools:merge -- web/public/application-schools.json \
+  path/to/incremental-export.json \
+  --output web/public/application-schools.json
+```
+
+The validator reports schema version, declared/actual/unique counts, valid,
+incomplete, unknown, conflicting, stale, rejected, duplicate, provenance,
+timestamp, URL, numeric, and program-type findings. It exits non-zero when
+the parser reports an unsafe error (including rejected records). Duplicate
+canonical names and stale sources are warnings so an intentionally partial
+dataset can still be inspected. The merge command refuses unsafe inputs and
+preserves provenance and conflicts deterministically.
+
+The scraper handoff vocabulary is deliberately conservative:
+
+- `unknown`: the source was checked but did not state the fact.
+- `not-required`: the source explicitly says the requirement does not apply.
+- `not-applicable`: the field does not apply to this program.
+- `not-reported`: the source was not checked or did not provide a usable value.
+
+Do not turn any of these states into a guessed boolean. Keep the original
+source evidence and retrieval timestamp. `verificationStatus` describes the
+record's overall evidence state; it does not mean a school requirement is
+present or absent.
+
 Validation and regression procedure:
 
 ```bash

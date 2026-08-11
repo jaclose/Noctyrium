@@ -11,7 +11,7 @@ function cleanQuestions(count: number) {
 }
 
 describe("Question Bank launch-volume stress corpus", () => {
-  it.each([50, 200])("parses %i clean questions without review burden or loss", (count) => {
+  it.each([50, 200, 500])("parses %i clean questions without review burden or loss", (count) => {
     const started = performance.now();
     const drafts = parseQuestionBlocks(cleanQuestions(count));
     const elapsed = performance.now() - started;

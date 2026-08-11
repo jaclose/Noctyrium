@@ -12,6 +12,8 @@
     "tauri:build": "tauri build",
     "typecheck:api": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --skipLibCheck --types node lib/api/*.ts api/*.ts",
     "db:migration": "cat db/migrations/001_initial.sql",
+    "schools:validate": "node --experimental-strip-types web/scripts/application-school-pipeline.mjs validate",
+    "schools:merge": "node --experimental-strip-types web/scripts/application-school-pipeline.mjs merge",
     "wdio": "wdio run ./wdio.conf.ts",
     "audit:site": "wdio run ./wdio.conf.ts --spec ./test/specs/axom.audit.e2e.ts",
     "audit:open": "open artifacts/site-audit/report.md",
