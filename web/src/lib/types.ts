@@ -259,6 +259,8 @@ export interface PomodoroPreferences {
   autoStartBreak: boolean;
   autoStartFocus: boolean;
   savedPresets: PomodoroSavedPreset[];
+  /** Mirror the timer in the macOS menu bar (desktop app only). Unset means on. */
+  showInMenuBar?: boolean;
 }
 
 /** Persisted submitted rows only; the unsubmitted row remains component-local. */
@@ -773,6 +775,8 @@ export interface Profile {
   pomodoroPreferences?: PomodoroPreferences;
   /** Learner-authored defaults; course, kind, and item layers resolve without duplicating state. */
   studyWorkflow?: StudyWorkflowPreferences;
+  applicationResearch?: import("./applicationResearch").ApplicationResearchEntry[];
+  applicationProfile?: import("./applicationProfile").ApplicationProfile;
 }
 
 export interface DailyLoopReminderPreferences {

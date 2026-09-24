@@ -1,3 +1,5 @@
+mod menu_bar_timer;
+
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -9,12 +11,24 @@ pub fn run() {
         kind: MigrationKind::Up,
     }];
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:noctyrium.db", migrations)
                 .build(),
         )
-        .run(tauri::generate_context!())
+        .manage(menu_bar_timer::MenuBarTimerState::default())
+        .invoke_handler(tauri::generate_handler![
+            menu_bar_timer::menu_bar_timer_update,
+            menu_bar_timer::menu_bar_timer_clear,
+        ])
+        .setup(|app| {
+            menu_bar_timer::setup(app.handle());
+            Ok(())
+        })
+        .on_window_event(menu_bar_timer::on_window_event)
+        .build(tauri::generate_context!())
         .expect("error while running Noctyrium desktop shell");
+
+    app.run(menu_bar_timer::on_run_event);
 }

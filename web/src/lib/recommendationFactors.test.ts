@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { personalizedSuggestions, rankTrackerItems } from "./recommendationFactors";
+import { personalizedSuggestions, rankTrackerItems, trackerStudyAction } from "./recommendationFactors";
 import type { TrackerItem } from "./types";
 
 const make = (patch: Partial<TrackerItem>): TrackerItem => ({ id: crypto.randomUUID(), path: "Course", label: "Item", kind: "Lecture", passes: 0, ankiPasses: 0, yield: "none", updated: "2026-08-01T00:00:00Z", ...patch });
@@ -57,5 +57,40 @@ describe("deterministic recommendation factors", () => {
     const item = make({ id: "four-pass", passes: 3 });
     expect(rankTrackerItems([item], { now, preferences: { configured: true, lecturePasses: 4 } })).toHaveLength(1);
     expect(rankTrackerItems([item], { now, preferences: { configured: true, lecturePasses: 3 } })).toHaveLength(0);
+  });
+
+  it("distinguishes snoozed unfinished work from completed work without mutating either", () => {
+    const item = make({ recommendationSnoozedUntil: "2026-08-09T08:00:00Z" });
+    expect(personalizedSuggestions([item], 3, { now })[0].title).toBe("Remaining work is snoozed");
+    expect(item.recommendationSnoozedUntil).toBe("2026-08-09T08:00:00Z");
+    expect(personalizedSuggestions([{ ...item, passes: 2 }], 3, { now })[0].title).toBe("This scope is complete");
+  });
+
+  it("describes enabled methods, custom labels, timing, and the actual next pass", () => {
+    const [ranked] = rankTrackerItems([make({ passes: 2 })], { now, preferences: {
+      configured: true, lecturePasses: 4, reviewAfterDays: 5,
+      methods: [{ id: "anki", enabled: false }, { id: "noji", enabled: true },
+        { id: "practice-questions", enabled: true, timing: "after-first-pass" },
+        { id: "custom", enabled: true, label: "Whiteboard recall" }],
+    } });
+    expect(trackerStudyAction(ranked)).toMatchObject({
+      resources: ["Noji", "Practice questions (after the first pass)", "Whiteboard recall"],
+      expectedOutcome: "Complete pass 3 of 4 in your study plan.",
+      summary: "2 of 4 passes complete · Review after 5 days.",
+    });
+  });
+
+  it("keeps practice and completion targets separate from lecture preferences", () => {
+    const ranked = rankTrackerItems([
+      make({ id: "practice", kind: "PQ", passes: 1 }),
+      make({ id: "requirement", kind: "Requirement" }),
+    ], { now, preferences: { configured: true, lecturePasses: 6, methods: [{ id: "anki", enabled: false }] } });
+    const practice = ranked.find(({ item }) => item.id === "practice")!;
+    const requirement = ranked.find(({ item }) => item.id === "requirement")!;
+    expect(practice.target).toBe(3);
+    expect(trackerStudyAction(practice).expectedOutcome).toMatch(/round 2 of 3/);
+    expect(trackerStudyAction(practice).resources).not.toContain("Anki");
+    expect(requirement.target).toBe(1);
+    expect(trackerStudyAction(requirement).resources).toEqual([]);
   });
 });

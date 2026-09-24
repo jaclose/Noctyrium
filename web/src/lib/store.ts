@@ -53,6 +53,8 @@ import { normalizeDailyLoopReminderPreferences } from "./dailyLoopReminders";
 import { normalizeDashboardLayoutPreferences } from "./dashboardWidgets";
 import { normalizeJournalEntries, normalizeJournalNotebookPreferences } from "./journalNotebook";
 import { normalizeStudyWorkflow } from "./studyPreferences";
+import { normalizeApplicationResearch } from "./applicationResearch";
+import { normalizeApplicationProfile } from "./applicationProfile";
 import { BRAND, STORAGE_KEYS } from "./brand";
 import {
   closeOpenSegment, findLiveSession, openNewSegment, restoreSession, sessionElapsedMinutes,
@@ -2258,6 +2260,8 @@ function normalizeProfile(value: unknown): Profile {
     pomodoroCustom: isRecord(profile.pomodoroCustom) ? profile.pomodoroCustom as Profile["pomodoroCustom"] : undefined,
     pomodoroPreferences: normalizePomodoroPreferences(profile.pomodoroPreferences),
     studyWorkflow: normalizeStudyWorkflow(profile.studyWorkflow),
+    applicationResearch: normalizeApplicationResearch(profile.applicationResearch),
+    applicationProfile: normalizeApplicationProfile(profile.applicationProfile),
   };
 }
 

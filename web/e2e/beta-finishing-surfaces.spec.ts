@@ -70,7 +70,10 @@ test("Application Checker renders a 271-row partial dataset and filters by progr
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => { window.location.hash = "appchecker"; });
   await expect(page.getByText("271 schools")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Showing 24 of 271" })).toBeVisible();
+  await page.getByLabel("Search schools").fill("Synthetic Medical School 270");
   await expect(page.getByText("Synthetic Medical School 270")).toBeVisible();
+  await page.getByLabel("Search schools").fill("");
   const programFilter = page.getByLabel("Filter program type");
   await programFilter.selectOption("md");
   await expect(page.getByRole("heading", { name: "Synthetic Medical School 1", exact: true })).toBeVisible();

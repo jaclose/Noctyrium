@@ -12,6 +12,7 @@ import { DailyLoopReminderWatcher } from "./components/shell/DailyLoopReminderWa
 import { DailyRolloverWatcher } from "./components/shell/DailyRolloverWatcher";
 import { UpdateAvailableWatcher } from "./components/shell/UpdateAvailableWatcher";
 import { PomodoroFx } from "./components/productivity/PomodoroFx";
+import { MenuBarTimerBridge } from "./components/productivity/MenuBarTimerBridge";
 import { SessionOverlay } from "./components/session/SessionOverlay";
 import { NAV } from "./components/shell/nav";
 import { useStore } from "./lib/store";
@@ -282,6 +283,9 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
           <div className="orb purple" />
           <div className="orb blue" />
         </div>
+        {/* Same child slot as in the main shell below, so re-running setup
+            keeps one bridge mounted and a running sprint stays in the menu bar. */}
+        {onboarded && <MenuBarTimerBridge />}
         <DailyRolloverWatcher />
         <UpdateAvailableWatcher />
         <OnboardingWizard
@@ -301,6 +305,8 @@ export default function App({ startupStatus }: { startupStatus?: StorageMigratio
         <div className="orb purple" />
         <div className="orb blue" />
       </div>
+      {/* Keep in the slot right after the backdrop (see the setup branch). */}
+      <MenuBarTimerBridge />
 
       <div className="shell">
         <Sidebar

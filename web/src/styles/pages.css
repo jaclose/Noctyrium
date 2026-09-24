@@ -5225,4 +5225,16 @@
 .application-school-details { margin-top: 12px; border-top: 1px solid var(--hairline); padding-top: 10px; }
 .application-school-details summary { cursor: pointer; color: var(--cyan); font-weight: var(--fw-semibold); }
 .application-school-details dl { margin-bottom: 0; }
+.application-school-card { min-width: 0; overflow-wrap: anywhere; align-self: start; }
+.application-school-card .filter-pill { margin-top: 12px; }
+.application-school-card .filter-pill.on, .lb-tabs .filter-pill.on {
+  color: var(--text-95);
+  background: color-mix(in srgb, var(--cyan) 12%, var(--surface-2));
+  border-color: var(--cyan);
+  box-shadow: none;
+}
+.application-research-facts { display: grid; gap: 12px; margin-top: 12px; }
+.application-research-fact { padding-bottom: 12px; border-bottom: 1px solid var(--hairline); }
+.application-research-fact input { flex-shrink: 0; margin-top: 5px; }
+.application-research-fact .sub { margin-top: 6px; }
 .application-conflict { margin: 10px 0 0; color: var(--orange); font-size: var(--fs-sm); }

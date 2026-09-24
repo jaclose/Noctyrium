@@ -4,6 +4,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+  diffApplicationSchoolDatasets,
   mergeApplicationSchoolDatasets,
   parseApplicationSchoolDataset,
 } from "../src/lib/applicationSchools.ts";
@@ -16,7 +17,7 @@ if (!command || command === "--help" || command === "-h") {
   process.exit(command ? 0 : 2);
 }
 
-if (command !== "validate" && command !== "merge") {
+if (!["validate", "merge", "diff"].includes(command)) {
   console.error(`Unknown school dataset command: ${command}`);
   printUsage();
   process.exit(2);
@@ -24,7 +25,8 @@ if (command !== "validate" && command !== "merge") {
 
 try {
   if (command === "validate") await validateCommand(args);
-  else await mergeCommand(args);
+  else if (command === "merge") await mergeCommand(args);
+  else await diffCommand(args);
 } catch (error) {
   console.error(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 2;
@@ -87,6 +89,65 @@ async function mergeCommand(argv) {
   }
 }
 
+async function diffCommand(argv) {
+  if (argv.includes("--help") || argv.includes("-h")) {
+    printUsage();
+    return;
+  }
+  const paths = positionalArgs(argv);
+  if (paths.length < 2) throw new Error("diff requires base and incoming JSON paths.");
+  const asJson = argv.includes("--json");
+  const now = parseNow(option(argv, "--now"));
+  const inputs = [];
+  for (const path of paths.slice(0, 2)) {
+    const raw = await readJson(path);
+    const result = parseApplicationSchoolDataset(raw, now);
+    inputs.push({ path, result, report: summarize(raw, result) });
+  }
+  const unsafe = inputs.filter(({ result, report }) => !result.ok || report.errorCount > 0);
+  if (unsafe.length) {
+    for (const { path, report } of unsafe) printReport(`School dataset validation: ${path}`, report, console.error);
+    console.error("ERROR: diff refused because one or more inputs are unsafe.");
+    process.exitCode = 1;
+    return;
+  }
+  const [base, incoming] = inputs.map(({ result }) => result.dataset);
+  const diff = diffApplicationSchoolDatasets(base, incoming);
+  if (asJson) {
+    process.stdout.write(`${JSON.stringify(diff, null, 2)}\n`);
+    return;
+  }
+  const count = (dataset, pick) => dataset.schools.reduce((total, school) => total + pick(school), 0);
+  const describe = ({ path, report }, dataset) => `${path} (${dataset.schools.length} schools, ${count(dataset, (school) => school.researchFacts?.length ?? 0)} facts, `
+    + `${report.warningCount} warning(s), pipeline ${dataset.sourcePipelineVersion ?? "unknown"})`;
+  const list = (title, items, format) => {
+    if (!items.length) return;
+    console.log(`${title}:`);
+    for (const item of items.slice(0, 20)) console.log(`  ${format(item)}`);
+    if (items.length > 20) console.log(`  ... ${items.length - 20} more (use --json for the full list)`);
+  };
+  console.log("School dataset diff");
+  console.log(`base: ${describe(inputs[0], base)}`);
+  console.log(`incoming: ${describe(inputs[1], incoming)}`);
+  console.log(`schools: +${diff.addedSchools.length} added, -${diff.removedSchools.length} removed`);
+  console.log(`facts: +${diff.addedFacts.length} added, -${diff.removedFacts.length} removed, ${diff.changedFacts.length} changed`);
+  console.log(`review checks reopened: ${diff.reviewChecksReopened}`);
+  console.log(`estimate changes: ${diff.estimateChanges.length} school(s)`);
+  console.log(`reported statistics: ${count(base, (school) => school.reportedStats?.length ?? 0)} -> ${count(incoming, (school) => school.reportedStats?.length ?? 0)}`
+    + ` (${diff.statChanges.length} added, removed or changed)`);
+  console.log(`risk flags: ${count(base, (school) => Number(Boolean(school.riskFlag)))} -> ${count(incoming, (school) => Number(Boolean(school.riskFlag)))}`);
+  list("Added schools", diff.addedSchools, (id) => id);
+  list("Removed schools", diff.removedSchools, (id) => id);
+  list("Changed facts", diff.changedFacts, (change) => `${change.schoolId} ${change.factId} [${change.fields.join(", ")}]: `
+    + `${JSON.stringify(change.before.value)} -> ${JSON.stringify(change.after.value)}`);
+  list("Removed facts", diff.removedFacts, (fact) => `${fact.schoolId} ${fact.factId}`);
+  list("Reported statistic changes", diff.statChanges, (stat) => `${stat.schoolId} ${stat.statId} ${stat.change}`
+    + (stat.fields.length ? ` [${stat.fields.join(", ")}]` : ""));
+  const addedByField = new Map();
+  for (const { factId } of diff.addedFacts) addedByField.set(factId, (addedByField.get(factId) ?? 0) + 1);
+  list("Added facts by field", [...addedByField].sort(([a], [b]) => a.localeCompare(b)), ([factId, total]) => `${factId}: ${total} school(s)`);
+}
+
 function summarize(raw, result) {
   const input = isRecord(raw) ? raw : {};
   const rawSchools = Array.isArray(input.schools) ? input.schools : [];
@@ -111,8 +172,9 @@ function summarize(raw, result) {
     duplicateCanonicalNames: count(/duplicate canonical school name/i),
     malformedUrls: count(/source url and retrieval timestamp|website must be an http/i),
     missingProvenance: count(/verified schools require a valid source|provenance/i),
-    futureTimestamps: count(/future/i),
-    impossibleNumericFields: count(/class size|non-negative integer|numeric/i),
+    // "invalid date" rejections are not future timestamps; only messages that say "in the future" count here.
+    futureTimestamps: count(/\bin the future\b/i),
+    impossibleNumericFields: count(/class size|non-negative integer|numeric|implausible/i),
     unsupportedProgramTypes: count(/unsupported program type/i),
     warningCount,
     errorCount,
@@ -189,5 +251,6 @@ function printUsage() {
   console.log("Usage:");
   console.log("  npm run schools:validate -- path/to/export.json [--output web/public/application-schools.json]");
   console.log("  npm run schools:merge -- existing.json incoming.json --output web/public/application-schools.json");
+  console.log("  npm run schools:diff -- existing.json incoming.json [--json]");
   console.log("  Add --now 2026-08-11T00:00:00Z for deterministic freshness checks.");
 }

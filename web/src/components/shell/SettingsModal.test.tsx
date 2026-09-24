@@ -37,6 +37,66 @@ afterEach(() => {
 });
 
 describe("Settings information architecture", () => {
+  it("edits method follow-ups without erasing other methods or kind defaults", () => {
+    useStore.getState().updateProfile({ studyWorkflow: { configured: true, methods: [{ id: "noji", enabled: true, timing: "ongoing", usage: "My own recall cards" }], itemKindDefaults: { Lab: { lecturePasses: 3 } } } });
+    render(<SettingsModal onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Personalization" }));
+    fireEvent.click(screen.getByRole("button", { name: "Anki" }));
+    fireEvent.click(screen.getByRole("button", { name: "Noji" }));
+    fireEvent.click(screen.getByRole("button", { name: "Noji" }));
+    fireEvent.click(screen.getByText("How do you use Noji?"));
+    fireEvent.change(screen.getByLabelText("Your Noji approach (optional)"), { target: { value: "  Exact revised words  " } });
+    expect(useStore.getState().profile.studyWorkflow?.methods).toEqual(expect.arrayContaining([expect.objectContaining({ id: "noji", enabled: true, timing: "ongoing", usage: "  Exact revised words  " })]));
+    expect(useStore.getState().profile.studyWorkflow?.itemKindDefaults?.Lab?.lecturePasses).toBe(3);
+  });
+  it("shows study-text suggestions without applying them and applies exactly one on confirmation", () => {
+    const methods = [
+      { id: "noji" as const, enabled: true, timing: "after-first-pass" as const, usage: "My recall cards", label: "Own deck" },
+      { id: "quizlet" as const, enabled: false, usage: "Old sets" },
+    ];
+    useStore.getState().updateProfile({ studyWorkflow: { configured: true, methods, lecturePasses: 2, reviewAfterDays: 3, itemKindDefaults: { Lab: { lecturePasses: 3 } } } });
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+    expect(screen.queryByText("Suggestions from your words")).toBeNull();
+    expect(screen.getByText(/keeps this text exactly as written.*fixed word rules \(not AI\).*never applied automatically/)).toBeTruthy();
+
+    const original = "Noji every day. I review a week later — I don't use Quizlet.";
+    fireEvent.change(screen.getByLabelText("Other — tell AXOM how you study"), { target: { value: original } });
+    const region = screen.getByRole("region", { name: "Suggestions from your words" });
+    expect(region.textContent).toContain("You wrote “Noji every day”");
+    expect(region.textContent).toContain("You wrote “review a week later”");
+    expect(region.textContent).not.toContain("Quizlet");
+    // Typing only saves the words; no setting changes until Apply.
+    expect(useStore.getState().profile.studyWorkflow).toMatchObject({ methods, reviewAfterDays: 3, customContext: original });
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply: Use Noji throughout the course" }));
+    const workflow = useStore.getState().profile.studyWorkflow!;
+    expect(workflow.methods).toEqual([{ ...methods[0], timing: "ongoing" }, methods[1]]);
+    expect(workflow).toMatchObject({ reviewAfterDays: 3, lecturePasses: 2, customContext: original, itemKindDefaults: { Lab: { lecturePasses: 3 } } });
+    expect(screen.queryByRole("button", { name: "Apply: Use Noji throughout the course" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Apply all" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Apply: Review again after 7 days" })).toBeTruthy();
+  });
+
+  it("applies all suggestions at once, keeps the original text, and removes the list", () => {
+    useStore.getState().updateProfile({ studyWorkflow: { configured: true, methods: [{ id: "anki", enabled: false, usage: "Own cards" }], lecturePasses: 2, reviewAfterDays: 3 } });
+    render(<SettingsModal onClose={() => {}} initialTab="personalization" />);
+    const original = "  Anki before exams, UWorld after lectures, and I rewatch lectures 3 times.  ";
+    fireEvent.change(screen.getByLabelText("Other — tell AXOM how you study"), { target: { value: original } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply all" }));
+
+    const workflow = useStore.getState().profile.studyWorkflow!;
+    expect(workflow.customContext).toBe(original);
+    expect(workflow.lecturePasses).toBe(3);
+    expect(workflow.methods).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "anki", enabled: true, usage: "Own cards", timing: "near-exam" }),
+      expect.objectContaining({ id: "practice-questions", enabled: true, timing: "after-first-pass" }),
+      expect.objectContaining({ id: "lecture-passes", enabled: true }),
+    ]));
+    expect(screen.queryByText("Suggestions from your words")).toBeNull();
+    expect(screen.getByRole("button", { name: "Anki" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("status").textContent).toBe("Applied 6 suggestions.");
+  });
+
   it("uses six accessible sections with only the active tab owning its mounted panel", async () => {
     const user = userEvent.setup();
     render(<SettingsModal onClose={() => {}} />);

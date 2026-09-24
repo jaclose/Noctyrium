@@ -166,8 +166,8 @@ describe("sidebar module status", () => {
     expect(getNavModuleStatus("step")).toBe("wip");
     expect(getNavModuleStatus("premed")).toBe("wip");
     expect(getNavModuleStatus("integrations")).toBe("wip");
-    expect(getNavModuleStatus("appchecker")).toBe("under-construction");
-    expect(getNavModuleStatus("leaderboards")).toBe("under-construction");
+    expect(getNavModuleStatus("appchecker")).toBe("wip");
+    expect(getNavModuleStatus("leaderboards")).toBe("wip");
     expect(getNavModuleStatus("dashboard")).toBeUndefined();
     expect(getNavAnnouncementId("questions")).toBe("question-bank-entry-v1");
     expect(getNavAnnouncementId("methods")).toBe("study-methods-library-v1");
@@ -196,10 +196,10 @@ describe("sidebar module status", () => {
     const wipItem = screen.getByRole("button", { name: "Anki Lab, Work in progress" });
     expect(wipItem.querySelector(".nav-status")?.textContent).toBe("WIP");
 
-    const buildingItem = screen.getByRole("button", { name: "Application Checker, Under construction" });
+    const buildingItem = screen.getByRole("button", { name: "Application Checker, Work in progress" });
     const buildingBadge = buildingItem.querySelector<HTMLElement>(".nav-status");
-    expect(buildingBadge?.textContent).toBe("BUILDING");
-    expect(buildingBadge?.getAttribute("title")).toBe("Under construction");
+    expect(buildingBadge?.textContent).toBe("WIP");
+    expect(buildingBadge?.getAttribute("title")).toBe("Work in progress");
   });
 
   it("keeps status treatments visible for hidden modules in customize mode", () => {
@@ -263,7 +263,7 @@ describe("sidebar module status", () => {
     rerender(<Sidebar {...props} active="anki" />);
     expect(screen.getByRole("button", { name: "Anki Lab, Work in progress" })).toBeTruthy();
     rerender(<Sidebar {...props} active="appchecker" />);
-    expect(screen.getByRole("button", { name: "Application Checker, Under construction" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Application Checker, Work in progress" })).toBeTruthy();
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.dismissedAnnouncements) ?? "[]")).toEqual(["daily-word-launch-v1"]);
   });
 });

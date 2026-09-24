@@ -8,11 +8,12 @@ import { useStore } from "../lib/store";
 import { GlassCard, GButton, GhostButton, PanelHeader, Tag, EmptyState } from "../components/ui/primitives";
 import { Modal, Field, SelectField, TextAreaField } from "../components/ui/Modal";
 import {
-  passStage, PASS_COLOR, PASS_LABEL, ankiColor, YIELD_LABEL,
-  scopeMastery, isCompletionKind, isQuestionKind,
+  passStage, PASS_COLOR, ankiColor, YIELD_LABEL,
+  isCompletionKind, isQuestionKind,
 } from "../lib/tracker";
 import { personalizedSuggestions } from "../lib/recommendationFactors";
-import { resolveStudyPlan, type StudyMethodId } from "../lib/studyPreferences";
+import { resolveStudyPlan, studyPlanCourse, type StudyMethodId } from "../lib/studyPreferences";
+import { scopeStudyProgress, trackerStudyProgress } from "../lib/studyProgress";
 import { BLUEPRINT_LANES } from "../lib/blueprintCatalog";
 import { routeForBlueprintLane } from "../lib/blueprintRoutes";
 import {
@@ -186,7 +187,8 @@ export function CourseTrackerPage() {
     [inBlueprintScope, scope, s.tracker],
   );
   const items = inScope.filter((t) => tabMatch(tab, t.kind));
-  const mastery = inBlueprintScope ? blueprintMastery : scopeMastery(inScope);
+  const scopeProgress = useMemo(() => scopeStudyProgress(inScope, { preferences: s.profile.studyWorkflow, courses: s.courses }), [inScope, s.profile.studyWorkflow, s.courses]);
+  const progressPercent = inBlueprintScope ? blueprintMastery : scopeProgress.percent;
   const suggestions = useMemo(() => {
     void salt; // Refresh recomputes current facts; deterministic evidence keeps the same order stable.
     return inBlueprintScope ? [] : personalizedSuggestions(inScope, 3, { preferences: s.profile.studyWorkflow, courses: s.courses });
@@ -292,26 +294,27 @@ export function CourseTrackerPage() {
                 {inBlueprintScope
                   ? `${activeBlueprintNodes.length} blueprint objects · ${activeBlueprintNodes.filter((n) => n.status === "done" || n.status === "mastered").length} complete · ${activeBlueprintNodes.filter((n) => n.sourceUrl).length} sourced`
                   : <>
-                    {inScope.length} items · {inScope.filter((i) => i.kind === "Lecture").length} lec ·{" "}
-                    {inScope.filter((i) => i.kind === "DLA").length} DLA · {inScope.filter((i) => i.passes >= 3).length} mature ·{" "}
-                    {inScope.filter((i) => i.passes >= 4).length} mastered
+                    {inScope.length} {inScope.length === 1 ? "item" : "items"} · {scopeProgress.complete} plan complete · {scopeProgress.inProgress} in progress · {scopeProgress.notStarted} not started
                   </>}
               </div>
+              {!inBlueprintScope && <p className="sub">Study-plan progress · Each item counts equally. This measures recorded work, not mastery.</p>}
             </div>
-            <div className="ring" style={{ width: 92, height: 92 }}>
-              <svg width="92" height="92" viewBox="0 0 92 92">
+            <div className="ring" style={{ width: 92, height: 92 }} role="progressbar"
+              aria-label={inBlueprintScope ? "Blueprint mastery" : "Study-plan progress"}
+              aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent}>
+              <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
                 <circle cx="46" cy="46" r="40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="11" />
                 <circle cx="46" cy="46" r="40" fill="none" stroke="var(--cyan)" strokeWidth="11" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - mastery / 100)}
+                  strokeDasharray={2 * Math.PI * 40} strokeDashoffset={2 * Math.PI * 40 * (1 - progressPercent / 100)}
                   transform="rotate(-90 46 46)" style={{ transition: "stroke-dashoffset .5s ease" }} />
               </svg>
-              <div className="ring-label" style={{ fontSize: 15 }}>{mastery}%</div>
+              <div className="ring-label" style={{ fontSize: 15 }}>{progressPercent}%</div>
             </div>
           </div>
           </GlassCard>
 
           <GlassCard pad data-tour="tracker-help" data-module-tour="tracker-passes">
-          <PanelHeader title="Items" sub="Click pass boxes to fill or clear progress · click Anki blocks to cycle card mastery"
+          <PanelHeader title="Items" sub="Log passes toward your saved plan · Anki rounds are tracked separately"
             action={
               <div className="row gap6">
                 {scope && <GhostButton title="Rename selected tracker group" onClick={renameCurrentScope}><Pencil size={ICON_SIZE.body} /></GhostButton>}
@@ -493,15 +496,20 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
   const [planOpen, setPlanOpen] = useState(false);
   const questionStyle = isQuestionKind(item.kind);
   const completionStyle = isCompletionKind(item.kind);
-  const course = s.courses.find((candidate) => item.path.toLowerCase().includes(candidate.code.toLowerCase()) || item.path.toLowerCase().includes(candidate.name.toLowerCase()));
-  const plan = resolveStudyPlan(s.profile.studyWorkflow, course, item);
-  const planLabels = plan.methods.filter((method) => method.enabled).slice(0, 3).map((method) => method.id === "lecture-passes" ? `Pass ×${plan.lecturePasses}` : method.id === "practice-questions" ? "Questions" : method.id === "teach-aloud" ? "Teach" : method.label ?? method.id);
+  const { plan, target, complete } = trackerStudyProgress(item, { preferences: s.profile.studyWorkflow, courses: s.courses });
+  const unit = questionStyle ? "practice round" : "pass";
+  const pluralUnit = questionStyle ? "practice rounds" : "passes";
+  const progressLabel = completionStyle ? (complete ? "Plan complete" : "Not started")
+    : item.passes > target ? `${item.passes} ${pluralUnit} recorded · Target of ${target} reached`
+      : `${item.passes} of ${target} ${target === 1 ? unit : pluralUnit} · ${complete ? "Plan complete" : `${target - item.passes} remaining`}`;
+  const planLabels = completionStyle ? [] : plan.methods.filter((method) => method.enabled && (!questionStyle || method.id !== "lecture-passes")).slice(0, 3).map((method) => method.id === "lecture-passes" ? `Pass ×${target}` : method.id === "practice-questions" ? "Questions" : method.id === "teach-aloud" ? "Teach" : method.label ?? method.id);
   return (
     <div className={`dense-row tracker-item-row ${questionStyle ? "pq-row" : ""} ${completionStyle ? "milestone-row" : ""} ${highlight ? "row-highlight" : ""}`} data-item-id={item.id}>
-      {!questionStyle && !completionStyle && <MasteryShard item={item} />}
+      {!questionStyle && !completionStyle && <MasteryShard item={item} progressLabel={progressLabel} />}
       <div className="grow">
         <div className="dr-label">{item.label}</div>
         <div className="dr-type">{item.path}</div>
+        <div className="dr-note">{progressLabel}</div>
         {item.note && <div className="dr-note">{item.note}</div>}
         {planLabels.length > 0 && <div className="row wrap gap6" aria-label="Effective study plan">{planLabels.map((label) => <Tag key={label} tone="neutral">{label}</Tag>)}</div>}
       </div>
@@ -512,7 +520,7 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
       <Tag tone={kindTone[item.kind]}>{item.kind}</Tag>
 
       {completionStyle ? <CompletionBlock item={item} /> : questionStyle ? <PQCompleteBlocks item={item} /> : <>
-        <PassBlocks item={item} />
+        <PassBlocks item={item} target={target} />
         <AnkiBlocks item={item} />
       </>}
 
@@ -533,13 +541,46 @@ function ItemRow({ item, highlight }: { item: TrackerItem; highlight?: boolean }
 function ItemStudyPlanEditor({ item, onClose }: { item: TrackerItem; onClose: () => void }) {
   const store = useStore();
   const base = item.studyPlanOverride ?? {};
+  const plan = resolveStudyPlan(store.profile.studyWorkflow, studyPlanCourse(store.courses, item), { ...item, studyPlanOverride: undefined });
   const [passes, setPasses] = useState(base.lecturePasses);
   const [methods, setMethods] = useState(() => new Map((base.methods ?? []).map((method) => [method.id, method.enabled])));
   const [difficulty, setDifficulty] = useState(item.difficulty ?? "");
   const [assessmentDate, setAssessmentDate] = useState(item.assessmentDate ?? "");
   const [priority, setPriority] = useState(item.explicitPriority?.toString() ?? "");
   const options: Array<[StudyMethodId, string]> = [["anki", "Anki"], ["practice-questions", "Practice questions"], ["notes", "Notes"], ["teach-aloud", "Teaching / retrieval"]];
-  return <Modal title={`Study plan · ${item.label}`} onClose={onClose} footer={<><GButton onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: undefined }); onClose(); }}>Use inherited plan</GButton><GButton variant="primary" onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: { lecturePasses: passes, methods: options.map(([id]) => ({ id, enabled: methods.get(id) ?? true })) }, difficulty: difficulty as TrackerItem["difficulty"] || undefined, assessmentDate: assessmentDate || undefined, explicitPriority: priority ? Number(priority) as TrackerItem["explicitPriority"] : undefined }); onClose(); }}>Save plan</GButton></>}><p className="sub">Only this item changes. Learner and course defaults remain intact.</p><label className="stack gap6"><span>Lecture passes</span><input className="field" type="number" min={1} max={6} value={passes ?? ""} placeholder="Inherited" onChange={(event) => setPasses(event.target.value ? Number(event.target.value) : undefined)}/></label><div className="row wrap gap8">{options.map(([id, label]) => { const active = methods.get(id) ?? true; return <button key={id} type="button" className={`filter-pill ${active ? "on" : ""}`} aria-pressed={active} onClick={() => setMethods((current) => new Map(current).set(id, !active))}>{label}</button>; })}</div><div className="settings-target-grid"><label className="stack gap6"><span>Difficulty</span><select className="field" value={difficulty} onChange={(event) => setDifficulty(event.target.value as typeof difficulty)}><option value="">Unknown</option><option value="easy">Easy</option><option value="moderate">Moderate</option><option value="hard">Hard</option><option value="very-hard">Very hard</option></select></label><label className="stack gap6"><span>Assessment date</span><input className="field" type="date" value={assessmentDate} onChange={(event) => setAssessmentDate(event.target.value)}/></label><label className="stack gap6"><span>Priority</span><select className="field" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="">Normal</option>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div></Modal>;
+  function save() {
+    const override = { ...base };
+    if (passes === undefined) delete override.lecturePasses;
+    else override.lecturePasses = passes;
+    if (methods.size) override.methods = [...methods].map(([id, enabled]) => ({
+      ...base.methods?.find((method) => method.id === id), id, enabled,
+    }));
+    store.updateTrackerItem(item.id, {
+      studyPlanOverride: Object.keys(override).length ? override : undefined,
+      difficulty: difficulty as TrackerItem["difficulty"] || undefined,
+      assessmentDate: assessmentDate || undefined,
+      explicitPriority: priority ? Number(priority) as TrackerItem["explicitPriority"] : undefined,
+    });
+    onClose();
+  }
+  return (
+    <Modal title={`Study plan · ${item.label}`} onClose={onClose} footer={<>
+      <GButton onClick={() => { store.updateTrackerItem(item.id, { studyPlanOverride: undefined }); onClose(); }}>Use inherited plan</GButton>
+      <GButton variant="primary" onClick={save}>Save plan</GButton>
+    </>}>
+      <p className="sub">Only this item changes. Learner and course defaults remain intact.</p>
+      <label className="stack gap6"><span>Lecture passes</span><input className="field" type="number" min={1} max={6} value={passes ?? ""} placeholder={`Inherited: ${plan.lecturePasses}`} onChange={(event) => setPasses(event.target.value ? Number(event.target.value) : undefined)}/></label>
+      <div className="row wrap gap8">{options.map(([id, label]) => {
+        const active = methods.get(id) ?? plan.methods.find((method) => method.id === id)?.enabled ?? false;
+        return <button key={id} type="button" className={`filter-pill ${active ? "on" : ""}`} aria-pressed={active} onClick={() => setMethods((current) => new Map(current).set(id, !active))}>{label}</button>;
+      })}</div>
+      <div className="settings-target-grid">
+        <label className="stack gap6"><span>Difficulty</span><select className="field" value={difficulty} onChange={(event) => setDifficulty(event.target.value as typeof difficulty)}><option value="">Unknown</option><option value="easy">Easy</option><option value="moderate">Moderate</option><option value="hard">Hard</option><option value="very-hard">Very hard</option></select></label>
+        <label className="stack gap6"><span>Assessment date</span><input className="field" type="date" value={assessmentDate} onChange={(event) => setAssessmentDate(event.target.value)}/></label>
+        <label className="stack gap6"><span>Priority</span><select className="field" value={priority} onChange={(event) => setPriority(event.target.value)}><option value="">Normal</option>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+      </div>
+    </Modal>
+  );
 }
 
 function tomorrowIso() { const date = new Date(); date.setDate(date.getDate() + 1); date.setHours(8, 0, 0, 0); return date.toISOString(); }
@@ -585,7 +626,7 @@ function CompletionBlock({ item }: { item: TrackerItem }) {
   );
 }
 
-function MasteryShard({ item }: { item: TrackerItem }) {
+function MasteryShard({ item, progressLabel }: { item: TrackerItem; progressLabel: string }) {
   const stage = passStage(item.passes);
   const ankiTone = item.ankiPasses > 0 ? ankiColor(item.ankiPasses) : "rgba(255,255,255,0.12)";
   const style = {
@@ -595,33 +636,34 @@ function MasteryShard({ item }: { item: TrackerItem }) {
 
   return (
     <div className="mastery-shard" style={style}
-      title={`${PASS_LABEL[stage]} · ${item.ankiPasses ? `Anki ${item.ankiPasses}/3` : "No Anki rounds yet"}`}>
+      title={`${progressLabel} · ${item.ankiPasses ? `Anki ${item.ankiPasses}/3` : "No Anki rounds yet"}`}>
       <span className="shard-pass"><Eye size={ICON_SIZE.body} /></span>
       <span className="shard-anki">A</span>
     </div>
   );
 }
 
-function PassBlocks({ item }: { item: TrackerItem }) {
+function PassBlocks({ item, target }: { item: TrackerItem; target: number }) {
   const s = useStore();
   return (
     <div className="pass-blocks" aria-label="Lecture passes">
-      {[1, 2, 3, 4].map((n) => {
+      {Array.from({ length: Math.min(6, Math.max(4, target, item.passes)) }, (_, index) => index + 1).map((n) => {
         const blockStage = passStage(n);
         const active = item.passes >= n;
         const style = { "--block-color": PASS_COLOR[blockStage] } as CSSProperties;
         return (
           <button key={n}
+            aria-pressed={active}
             className={`pass-block ${active ? "on" : ""} stage-${blockStage}`}
             style={style}
             onClick={() => s.setPasses(item.id, n)}
-            title={`${n}${n === 4 ? "+" : ""} lecture pass${n > 1 ? "es" : ""}`}>
-            <span>{n === 4 ? "4+" : n}</span>
+            title={`${n} lecture pass${n > 1 ? "es" : ""}`}>
+            <span>{n}</span>
           </button>
         );
       })}
-      <span className="pass-num" style={{ color: PASS_COLOR[passStage(item.passes)] }}>
-        {item.passes > 4 ? `${item.passes}` : PASS_LABEL[passStage(item.passes)]}
+      <span className="pass-num" title="Recorded passes / study-plan target" style={{ color: PASS_COLOR[passStage(item.passes)] }}>
+        {item.passes}/{target}
       </span>
     </div>
   );
@@ -645,8 +687,8 @@ function AnkiBlocks({ item }: { item: TrackerItem }) {
 function TrackerGuide() {
   return (
     <div className="tracker-guide">
-      <p>Each focused review is one pass: 1 is fragile, 2 is forming, 3 is mature, and 4+ is mastered. Click the same level again to step back.</p>
-      <p>Anki rounds are tracked separately. Practice-question rows use three completed levels, and yield labels help AXOM prioritize high-value or weak work.</p>
+      <p>Each focused review is one pass. Progress uses your learner defaults, course plan, item-kind defaults, and any item override. Edit an item's study plan to change its target; recorded passes are kept. Click the same level again to step back.</p>
+      <p>Plan complete means the recorded work meets your current target, not that mastery has been assessed. Anki rounds are tracked separately. Practice-question rows use three rounds; requirements and milestones use done/not done. Yield labels help prioritize work without changing its target.</p>
     </div>
   );
 }

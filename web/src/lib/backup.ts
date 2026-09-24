@@ -25,6 +25,9 @@ import { normalizePomodoroPreferences } from "./pomodoroPreferences";
 import { normalizeDailyLoopReminderPreferences } from "./dailyLoopReminders";
 import { normalizeDashboardLayoutPreferences } from "./dashboardWidgets";
 import { normalizeJournalEntries, normalizeJournalNotebookPreferences } from "./journalNotebook";
+import { normalizeApplicationResearch } from "./applicationResearch";
+import { normalizeApplicationProfile } from "./applicationProfile";
+import { normalizeStudyWorkflow } from "./studyPreferences";
 
 const DATA_KEYS = [
   "profile", "terms", "courses", "tracker", "productivityTrackers", "resources", "tasks", "journal",
@@ -147,6 +150,15 @@ export function mergeStates(current: NoctyriumState, imported: NoctyriumState): 
     prep[lane] = !other || String(value?.updated ?? "") >= String(other.updated ?? "") ? value : other;
   }
   merged.boardPrep = prep;
+  // Bring in new saved schools without replacing the learner's current review
+  // decisions (including deliberately unchecked facts) for an existing school.
+  const research = new Map(normalizeApplicationResearch(imported.profile.applicationResearch).map(entry => [entry.schoolId, entry]));
+  for (const entry of normalizeApplicationResearch(current.profile.applicationResearch)) research.set(entry.schoolId, entry);
+  merged.profile = {
+    ...current.profile, applicationResearch: [...research.values()],
+    // The profile is one learner-edited record, so current wins whole rather than field-merging.
+    applicationProfile: normalizeApplicationProfile(current.profile.applicationProfile) ?? normalizeApplicationProfile(imported.profile.applicationProfile),
+  };
   return merged as unknown as NoctyriumState;
 }
 
@@ -363,6 +375,9 @@ export function parseImport(text: string): NoctyriumState {
       pomodoroCustom: profile.pomodoroCustom && typeof profile.pomodoroCustom === "object"
         ? profile.pomodoroCustom as NoctyriumState["profile"]["pomodoroCustom"] : undefined,
       pomodoroPreferences: normalizePomodoroPreferences(profile.pomodoroPreferences),
+      studyWorkflow: normalizeStudyWorkflow(profile.studyWorkflow),
+      applicationResearch: normalizeApplicationResearch(profile.applicationResearch),
+      applicationProfile: normalizeApplicationProfile(profile.applicationProfile),
     },
     terms: data.terms ?? [],
     courses: data.courses ?? [],

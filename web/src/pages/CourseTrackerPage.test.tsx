@@ -35,6 +35,82 @@ afterEach(() => {
 });
 
 describe("Course Tracker comprehension layout", () => {
+  it("shows plan-relative progress and recalculates edited targets without rewriting history", () => {
+    const state = useStore.getState();
+    useStore.setState({
+      tracker: [{ ...state.tracker[0], id: "plan-progress", label: "Planned lecture", kind: "Lecture", passes: 4, ankiPasses: 2, yield: "high", studyPlanOverride: { lecturePasses: 6 } }],
+    });
+    render(<CourseTrackerPage />);
+    const progress = screen.getByRole("progressbar", { name: "Study-plan progress" });
+    expect(progress.getAttribute("aria-valuenow")).toBe("67");
+    expect(screen.getByText("4 of 6 passes · 2 remaining")).toBeTruthy();
+    expect(screen.getByText("1 item · 0 plan complete · 1 in progress · 0 not started")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit study plan" }));
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText("Lecture passes"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save plan" }));
+    expect(progress.getAttribute("aria-valuenow")).toBe("100");
+    expect(screen.getByText("4 passes recorded · Target of 2 reached")).toBeTruthy();
+    expect(screen.getByText("This scope is complete")).toBeTruthy();
+    expect(useStore.getState().tracker[0]).toMatchObject({ passes: 4, ankiPasses: 2, yield: "high" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit study plan" }));
+    fireEvent.change(within(screen.getByRole("dialog")).getByLabelText("Lecture passes"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save plan" }));
+    expect(progress.getAttribute("aria-valuenow")).toBe("67");
+    expect(screen.queryByText("This scope is complete")).toBeNull();
+    expect(useStore.getState().tracker[0].passes).toBe(4);
+  });
+
+  it("keeps previously recorded passes visible when a learner lowers the target", () => {
+    const state = useStore.getState();
+    useStore.setState({ tracker: [{ ...state.tracker[0], kind: "Lecture", passes: 6, studyPlanOverride: { lecturePasses: 2 } }] });
+    render(<CourseTrackerPage />);
+    expect(screen.getByText("6 passes recorded · Target of 2 reached")).toBeTruthy();
+    const sixth = screen.getByTitle("6 lecture passes");
+    expect(sixth.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(sixth);
+    expect(useStore.getState().tracker[0].passes).toBe(5);
+  });
+
+  it("lets the learner record and undo the sixth pass in a six-pass plan", () => {
+    const state = useStore.getState();
+    useStore.setState({
+      tracker: [{ ...state.tracker[0], id: "six-passes", label: "Six-pass lecture", kind: "Lecture", passes: 5, studyPlanOverride: { lecturePasses: 6 } }],
+    });
+    render(<CourseTrackerPage />);
+    const sixth = screen.getByTitle("6 lecture passes");
+    expect(sixth.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(sixth);
+    expect(useStore.getState().tracker[0].passes).toBe(6);
+    expect(sixth.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("This scope is complete")).toBeTruthy();
+    fireEvent.click(sixth);
+    expect(useStore.getState().tracker[0].passes).toBe(5);
+    expect(sixth.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("edits priority without enabling inherited methods or replacing hidden plan settings", () => {
+    const state = useStore.getState();
+    const item = { ...state.tracker[0], id: "personalized-item", label: "Personalized lecture", studyPlanOverride: {
+      reviewAfterDays: 7, customContext: "Keep my original context",
+      methods: [{ id: "custom" as const, enabled: true, label: "Whiteboard", timing: "ongoing" as const }],
+    } };
+    useStore.setState({ tracker: [item], profile: { ...state.profile, studyWorkflow: {
+      configured: true, lecturePasses: 4, methods: [{ id: "anki", enabled: false }, { id: "notes", enabled: true }],
+    } } });
+    render(<CourseTrackerPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit study plan" }));
+    const dialog = screen.getByRole("dialog", { name: "Study plan · Personalized lecture" });
+    expect(within(dialog).getByRole("button", { name: "Anki" }).getAttribute("aria-pressed")).toBe("false");
+    expect(within(dialog).getByRole("button", { name: "Notes" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.change(within(dialog).getByLabelText("Priority"), { target: { value: "4" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save plan" }));
+    expect(useStore.getState().tracker[0].studyPlanOverride).toEqual(item.studyPlanOverride);
+    expect(useStore.getState().tracker[0].explicitPriority).toBe(4);
+    expect(useStore.getState().profile.studyWorkflow?.methods).toEqual([{ id: "anki", enabled: false }, { id: "notes", enabled: true }]);
+  });
+
   it("places immediate import/add controls before a separate suggestions card and preserves tracker data", () => {
     const before = structuredClone(useStore.getState().tracker);
     const { container } = render(<CourseTrackerPage />);

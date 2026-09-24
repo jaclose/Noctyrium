@@ -5,6 +5,19 @@ import { createTextAnnotation } from "./questionAnnotations";
 import { buildQuizPool } from "./quiz";
 
 describe("portable backup safety", () => {
+  it("round-trips exact learner method descriptions, timing and every preference layer", () => {
+    const state = makeSeed();
+    const original = "  Exact original words\n".repeat(50);
+    state.profile.studyWorkflow = { configured: true, customContext: original, lecturePasses: 4, reviewAfterDays: 7,
+      methods: [{ id: "noji", enabled: true, timing: "ongoing", usage: original }],
+      itemKindDefaults: { Lab: { lecturePasses: 3, customContext: "Original lab plan" } },
+    };
+    state.courses[0].studyPlanOverride = { lecturePasses: 5 };
+    const parsed = parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(state) }));
+    expect(parsed.profile.studyWorkflow).toMatchObject(state.profile.studyWorkflow);
+    expect(parsed.courses[0].studyPlanOverride).toEqual({ lecturePasses: 5 });
+    expect(parseImport(JSON.stringify({ _app: "AXOM", ...toPortableState(parsed) })).profile.studyWorkflow).toEqual(parsed.profile.studyWorkflow);
+  });
   it("round-trips notebook metadata, autosaved writing, and bounded local attachments on schema v32", () => {
     const state = makeSeed();
     state.profile.journalNotebook = {

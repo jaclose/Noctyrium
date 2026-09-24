@@ -60,14 +60,14 @@ export const NAV = [
   { id: "dat", label: "DAT", subtitle: "Dental admission test blueprint and evidence-guided prep", icon: Compass },
   { id: "casper", label: "CASPer", subtitle: "Situational judgment practice and reflection evidence", icon: Compass },
   { id: "premed-log", label: "Experience Log", subtitle: "Pre-med activities, verification, evidence, and export", icon: Compass },
-  { id: "appchecker", label: "Application Checker", subtitle: "Med school + residency application tracking", icon: ClipboardCheck },
+  { id: "appchecker", label: "Application Checker", subtitle: "Medical school research and saved review checks", icon: ClipboardCheck },
   // Tools folder
   { id: "tasks", label: "Tasks", subtitle: "Execute — open and completed work", icon: ListChecks },
   { id: "habits", label: "Habit Tracker", subtitle: "Calm, recovery-friendly habit tracking (experimental)", icon: CalendarCheck },
   { id: "anki", label: "Anki Lab", subtitle: "Turn lectures, DLAs & slides into Anki cards", icon: Wand2 },
   { id: "prompts", label: "Prompt Library", subtitle: "Reusable AI prompts for study workflows", icon: Library },
   { id: "integrations", label: "Integrations", subtitle: "Connect Anki, calendar, drives, and more", icon: Share2 },
-  { id: "leaderboards", label: "Leaderboards", subtitle: "Opt-in, friendly accountability (coming soon)", icon: Trophy },
+  { id: "leaderboards", label: "Leaderboards", subtitle: "Personal weekly standings; friend groups planned", icon: Trophy },
   { id: "activity", label: "Activity History", subtitle: "Full local study ledger with filters and export", icon: Calendar },
   // After Tools
   { id: "about", label: "About", subtitle: "What AXOM is, where it is headed, and the live project preview", icon: Info },
@@ -92,8 +92,8 @@ export const MODULE_STATUS_BY_NAV_ID = {
   step: { status: "wip" },
   premed: { status: "wip" },
   integrations: { status: "wip" },
-  appchecker: { status: "under-construction" },
-  leaderboards: { status: "under-construction" },
+  appchecker: { status: "wip" },
+  leaderboards: { status: "wip" },
 } as const satisfies Partial<Record<NavItemId, ModuleStatusAssignment>>;
 
 export function getNavModuleStatusAssignment(id: string): ModuleStatusAssignment | undefined {

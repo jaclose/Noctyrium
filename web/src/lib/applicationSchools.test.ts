@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mergeApplicationSchoolDatasets, parseApplicationSchoolDataset, type ApplicationSchoolDataset } from "./applicationSchools";
+import {
+  diffApplicationSchoolDatasets, mergeApplicationSchoolDatasets, parseApplicationSchoolDataset,
+  type ApplicationSchool, type ApplicationSchoolDataset, type ReportedStatistic, type SchoolEstimates,
+} from "./applicationSchools";
+import type { SchoolResearchFact } from "./applicationResearch";
 
 const source = { url: "https://example.edu/admissions", retrievedAt: "2026-08-08T12:00:00Z" };
 const valid = {
@@ -107,6 +111,128 @@ describe("application school ingestion contract", () => {
     expect(merged.dataset.schools.find((school) => school.id === "school-40")?.tuition).toBe("Unknown");
     expect(merged.dataset.schools.find((school) => school.id === "school-4")?.tuition).toBe("$50k");
     expect(merged.dataset.schools.find((school) => school.id === "new-2")?.canonicalName).toBe("New Medical School 2");
+  });
+});
+
+describe("research context fields: statistics, estimates and risk flags", () => {
+  const now = new Date("2026-09-23T12:00:00Z");
+  const stat = (overrides: Partial<ReportedStatistic> = {}): ReportedStatistic => ({
+    id: "admissions_requirements_raw.avg_gpa", label: "Reported class GPA", metric: "gpa", kind: "average", value: "3.85 median",
+    number: 3.85, approximate: true, url: "https://example.edu/facts", capturedAt: "2026-07-22T00:00:00Z", basis: "unverified-capture", ...overrides,
+  });
+  const estimates = (overrides: Partial<SchoolEstimates> = {}): SchoolEstimates => ({
+    tier: "B", hours: { shadowing: { text: "40-100", min: 40, max: 100 } }, confidence: "low",
+    disclaimer: "ESTIMATE: directional only.", estimatedAt: "2026-07-22T00:00:00Z", ...overrides,
+  });
+  const fact = (id: string, overrides: Partial<SchoolResearchFact> = {}): SchoolResearchFact => ({
+    id, label: id, value: "3.0", url: "https://example.edu/requirements", capturedAt: "2026-07-19T00:00:00Z", captureStatus: "unverified-capture", ...overrides,
+  });
+  const school = (id: string, overrides: Partial<ApplicationSchool> = {}): ApplicationSchool => ({
+    id, canonicalName: `School ${id}`, name: `School ${id}`, verificationStatus: "incomplete", sources: [], ...overrides,
+  });
+
+  it("normalizes segments and keeps only safe, plausible research context", () => {
+    const result = parseApplicationSchoolDataset({
+      schemaVersion: 2, generatedAt: "2026-07-22T00:00:00Z",
+      schools: [
+        {
+          ...school("one"), segment: "canada_md",
+          reportedStats: [
+            stat(), stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", number: 600, value: "600?" }),
+            stat({ url: "javascript:alert(1)" }), stat({ capturedAt: "2099-01-01T00:00:00Z" }), { ...stat(), basis: "rumor" },
+          ],
+          estimates: {
+            ...estimates(), confidence: "certain",
+            competitiveGpa: { value: 3.9, basis: "SCHOOL_DATA_IN_FILE (floor/minimum value)", floorBased: false, peerFallback: false },
+            competitiveMcat: { value: 600, basis: "SCHOOL_DATA_IN_FILE", floorBased: false, peerFallback: false },
+            indexScore: { value: 61.2, interpretation: "59-64.9" },
+            hours: {
+              research: { text: "800-200", min: 800, max: 200 }, shadowing: { text: "40-100+", min: 40, max: 100, openEnded: "yes" },
+              sleep: { text: "56" }, leadership: { text: "150-400", min: 150, max: 400, openEnded: true },
+            },
+          },
+          riskFlag: { tier: "MODERATE", url: "https://example.edu/risk", capturedAt: "2026-07-21T00:00:00Z", captureStatus: "official-capture" },
+        },
+        { ...school("two"), segment: "MARS", estimates: { ...estimates(), disclaimer: " " }, riskFlag: { tier: "HIGH", url: "ftp://example.edu", capturedAt: "2026-07-21T00:00:00Z" } },
+        { ...school("three"), estimates: { ...estimates(), estimatedAt: "2026-07-22" } },
+      ],
+    }, now);
+    if (!result.ok) throw Error("Invalid fixture");
+    const [one, two, three] = result.dataset.schools;
+    expect(result.dataset.rejectedRecords).toBe(0);
+    expect(result.issues.every(item => item.severity === "warning")).toBe(true);
+    expect(result.issues.map(item => item.path)).toEqual([
+      "schools[0].reportedStats", "schools[0].reportedStats", "schools[0].estimates", "schools[1].estimates", "schools[1].riskFlag", "schools[2].estimates",
+    ]);
+    expect([one.segment, two.segment, three.segment]).toEqual(["CANADA_MD", "OTHER", undefined]);
+    expect(one.reportedStats).toEqual([stat(), { ...stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", value: "600?" }), number: undefined }]);
+    expect(one.reportedStats![1]).not.toHaveProperty("number");
+    expect(one.estimates).toEqual({
+      tier: "B", confidence: "unknown", disclaimer: "ESTIMATE: directional only.", estimatedAt: "2026-07-22T00:00:00Z",
+      competitiveGpa: { value: 3.9, basis: "SCHOOL_DATA_IN_FILE (floor/minimum value)", floorBased: true, peerFallback: false },
+      indexScore: { value: 61.2, interpretation: "59-64.9" },
+      hours: { research: { text: "800-200" }, shadowing: { text: "40-100+", min: 40, max: 100 }, leadership: { text: "150-400", min: 150, max: 400, openEnded: true } },
+    });
+    expect(one.riskFlag).toEqual({ tier: "MODERATE", url: "https://example.edu/risk", capturedAt: "2026-07-21T00:00:00Z", captureStatus: "official-capture" });
+    expect([two.estimates, two.riskFlag, three.estimates]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("refreshes statistics, estimates and risk flags by recency without flipping verification status", () => {
+    const base = testDataset([
+      school("one", {
+        reportedStats: [stat(), stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", value: "510", number: 510 })],
+        estimates: estimates(), riskFlag: { tier: "MODERATE", url: "https://example.edu/risk", capturedAt: "2026-07-21T00:00:00Z", captureStatus: "unverified-capture" },
+      }),
+      school("two"),
+    ]);
+    const incoming = testDataset([
+      school("one", {
+        segment: "US_MD",
+        reportedStats: [
+          stat({ value: "3.9", number: 3.9, capturedAt: "2026-07-25T00:00:00Z", basis: "official-capture" }),
+          stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", value: "505", number: 505, capturedAt: "2026-07-10T00:00:00Z" }),
+          stat({ id: "admissions_requirements_raw.competitive_gpa", kind: "competitive" }),
+        ],
+        estimates: estimates({ tier: "C", estimatedAt: "2026-07-01T00:00:00Z" }),
+        riskFlag: { tier: "HIGHER", url: "https://example.edu/risk", capturedAt: "2026-07-30T00:00:00Z", captureStatus: "unverified-capture" },
+      }),
+      school("two", { estimates: estimates({ tier: "D" }) }),
+    ]);
+    const merged = mergeApplicationSchoolDatasets(base, incoming);
+    const [one, two] = merged.dataset.schools;
+    expect(merged.conflicts).toBe(0);
+    expect([one.verificationStatus, two.verificationStatus]).toEqual(["incomplete", "incomplete"]);
+    expect(one.segment).toBe("US_MD");
+    expect(one.reportedStats!.map(item => [item.id.split(".")[1], item.value])).toEqual([["avg_gpa", "3.9"], ["mcat_avg", "510"], ["competitive_gpa", "3.85 median"]]);
+    expect(one.estimates!.tier).toBe("B");
+    expect(one.riskFlag!.tier).toBe("HIGHER");
+    expect(two.estimates!.tier).toBe("D");
+  });
+
+  it("diffs two runs and counts only the review checks a changed fact reopens", () => {
+    const base = testDataset([
+      school("A", { researchFacts: [fact("f1"), fact("f2"), fact("f3")], estimates: estimates() }),
+      school("B", { researchFacts: [fact("f1")] }),
+      school("C", { researchFacts: [fact("f1")] }),
+    ]);
+    const incoming = testDataset([
+      school("A", { researchFacts: [fact("f1"), fact("f2", { value: "3.2" }), fact("f3", { label: "Renamed label" }), fact("f4")], estimates: estimates({ confidence: "moderate" }) }),
+      { ...school("C-2"), canonicalName: "School C", researchFacts: [] },
+      school("D", { researchFacts: [fact("f1")] }),
+    ]);
+    const diff = diffApplicationSchoolDatasets(base, incoming);
+    expect(diff).toEqual({
+      addedSchools: ["D"], removedSchools: ["B"],
+      changedFacts: [
+        { schoolId: "A", factId: "f2", fields: ["value"], before: fact("f2"), after: fact("f2", { value: "3.2" }) },
+        { schoolId: "A", factId: "f3", fields: ["label"], before: fact("f3"), after: fact("f3", { label: "Renamed label" }) },
+      ],
+      addedFacts: [{ schoolId: "A", factId: "f4" }], removedFacts: [{ schoolId: "C", factId: "f1" }],
+      estimateChanges: ["A"], reviewChecksReopened: 1,
+    });
+    expect(diffApplicationSchoolDatasets(base, base)).toEqual({
+      addedSchools: [], removedSchools: [], changedFacts: [], addedFacts: [], removedFacts: [], estimateChanges: [], reviewChecksReopened: 0,
+    });
   });
 });
 

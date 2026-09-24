@@ -1,17 +1,16 @@
 import type { Course, TrackerItem } from "./types";
-import { resolveStudyPlan, type StudyWorkflowPreferences } from "./studyPreferences";
-import { isCompletionKind, isQuestionKind, passStage, PASS_COLOR, targetPassesForItem, type Suggestion } from "./tracker";
+import { type EffectiveStudyPlan, type StudyMethodId, type StudyWorkflowPreferences } from "./studyPreferences";
+import { trackerStudyProgress } from "./studyProgress";
+import { isCompletionKind, isQuestionKind, passStage, PASS_COLOR, type Suggestion } from "./tracker";
 
 export interface RecommendationFactor { id: string; label: string; value: number; }
-export interface RankedTrackerItem { item: TrackerItem; score: number; factors: RecommendationFactor[]; reason: string; }
+export interface RankedTrackerItem { item: TrackerItem; score: number; factors: RecommendationFactor[]; reason: string; plan: EffectiveStudyPlan; target: number; }
 export function rankTrackerItems(items: TrackerItem[], options: { preferences?: StudyWorkflowPreferences; courses?: Course[]; now?: Date } = {}): RankedTrackerItem[] {
   const now = options.now ?? new Date();
   return items.flatMap((item) => {
     if (item.recommendationSnoozedUntil && Date.parse(item.recommendationSnoozedUntil) > now.getTime()) return [];
-    const course = options.courses?.find((candidate) => item.path.toLowerCase().includes(candidate.code.toLowerCase()) || item.path.toLowerCase().includes(candidate.name.toLowerCase()));
-    const plan = resolveStudyPlan(options.preferences, course, item);
-    const target = !isQuestionKind(item.kind) && !isCompletionKind(item.kind) ? plan.lecturePasses : targetPassesForItem(item);
-    if (item.passes >= target) return [];
+    const { plan, target, complete } = trackerStudyProgress(item, options);
+    if (complete) return [];
     const ageDays = Math.max(0, (now.getTime() - Date.parse(item.updated)) / 86400000);
     const factors: RecommendationFactor[] = [];
     add(factors, "completion", "Unfinished work", Math.min(24, (target - item.passes) * 6));
@@ -31,14 +30,55 @@ export function rankTrackerItems(items: TrackerItem[], options: { preferences?: 
     add(factors, "item-type", "Practice work", isQuestionKind(item.kind) ? 4 : 0);
     add(factors, "recency", "Recently updated", ageDays < 1 && item.passes > 0 ? -6 : 0);
     const score = factors.reduce((sum, factor) => sum + factor.value, 0);
-    return [{ item, score, factors, reason: factors.filter((factor) => factor.value > 0).sort((a, b) => b.value - a.value).slice(0, 3).map((factor) => factor.label).join(" · ") }];
+    return [{ item, score, factors, plan, target, reason: factors.filter((factor) => factor.value > 0).sort((a, b) => b.value - a.value).slice(0, 3).map((factor) => factor.label).join(" · ") }];
   }).sort((a, b) => b.score - a.score || a.item.updated.localeCompare(b.item.updated) || a.item.id.localeCompare(b.item.id));
 }
 export function personalizedSuggestions(items: TrackerItem[], n = 3, options: { preferences?: StudyWorkflowPreferences; courses?: Course[]; now?: Date } = {}): Suggestion[] {
   if (!items.length) return [{ title: "Import the first tracker items", reason: "Add course work so AXOM can recommend a useful first move.", color: PASS_COLOR.untouched }];
   const ranked = rankTrackerItems(items, options);
-  if (!ranked.length) return [{ title: "This scope is complete", reason: "Every item has reached its current study-plan target.", color: PASS_COLOR.mastered }];
+  if (!ranked.length) {
+    const unfinished = rankTrackerItems(items.map((item) => ({ ...item, recommendationSnoozedUntil: undefined })), options);
+    return unfinished.length
+      ? [{ title: "Remaining work is snoozed", reason: "Your unfinished items will return when their snooze ends. They are not marked complete.", color: PASS_COLOR.untouched }]
+      : [{ title: "This scope is complete", reason: "Every item has reached its current study-plan target.", color: PASS_COLOR.mastered }];
+  }
   return ranked.slice(0, n).map(({ item, reason }) => ({ title: moveTitle(item), reason, color: PASS_COLOR[passStage(item.passes)], itemId: item.id }));
+}
+
+const METHOD_RESOURCE: Record<StudyMethodId, string> = {
+  "lecture-passes": "Lecture notes / slides",
+  "practice-questions": "Practice questions",
+  anki: "Anki", quizlet: "Quizlet", noji: "Noji", remnote: "RemNote",
+  notes: "Notes", "teach-aloud": "Teach aloud", recall: "Active recall",
+  "external-resource": "External resource", custom: "Custom study method",
+};
+const METHOD_TIMING = {
+  before: "before learning", "after-first-pass": "after the first pass",
+  "after-learning": "after learning", "near-exam": "near the exam", ongoing: "ongoing",
+};
+
+/** Describe the resolved plan without enabling a tool or inventing a linked resource. */
+export function trackerStudyAction({ item, plan, target }: RankedTrackerItem) {
+  const completion = isCompletionKind(item.kind);
+  const questions = isQuestionKind(item.kind);
+  const methods = plan.methods.filter((method) => method.enabled);
+  const resources = completion ? [] : methods
+    .filter((method) => !questions || !["lecture-passes", "practice-questions"].includes(method.id))
+    .map((method) => {
+      const label = method.label?.trim() || METHOD_RESOURCE[method.id];
+      return method.timing && METHOD_TIMING[method.timing] ? `${label} (${METHOD_TIMING[method.timing]})` : label;
+    });
+  if (questions) resources.unshift("Question material", "Error log");
+  return {
+    title: moveTitle(item),
+    resources: [...new Set(resources)],
+    expectedOutcome: completion ? "Complete this item and record its status."
+      : questions ? `Complete practice round ${item.passes + 1} of ${target} and review the errors.`
+        : `Complete pass ${item.passes + 1} of ${target} in your study plan.`,
+    summary: completion ? "Completion-based item; lecture pass targets do not apply."
+      : `${item.passes} of ${target} ${questions ? "practice rounds" : "passes"} complete · Review after ${plan.reviewAfterDays} day${plan.reviewAfterDays === 1 ? "" : "s"}.`,
+    sources: plan.sources,
+  };
 }
 function add(list: RecommendationFactor[], id: string, label: string, value: number) { if (value && label) list.push({ id, label, value }); }
 function moveTitle(item: TrackerItem) { if (isCompletionKind(item.kind)) return `${item.passes ? "Verify" : "Complete"}: ${item.label}`; if (!item.passes) return `Start: ${item.label}`; if (isQuestionKind(item.kind)) return `${item.kind} #${Math.min(item.passes + 1, 3)}: ${item.label}`; return `Review: ${item.label}`; }

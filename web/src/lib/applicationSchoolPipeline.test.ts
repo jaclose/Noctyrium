@@ -100,8 +100,59 @@ describe("application school pipeline CLI", () => {
     }
   });
 
+  it("diffs two runs, names changed facts and counts reopened review checks", () => {
+    const directory = mkdtempSync(join(tmpdir(), "axom-schools-"));
+    try {
+      const base = join(directory, "base.json");
+      const incoming = join(directory, "incoming.json");
+      const fact = (id: string, value: string) => ({ id, label: id, value, url: "https://one.example.edu/requirements", capturedAt: "2026-08-01T00:00:00Z", captureStatus: "unverified-capture" });
+      const school = (id: string, researchFacts: unknown[], extra = {}) => ({ id, canonicalName: `School ${id}`, verificationStatus: "incomplete", sources: [], researchFacts, ...extra });
+      writeFileSync(base, JSON.stringify(dataset([school("one", [fact("admissions_requirements_raw.min_gpa", "3.0")]), school("gone", [])])));
+      writeFileSync(incoming, JSON.stringify(dataset([
+        school("one", [fact("admissions_requirements_raw.min_gpa", "3.2"), fact("cost_financial_aid_raw.tuition_flat", "$60,000")], {
+          estimates: { hours: {}, confidence: "low", disclaimer: "ESTIMATE: directional only.", estimatedAt: "2026-08-01T00:00:00Z" },
+        }),
+        school("new", []),
+      ])));
+      const result = run(["diff", base, incoming, "--now", now]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("schools: +1 added, -1 removed");
+      expect(result.stdout).toContain("facts: +1 added, -0 removed, 1 changed");
+      expect(result.stdout).toContain("review checks reopened: 1");
+      expect(result.stdout).toContain("estimate changes: 1 school(s)");
+      expect(result.stdout).toContain('one admissions_requirements_raw.min_gpa [value]: "3.0" -> "3.2"');
+      expect(result.stdout).toContain("cost_financial_aid_raw.tuition_flat: 1 school(s)");
+      const json = run(["diff", base, incoming, "--now", now, "--json"]);
+      expect(json.status).toBe(0);
+      expect(JSON.parse(json.stdout)).toMatchObject({
+        addedSchools: ["new"], removedSchools: ["gone"], reviewChecksReopened: 1, estimateChanges: ["one"],
+        changedFacts: [{ schoolId: "one", factId: "admissions_requirements_raw.min_gpa", fields: ["value"] }],
+        addedFacts: [{ schoolId: "one", factId: "cost_financial_aid_raw.tuition_flat" }],
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to diff an unsafe dataset", () => {
+    const directory = mkdtempSync(join(tmpdir(), "axom-schools-"));
+    try {
+      const base = join(directory, "base.json");
+      const unsafe = join(directory, "unsafe.json");
+      writeFileSync(base, JSON.stringify(dataset([])));
+      writeFileSync(unsafe, JSON.stringify(dataset([{ id: "bad", canonicalName: "Bad School", verificationStatus: "verified", sources: [{ url: "not-a-url", retrievedAt: "2026-08-10T10:00:00Z" }] }])));
+      const result = run(["diff", base, unsafe, "--now", now, "--json"]);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("diff refused");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("keeps the documented command runnable from the repository root", () => {
     const output = execFileSync("npm", ["run", "schools:validate", "--", "--help"], { encoding: "utf8", cwd: join(process.cwd(), "..") });
     expect(output).toContain("npm run schools:validate");
+    expect(execFileSync("npm", ["run", "schools:diff", "--", "--help"], { encoding: "utf8", cwd: join(process.cwd(), "..") })).toContain("npm run schools:diff");
   });
 });
