@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, ExternalLink, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { GlassCard, GButton, PanelHeader, Tag } from "../components/ui/primitives";
+import { ApplicationProfilePanel } from "../components/applications/ApplicationProfilePanel";
+import { CompareSavedSchools } from "../components/applications/CompareSavedSchools";
+import { EstimatesSection, RequirementChecks, ResearchFactGroups, RiskFlagSection } from "../components/applications/SchoolDetails";
+import { CHECK_STATUS, CHECK_STATUS_ORDER, formatDate } from "../components/applications/applicationDisplay";
 import { ICON_SIZE } from "../lib/iconSize";
 import { useStore } from "../lib/store";
-import { researchFactRevision, researchValue, type ApplicationResearchEntry } from "../lib/applicationResearch";
+import { researchFactRevision, researchValue, type ApplicationResearchEntry, type SchoolResearchFact } from "../lib/applicationResearch";
+import { isApplicationProfileEmpty } from "../lib/applicationProfile";
+import { checkSchool, type EligibilityStatus, type SchoolCheckResult } from "../lib/applicationChecker";
 import {
   parseApplicationSchoolDataset,
   type ApplicationSchool,
@@ -20,6 +26,16 @@ const STATUS: Record<SchoolVerificationStatus, { label: string; tone: "green" | 
   conflicting: { label: "Conflicting", tone: "orange" },
 };
 
+type SortKey = "name" | "fewest-issues" | "competitiveness";
+const SORTS: readonly { id: SortKey; label: string }[] = [
+  { id: "name", label: "Name" },
+  { id: "fewest-issues", label: "Fewest issues first" },
+  { id: "competitiveness", label: "Estimated competitiveness" },
+];
+const ISSUE_RANK: Record<EligibilityStatus, number> = { "no-blockers-found": 0, "needs-review": 1, "possible-blocker": 2, "not-enough-information": 3 };
+const BAND_RANK = { "at-or-above": 0, near: 1, mixed: 2, below: 3 } as const;
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
 type LoadState =
   | { kind: "loading" }
   | { kind: "ready"; dataset: ApplicationSchoolDataset; warnings: string[] }
@@ -28,6 +44,9 @@ type LoadState =
 
 export function ApplicationCheckerPage() {
   const research = useStore(s => s.profile.applicationResearch);
+  const storedProfile = useStore(s => s.profile.applicationProfile);
+  // Typing in the profile form stays responsive while 292 schools are re-checked.
+  const profile = useDeferredValue(storedProfile);
   const [savedOnly, setSavedOnly] = useState(false);
   const [capturedOnly, setCapturedOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(24);
@@ -36,6 +55,8 @@ export function ApplicationCheckerPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SchoolVerificationStatus | "all">("all");
   const [program, setProgram] = useState("all");
+  const [checkFilter, setCheckFilter] = useState<EligibilityStatus | "all">("all");
+  const [sort, setSort] = useState<SortKey>("name");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,22 +82,61 @@ export function ApplicationCheckerPage() {
   }, [loadKey]);
 
   const schools = useMemo(() => state.kind === "ready" ? state.dataset.schools : [], [state]);
+  const hasProfile = !isApplicationProfileEmpty(profile);
+  // One pass per dataset or profile change; cards, filters, sorting and the comparison read from it.
+  const results = useMemo(() => {
+    const now = new Date();
+    return new Map<string, SchoolCheckResult>(schools.map(school => [school.id, checkSchool(school, profile, { now })]));
+  }, [schools, profile]);
+  const statusCounts = useMemo(() => {
+    const counts: Record<EligibilityStatus, number> = { "possible-blocker": 0, "needs-review": 0, "no-blockers-found": 0, "not-enough-information": 0 };
+    for (const result of results.values()) counts[result.eligibility.status] += 1;
+    return counts;
+  }, [results]);
+
+  const savedIds = useMemo(() => new Set((research ?? []).filter(entry => entry.shortlisted).map(entry => entry.schoolId)), [research]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
-    return schools.filter((school) => {
-      if (savedOnly && !research?.some(entry => entry.schoolId === school.id && entry.shortlisted)) return false;
+    const matches = schools.filter((school) => {
+      if (savedOnly && !savedIds.has(school.id)) return false;
       if (capturedOnly && !school.researchFacts?.length) return false;
       if (status !== "all" && school.verificationStatus !== status) return false;
       if (program !== "all" && school.programType !== program) return false;
+      if (checkFilter !== "all" && results.get(school.id)?.eligibility.status !== checkFilter) return false;
       return !needle || [school.name, school.location, school.degree, school.programType, school.applicationPlatform, ...(school.researchFacts ?? []).map(fact => fact.value)]
         .some((value) => value?.toLocaleLowerCase().includes(needle));
     });
-  }, [program, query, schools, status, savedOnly, capturedOnly, research]);
+    const byName = (a: ApplicationSchool, b: ApplicationSchool) => collator.compare(a.name, b.name);
+    if (sort === "fewest-issues") {
+      const key = (school: ApplicationSchool) => {
+        const summary = results.get(school.id)?.eligibility;
+        return summary ? [ISSUE_RANK[summary.status], summary.blockers, summary.reviews, summary.unknown] : [9, 0, 0, 0];
+      };
+      return matches.sort((a, b) => {
+        const left = key(a), right = key(b);
+        const index = left.findIndex((value, position) => value !== right[position]);
+        return index === -1 ? byName(a, b) : left[index] - right[index];
+      });
+    }
+    if (sort === "competitiveness") {
+      const rank = (school: ApplicationSchool) => {
+        const estimate = results.get(school.id)?.competitiveness;
+        return estimate?.band ? BAND_RANK[estimate.band] : estimate ? 4 : 5;
+      };
+      return matches.sort((a, b) => rank(a) - rank(b) || byName(a, b));
+    }
+    return matches.sort(byName);
+  }, [program, query, schools, status, savedOnly, capturedOnly, savedIds, checkFilter, results, sort]);
 
   const programs = useMemo(() => [...new Set(schools.map((school) => school.programType).filter((value): value is string => Boolean(value)))].sort(), [schools]);
+  const savedSchools = useMemo(() => schools.filter(school => savedIds.has(school.id)).sort((a, b) => collator.compare(a.name, b.name)), [schools, savedIds]);
+
+  function clearFilters() {
+    setQuery(""); setStatus("all"); setProgram("all"); setSavedOnly(false); setCapturedOnly(false); setCheckFilter("all");
+  }
 
   return (
-    <>
+    <div className="application-page">
       <GlassCard pad>
         <div className="row gap12" style={{ alignItems: "center" }}>
           <span className="folder-icon" style={{ color: "var(--cyan)" }}><ClipboardCheck size={ICON_SIZE.control} /></span>
@@ -87,6 +147,10 @@ export function ApplicationCheckerPage() {
           <Tag tone="cyan">Research workspace</Tag>
         </div>
       </GlassCard>
+
+      <ApplicationProfilePanel />
+
+      {state.kind === "ready" && <CompareSavedSchools schools={savedSchools} results={results} hasProfile={hasProfile} />}
 
       <GlassCard pad>
         <PanelHeader title="Medical school data" sub="Historical research, not an eligibility decision. Confirm current policies and application cycles with each school." />
@@ -114,49 +178,75 @@ export function ApplicationCheckerPage() {
               <span>{schools.filter(school => school.researchFacts?.length).length} with collected research</span>
               {state.warnings.length > 0 && <Tag tone="orange">{state.warnings.length} data warning{state.warnings.length === 1 ? "" : "s"}</Tag>}
             </div>
+            {hasProfile && (
+              <div className="application-dataset-meta application-status-counts" aria-label="Automatic check results across all schools">
+                {CHECK_STATUS_ORDER.map(key => <span key={key}><i className={`application-dot tone-${CHECK_STATUS[key].tone}`} aria-hidden="true" />{CHECK_STATUS[key].label}: {statusCounts[key]}</span>)}
+              </div>
+            )}
             <p className="sub">A source link or historical official capture does not verify every requirement today. Unreported fields are not waived requirements. Your checkmarks record research reviewed, not requirements met.</p>
-            <div className="row wrap gap12">
+            <div className="row wrap gap12 application-toggles">
               <label><input type="checkbox" checked={savedOnly} onChange={event => setSavedOnly(event.target.checked)} /> Saved schools ({research?.filter(entry => entry.shortlisted).length ?? 0})</label>
               <label><input type="checkbox" checked={capturedOnly} onChange={event => setCapturedOnly(event.target.checked)} /> Has collected research</label>
             </div>
             <div className="application-controls">
-              <label className="application-search"><Search size={ICON_SIZE.body} /><span className="sr-only">Search schools</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search school, location, degree…" /></label>
-              <label><span className="sr-only">Filter verification status</span><select value={status} onChange={(event) => setStatus(event.target.value as SchoolVerificationStatus | "all")}>
+              <label className="application-search"><Search size={ICON_SIZE.body} /><span className="sr-only">Search schools</span><input className="field" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search school, location, degree…" /></label>
+              <label><span className="sr-only">Filter verification status</span><select className="field" value={status} onChange={(event) => setStatus(event.target.value as SchoolVerificationStatus | "all")}>
                 <option value="all">All data states</option>
                 {Object.entries(STATUS).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}
               </select></label>
-              <label><span className="sr-only">Filter program type</span><select value={program} onChange={(event) => setProgram(event.target.value)}>
+              <label><span className="sr-only">Filter program type</span><select className="field" value={program} onChange={(event) => setProgram(event.target.value)}>
                 <option value="all">All programs</option>
                 {programs.map((value) => <option value={value} key={value}>{value.toUpperCase()}</option>)}
               </select></label>
+              <label><span className="sr-only">Check result</span><select className="field" value={checkFilter} onChange={(event) => setCheckFilter(event.target.value as EligibilityStatus | "all")}>
+                <option value="all">All check results</option>
+                {CHECK_STATUS_ORDER.map(key => <option value={key} key={key}>{CHECK_STATUS[key].label}</option>)}
+              </select></label>
+              <label className="application-sort"><span>Sort</span><select className="field" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+                {SORTS.map(option => <option value={option.id} key={option.id}>{option.label}</option>)}
+              </select></label>
             </div>
             <p className="sub" role="status">Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} matching schools</p>
-            {filtered.length ? <div className="application-school-grid">{filtered.slice(0, visibleCount).map((school) => <SchoolCard school={school} key={school.id} />)}</div>
-              : <div className="application-state"><h3>No matching schools</h3><button className="ghost-btn" type="button" onClick={() => { setQuery(""); setStatus("all"); setProgram("all"); setSavedOnly(false); setCapturedOnly(false); }}>Clear search and filters</button></div>}
+            {filtered.length ? <div className="application-school-grid">{filtered.slice(0, visibleCount).map((school) => <SchoolCard school={school} result={results.get(school.id)} hasProfile={hasProfile} key={school.id} />)}</div>
+              : <div className="application-state"><h3>No matching schools</h3><button className="ghost-btn" type="button" onClick={clearFilters}>Clear search and filters</button></div>}
             {filtered.length > visibleCount && <GButton onClick={() => setVisibleCount(count => count + 24)}>Show more schools</GButton>}
           </>
         )}
       </GlassCard>
-    </>
+    </div>
   );
 }
 
-function SchoolCard({ school }: { school: ApplicationSchool }) {
+function SchoolCard({ school, result, hasProfile }: { school: ApplicationSchool; result?: SchoolCheckResult; hasProfile: boolean }) {
   const entry = useStore(s => s.profile.applicationResearch?.find(item => item.schoolId === school.id));
+  const [open, setOpen] = useState(false);
   function update(patch: Partial<ApplicationResearchEntry>) {
     const store = useStore.getState();
     const entries = store.profile.applicationResearch ?? [];
     const current = entries.find(item => item.schoolId === school.id) ?? { schoolId: school.id, shortlisted: false, reviewedFacts: {} };
     store.updateProfile({ applicationResearch: [...entries.filter(item => item.schoolId !== school.id), { ...current, ...patch }] });
   }
+  function setReviewed(fact: SchoolResearchFact, reviewed: boolean) {
+    const latest = useStore.getState().profile.applicationResearch?.find(item => item.schoolId === school.id);
+    const checks = { ...latest?.reviewedFacts };
+    if (reviewed) checks[fact.id] = researchFactRevision(fact); else delete checks[fact.id];
+    update({ reviewedFacts: checks });
+  }
   const facts = school.researchFacts ?? [];
   const reviewed = facts.filter(fact => entry?.reviewedFacts[fact.id] === researchFactRevision(fact)).length;
   const capturedValue = (id: string) => { const fact = facts.find(item => item.id === id); return fact ? `${researchValue(fact.value)} (historical capture)` : "Unknown"; };
   const meta = STATUS[school.verificationStatus];
   const source = school.sources[0];
+  const check = result ? CHECK_STATUS[result.eligibility.status] : undefined;
   return (
-    <article className="application-school-card">
-      <div className="row"><div className="grow"><h3>{school.name}</h3><div className="sub">{[school.location, school.degree, school.programType].filter(Boolean).join(" · ") || "Details not supplied"}</div></div><Tag tone={meta.tone}>{meta.label}</Tag></div>
+    <article className="application-school-card" data-open={open ? "" : undefined}>
+      <div className="row application-school-head"><div className="grow"><h3>{school.name}</h3><div className="sub">{[school.location, school.degree, school.programType].filter(Boolean).join(" · ") || "Details not supplied"}</div></div><Tag tone={meta.tone}>{meta.label}</Tag></div>
+      {result && check && (
+        <div className={`application-check-summary tone-${check.tone} ${hasProfile ? "" : "idle"}`}>
+          <Tag tone={check.tone}>{check.label}</Tag>
+          <p>{result.eligibility.headline}</p>
+        </div>
+      )}
       <button type="button" className={`filter-pill ${entry?.shortlisted ? "on" : ""}`} aria-pressed={entry?.shortlisted ?? false} onClick={() => update({ shortlisted: !entry?.shortlisted })}>{entry?.shortlisted ? "Saved school" : "Save school"}</button>
       <dl>
         <div><dt>Application</dt><dd>{school.applicationPlatform ?? capturedValue("application_process_raw.application_service")}</dd></div>
@@ -167,41 +257,31 @@ function SchoolCard({ school }: { school: ApplicationSchool }) {
         <span>{school.updatedAt ? `Record updated ${formatDate(school.updatedAt)}` : "Record update date unknown"}</span>
         {source ? <a href={source.url} target="_blank" rel="noreferrer noopener">Source <ExternalLink size={ICON_SIZE.microInline} /></a> : <span>No source supplied</span>}
       </div>
-      <details className="application-school-details">
+      <details className="application-school-details" onToggle={event => setOpen(event.currentTarget.open)}>
         <summary>Review available details{facts.length ? ` · ${reviewed}/${facts.length} reviewed` : ""}</summary>
-        {facts.length > 0 && <div className="application-research-facts">
-          <p className="sub">Read the source, then mark the information you have reviewed. This does not mean you meet a requirement. Checks reopen when evidence changes. Workspace save status is shown in the application header.</p>
-          {facts.map(fact => <div className="application-research-fact" key={fact.id}>
-            <label className="row gap8" style={{ alignItems: "flex-start" }}>
-              <input type="checkbox" aria-label={`Reviewed ${fact.label}`} checked={entry?.reviewedFacts[fact.id] === researchFactRevision(fact)} onChange={event => {
-                const latest = useStore.getState().profile.applicationResearch?.find(item => item.schoolId === school.id);
-                const checks = { ...latest?.reviewedFacts };
-                if (event.target.checked) checks[fact.id] = researchFactRevision(fact); else delete checks[fact.id];
-                update({ reviewedFacts: checks });
-              }} />
-              <span><b>{fact.label}</b><br />{researchValue(fact.value)}</span>
-            </label>
-            <div className="sub">{fact.captureStatus === "official-capture" ? "Official-page capture" : "Unverified capture"} · {formatDate(fact.capturedAt)} · <a href={fact.url} target="_blank" rel="noreferrer noopener">Review source</a></div>
-          </div>)}
-        </div>}
-        <dl>
-          <div><dt>Prerequisites</dt><dd>{school.prerequisiteCategories?.join(", ") ?? "Unknown"}</dd></div>
-          <div><dt>CASPer</dt><dd>{school.casperPolicy ?? "Unknown"}</dd></div>
-          <div><dt>PREview</dt><dd>{school.previewPolicy ?? "Unknown"}</dd></div>
-          <div><dt>Letters</dt><dd>{school.letters ?? "Unknown"}</dd></div>
-          <div><dt>Mission</dt><dd>{school.missionNotes ?? "Unknown"}</dd></div>
-        </dl>
-        {school.conflicts && <p className="application-conflict" role="alert">Conflicting fields need review: {Object.keys(school.conflicts).join(", ")}.</p>}
-        {school.conflicts && <dl>{Object.entries(school.conflicts).map(([field, conflict]) => <div key={field}><dt>{field}</dt><dd>{conflict.existing}<br />Other recorded value: {conflict.incoming}</dd></div>)}</dl>}
-        {school.website && <a href={school.website} target="_blank" rel="noreferrer noopener">School website (roster link)</a>}
+        {open && (
+          <div className="application-school-body">
+            <div className="application-school-column">
+              {result && <RequirementChecks result={result} hasProfile={hasProfile} />}
+            </div>
+            <div className="application-school-column">
+              {result && <EstimatesSection school={school} result={result} />}
+              {school.riskFlag && <RiskFlagSection flag={school.riskFlag} />}
+              <ResearchFactGroups facts={facts} entry={entry} onReviewedChange={setReviewed} />
+              <dl>
+                <div><dt>Prerequisites</dt><dd>{school.prerequisiteCategories?.join(", ") ?? "Unknown"}</dd></div>
+                <div><dt>CASPer</dt><dd>{school.casperPolicy ?? "Unknown"}</dd></div>
+                <div><dt>PREview</dt><dd>{school.previewPolicy ?? "Unknown"}</dd></div>
+                <div><dt>Letters</dt><dd>{school.letters ?? "Unknown"}</dd></div>
+                <div><dt>Mission</dt><dd>{school.missionNotes ?? "Unknown"}</dd></div>
+              </dl>
+              {school.conflicts && <p className="application-conflict" role="alert">Conflicting fields need review: {Object.keys(school.conflicts).join(", ")}.</p>}
+              {school.conflicts && <dl>{Object.entries(school.conflicts).map(([field, conflict]) => <div key={field}><dt>{field}</dt><dd>{conflict.existing}<br />Other recorded value: {conflict.incoming}</dd></div>)}</dl>}
+              {school.website && <a href={school.website} target="_blank" rel="noreferrer noopener">School website (roster link)</a>}
+            </div>
+          </div>
+        )}
       </details>
     </article>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  // Research dates are date-only captures encoded at UTC midnight. Preserve
-  // that source calendar date instead of displaying the previous local day.
-  return Number.isNaN(date.valueOf()) ? "unknown" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }).format(date);
 }

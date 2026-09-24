@@ -1,4 +1,5 @@
 mod menu_bar_timer;
+mod webview_dialogs;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -23,6 +24,11 @@ pub fn run() {
             menu_bar_timer::menu_bar_timer_clear,
         ])
         .setup(|app| {
+            use tauri::Manager;
+            // Without this, confirm() returns false and prompt() null in the desktop app.
+            if let Some(window) = app.get_webview_window("main") {
+                webview_dialogs::install(&window);
+            }
             menu_bar_timer::setup(app.handle());
             Ok(())
         })

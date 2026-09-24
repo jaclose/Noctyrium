@@ -162,7 +162,13 @@ describe("research context fields: statistics, estimates and risk flags", () => 
     expect(result.dataset.rejectedRecords).toBe(0);
     expect(result.issues.every(item => item.severity === "warning")).toBe(true);
     expect(result.issues.map(item => item.path)).toEqual([
-      "schools[0].reportedStats", "schools[0].reportedStats", "schools[0].estimates", "schools[1].estimates", "schools[1].riskFlag", "schools[2].estimates",
+      "schools[0].reportedStats", "schools[0].reportedStats", "schools[0].reportedStats", "schools[0].estimates", "schools[1].estimates", "schools[1].riskFlag", "schools[2].estimates",
+    ]);
+    // A future capture is reported apart from unsafe links and unknown bases.
+    expect(result.issues.filter(item => item.path === "schools[0].reportedStats").map(item => item.message)).toEqual([
+      "2 reported statistic(s) with an unsafe link, invalid date or unknown basis were rejected.",
+      "1 reported statistic(s) dated in the future were rejected.",
+      "1 implausible reported number(s) were dropped; the source text is kept.",
     ]);
     expect([one.segment, two.segment, three.segment]).toEqual(["CANADA_MD", "OTHER", undefined]);
     expect(one.reportedStats).toEqual([stat(), { ...stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", value: "600?" }), number: undefined }]);
@@ -228,11 +234,75 @@ describe("research context fields: statistics, estimates and risk flags", () => 
         { schoolId: "A", factId: "f3", fields: ["label"], before: fact("f3"), after: fact("f3", { label: "Renamed label" }) },
       ],
       addedFacts: [{ schoolId: "A", factId: "f4" }], removedFacts: [{ schoolId: "C", factId: "f1" }],
-      estimateChanges: ["A"], reviewChecksReopened: 1,
+      estimateChanges: ["A"], statChanges: [], reviewChecksReopened: 1,
     });
     expect(diffApplicationSchoolDatasets(base, base)).toEqual({
-      addedSchools: [], removedSchools: [], changedFacts: [], addedFacts: [], removedFacts: [], estimateChanges: [], reviewChecksReopened: 0,
+      addedSchools: [], removedSchools: [], changedFacts: [], addedFacts: [], removedFacts: [], estimateChanges: [], statChanges: [], reviewChecksReopened: 0,
     });
+  });
+
+  it("keeps floorLike boolean-only, derives it from threshold/range wording and carries it through merge and diff", () => {
+    const result = parseApplicationSchoolDataset({
+      schemaVersion: 2, generatedAt: "2026-07-22T00:00:00Z",
+      schools: [school("one", { reportedStats: [
+        stat({ id: "admissions_requirements_raw.competitive_gpa", kind: "competitive", value: "3.0 (recommended overall)", number: 3 }),
+        { ...stat({ id: "admissions_requirements_raw.mcat_competitive", metric: "mcat", kind: "competitive", value: "509", number: 509 }), floorLike: "yes" as unknown as boolean },
+        stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat", value: "510", number: 510, floorLike: false }),
+        stat({ id: "admissions_requirements_raw.avg_science_gpa", metric: "science-gpa", value: "3.61 (2024-25 entering)", number: 3.61, approximate: undefined }),
+        stat({ id: "admissions_requirements_raw.competitive_science_gpa", metric: "science-gpa", kind: "competitive", value: "3.5-3.8", number: 3.5 }),
+        stat({ id: "admissions_requirements_raw.avg_gpa", value: "3.7", number: 3.7, approximate: undefined, floorLike: true }),
+      ] })],
+    }, now);
+    if (!result.ok) throw Error("Invalid fixture");
+    const stats = result.dataset.schools[0].reportedStats!;
+    expect(stats.map(item => [item.id.split(".")[1], item.floorLike])).toEqual([
+      ["competitive_gpa", true], ["mcat_competitive", true], ["mcat_avg", undefined], ["avg_science_gpa", undefined], ["competitive_science_gpa", true], ["avg_gpa", true],
+    ]);
+    expect(stats.every(item => item.floorLike === undefined || item.floorLike === true)).toBe(true);
+    expect(result.issues.map(item => item.message)).toEqual(["1 reported statistic(s) had a non-boolean floorLike flag; they are treated as floor-like."]);
+
+    const refreshed = testDataset([school("one", { reportedStats: [stat({ value: "3.9+", number: 3.9, floorLike: true, capturedAt: "2026-07-25T00:00:00Z", basis: "official-capture" })] })]);
+    const merged = mergeApplicationSchoolDatasets(testDataset([school("one", { reportedStats: [stat()] })]), refreshed);
+    expect(merged.dataset.schools[0].reportedStats).toEqual(refreshed.schools[0].reportedStats);
+    const diff = diffApplicationSchoolDatasets(testDataset([school("one", { reportedStats: [stat(), stat({ id: "admissions_requirements_raw.mcat_avg", metric: "mcat" })] })]),
+      testDataset([school("one", { reportedStats: [stat({ floorLike: true, basis: "third-party" }), stat({ id: "admissions_requirements_raw.competitive_gpa", kind: "competitive" })] })]));
+    expect(diff.statChanges).toEqual([
+      { schoolId: "one", statId: "admissions_requirements_raw.avg_gpa", change: "changed", fields: ["floorLike", "basis"] },
+      { schoolId: "one", statId: "admissions_requirements_raw.competitive_gpa", change: "added", fields: [] },
+      { schoolId: "one", statId: "admissions_requirements_raw.mcat_avg", change: "removed", fields: [] },
+    ]);
+  });
+
+  it("keeps review-queue conflicts from both runs, counts only new ones and drops third-party facts from older runs", () => {
+    const base = testDataset([
+      school("A", { conflicts: { "C0001: state_or_country": { existing: "Anguilla & St. Vincent", incoming: "Anguilla / Saint Vincent" } },
+        researchFacts: [fact("admissions_requirements_raw.mcat_min", { value: "495 (min, third-party)" }), fact("admissions_requirements_raw.min_gpa")] }),
+      school("B", { researchFacts: [fact("application_process_raw.primary_deadline", { value: "2025-12-15 (fall 2026 entry, third-party)" })] }),
+    ]);
+    const incoming = testDataset([
+      school("A", { conflicts: {
+        "C0001: state_or_country": { existing: "Anguilla & St. Vincent", incoming: "Anguilla / Saint Vincent" },
+        "C0004: campus_and_pass_rate": { existing: "Anguilla & St. Vincent", incoming: "Anguilla campus closed 2024" },
+      }, researchFacts: [fact("admissions_requirements_raw.min_gpa")] }),
+      school("B", { conflicts: { "C0014: tuition_flat": { existing: "Tuition-free", incoming: "$72,010" } },
+        researchFacts: [fact("application_process_raw.primary_deadline", { value: "November 1" })] }),
+      school("C", { conflicts: { "C0015: ecfmg_eligible": { existing: "Candidacy withdrawn", incoming: "School advertises ECFMG support" } },
+        researchFacts: [fact("application_process_raw.secondary_deadline", { value: "January 15 (per aggregator)" })] }),
+    ]);
+    const merged = mergeApplicationSchoolDatasets(base, incoming);
+    const [a, b, c] = merged.dataset.schools;
+    expect(Object.keys(a.conflicts!)).toEqual(["C0001: state_or_country", "C0004: campus_and_pass_rate"]);
+    expect(a.researchFacts!.map(item => item.value)).toEqual(["3.0"]);
+    // The base's third-party deadline is dropped, so the incoming value is not a fact conflict.
+    expect(b.conflicts).toEqual({ "C0014: tuition_flat": { existing: "Tuition-free", incoming: "$72,010" } });
+    expect(b.researchFacts!.map(item => item.value)).toEqual(["November 1"]);
+    expect(c.researchFacts).toEqual([]);
+    expect([a.verificationStatus, b.verificationStatus]).toEqual(["conflicting", "conflicting"]);
+    expect(merged.conflicts).toBe(3);
+    expect(merged.warnings).toEqual([
+      "School A: C0004: campus_and_pass_rate needs review.", "School B: C0014: tuition_flat needs review.", "School C: C0015: ecfmg_eligible needs review.",
+    ]);
+    expect(mergeApplicationSchoolDatasets(merged.dataset, incoming).conflicts).toBe(0);
   });
 });
 

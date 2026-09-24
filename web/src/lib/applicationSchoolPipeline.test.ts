@@ -125,10 +125,57 @@ describe("application school pipeline CLI", () => {
       const json = run(["diff", base, incoming, "--now", now, "--json"]);
       expect(json.status).toBe(0);
       expect(JSON.parse(json.stdout)).toMatchObject({
-        addedSchools: ["new"], removedSchools: ["gone"], reviewChecksReopened: 1, estimateChanges: ["one"],
+        addedSchools: ["new"], removedSchools: ["gone"], reviewChecksReopened: 1, estimateChanges: ["one"], statChanges: [],
         changedFacts: [{ schoolId: "one", factId: "admissions_requirements_raw.min_gpa", fields: ["value"] }],
         addedFacts: [{ schoolId: "one", factId: "cost_financial_aid_raw.tuition_flat" }],
       });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("counts implausible numbers as impossible numeric fields and only future-dated evidence as future", () => {
+    const directory = mkdtempSync(join(tmpdir(), "axom-schools-"));
+    try {
+      const input = join(directory, "export.json");
+      const stat = (overrides: Record<string, unknown>) => ({ id: "admissions_requirements_raw.mcat_avg", label: "Reported class MCAT", metric: "mcat", kind: "average",
+        value: "510", number: 510, url: "https://one.example.edu/facts", capturedAt: "2026-08-01T00:00:00Z", basis: "unverified-capture", ...overrides });
+      writeFileSync(input, JSON.stringify(dataset([{
+        id: "one", canonicalName: "One Medical School", verificationStatus: "incomplete", sources: [],
+        reportedStats: [stat({ number: 600 }), stat({ capturedAt: "not-a-date" }), stat({ capturedAt: "2026-07-01" })],
+        estimates: { competitiveMcat: { value: 700, basis: "SCHOOL_DATA_IN_FILE" }, hours: {}, confidence: "low", disclaimer: "ESTIMATE: directional only.", estimatedAt: "2026-08-01T00:00:00Z" },
+      }])));
+      const result = run(["validate", input, "--now", now]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("impossible numeric fields: 2");
+      expect(result.stdout).toContain("future timestamps: 0");
+      expect(result.stdout).toContain("2 reported statistic(s) with an unsafe link, invalid date or unknown basis were rejected.");
+
+      writeFileSync(input, JSON.stringify(dataset([{
+        id: "one", canonicalName: "One Medical School", verificationStatus: "incomplete", sources: [], reportedStats: [stat({ capturedAt: "2026-09-01T00:00:00Z" })],
+      }])));
+      const future = run(["validate", input, "--now", now]);
+      expect(future.stdout).toContain("future timestamps: 1");
+      expect(future.stdout).toContain("impossible numeric fields: 0");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("lists reported statistic changes in the diff", () => {
+    const directory = mkdtempSync(join(tmpdir(), "axom-schools-"));
+    try {
+      const base = join(directory, "base.json");
+      const incoming = join(directory, "incoming.json");
+      const stat = (basis: string) => ({ id: "admissions_requirements_raw.avg_gpa", label: "Reported class GPA", metric: "gpa", kind: "average",
+        value: "3.83 (Class of 2029, per search digest of official facts)", number: 3.83, url: "https://one.example.edu/facts", capturedAt: "2026-08-01T00:00:00Z", basis });
+      const school = (reportedStats: unknown[]) => ({ id: "one", canonicalName: "One Medical School", verificationStatus: "incomplete", sources: [], reportedStats });
+      writeFileSync(base, JSON.stringify(dataset([school([stat("official-capture")])])));
+      writeFileSync(incoming, JSON.stringify(dataset([school([stat("unverified-capture")])])));
+      const result = run(["diff", base, incoming, "--now", now]);
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("reported statistics: 1 -> 1 (1 added, removed or changed)");
+      expect(result.stdout).toContain("one admissions_requirements_raw.avg_gpa changed [basis]");
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
