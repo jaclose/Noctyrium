@@ -260,7 +260,7 @@ describe("Phase 1 research adapter", () => {
     const flags = (id: string) => schools.get(id)!.reportedStats!.map(stat => [stat.id.split(".")[1], stat.number, stat.floorLike ?? false]);
     expect(flags("S0036")).toEqual([["mcat_avg", 510, false], ["mcat_competitive", 502, true]]);
     expect(flags("S0173")).toEqual([["competitive_gpa", 3, true], ["competitive_science_gpa", 3, true], ["mcat_competitive", 500, true]]);
-    expect(flags("S0170")).toEqual([["competitive_gpa", 3.5, true], ["avg_gpa", 3, true], ["mcat_competitive", 500, true]]);
+    expect(flags("S0170")).toEqual([["avg_gpa", 3, true], ["competitive_gpa", 3.5, true], ["mcat_competitive", 500, true]]);
     expect(flags("S0189")).toEqual([["avg_gpa", 3.61, false], ["mcat_avg", 500.1, false]]);
     expect(report.floorLikeStats).toBe(7);
   });
